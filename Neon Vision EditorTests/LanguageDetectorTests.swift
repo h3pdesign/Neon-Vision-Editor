@@ -40,6 +40,7 @@ final class LanguageDetectorTests: XCTestCase {
             ("Example.ips", "crashlog"),
             ("main.ini", "ini"),
             ("main.md", "markdown"),
+            ("main.typ", "typst"),
             ("main.mdown", "markdown"),
             ("main.mkdn", "markdown"),
             ("main.mdx", "markdown"),
@@ -120,6 +121,7 @@ final class LanguageDetectorTests: XCTestCase {
             ("Param([string]$Name)\nWrite-Host $Name", "powershell"),
             ("IDENTIFICATION DIVISION.\nPROGRAM-ID. MAIN.", "cobol"),
             ("{\"cells\": [], \"metadata\": {}, \"cell_type\": \"code\"}", "ipynb"),
+            ("#let title = [Typst]\n#show: document => document", "typst"),
             ("# Title\n\n- Item", "markdown"),
             ("{\"a\": 1, \"b\": 2}", "json"),
             ("using System;\nnamespace Foo { class Program { static void Main() {} } }", "csharp")

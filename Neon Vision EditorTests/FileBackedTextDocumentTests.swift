@@ -45,6 +45,15 @@ final class FileBackedTextDocumentTests: XCTestCase {
         XCTAssertGreaterThan(window.lineRange.lowerBound, 0)
     }
 
+    func testViewportCarriesAbsoluteUTF16OffsetForVirtualRendererEdits() throws {
+        let document = FileBackedTextDocument(content: "zero\n😀 one\ntwo\nthree\n")
+
+        let viewport = try document.viewport(aroundLine: 2, maximumByteCount: 8)
+
+        XCTAssertEqual(viewport.lineRange.lowerBound, 2)
+        XCTAssertEqual(viewport.startUTF16Offset, "zero\n😀 one\n".utf16.count)
+    }
+
     func testViewportGenerationRejectsEditsAgainstAnOlderWindow() throws {
         let url = directory.appendingPathComponent("viewport-generation.txt")
         try (0..<100).map { "line-\($0)\n" }.joined().write(to: url, atomically: true, encoding: .utf8)
@@ -68,6 +77,22 @@ final class FileBackedTextDocumentTests: XCTestCase {
         XCTAssertEqual(document.lineCount, 3)
     }
 
+    func testUTF16EditSurfacesUnsupportedEncodingWithoutMutatingDocument() throws {
+        let encoding = TextEncodingDescriptor(identifier: .windowsCP1252)
+        let document = FileBackedTextDocument(content: "plain", encoding: encoding)
+
+        XCTAssertThrowsError(
+            try document.replace(
+                utf16Range: NSRange(location: 0, length: 0),
+                with: "😀"
+            )
+        ) { error in
+            XCTAssertEqual(error as? FileBackedTextDocument.Error, .unsupportedEncoding)
+        }
+        XCTAssertEqual(document.string(), "plain")
+        XCTAssertFalse(document.isDirty)
+    }
+
     func testUTF16EditUsesDocumentCoordinatesWithoutWholeStringProjection() throws {
         let document = FileBackedTextDocument(content: String(repeating: "x\n", count: 20_000))
         let location = "x\n".utf16.count * 15_000
@@ -77,6 +102,141 @@ final class FileBackedTextDocumentTests: XCTestCase {
         XCTAssertEqual(document.utf16Length, 40_000)
         let viewport = try document.viewport(aroundLine: 15_000, maximumByteCount: 128)
         XCTAssertTrue(viewport.text.contains("Y"))
+    }
+
+    func testKnownUTF8LazyViewportHandlesMultibyteDataAcrossIndexSegments() throws {
+        let url = directory.appendingPathComponent("segmented-emoji.txt")
+        let line = String(repeating: "prefix 😀 café ", count: 128) + "\n"
+        try String(repeating: line, count: 30_000).write(to: url, atomically: true, encoding: .utf8)
+
+        let document = try FileBackedTextDocument(url: url, knownUTF8Encoding: .utf8)
+        let viewport = try document.viewport(aroundLine: 20_000, maximumByteCount: 64 * 1024)
+
+        XCTAssertTrue(viewport.text.contains("😀"))
+        XCTAssertTrue(viewport.text.contains("café"))
+        XCTAssertGreaterThan(viewport.startUTF16Offset, 0)
+        XCTAssertLessThanOrEqual(viewport.text.utf8.count, 64 * 1024)
+    }
+
+    func testKnownUTF8LazyDocumentPromotesOnlyForMutationAndKeepsAbsoluteCoordinates() throws {
+        let url = directory.appendingPathComponent("lazy-edit.txt")
+        let source = (0..<40_000).map { "line-\($0) 😀\n" }.joined()
+        try source.write(to: url, atomically: true, encoding: .utf8)
+
+        let document = try FileBackedTextDocument(url: url, knownUTF8Encoding: .utf8)
+        let viewport = try document.viewport(aroundLine: 32_000, maximumByteCount: 4096)
+        let localEmoji = (viewport.text as NSString).range(of: "😀")
+        XCTAssertNotEqual(localEmoji.location, NSNotFound)
+
+        try document.replace(
+            in: viewport,
+            utf16Range: localEmoji,
+            with: "🚀"
+        )
+
+        let edited = try document.viewport(aroundLine: 32_000, maximumByteCount: 4096)
+        XCTAssertTrue(edited.text.contains("🚀"))
+        XCTAssertTrue(document.isDirty)
+    }
+
+    func testKnownUTF16LazyViewportPreservesAbsoluteCoordinatesAndDecodesWindows() throws {
+        let url = directory.appendingPathComponent("segmented-utf16le.txt")
+        let encoding = TextEncodingDescriptor(identifier: .utf16LittleEndianWithBOM)
+        let source = (0..<40_000).map { "line-\($0) 😀\n" }.joined()
+        try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
+
+        let document = try FileBackedTextDocument(url: url, knownEncoding: encoding)
+        let viewport = try document.viewport(aroundLine: 32_000, maximumByteCount: 4096)
+
+        XCTAssertTrue(viewport.text.contains("line-32000"))
+        XCTAssertTrue(viewport.text.contains("😀"))
+        XCTAssertGreaterThan(viewport.startUTF16Offset, 0)
+        XCTAssertLessThanOrEqual(viewport.text.utf8.count, 4096)
+    }
+
+
+    func testAutomaticUTF16AndLegacyOpenUseBoundedWindows() throws {
+        let utf16URL = directory.appendingPathComponent("automatic-utf16.txt")
+        let utf16 = TextEncodingDescriptor(identifier: .utf16BigEndianWithBOM)
+        let utf16Source = (0..<40_000).map { "utf16-\($0) 😀\n" }.joined()
+        try XCTUnwrap(utf16.encodedData(for: utf16Source)).write(to: utf16URL)
+
+        let utf16Document = try FileBackedTextDocument(url: utf16URL)
+        let utf16Viewport = try utf16Document.viewport(aroundLine: 32_000, maximumByteCount: 4096)
+        XCTAssertEqual(utf16Document.encodingDescriptor.identifier, .utf16BigEndianWithBOM)
+        XCTAssertTrue(utf16Viewport.text.contains("utf16-32000"))
+
+
+    }
+
+    func testLazyUTF16MutationSavesBOMAndRejectsExternalConflict() throws {
+        let url = directory.appendingPathComponent("lazy-utf16-save.txt")
+        let encoding = TextEncodingDescriptor(identifier: .utf16LittleEndianWithBOM)
+        let source = (0..<30_000).map { "utf16-\($0) 😀\n" }.joined()
+        try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
+
+        let document = try FileBackedTextDocument(url: url, knownEncoding: encoding)
+        let viewport = try document.viewport(aroundLine: 20_000, maximumByteCount: 4096)
+        let range = (viewport.text as NSString).range(of: "😀")
+        XCTAssertNotEqual(range.location, NSNotFound)
+        try document.replace(in: viewport, utf16Range: range, with: "🚀")
+
+        try source.replacingOccurrences(of: "utf16-20000 😀", with: "utf16-20000 🚀").write(to: url, atomically: true, encoding: .utf8)
+        XCTAssertThrowsError(try document.saveAtomically()) { error in
+            XCTAssertEqual(error as? FileBackedTextDocument.Error, .externalConflict)
+        }
+
+        try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
+        try document.saveAtomically()
+        let saved = try Data(contentsOf: url)
+        XCTAssertEqual(Array(saved.prefix(2)), [0xFF, 0xFE])
+        XCTAssertTrue(encoding.decode(saved)?.contains("utf16-20000 🚀") == true)
+    }
+
+
+
+    func testEightMegabyteUTF8DocumentOpensAndReadsBoundedViewport() throws {
+        let url = directory.appendingPathComponent("eight-megabytes.txt")
+        let line = String(repeating: "0123456789abcdef", count: 32) + "\n"
+        try String(repeating: line, count: 128_000).write(to: url, atomically: true, encoding: .utf8)
+
+        measure(metrics: [XCTClockMetric()]) {
+            let document = try? FileBackedTextDocument(url: url, knownUTF8Encoding: .utf8)
+            XCTAssertNotNil(document)
+            XCTAssertEqual(document?.byteCount, line.utf8.count * 128_000)
+            XCTAssertLessThanOrEqual(
+                (try? document?.viewport(aroundLine: 64_000, maximumByteCount: 64 * 1024).text.utf8.count) ?? 0,
+                64 * 1024
+            )
+        }
+    }
+
+    func testRepresentativeEncodingsOpenAndReadBoundedViewportsWithoutWholeStringProjection() throws {
+        let cases: [(String, TextEncodingDescriptor)] = [
+            ("utf8-performance.txt", .utf8),
+            ("utf16-performance.txt", TextEncodingDescriptor(identifier: .utf16LittleEndianWithBOM))
+        ]
+        for (name, encoding) in cases {
+            let url = directory.appendingPathComponent(name)
+            let source = (0..<160_000).map { "line-\($0) 😀 привет\n" }.joined()
+            try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
+
+            let document = try XCTUnwrap(try? FileBackedTextDocument(url: url, knownEncoding: encoding), encoding.identifier.rawValue)
+            XCTAssertEqual(document.encodingDescriptor.identifier, encoding.identifier, encoding.identifier.rawValue)
+            do {
+                let viewport = try document.viewport(aroundLine: 120_000, maximumByteCount: 64 * 1024)
+                XCTAssertTrue(viewport.text.contains("line-120000"), encoding.identifier.rawValue)
+                XCTAssertLessThanOrEqual(
+                    document.encodingDescriptor.identifier == .utf8 || document.encodingDescriptor.identifier == .utf8WithBOM
+                        ? viewport.text.utf8.count
+                        : viewport.text.utf16.count * (document.encodingDescriptor.identifier == .utf16LittleEndian || document.encodingDescriptor.identifier == .utf16LittleEndianWithBOM || document.encodingDescriptor.identifier == .utf16BigEndian || document.encodingDescriptor.identifier == .utf16BigEndianWithBOM ? 2 : 1),
+                    64 * 1024,
+                    encoding.identifier.rawValue
+                )
+            } catch {
+                XCTFail("bounded viewport failed for \(encoding.identifier.rawValue): \(error)")
+            }
+        }
     }
 
     func testWindowReflectsEditsBeforeSave() throws {
@@ -113,6 +273,19 @@ final class FileBackedTextDocumentTests: XCTestCase {
         let sourceAfterSave = try String(contentsOf: url, encoding: .utf8)
         XCTAssertFalse(isDirtyAfterSave)
         XCTAssertEqual(sourceAfterSave, "alpha\nBETA\ngamma\n")
+    }
+
+    func testKnownUTF8OpenAndSaveAsStreamPiecesWithoutStringProjection() throws {
+        let sourceURL = directory.appendingPathComponent("source.txt")
+        let destinationURL = directory.appendingPathComponent("destination.txt")
+        try "alpha\nbeta\ngamma\n".write(to: sourceURL, atomically: true, encoding: .utf8)
+
+        let document = try FileBackedTextDocument(url: sourceURL, knownUTF8Encoding: .utf8)
+        try document.replace(byteRange: NSRange(location: 6, length: 4), with: "BETA")
+        try document.saveAtomically(to: destinationURL)
+
+        XCTAssertEqual(try String(contentsOf: sourceURL, encoding: .utf8), "alpha\nbeta\ngamma\n")
+        XCTAssertEqual(try String(contentsOf: destinationURL, encoding: .utf8), "alpha\nBETA\ngamma\n")
     }
 
     func testLifecycleMetadataSupportsSessionRestoreAndDetectsExternalChanges() throws {
@@ -208,7 +381,7 @@ final class FileBackedTextDocumentTests: XCTestCase {
         try Data([0xEF, 0xBB, 0xBF] + Array("before\n".utf8)).write(to: url)
 
         let document = try FileBackedTextDocument(url: url)
-        document.replaceAll(with: "after\n")
+        try document.replaceAll(with: "after\n")
         try document.saveAtomically()
 
         let saved = try Data(contentsOf: url)

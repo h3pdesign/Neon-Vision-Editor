@@ -120,7 +120,7 @@ struct MarkdownQuickLookView: View {
 
     private func tableOfContents(proxy: ScrollViewProxy) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 4) {
+            LazyVStack(alignment: .leading, spacing: 4) {
                 Text("Contents")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.secondary)

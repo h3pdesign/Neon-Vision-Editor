@@ -406,9 +406,13 @@ struct CodeMinimapView: View {
             viewport = CodeMinimapViewport(topFraction: top, heightFraction: height)
             EditorPerformanceMonitor.shared.endMinimapViewportUpdate(tabID: documentID)
         }
+        .onAppear {
+            requestCurrentViewport()
+        }
         .onChange(of: documentID) { _, _ in
             viewport = nil
             lastMovedViewportTop = -1
+            requestCurrentViewport()
         }
         .task(id: snapshotTaskID) {
             guard !text.isEmpty else {
@@ -434,6 +438,15 @@ struct CodeMinimapView: View {
             snapshot = nextSnapshot
             CodeMinimapSnapshotCache.shared.insert(nextSnapshot, for: snapshotCacheKey)
         }
+    }
+
+    private func requestCurrentViewport() {
+        guard let documentID else { return }
+        NotificationCenter.default.post(
+            name: .requestEditorViewport,
+            object: nil,
+            userInfo: [EditorCommandUserInfo.documentID: documentID.uuidString]
+        )
     }
 
     private var accessibilityValue: String {

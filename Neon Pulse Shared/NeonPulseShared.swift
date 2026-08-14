@@ -21,6 +21,7 @@ struct NeonPulseCapture: Codable, Identifiable, Equatable, @unchecked Sendable {
         self.createdAt = createdAt
         self.deliveredAt = deliveredAt
     }
+
 }
 
 struct NeonPulseStatus: Codable, Equatable, @unchecked Sendable {

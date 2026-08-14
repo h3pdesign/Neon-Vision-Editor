@@ -9,7 +9,7 @@ enum CodeTemplateCatalog {
         "swift", "ada", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "fish", "perl", "lua", "r",
         "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "dockerfile", "makefile", "hcl", "xcconfig", "strings",
         "csharp", "objective-c", "json", "xml", "yaml", "toml", "nix", "eml", "csv", "ini", "vim", "log", "crashlog", "ipynb",
-        "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"
+        "markdown", "typst", "tex", "bash", "zsh", "powershell", "standard", "plain"
     ]
 
     static func overrideKey(for language: String) -> String {
@@ -474,6 +474,17 @@ enum CodeTemplateCatalog {
                 "  \"nbformat_minor\": 5",
                 "}"
             ])
+        case "typst":
+            return template([
+                "#set page(margin: 2cm)",
+                "#set text(font: \"Libertinus Serif\")",
+                "",
+                "= Typst document",
+                "",
+                "This is an AI-assisted Typst document.",
+                "",
+                "$ x^2 + y^2 = z^2 $"
+            ])
         case "bash":
             return shellTemplate(interpreter: "bash")
         case "zsh":
@@ -649,6 +660,34 @@ extension ContentView {
         case "standard": return "Standard"
         default: return lang.capitalized
         }
+    }
+
+    /// Keeps the iPhone toolbar legible without changing the language names in
+    /// its menu or accessibility value.
+    func compactLanguageLabel(for lang: String) -> String {
+        switch lang {
+        case "markdown": return "MD"
+        case "javascript": return "JS"
+        case "typescript": return "TS"
+        case "objective-c": return "Obj-C"
+        case "csharp": return "C#"
+        case "cpp": return "C++"
+        case "dockerfile": return "Docker"
+        case "makefile": return "Make"
+        case "expressionengine": return "EE"
+        case "crashlog": return "Crash"
+        case "ipynb": return "Jupyter"
+        case "plain": return "Text"
+        default: return lang.uppercased()
+        }
+    }
+
+    func toolbarLanguageLabel(for lang: String) -> String {
+#if os(iOS)
+        compactLanguageLabel(for: lang)
+#else
+        languageLabel(for: lang)
+#endif
     }
 
     private func normalizedLanguageSearchToken(_ value: String) -> String {

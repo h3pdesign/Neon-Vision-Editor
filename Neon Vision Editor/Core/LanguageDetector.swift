@@ -96,6 +96,7 @@ public struct LanguageDetector: Sendable {
         "mdown": "markdown",
         "mkdn": "markdown",
         "mdx": "markdown",
+        "typ": "typst",
         "tex": "tex",
         "latex": "tex",
         "bib": "tex",
@@ -202,7 +203,7 @@ public struct LanguageDetector: Sendable {
             "swift", "csharp", "php", "csv", "python", "javascript", "typescript", "java", "kotlin",
             "go", "ruby", "rust", "dotenv", "proto", "graphql", "rst", "nginx", "cpp", "c",
             "css", "markdown", "json", "html", "expressionengine", "sql", "xml", "yaml", "toml", "nix", "eml", "ini", "vim",
-            "log", "crashlog", "ipynb", "powershell", "cobol", "objective-c", "bash", "zsh", "tex"
+            "log", "crashlog", "ipynb", "powershell", "cobol", "objective-c", "bash", "zsh", "tex", "typst"
         ]
         for lang in languages { scores[lang] = 0 }
 
@@ -326,6 +327,14 @@ public struct LanguageDetector: Sendable {
         if regexBool(lower, pattern: #"\\begin\{[A-Za-z*]+\}|\\end\{[A-Za-z*]+\}"#) { bump("tex", 90) }
         if regexBool(lower, pattern: #"\\(section|subsection|chapter|paragraph)\*?\{[^}]+\}"#) { bump("tex", 80) }
         if regexBool(lower, pattern: #"\\cite\{[^}]+\}|\\bibliography\{[^}]+\}"#) { bump("tex", 70) }
+
+        // Typst / CeTZ markers support content-based detection for untitled or renamed documents.
+        if regexBool(lower, pattern: #"(?m)^\s*#(?:let|set|show|import|include|context|canvas)\b"#) {
+            bump("typst", 220)
+        }
+        if regexBool(lower, pattern: #"(?s)\$[^$]+\$"#) && regexBool(lower, pattern: #"\b(?:pt|mm|cm|em|canvas|draw)\b"#) {
+            bump("typst", 120)
+        }
 
         let dotenvCount = regexCount(lower, pattern: "(?m)^[A-Za-z_][A-Za-z0-9_]*=.+$")
         if dotenvCount > 0 && tomlSectionCount == 0 {

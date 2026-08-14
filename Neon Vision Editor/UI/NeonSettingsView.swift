@@ -15,10 +15,17 @@ struct NeonSettingsView: View {
         let title: String
         let systemImage: String
         let tag: String
-        let content: AnyView
+        let selectedTag: String
+        let content: () -> AnyView
 
         var body: some View {
-            content
+            Group {
+                if tag == selectedTag {
+                    content()
+                } else {
+                    Color.clear
+                }
+            }
                 .tabItem { Label(title, systemImage: systemImage) }
                 .tag(tag)
         }
@@ -818,83 +825,96 @@ struct NeonSettingsView: View {
                 title: localized("General"),
                 systemImage: "gearshape",
                 tag: "general",
-                content: AnyView(generalTab)
+                selectedTag: settingsActiveTab,
+                content: { AnyView(generalTab) }
             )
             SettingsTabPage(
                 title: localized("Editor"),
                 systemImage: "slider.horizontal.3",
                 tag: "editor",
-                content: AnyView(editorTab)
+                selectedTag: settingsActiveTab,
+                content: { AnyView(editorTab) }
             )
 #if os(iOS)
             SettingsTabPage(
                 title: localized("Tools"),
                 systemImage: "wrench.and.screwdriver",
                 tag: "tools",
-                content: AnyView(toolbarAndTemplatesTab)
+                selectedTag: settingsActiveTab,
+                content: { AnyView(toolbarAndTemplatesTab) }
             )
             SettingsTabPage(
                 title: localized("Themes"),
                 systemImage: "paintpalette",
                 tag: "themes",
-                content: AnyView(themeTab)
+                selectedTag: settingsActiveTab,
+                content: { AnyView(themeTab) }
             )
             SettingsTabPage(
                 title: localized("Support"),
                 systemImage: "heart",
                 tag: "support",
-                content: AnyView(supportTab)
+                selectedTag: settingsActiveTab,
+                content: { AnyView(supportTab) }
             )
 #else
             SettingsTabPage(
                 title: localized("Toolbar"),
                 systemImage: "rectangle.topthird.inset.filled",
                 tag: "toolbar",
-                content: AnyView(toolbarTab)
+                selectedTag: settingsActiveTab,
+                content: { AnyView(toolbarTab) }
             )
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
             SettingsTabPage(
                 title: localized("Python"),
                 systemImage: "chevron.left.forwardslash.chevron.right",
                 tag: "python",
-                content: AnyView(pythonTab)
+                selectedTag: settingsActiveTab,
+                content: { AnyView(pythonTab) }
             )
 #endif
             SettingsTabPage(
                 title: localized("Templates"),
                 systemImage: "doc.badge.plus",
                 tag: "templates",
-                content: AnyView(templateTab)
+                selectedTag: settingsActiveTab,
+                content: { AnyView(templateTab) }
             )
             SettingsTabPage(
                 title: localized("Themes"),
                 systemImage: "paintpalette",
                 tag: "themes",
-                content: AnyView(themeTab)
+                selectedTag: settingsActiveTab,
+                content: { AnyView(themeTab) }
             )
             SettingsTabPage(
                 title: localized("Support"),
                 systemImage: "heart",
                 tag: "support",
-                content: AnyView(supportTab)
+                selectedTag: settingsActiveTab,
+                content: { AnyView(supportTab) }
             )
             SettingsTabPage(
                 title: localized("AI"),
                 systemImage: "brain.head.profile",
                 tag: "ai",
-                content: AnyView(aiTab)
+                selectedTag: settingsActiveTab,
+                content: { AnyView(aiTab) }
             )
             SettingsTabPage(
                 title: localized("Remote"),
                 systemImage: "rectangle.connected.to.line.below",
                 tag: "remote",
-                content: AnyView(remoteTab)
+                selectedTag: settingsActiveTab,
+                content: { AnyView(remoteTab) }
             )
             SettingsTabPage(
                 title: localized("Shortcuts"),
                 systemImage: "command",
                 tag: "shortcuts",
-                content: AnyView(shortcutsTab)
+                selectedTag: settingsActiveTab,
+                content: { AnyView(shortcutsTab) }
             )
 #endif
 #if os(macOS)
@@ -903,7 +923,8 @@ struct NeonSettingsView: View {
                     title: localized("Updates"),
                     systemImage: "arrow.triangle.2.circlepath.circle",
                     tag: "updates",
-                    content: AnyView(updatesTab)
+                    selectedTag: settingsActiveTab,
+                    content: { AnyView(updatesTab) }
                 )
             }
 #endif
@@ -1460,7 +1481,7 @@ struct NeonSettingsView: View {
     }
 #endif
 
-#if os(macOS)
+#if os(macOS) && !APP_STORE_BUILD
     private var pythonTab: some View {
         settingsContainer(maxWidth: settingsGeneralContentMaxWidth, tabID: "python") {
             settingsSectionHeader(
@@ -1631,6 +1652,7 @@ struct NeonSettingsView: View {
         }
     }
 
+#if !APP_STORE_BUILD
     private var pythonRuntimeSection: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: UI.space10) {
@@ -1679,6 +1701,7 @@ struct NeonSettingsView: View {
               FileManager.default.isExecutableFile(atPath: url.path) else { return }
         pythonInterpreterPath = url.path
     }
+#endif
 #endif
 
 #if os(visionOS)
@@ -5157,7 +5180,7 @@ struct NeonSettingsView: View {
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
             } else {
-                VStack(alignment: .leading, spacing: UI.space8) {
+                LazyVStack(alignment: .leading, spacing: UI.space8) {
                     ForEach(remoteSessionStore.remoteBrowserEntries) { entry in
                         Button {
                             if entry.isDirectory {
@@ -6699,6 +6722,7 @@ struct NeonSettingsView: View {
         case "log": return "Log"
         case "ipynb": return "Jupyter Notebook"
         case "tex": return "TeX"
+        case "typst": return "Typst"
         case "html": return "HTML"
         case "expressionengine": return "ExpressionEngine"
         case "css": return "CSS"

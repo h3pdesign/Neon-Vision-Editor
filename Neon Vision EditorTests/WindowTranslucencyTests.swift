@@ -87,5 +87,13 @@ final class WindowTranslucencyTests: XCTestCase {
         XCTAssertLessThan(vibrant.alphaComponent, balanced.alphaComponent)
         XCTAssertEqual(disabled, NSColor.windowBackgroundColor)
     }
+
+    func testVirtualEditorScrollSurfaceDoesNotPaintOpaqueDefaultBackground() {
+        let scrollView = VirtualEditorScrollView(frame: NSRect(x: 0, y: 0, width: 480, height: 320))
+
+        XCTAssertFalse(scrollView.drawsBackground)
+        XCTAssertEqual(scrollView.backgroundColor, .clear)
+        XCTAssertFalse(scrollView.contentView.drawsBackground)
+    }
 }
 #endif

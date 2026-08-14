@@ -2,7 +2,8 @@ import Foundation
 
 enum ProjectIgnoredFolders {
     nonisolated static let defaultsKey = "SettingsProjectSidebarIgnoredFolderNames"
-    nonisolated static let defaultNames = [".git", ".build", "node_modules", "DerivedData"]
+    nonisolated static let defaultNames = [".git", ".build", "build", "node_modules", "DerivedData"]
+    private nonisolated static let legacyDefaultNames = [".git", ".build", "node_modules", "DerivedData"]
     nonisolated static let knownNames = defaultNames + [".swiftpm", ".derivedData", "build", "dist"]
 
     nonisolated static var defaultRawValue: String {
@@ -10,12 +11,15 @@ enum ProjectIgnoredFolders {
     }
 
     nonisolated static func names(from rawValue: String) -> Set<String> {
-        Set(
+        let names = Set(
             rawValue
                 .split(separator: ",")
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
         )
+        // Preserve the new default for installations that already persisted the
+        // prior default set, without changing an explicitly customized list.
+        return names == Set(legacyDefaultNames) ? Set(defaultNames) : names
     }
 
     nonisolated static func rawValue(from names: Set<String>) -> String {

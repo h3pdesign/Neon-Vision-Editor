@@ -373,7 +373,8 @@ extension ContentView {
     }
 
     private var fileSizeStatusText: String {
-        ByteCountFormatter.string(fromByteCount: Int64(currentContent.utf8.count), countStyle: .file)
+        let byteCount = viewModel.selectedTab?.fileByteCount ?? currentContent.utf8.count
+        return ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file)
     }
 
     private var gitStatusText: String? {
@@ -395,6 +396,10 @@ extension ContentView {
             ForEach(TextEncodingDescriptor.all) { encoding in
                 Button {
                     guard let tabID = viewModel.selectedTab?.id else { return }
+                    guard viewModel.selectedTab?.usesFileBackedStorage != true else {
+                        viewModel.fileEncodingErrorMessage = "Changing text encoding is not available for large virtual documents yet."
+                        return
+                    }
                     guard encoding.encodedData(
                         for: (viewModel.selectedTab?.lineEnding ?? .lf).applying(to: currentContent)
                     ) != nil else {
@@ -411,7 +416,7 @@ extension ContentView {
                         }
                     }
                 }
-                .disabled(viewModel.selectedTab?.isReadOnlyPreview != false)
+                .disabled(viewModel.selectedTab?.isReadOnlyPreview != false || viewModel.selectedTab?.usesFileBackedStorage == true)
             }
             }
 

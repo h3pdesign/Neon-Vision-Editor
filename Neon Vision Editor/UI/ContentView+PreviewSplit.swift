@@ -31,6 +31,7 @@ extension ContentView {
         }
         let lowerLanguage = currentLanguage.lowercased()
         guard lowerLanguage == "xml" || lowerLanguage == "svg" else { return false }
+        guard viewModel.selectedTab?.usesFileBackedStorage != true else { return false }
         let sample = currentContent.prefix(1024).lowercased()
         return sample.contains("<svg")
     }

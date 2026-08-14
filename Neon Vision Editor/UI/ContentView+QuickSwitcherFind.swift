@@ -935,6 +935,7 @@ extension ContentView {
     }
 
     func duplicateCurrentLine() {
+        guard !requiresMaterializedEditorTransform() else { return }
         let source = currentContentBinding.wrappedValue
         let lines = source.components(separatedBy: .newlines)
         guard !lines.isEmpty else { return }
@@ -943,6 +944,7 @@ extension ContentView {
     }
 
     func deleteCurrentLine() {
+        guard !requiresMaterializedEditorTransform() else { return }
         guard !currentContentBinding.wrappedValue.isEmpty else { return }
         var lines = currentContentBinding.wrappedValue.components(separatedBy: .newlines)
         if lines.count > 1 {
@@ -954,6 +956,7 @@ extension ContentView {
     }
 
     func toggleLineComment() {
+        guard !requiresMaterializedEditorTransform() else { return }
         let source = currentContentBinding.wrappedValue
         let commentSymbols: [String: String] = [
             "swift": "//", "python": "#", "javascript": "//", "typescript": "//",
@@ -981,6 +984,7 @@ extension ContentView {
     }
 
     func convertSelectionCase(to target: CaseConverter) {
+        guard !requiresMaterializedEditorTransform() else { return }
         let source = currentContentBinding.wrappedValue
         currentContentBinding.wrappedValue = target == .upper ? source.uppercased() : source.lowercased()
     }
@@ -988,18 +992,21 @@ extension ContentView {
     enum CaseConverter { case upper, lower }
 
     func sortSelectedLines() {
+        guard !requiresMaterializedEditorTransform() else { return }
         let source = currentContentBinding.wrappedValue
         let lines = source.components(separatedBy: .newlines).sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
         currentContentBinding.wrappedValue = lines.joined(separator: "\n")
     }
 
     func joinSelectedLines() {
+        guard !requiresMaterializedEditorTransform() else { return }
         let source = currentContentBinding.wrappedValue
         let lines = source.components(separatedBy: .newlines).filter { !$0.isEmpty }
         currentContentBinding.wrappedValue = lines.joined(separator: " ")
     }
 
     func trimTrailingWhitespaceInDocument() {
+        guard !requiresMaterializedEditorTransform() else { return }
         let source = currentContentBinding.wrappedValue
         let lines = source.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }
         currentContentBinding.wrappedValue = lines.joined(separator: "\n")

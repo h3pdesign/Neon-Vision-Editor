@@ -794,13 +794,19 @@ extension ContentView {
         delimitedParseTask?.cancel()
         isBuildingDelimitedTable = true
         let source = currentDelimitedTableSource()
-        delimitedTableStatus = source.isLarge ? "Scanning large file…" : "Parsing…"
+        delimitedTableStatus = source.isBounded ? "Reading preview…" : (source.isLarge ? "Scanning large file…" : "Parsing…")
         let separator = delimitedSeparator
         let expectedTabID = viewModel.selectedTabID
         let expectedContentRevision = viewModel.selectedTab?.contentRevision
         delimitedParseTask = Task {
             let parsed = await Task.detached(priority: .utility) {
-                Self.buildDelimitedTableSnapshot(from: source.text, separator: separator, maxRows: 5000, maxColumns: 60)
+                Self.buildDelimitedTableSnapshot(
+                    from: source.text,
+                    separator: separator,
+                    maxRows: 5000,
+                    maxColumns: 60,
+                    sourceIsBounded: source.isBounded
+                )
             }.value
             guard !Task.isCancelled else { return }
             guard viewModel.selectedTabID == expectedTabID else { return }
@@ -820,17 +826,32 @@ extension ContentView {
         }
     }
 
-    private func currentDelimitedTableSource() -> (text: String, isLarge: Bool) {
+    private func currentDelimitedTableSource() -> (text: String, isLarge: Bool, isBounded: Bool) {
         if let selectedTab = viewModel.selectedTab {
+            let requiresBoundedPreview = selectedTab.document.storageKind == .fileBacked &&
+                (selectedTab.isLargeFileCandidate || selectedTab.document.utf16Length >= ContentView.EditorPerformanceThresholds.heavyFeatureUTF16Length)
+            if requiresBoundedPreview {
+                let viewport = try? selectedTab.document.viewport(
+                    aroundLine: 0,
+                    maximumByteCount: ContentView.EditorPerformanceThresholds.delimitedPreviewByteBudget
+                )
+                return (
+                    text: viewport?.text ?? "",
+                    isLarge: true,
+                    isBounded: true
+                )
+            }
             return (
                 text: selectedTab.document.string(),
-                isLarge: selectedTab.isLargeFileCandidate || selectedTab.document.utf16Length >= ContentView.EditorPerformanceThresholds.heavyFeatureUTF16Length
+                isLarge: selectedTab.isLargeFileCandidate || selectedTab.document.utf16Length >= ContentView.EditorPerformanceThresholds.heavyFeatureUTF16Length,
+                isBounded: false
             )
         }
         let text = currentContentBinding.wrappedValue
         return (
             text: text,
-            isLarge: (text as NSString).length >= ContentView.EditorPerformanceThresholds.heavyFeatureUTF16Length
+            isLarge: (text as NSString).length >= ContentView.EditorPerformanceThresholds.heavyFeatureUTF16Length,
+            isBounded: false
         )
     }
 
@@ -1031,7 +1052,8 @@ extension ContentView {
         from text: String,
         separator: Character,
         maxRows: Int,
-        maxColumns: Int
+        maxColumns: Int,
+        sourceIsBounded: Bool = false
     ) -> Result<DelimitedTableSnapshot, DelimitedTableParseError> {
         guard !text.isEmpty else { return .failure(DelimitedTableParseError(message: "No data in file.")) }
         var rows: [[String]] = []
@@ -1088,7 +1110,7 @@ extension ContentView {
                 rows: normalizedRows,
                 totalRows: totalRows,
                 displayedRows: rows.count,
-                truncated: stoppedEarly || totalRows > maxRows
+                truncated: sourceIsBounded || stoppedEarly || totalRows > maxRows
             )
         )
     }

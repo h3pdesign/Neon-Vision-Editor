@@ -25,10 +25,9 @@ extension ContentView {
             documentName: viewModel.selectedTab?.name,
             documentLanguage: currentLanguage,
             selectionCharacterCount: aiChatSelection?.count ?? 0,
-            currentFileCharacterCount: currentContent.count,
+            currentFileCharacterCount: viewModel.selectedTab?.document.utf16Length ?? currentContent.count,
             projectStructureCharacterCount: aiChatProjectStructure?.count ?? 0,
-            containsPotentialSensitiveContent: AIChatSensitiveContentDetector.containsPotentialSecret(aiChatSelection ?? "") ||
-                AIChatSensitiveContentDetector.containsPotentialSecret(currentContent),
+            containsPotentialSensitiveContent: AIChatSensitiveContentDetector.containsPotentialSecret(aiChatSelection ?? ""),
             isOnDeviceProvider: selectedModel == .appleIntelligence,
             hasSelection: aiChatSelection != nil,
             hasCurrentFile: viewModel.selectedTab != nil || !currentContent.isEmpty,
@@ -69,6 +68,10 @@ extension ContentView {
     }
 
     private func sendAIChat(prompt: String, scopes: Set<AIChatContextScope>) {
+        if scopes.contains(.currentFile), viewModel.selectedTab?.usesFileBackedStorage == true {
+            aiChatConversation.reportError("Current-file AI context is unavailable for large virtual documents until a bounded context reader is available.")
+            return
+        }
         guard let client = configuredAIChatClient() else {
             aiChatConversation.reportError(aiChatConfigurationError)
             return
@@ -80,7 +83,9 @@ extension ContentView {
                 ? (viewModel.selectedTab?.name ?? "Untitled")
                 : nil,
             documentLanguage: scopes.contains(.selection) || scopes.contains(.currentFile) ? currentLanguage : nil,
-            documentText: scopes.contains(.currentFile) ? currentContent : nil,
+            documentText: scopes.contains(.currentFile) && viewModel.selectedTab?.usesFileBackedStorage != true
+                ? currentContent
+                : nil,
             projectStructure: scopes.contains(.projectStructure) ? aiChatProjectStructure : nil
         )
         aiChatConversation.start(

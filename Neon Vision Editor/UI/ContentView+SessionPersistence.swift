@@ -384,9 +384,11 @@ extension ContentView {
         if defaults.object(forKey: lastSessionShowSidebarKey) != nil {
             viewModel.showSidebar = defaults.bool(forKey: lastSessionShowSidebarKey)
         }
+#if !os(macOS)
         if defaults.object(forKey: lastSessionShowProjectSidebarKey) != nil {
             showProjectStructureSidebar = defaults.bool(forKey: lastSessionShowProjectSidebarKey)
         }
+#endif
         if let rawPreviewMode = defaults.string(forKey: lastSessionPreviewModeKey),
            let restoredPreviewMode = PreviewMode(rawValue: rawPreviewMode) {
             previewMode = restoredPreviewMode
@@ -576,6 +578,25 @@ extension ContentView {
         var remainingUTF16Length = maxPersistedDraftTotalUTF16Length
         for tab in dirtyTabs.prefix(maxPersistedDraftTabs) {
             guard remainingUTF16Length > 0 else { break }
+            let fileBackedRecord = tab.fileBackedDocument?.restoreRecord
+            let fileBackedSessionState = tab.fileBackedDocument?.sessionState
+            if fileBackedRecord != nil {
+                savedTabs.append(
+                    SavedDraftTabSnapshot(
+                        name: tab.name,
+                        content: "",
+                        language: tab.language,
+                        fileURLString: tab.fileURL?.absoluteString,
+                        lineEndingRawValue: tab.lineEnding.rawValue,
+                        fileEncodingIdentifierRawValue: tab.fileEncoding.identifier.rawValue,
+                        usesAutomaticFileEncoding: tab.usesAutomaticFileEncoding,
+                        storageMode: .fileBacked,
+                        fileBackedRestoreRecord: fileBackedRecord,
+                        fileBackedSessionState: fileBackedSessionState
+                    )
+                )
+                continue
+            }
             let content = tab.document.string()
             let nsContent = content as NSString
             let maximumLength = min(maxPersistedDraftUTF16Length, remainingUTF16Length)
@@ -583,8 +604,6 @@ extension ContentView {
                 ? nsContent.substring(to: maximumLength)
                 : content
             remainingUTF16Length -= (clampedContent as NSString).length
-            let fileBackedRecord = tab.fileBackedDocument?.restoreRecord
-            let fileBackedSessionState = tab.fileBackedDocument?.sessionState
             savedTabs.append(
                 SavedDraftTabSnapshot(
                     name: tab.name,

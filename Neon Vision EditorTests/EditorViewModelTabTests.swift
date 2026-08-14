@@ -79,6 +79,101 @@ final class EditorViewModelTabTests: XCTestCase {
         XCTAssertEqual(tab.remoteRevisionToken, "revision-1")
     }
 
+    func testInstallingLoadedFileBackedDocumentPreservesBoundedStorage() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try String(repeating: "large source line\n", count: 20_000).write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let tab = TabData(name: "large.txt", content: "stale", language: "plain", fileURL: url)
+        let document = try FileBackedTextDocument(url: url)
+
+        XCTAssertTrue(tab.installLoadedFileBackedDocument(document))
+        XCTAssertTrue(tab.usesFileBackedStorage)
+        XCTAssertFalse(tab.isDirty)
+        XCTAssertEqual(try tab.document.viewport(aroundLine: 10, maximumByteCount: 256).text.contains("large source line"), true)
+    }
+
+    func testBoundedUTF8EncodingDetectionDoesNotRequireFullTextProjection() {
+        XCTAssertEqual(EditorViewModel.boundedUTF8Encoding(from: Data("prefix 😀".utf8))?.identifier, .utf8)
+        XCTAssertEqual(EditorViewModel.boundedUTF8Encoding(from: Data([0xEF, 0xBB, 0xBF, 0x61]))?.identifier, .utf8WithBOM)
+        XCTAssertNil(EditorViewModel.boundedUTF8Encoding(from: Data([0xC3, 0x28])))
+    }
+
+    func testBoundedFileEncodingDetectionIncludesUTF16AndLegacyEncodings() throws {
+        let utf16 = TextEncodingDescriptor(identifier: .utf16BigEndianWithBOM)
+
+        let detectedUTF16 = try XCTUnwrap(FileBackedTextDocument.boundedEncoding(from: try XCTUnwrap(utf16.encodedData(for: "first\n"))))
+        XCTAssertEqual(detectedUTF16.identifier, .utf16BigEndianWithBOM)
+        XCTAssertEqual(
+            FileBackedTextDocument.boundedEncoding(from: Data([0xC0, 0xCF, 0xC8, 0xD2, 0xC5, 0xD2]))?.identifier,
+            .windowsCP1251
+        )
+    }
+
+    func testUTF8AndUTF16EncodingsAreEligibleForLocalBoundedStorage() {
+        let url = URL(fileURLWithPath: "/tmp/bounded-encoding-test.txt")
+        let identifiers: [TextEncodingDescriptor.Identifier] = [
+            .utf8, .utf8WithBOM, .utf16LittleEndian, .utf16LittleEndianWithBOM,
+            .utf16BigEndian, .utf16BigEndianWithBOM
+        ]
+        for identifier in identifiers {
+            XCTAssertTrue(
+                EditorViewModel.isFileBackedEligible(
+                    url: url,
+                    encoding: TextEncodingDescriptor(identifier: identifier),
+                    isRemote: false,
+                    isPartialPreview: false
+                ),
+                identifier.rawValue
+            )
+        }
+        XCTAssertFalse(EditorViewModel.isFileBackedEligible(url: url, encoding: .utf8, isRemote: true, isPartialPreview: false))
+        XCTAssertFalse(EditorViewModel.isFileBackedEligible(url: url, encoding: .utf8, isRemote: false, isPartialPreview: true))
+        XCTAssertTrue(EditorViewModel.isFileBackedEligible(url: url, encoding: TextEncodingDescriptor(identifier: .windowsCP1251), isRemote: false, isPartialPreview: false))
+    }
+
+    func testProductionLoaderSelectsBoundedStorageForUTF16AndLegacyFiles() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let cases: [(String, TextEncodingDescriptor)] = [
+            ("utf16.txt", TextEncodingDescriptor(identifier: .utf16LittleEndianWithBOM)),
+            ("cp1251.txt", TextEncodingDescriptor(identifier: .windowsCP1251)),
+            ("cp1252.txt", TextEncodingDescriptor(identifier: .windowsCP1252)),
+            ("latin1.txt", TextEncodingDescriptor(identifier: .isoLatin1)),
+            ("latin5.txt", TextEncodingDescriptor(identifier: .isoLatin5)),
+            ("macroman.txt", TextEncodingDescriptor(identifier: .macOSRoman)),
+            ("ascii.txt", TextEncodingDescriptor(identifier: .ascii))
+        ]
+        for (name, encoding) in cases {
+            let url = directory.appendingPathComponent(name)
+            let source: String
+            switch encoding.identifier {
+            case .windowsCP1251:
+                source = (0..<40_000).map { "line-\($0) привет\n" }.joined()
+            case .windowsCP1252:
+                source = (0..<40_000).map { "line-\($0) Résumé €\n" }.joined()
+            case .isoLatin1:
+                source = (0..<40_000).map { "line-\($0) café\n" }.joined()
+            case .isoLatin5:
+                source = (0..<40_000).map { "line-\($0) Türkçe\n" }.joined()
+            case .macOSRoman:
+                source = (0..<40_000).map { "line-\($0) café\n" }.joined()
+            case .ascii:
+                source = (0..<40_000).map { "line-\($0) plain\n" }.joined()
+            default:
+                source = (0..<40_000).map { "line-\($0) привет\n" }.joined()
+            }
+            try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
+            let selected = try await EditorViewModel.boundedLoadEncodingForTesting(
+                from: url,
+                preferredEncoding: encoding
+            )
+            XCTAssertEqual(selected?.identifier, encoding.identifier, name)
+        }
+    }
+
     func testDraftRecoveryDeduplicatesExactDuplicateTabs() {
         let duplicate = ContentView.SavedDraftTabSnapshot(
             name: "Untitled 1",

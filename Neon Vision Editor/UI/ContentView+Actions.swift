@@ -271,15 +271,15 @@ extension ContentView {
 
     func liveEditorBufferText() -> String? {
 #if os(macOS)
-        if let textView = activeEditorTextView() {
-            return textView.string
-        }
+        return viewModel.selectedTab?.document.string()
 #elseif canImport(UIKit)
         if let textView = activeEditorInputTextView() {
             return textView.text
         }
-#endif
         return nil
+#else
+        return nil
+#endif
     }
 
     func showUpdaterDialog(checkNow: Bool = true) {
@@ -348,10 +348,6 @@ extension ContentView {
 
     func undoFromToolbar() {
 #if os(macOS)
-        if let textView = activeEditorTextView(),
-           (textView.window?.firstResponder as? NSTextView) !== textView {
-            textView.window?.makeFirstResponder(textView)
-        }
         NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
 #elseif canImport(UIKit)
         if let textView = activeEditorInputTextView(),
@@ -520,6 +516,7 @@ extension ContentView {
         case "ini": return "ini"
         case "sql": return "sql"
         case "markdown": return "md"
+        case "typst": return "typ"
         case "tex": return "tex"
         case "graphql": return "graphql"
         case "proto": return "proto"
@@ -559,12 +556,14 @@ extension ContentView {
 
     func clearEditorContent() {
         editorExternalMutationRevision &+= 1
-        currentContentBinding.wrappedValue = ""
 #if os(macOS)
-        if let tv = activeEditorTextView() {
-            tv.setSelectedRange(NSRange(location: 0, length: 0))
-            tv.scrollRangeToVisible(NSRange(location: 0, length: 0))
+        if let tab = viewModel.selectedTab {
+            postEditorReplacement("", range: NSRange(location: 0, length: tab.document.utf16Length), documentID: tab.id)
+        } else {
+            currentContentBinding.wrappedValue = ""
         }
+#else
+        currentContentBinding.wrappedValue = ""
 #endif
         caretStatus = "Ln 1, Col 1"
     }
@@ -582,6 +581,7 @@ extension ContentView {
             findStatusMessage = "JSON tools are available for JSON documents."
             return
         }
+        guard !requiresMaterializedEditorTransform() else { return }
 
         let source = currentContentBinding.wrappedValue
         guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
@@ -798,17 +798,24 @@ extension ContentView {
 
     // MARK: - Find and Replace
 
+    /// Prevent whole-document compatibility projections for virtual large tabs.
+    func requiresMaterializedEditorTransform() -> Bool {
+        guard viewModel.selectedTab?.usesFileBackedStorage == true else { return false }
+        findStatusMessage = "This whole-document command is not available for large virtual documents yet."
+        return true
+    }
+
     func findNext() {
 #if os(macOS)
-        guard !findQuery.isEmpty, let tv = activeEditorTextView() else { return }
-        if let win = tv.window {
-            win.makeKeyAndOrderFront(nil)
-            win.makeFirstResponder(tv)
-            NSApp.activate(ignoringOtherApps: true)
-        }
+        guard !findQuery.isEmpty, let tab = viewModel.selectedTab else { return }
+        guard !requiresMaterializedEditorTransform() else { return }
         findStatusMessage = ""
-        let ns = tv.string as NSString
-        let start = tv.selectedRange().upperBound
+        let source = tab.document.string()
+        let ns = source as NSString
+        let selectionBelongsToTab = currentSelectionSnapshotTabID == tab.id
+        let start = selectionBelongsToTab
+            ? min(max(0, currentSelectionSnapshotRange?.upperBound ?? 0), ns.length)
+            : 0
         let forwardRange = NSRange(location: start, length: max(0, ns.length - start))
         let wrapRange = NSRange(location: 0, length: max(0, start))
 
@@ -818,12 +825,10 @@ extension ContentView {
                 NSSound.beep()
                 return
             }
-            let forwardMatch = regex.firstMatch(in: tv.string, options: [], range: forwardRange)
-            let wrapMatch = regex.firstMatch(in: tv.string, options: [], range: wrapRange)
+            let forwardMatch = regex.firstMatch(in: source, options: [], range: forwardRange)
+            let wrapMatch = regex.firstMatch(in: source, options: [], range: wrapRange)
             if let match = forwardMatch ?? wrapMatch {
-                tv.setSelectedRange(match.range)
-                tv.scrollRangeToVisible(match.range)
-                tv.showFindIndicator(for: match.range)
+                postEditorRangeSelection(match.range, focusEditor: true, documentID: tab.id)
             } else {
                 findStatusMessage = "No matches found"
                 NSSound.beep()
@@ -831,9 +836,7 @@ extension ContentView {
         } else {
             let opts: NSString.CompareOptions = findCaseSensitive ? [] : [.caseInsensitive]
             if let range = ns.range(of: findQuery, options: opts, range: forwardRange).toOptional() ?? ns.range(of: findQuery, options: opts, range: wrapRange).toOptional() {
-                tv.setSelectedRange(range)
-                tv.scrollRangeToVisible(range)
-                tv.showFindIndicator(for: range)
+                postEditorRangeSelection(range, focusEditor: true, documentID: tab.id)
             } else {
                 findStatusMessage = "No matches found"
                 NSSound.beep()
@@ -895,6 +898,13 @@ extension ContentView {
             return
         }
 
+#if os(macOS)
+        guard !requiresMaterializedEditorTransform() else {
+            findMatchCount = 0
+            return
+        }
+#endif
+
         let source = currentContentBinding.wrappedValue
         if findUsesRegex,
            (try? NSRegularExpression(pattern: findQuery, options: findCaseSensitive ? [] : [.caseInsensitive])) == nil {
@@ -914,20 +924,14 @@ extension ContentView {
 
     private func previewFindMatchSelection(forceFromStart: Bool, shouldFocusEditor: Bool) {
         guard !findQuery.isEmpty else { return }
-        let source = currentContentBinding.wrappedValue
+#if os(macOS)
+        guard !requiresMaterializedEditorTransform() else { return }
+#endif
+        let source = viewModel.selectedTab?.document.string() ?? currentContentBinding.wrappedValue
         guard let range = firstFindPreviewRange(in: source, forceFromStart: forceFromStart) else { return }
 
 #if os(macOS)
-        guard let tv = activeEditorTextView() else { return }
-        if shouldFocusEditor, let win = tv.window {
-            win.makeKeyAndOrderFront(nil)
-        }
-        if shouldFocusEditor {
-            tv.window?.makeFirstResponder(tv)
-        }
-        tv.setSelectedRange(range)
-        tv.scrollRangeToVisible(range)
-        tv.showFindIndicator(for: range)
+        postEditorRangeSelection(range, focusEditor: shouldFocusEditor)
 #else
         iOSFindCursorLocation = range.upperBound
         iOSLastFindFingerprint = "\(findQuery)|\(findUsesRegex)|\(findCaseSensitive)"
@@ -935,18 +939,17 @@ extension ContentView {
 #endif
     }
 
-#if canImport(UIKit)
-    private func postEditorRangeSelection(_ range: NSRange, focusEditor: Bool) {
+    private func postEditorRangeSelection(_ range: NSRange, focusEditor: Bool, documentID: UUID? = nil) {
         let userInfo: [String: Any] = [
             EditorCommandUserInfo.rangeLocation: range.location,
             EditorCommandUserInfo.rangeLength: range.length,
-            EditorCommandUserInfo.focusEditor: focusEditor
+            EditorCommandUserInfo.focusEditor: focusEditor,
+            EditorCommandUserInfo.documentID: (documentID ?? viewModel.selectedTab?.id)?.uuidString as Any
         ]
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: .moveCursorToRange, object: nil, userInfo: userInfo)
         }
     }
-#endif
 
     private func firstFindPreviewRange(in source: String, forceFromStart: Bool) -> NSRange? {
         let nsSource = source as NSString
@@ -954,8 +957,7 @@ extension ContentView {
 
 #if os(macOS)
         if !forceFromStart,
-           let tv = activeEditorTextView() {
-            let selected = tv.selectedRange()
+           let selected = currentSelectionSnapshotRange {
             if selected.length > 0,
                selected.length <= nsSource.length,
                selected.location >= 0,
@@ -1029,10 +1031,12 @@ extension ContentView {
 
     func replaceSelection() {
 #if os(macOS)
-        guard let tv = activeEditorTextView() else { return }
-        let sel = tv.selectedRange()
-        guard sel.length > 0 else { return }
-        let selectedText = (tv.string as NSString).substring(with: sel)
+        guard let tab = viewModel.selectedTab,
+              let sel = currentSelectionSnapshotRange,
+              sel.length > 0,
+              NSMaxRange(sel) <= tab.document.utf16Length else { return }
+        guard !requiresMaterializedEditorTransform() else { return }
+        let selectedText = (tab.document.string() as NSString).substring(with: sel)
         if findUsesRegex {
             guard let regex = try? NSRegularExpression(pattern: findQuery, options: findCaseSensitive ? [] : [.caseInsensitive]) else {
                 findStatusMessage = "Invalid regex pattern"
@@ -1041,9 +1045,9 @@ extension ContentView {
             }
             let fullSelected = NSRange(location: 0, length: (selectedText as NSString).length)
             let replacement = regex.stringByReplacingMatches(in: selectedText, options: [], range: fullSelected, withTemplate: replaceQuery)
-            tv.insertText(replacement, replacementRange: sel)
+            postEditorReplacement(replacement, range: sel, documentID: tab.id)
         } else {
-            tv.insertText(replaceQuery, replacementRange: sel)
+            postEditorReplacement(replaceQuery, range: sel, documentID: tab.id)
         }
 #else
         // iOS fallback: replace all exact text when regex is off.
@@ -1058,9 +1062,10 @@ extension ContentView {
 
     func replaceAll() {
 #if os(macOS)
-        guard let tv = activeEditorTextView(), !findQuery.isEmpty else { return }
+        guard let tab = viewModel.selectedTab, !findQuery.isEmpty else { return }
+        guard !requiresMaterializedEditorTransform() else { return }
         findStatusMessage = ""
-        requestReplaceAll(in: tv.string)
+        requestReplaceAll(in: tab.document.string())
 #else
         guard !findQuery.isEmpty else { return }
         requestReplaceAll(in: currentContentBinding.wrappedValue)
@@ -1146,11 +1151,15 @@ extension ContentView {
 
     func applyReplaceAll(_ preview: FindReplaceAllPreview) {
 #if os(macOS)
-        guard let textView = activeEditorTextView(), textView.string == preview.source else {
+        guard let tab = viewModel.selectedTab, tab.document.string() == preview.source else {
             findStatusMessage = "The document changed. Review Replace All again."
             return
         }
-        guard replaceEntireTextPreservingUndoHistory(in: textView, with: preview.replacement) else { return }
+        postEditorReplacement(
+            preview.replacement,
+            range: NSRange(location: 0, length: tab.document.utf16Length),
+            documentID: tab.id
+        )
 #else
         guard currentContentBinding.wrappedValue == preview.source else {
             findStatusMessage = "The document changed. Review Replace All again."
@@ -1161,16 +1170,33 @@ extension ContentView {
         findStatusMessage = "Replaced \(preview.matchCount) matches"
     }
 
+    private func postEditorReplacement(_ replacement: String, range: NSRange, documentID: UUID) {
+        var userInfo: [String: Any] = [
+            EditorCommandUserInfo.documentID: documentID.uuidString,
+            EditorCommandUserInfo.rangeLocation: range.location,
+            EditorCommandUserInfo.rangeLength: range.length,
+            EditorCommandUserInfo.replacementText: replacement
+        ]
+#if os(macOS)
+        if let hostWindowNumber {
+            userInfo[EditorCommandUserInfo.windowNumber] = hostWindowNumber
+        }
+#endif
+        NotificationCenter.default.post(
+            name: .replaceEditorRangeRequested,
+            object: nil,
+            userInfo: userInfo
+        )
+    }
+
     func addNextMatchSelection() {
 #if os(macOS)
-        guard let textView = activeEditorTextView() else { return }
-        let source = textView.string as NSString
+        guard let tab = viewModel.selectedTab,
+              let primary = currentSelectionSnapshotRange,
+              primary.length > 0 else { return }
+        guard !requiresMaterializedEditorTransform() else { return }
+        let source = tab.document.string() as NSString
         guard source.length > 0 else { return }
-
-        let existing = textView.selectedRanges
-        guard let primary = existing.last?.rangeValue, primary.length > 0 else {
-            return
-        }
         let needle = source.substring(with: primary)
         guard !needle.isEmpty else { return }
 
@@ -1187,57 +1213,9 @@ extension ContentView {
             range: NSRange(location: 0, length: min(primary.location, source.length))
         )
         guard let nextRange = forward.toOptional() ?? wrapped.toOptional() else { return }
-        if existing.contains(where: { $0.rangeValue.location == nextRange.location && $0.rangeValue.length == nextRange.length }) {
-            return
-        }
-
-        var updated = existing
-        updated.append(NSValue(range: nextRange))
-        textView.selectedRanges = updated
-        textView.scrollRangeToVisible(nextRange)
+        postEditorRangeSelection(nextRange, focusEditor: true, documentID: tab.id)
 #endif
     }
-
-#if os(macOS)
-    func activeEditorTextView() -> NSTextView? {
-        var candidates: [NSWindow] = []
-        if let main = NSApp.mainWindow { candidates.append(main) }
-        if let key = NSApp.keyWindow, key !== NSApp.mainWindow { candidates.append(key) }
-        candidates.append(contentsOf: NSApp.windows.filter { $0.isVisible })
-
-        for window in candidates {
-            if window.isKind(of: NSPanel.self) { continue }
-            if window.styleMask.contains(.docModalWindow) { continue }
-            if let tv = window.firstResponder as? NSTextView, tv.isEditable {
-                return tv
-            }
-            if let found = findEditorTextView(in: window.contentView) {
-                return found
-            }
-        }
-        return nil
-    }
-
-    private func findEditorTextView(in view: NSView?) -> NSTextView? {
-        guard let view else { return nil }
-        if let scroll = view as? NSScrollView, let tv = scroll.documentView as? NSTextView, tv.isEditable {
-            if tv.identifier?.rawValue == "NeonEditorTextView" {
-                return tv
-            }
-        }
-        if let tv = view as? NSTextView, tv.isEditable {
-            if tv.identifier?.rawValue == "NeonEditorTextView" {
-                return tv
-            }
-        }
-        for subview in view.subviews {
-            if let found = findEditorTextView(in: subview) {
-                return found
-            }
-        }
-        return nil
-    }
-#endif
 
 #if canImport(UIKit)
     func activeEditorInputTextView() -> UITextView? {
@@ -1421,28 +1399,32 @@ extension ContentView {
                 guard generation == projectTreeRefreshGeneration else { return }
                 guard projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
                 projectTreeNodes = nodes
-                quickSwitcherProjectFileURLs = Self.projectFileURLs(from: nodes)
+                scheduleQuickSwitcherProjectFileURLRefresh(for: root, generation: generation, nodes: nodes)
             }
         }
     }
 
-    func refreshProjectTreeSubtree(at directory: URL) {
-        guard let root = projectRootFolderURL else { return }
+    func refreshProjectTreeSubtree(at directory: URL, completion: (@MainActor @Sendable () -> Void)? = nil) {
+        guard let root = projectRootFolderURL else {
+            completion?()
+            return
+        }
         let standardizedRoot = root.standardizedFileURL
         let standardizedDirectory = directory.standardizedFileURL
         let directoryPath = standardizedDirectory.path
         let rootPath = standardizedRoot.path
         guard directoryPath == rootPath || directoryPath.hasPrefix(rootPath + "/") else {
             refreshProjectTree()
+            completion?()
             return
         }
 
         if directoryPath == rootPath || projectTreeNodes.isEmpty {
             refreshProjectTree()
+            completion?()
             return
         }
 
-        projectTreeRefreshGeneration &+= 1
         let generation = projectTreeRefreshGeneration
         let supportedOnly = showSupportedProjectFilesOnly
         let includeHidden = showHiddenProjectFiles
@@ -1456,15 +1438,77 @@ extension ContentView {
                 ignoredFolderNames: ignoredFolderNames
             )
             await MainActor.run {
-                guard generation == projectTreeRefreshGeneration else { return }
-                guard projectRootFolderURL?.standardizedFileURL == standardizedRoot else { return }
-                projectTreeNodes = Self.projectTreeNodes(
+                guard generation == projectTreeRefreshGeneration else {
+                    completion?()
+                    return
+                }
+                guard projectRootFolderURL?.standardizedFileURL == standardizedRoot else {
+                    completion?()
+                    return
+                }
+                projectTreeNodes = Self.projectTreeNodesReplacingChildren(
                     replacingChildrenOf: standardizedDirectory,
                     with: children,
                     in: projectTreeNodes
                 )
-                quickSwitcherProjectFileURLs = Self.projectFileURLs(from: projectTreeNodes)
+                scheduleQuickSwitcherProjectFileURLRefresh(
+                    for: standardizedRoot,
+                    generation: generation,
+                    nodes: projectTreeNodes
+                )
+                completion?()
             }
+        }
+    }
+
+    func expandAllProjectDirectories(completion: (@MainActor @Sendable () -> Void)? = nil) {
+        guard let root = projectRootFolderURL else {
+            completion?()
+            return
+        }
+        projectTreeRefreshGeneration &+= 1
+        let generation = projectTreeRefreshGeneration
+        let supportedOnly = showSupportedProjectFilesOnly
+        let includeHidden = showHiddenProjectFiles
+        let ignoredFolderNames = ProjectIgnoredFolders.names(from: projectIgnoredFolderNamesRaw)
+        Task.detached(priority: .utility) {
+            let nodes = Self.readChildren(
+                of: root,
+                recursive: true,
+                supportedOnly: supportedOnly,
+                includeHidden: includeHidden,
+                ignoredFolderNames: ignoredFolderNames
+            )
+            await MainActor.run {
+                guard generation == projectTreeRefreshGeneration,
+                      projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else {
+                    completion?()
+                    return
+                }
+                projectTreeNodes = nodes
+                scheduleQuickSwitcherProjectFileURLRefresh(for: root, generation: generation, nodes: nodes)
+                completion?()
+            }
+        }
+    }
+
+    private func scheduleQuickSwitcherProjectFileURLRefresh(
+        for root: URL,
+        generation: Int,
+        nodes: [ProjectTreeNode]
+    ) {
+        quickSwitcherProjectFileURLRefreshTask?.cancel()
+        quickSwitcherProjectFileURLRefreshTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            guard !Task.isCancelled else { return }
+            let urls = await Task.detached(priority: .utility) {
+                Self.projectFileURLs(from: nodes)
+            }.value
+            guard !Task.isCancelled,
+                  generation == projectTreeRefreshGeneration,
+                  projectRootFolderURL?.standardizedFileURL == root.standardizedFileURL else { return }
+            quickSwitcherProjectFileURLs = urls
+            quickSwitcherProjectFileURLRefreshTask = nil
         }
     }
 
@@ -2073,6 +2117,21 @@ extension ContentView {
         )
     }
 
+    nonisolated static func projectTreeNodesRecursivelyForTesting(
+        at root: URL,
+        supportedOnly: Bool,
+        includeHidden: Bool,
+        ignoredFolderNames: Set<String>
+    ) -> [ProjectTreeNode] {
+        readChildren(
+            of: root,
+            recursive: true,
+            supportedOnly: supportedOnly,
+            includeHidden: includeHidden,
+            ignoredFolderNames: ignoredFolderNames
+        )
+    }
+
     func loadProjectTreeChildren(for directory: URL) -> [ProjectTreeNode] {
         Self.readChildren(
             of: directory,
@@ -2190,7 +2249,8 @@ extension ContentView {
                 ProjectTreeNode(
                     url: url,
                     isDirectory: isDirectory,
-                    children: children
+                    children: children,
+                    childrenLoaded: isDirectory && recursive
                 )
             )
         }
@@ -2203,7 +2263,7 @@ extension ContentView {
         showUnsupportedFileAlert = true
     }
 
-    static func projectFileURLs(from nodes: [ProjectTreeNode]) -> [URL] {
+    nonisolated static func projectFileURLs(from nodes: [ProjectTreeNode]) -> [URL] {
         var results: [URL] = []
         var stack = nodes
         while let node = stack.popLast() {
@@ -2216,7 +2276,7 @@ extension ContentView {
         return results
     }
 
-    private nonisolated static func projectTreeNodes(
+    nonisolated static func projectTreeNodesReplacingChildren(
         replacingChildrenOf directory: URL,
         with children: [ProjectTreeNode],
         in nodes: [ProjectTreeNode]
@@ -2225,12 +2285,13 @@ extension ContentView {
         return nodes.map { node in
             guard node.isDirectory else { return node }
             if node.url.standardizedFileURL.path == targetPath {
-                return ProjectTreeNode(url: node.url, isDirectory: true, children: children)
+                return ProjectTreeNode(url: node.url, isDirectory: true, children: children, childrenLoaded: true)
             }
             return ProjectTreeNode(
                 url: node.url,
-                isDirectory: true,
-                children: projectTreeNodes(replacingChildrenOf: directory, with: children, in: node.children)
+                isDirectory: node.isDirectory,
+                children: projectTreeNodesReplacingChildren(replacingChildrenOf: directory, with: children, in: node.children),
+                childrenLoaded: node.childrenLoaded
             )
         }
     }

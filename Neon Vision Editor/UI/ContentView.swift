@@ -406,6 +406,19 @@ struct ContentView: View {
         static let largeFileBytesMobile = 8_000_000
         static let largeFileBytesHTMLCSVMobile = 3_000_000
         static let heavyFeatureUTF16Length = 450_000
+        static let tocMaterializationUTF16Length = 400_000
+        static let delimitedPreviewByteBudget = 512_000
+
+        static func shouldMaterializeTOC(
+            isLargeFileModeEnabled: Bool,
+            documentUTF16Length: Int,
+            usesFileBackedStorage: Bool,
+            fileByteCount: Int
+        ) -> Bool {
+            guard !isLargeFileModeEnabled,
+                  documentUTF16Length < tocMaterializationUTF16Length else { return false }
+            return !usesFileBackedStorage || fileByteCount <= tocMaterializationUTF16Length
+        }
         static let largeFileLineBreaks = 40_000
         static let largeFileLineBreaksHTMLCSV = 15_000
         static let largeFileLineBreaksMobile = 25_000
@@ -635,6 +648,17 @@ struct ContentView: View {
     @State var markdownConversionProviderName: String? = nil
     @State var markdownConversionTargetTabID: UUID? = nil
     @State var markdownConversionTargetRange: NSRange? = nil
+    @State var jsonStructuringProposal: PlainTextJSONProposal? = nil
+    @State var isStructuringTextAsJSON: Bool = false
+    @State var jsonStructuringErrorMessage: String? = nil
+    @State var jsonStructuringTask: Task<Void, Never>? = nil
+    @State var jsonStructuringTimeoutTask: Task<Void, Never>? = nil
+    @State var jsonStructuringMode: PlainTextJSONStructureMode = .automatic
+    @State var jsonStructuringRequestID: UUID? = nil
+    @State var jsonStructuringProviderName: String? = nil
+    @State var jsonStructuringTargetTabID: UUID? = nil
+    @State var jsonStructuringTargetRange: NSRange? = nil
+    @State var showJSONStructuringOptions = false
     @State var showClearEditorConfirmDialog: Bool = false
     @State var pendingReplaceAllPreview: FindReplaceAllPreview? = nil
     @State var pendingFindInFilesReplacement: FindInFilesReplacementPreview? = nil
@@ -680,6 +704,7 @@ struct ContentView: View {
     @State var showGoToSymbol: Bool = false
     @State var goToSymbolQuery: String = ""
     @State var quickSwitcherProjectFileURLs: [URL] = []
+    @State var quickSwitcherProjectFileURLRefreshTask: Task<Void, Never>? = nil
     @State var projectFileIndexSnapshot: ProjectFileIndex.Snapshot = .empty
     @State var isProjectFileIndexing: Bool = false
     @State var projectFileIndexHasCompleted: Bool = false
@@ -857,6 +882,7 @@ struct ContentView: View {
     @AppStorage("MarkdownPreviewDialect") var markdownPreviewDialectRaw: String = ContentView.MarkdownPreviewDialect.gfm.rawValue
     @AppStorage(SettingsPreferenceKey.markdownPreviewSynchronousScroll) var markdownPreviewSynchronousScroll: Bool = false
     @State var markdownPreviewEditorScrollFraction: CGFloat?
+    @State var pendingMarkdownPreviewEditorScrollWorkItem: DispatchWorkItem?
     @AppStorage("MarkdownPreviewPDFExportMode") var markdownPDFExportModeRaw: String = "paginated-fit"
     @State var markdownPreviewRenderedHTML: String = ""
     @State var markdownPreviewRenderSignature: String = ""
@@ -967,6 +993,7 @@ struct ContentView: View {
             return true
         }
         guard lowerLanguage == "xml" else { return false }
+        guard viewModel.selectedTab?.usesFileBackedStorage != true else { return false }
         let sample = currentContent.prefix(512).lowercased()
         return sample.contains("<plist")
     }
@@ -983,6 +1010,7 @@ struct ContentView: View {
         if currentLanguage.lowercased() == "crashlog" {
             return true
         }
+        guard viewModel.selectedTab?.usesFileBackedStorage != true else { return false }
         return AppleCrashReportParser.looksLikeAppleCrashReport(currentContent)
     }
 
@@ -1444,7 +1472,13 @@ struct ContentView: View {
                       let fraction = notif.userInfo?[EditorCommandUserInfo.viewportTopFraction] as? Double,
                       let documentID = (notif.userInfo?[EditorCommandUserInfo.documentID] as? String).flatMap(UUID.init(uuidString:)),
                       documentID == viewModel.selectedTab?.id else { return }
-                markdownPreviewEditorScrollFraction = CGFloat(min(max(fraction, 0), 1))
+                pendingMarkdownPreviewEditorScrollWorkItem?.cancel()
+                let workItem = DispatchWorkItem {
+                    markdownPreviewEditorScrollFraction = CGFloat(min(max(fraction, 0), 1))
+                    pendingMarkdownPreviewEditorScrollWorkItem = nil
+                }
+                pendingMarkdownPreviewEditorScrollWorkItem = workItem
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.033, execute: workItem)
             }
             .onReceive(NotificationCenter.default.publisher(for: .markdownPreviewViewportDidChange)) { notif in
                 guard markdownPreviewSynchronousScroll,
@@ -1820,6 +1854,9 @@ struct ContentView: View {
     }
 
     private func currentContentSnapshot(maxUTF16Length: Int) -> String? {
+        guard viewModel.selectedTab?.usesFileBackedStorage != true else {
+            return nil
+        }
         let snapshot = currentContentBinding.wrappedValue
         guard (snapshot as NSString).length <= maxUTF16Length else { return nil }
         return snapshot
@@ -1950,9 +1987,16 @@ struct ContentView: View {
         if statusWordCount != 0 {
             statusWordCount = 0
         }
-        let snapshot = currentContentBinding.wrappedValue
         let expectedTabID = viewModel.selectedTabID
         let expectedContentRevision = viewModel.selectedTab?.contentRevision
+        if let tab = viewModel.selectedTab,
+           tab.usesFileBackedStorage {
+            // File-backed documents already expose bounded line metadata. Never
+            // promote the document to a String merely to update the status bar.
+            statusLineCount = tab.document.lineCount
+            return
+        }
+        let snapshot = currentContentBinding.wrappedValue
         wordCountTask = Task(priority: .utility) {
             let lineCount = Self.lineCount(for: snapshot)
             await MainActor.run {
@@ -2169,6 +2213,10 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 convertTextToMarkdown()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .structureTextAsJSONRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                prepareTextToJSONStructuring()
+            }
 
         let viewWithPanels = viewWithJSONTools
             .onReceive(NotificationCenter.default.publisher(for: .toggleProjectStructureSidebarRequested)) { notif in
@@ -2229,31 +2277,27 @@ struct ContentView: View {
     private func withTypingEvents<Content: View>(_ view: Content) -> some View {
 #if os(macOS)
         view
-            .onReceive(NotificationCenter.default.publisher(for: NSText.didChangeNotification)) { notif in
-                guard isAutoCompletionEnabled && !viewModel.isBrainDumpMode && !isApplyingCompletion else { return }
-                guard let changedTextView = notif.object as? NSTextView else { return }
-                guard let activeTextView = NSApp.keyWindow?.firstResponder as? NSTextView, changedTextView === activeTextView else { return }
-                if let hostWindowNumber,
-                   let changedWindowNumber = changedTextView.window?.windowNumber,
-                   changedWindowNumber != hostWindowNumber {
-                    return
-                }
-                guard shouldScheduleCompletion(for: changedTextView) else { return }
-                let signature = completionTriggerSignature(for: changedTextView)
-                guard !signature.isEmpty else { return }
-                if signature == lastCompletionTriggerSignature {
-                    return
-                }
+            .onReceive(NotificationCenter.default.publisher(for: .virtualEditorTextDidChange)) { notification in
+                guard isAutoCompletionEnabled,
+                      !viewModel.isBrainDumpMode,
+                      !isApplyingCompletion,
+                      let rawID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+                      let tabID = UUID(uuidString: rawID),
+                      tabID == viewModel.selectedTab?.id,
+                      let caret = notification.userInfo?[EditorCommandUserInfo.completionCaretOffset] as? Int,
+                      let context = notification.userInfo?[EditorCommandUserInfo.completionContext] as? String else { return }
+                let signature = "\(tabID.uuidString)|\(caret)|\(context.suffix(32))"
+                guard signature != lastCompletionTriggerSignature else { return }
                 lastCompletionTriggerSignature = signature
                 completionDebounceTask?.cancel()
                 completionTask?.cancel()
-                let debounce = completionDebounceInterval(for: changedTextView)
-                completionDebounceTask = Task { @MainActor [weak changedTextView] in
+                let debounce: TimeInterval = context.utf16.count >= 80_000 ? 0.9 : (context.utf16.count >= 25_000 ? 0.7 : 0.45)
+                completionDebounceTask = Task { @MainActor in
                     let delay = UInt64((debounce * 1_000_000_000).rounded())
                     try? await Task.sleep(nanoseconds: delay)
-                    guard !Task.isCancelled, let changedTextView else { return }
+                    guard !Task.isCancelled else { return }
                     lastCompletionTriggerSignature = ""
-                    performInlineCompletion(for: changedTextView)
+                    performVirtualInlineCompletion(tabID: tabID, caretLocation: caret, context: context)
                 }
             }
 #else
@@ -2394,6 +2438,23 @@ struct ContentView: View {
             }
             .sheet(item: $markdownConversionProposal) { _ in
                 markdownConversionReviewSheet
+            }
+            .sheet(isPresented: $showJSONStructuringOptions) {
+                jsonStructuringOptionsSheet
+            }
+            .sheet(item: $jsonStructuringProposal) { _ in
+                jsonStructuringReviewSheet
+            }
+            .alert(
+                "JSON Structuring Unavailable",
+                isPresented: Binding(
+                    get: { jsonStructuringErrorMessage != nil },
+                    set: { if !$0 { jsonStructuringErrorMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) { jsonStructuringErrorMessage = nil }
+            } message: {
+                Text(jsonStructuringErrorMessage ?? "")
             }
             .alert(
                 "Whitespace Scalars",
@@ -2627,6 +2688,7 @@ struct ContentView: View {
             }
 #endif
             .modifier(ModalPresentationModifier(contentView: self))
+            .modifier(NeonPulseInboxNotificationModifier(viewModel: viewModel))
             .onAppear {
                 handleStartupOnAppear()
             }
@@ -3029,9 +3091,13 @@ struct ContentView: View {
                             content: contentView.currentContent,
                             language: contentView.currentLanguage,
                             contentUTF16Length: contentView.currentDocumentUTF16Length,
+                            documentID: contentView.viewModel.selectedTabID,
                             translucentBackgroundEnabled: true,
                             onItemSelected: {
                                 contentView.showCompactSidebarSheet = false
+                            },
+                            onJumpToLine: { line in
+                                contentView.moveEditorFromMinimap(to: line, tabID: contentView.viewModel.selectedTabID)
                             }
                         )
                             .navigationTitle(Text(NSLocalizedString("Sidebar", comment: "")))
@@ -3120,7 +3186,12 @@ struct ContentView: View {
                                     revealURL: contentView.projectTreeRevealURL,
                                     gitFileStatusMap: contentView.gitViewModel.fileStatusMap,
                                     embeddedHeader: AnyView(contentView.utilitySidebarHeader(integratedIntoProjectCard: true)),
-                                    onLoadDirectory: { contentView.refreshProjectTreeSubtree(at: $0) }
+                                    onLoadDirectory: { directory, completion in
+                                         contentView.refreshProjectTreeSubtree(at: directory, completion: completion)
+                                     },
+                                     onExpandAllDirectories: { completion in
+                                         contentView.expandAllProjectDirectories(completion: completion)
+                                     }
                                 )
                             }
                             }
@@ -3329,6 +3400,8 @@ struct ContentView: View {
                                         contentView.externalConflictDiff = diff
                                         contentView.showExternalConflictCompareSheet = true
                                     }
+                                } else {
+                                    contentView.viewModel.fileEncodingErrorMessage = "Comparison is unavailable for large file-backed documents. Use reload or keep the local version."
                                 }
                             }
                         }
@@ -3659,6 +3732,7 @@ struct ContentView: View {
                 content: sidebarTOCContent,
                 language: currentLanguage,
                 contentUTF16Length: currentDocumentUTF16Length,
+                documentID: viewModel.selectedTabID,
                 translucentBackgroundEnabled: enableTranslucentWindow,
                 onItemSelected: {
 #if os(iOS)
@@ -3666,6 +3740,9 @@ struct ContentView: View {
                         viewModel.showSidebar = false
                     }
 #endif
+                },
+                onJumpToLine: { line in
+                    moveEditorFromMinimap(to: line, tabID: viewModel.selectedTabID)
                 }
             )
                 .frame(minWidth: 200, idealWidth: 250, maxWidth: 600)
@@ -3807,7 +3884,7 @@ struct ContentView: View {
     }
 
     var currentDocumentFileSizeText: String {
-        let byteCount = viewModel.selectedTab?.fileByteCount ?? currentContent.utf8.count
+        let byteCount = viewModel.selectedTab.map { $0.fileByteCount } ?? singleContent.utf8.count
         return ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file)
     }
 
@@ -3920,7 +3997,12 @@ struct ContentView: View {
     }
 
     private var sidebarTOCContent: String {
-        if effectiveLargeFileModeEnabled || currentDocumentUTF16Length >= 400_000 {
+        guard EditorPerformanceThresholds.shouldMaterializeTOC(
+            isLargeFileModeEnabled: effectiveLargeFileModeEnabled,
+            documentUTF16Length: currentDocumentUTF16Length,
+            usesFileBackedStorage: viewModel.selectedTab?.usesFileBackedStorage == true,
+            fileByteCount: viewModel.selectedTab?.fileByteCount ?? 0
+        ) else {
             return ""
         }
         return currentContent
@@ -4038,7 +4120,7 @@ struct ContentView: View {
             if useOuterNoWrapScroll {
                 GeometryReader { proxy in
                     let scrollableEditorWidth = max(proxy.size.width * 3, proxy.size.width)
-                    ScrollView(.horizontal, showsIndicators: true) {
+                    ScrollView(.horizontal, showsIndicators: false) {
                         editorTextView(
                             tabID: tabID,
                             text: text,
@@ -4071,7 +4153,13 @@ struct ContentView: View {
                 )
             }
 
-            if effectiveShowCodeMinimap && supportsCodeMinimap(language: language) {
+            // A file-backed document must stay bounded on the normal render path.
+            // CodeMinimapView consumes the binding's complete String to build its
+            // snapshot; allowing it for a virtual large document would promote
+            // the entire source before the viewport can render.
+            if effectiveShowCodeMinimap,
+               supportsCodeMinimap(language: language),
+               viewModel.tabs.first(where: { $0.id == tabID })?.usesFileBackedStorage != true {
                 CodeMinimapView(
                     documentID: tabID,
                     snapshotCacheKey: minimapSnapshotCacheKey(tabID: tabID, language: language),
@@ -4086,6 +4174,7 @@ struct ContentView: View {
                         moveEditorViewportFromMinimap(to: topFraction, tabID: tabID)
                     }
                 )
+                .id("code-minimap-\(minimapSnapshotCacheKey(tabID: tabID, language: language))")
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
@@ -4140,6 +4229,52 @@ struct ContentView: View {
         effectiveScopeBackground: Bool
     ) -> some View {
         let tab = tabID.flatMap { id in viewModel.tabs.first(where: { $0.id == id }) }
+#if os(macOS)
+        return VirtualEditorView(
+            document: tab?.document,
+            documentID: tabID,
+            documentResourceID: documentResourceID(for: tabID),
+            contentRevision: tab?.contentRevision ?? 0,
+            externalContentRevision: tab?.externalContentRevision ?? 0,
+            storedCaretLocation: storedCaretLocation(for: tabID),
+            language: language,
+            colorScheme: colorScheme,
+            fontSize: editorFontSize,
+            fontName: editorFontName,
+            lineHeightMultiplier: editorLineHeight,
+            isReadOnly: isReadOnly,
+            translucentBackgroundEnabled: enableTranslucentWindow,
+            showsLineNumbers: showLineNumbers,
+            highlightCurrentLine: effectiveHighlightCurrentLine,
+            lineWrapEnabled: lineWrapEnabled.wrappedValue,
+            showsInvisibleCharacters: showInvisibleCharacters,
+            showsIndentationGuides: showIndentationGuides,
+            showsScopeGuides: effectiveScopeGuides,
+            highlightsScopeBackground: effectiveScopeBackground,
+            highlightsMatchingBrackets: effectiveBracketHighlight,
+            autoIndentEnabled: autoIndentEnabled,
+            autoCloseBracketsEnabled: autoCloseBracketsEnabled,
+            onFontSizeChange: { setEditorFontSize(Double($0)) },
+            onTextMutation: { mutation in
+                if let viewport = mutation.viewport {
+                    viewModel.applyTabContentEdit(
+                        tabID: mutation.documentID,
+                        viewport: viewport,
+                        range: mutation.range,
+                        replacement: mutation.replacement
+                    )
+                } else {
+                    viewModel.applyTabContentEdit(
+                        tabID: mutation.documentID,
+                        range: mutation.range,
+                        replacement: mutation.replacement
+                    )
+                }
+            }
+        )
+        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+#else
         let editorTextBinding: Binding<String> = {
             guard effectiveLargeFileModeEnabled,
                   tab?.document.supportsBoundedWindows == true else {
@@ -4215,6 +4350,7 @@ struct ContentView: View {
         )
         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
+#endif
     }
 
     private func splitEditorPaneHeader(title: String, showsCloseButton: Bool = false) -> some View {
@@ -4246,11 +4382,6 @@ struct ContentView: View {
         if let tabID {
             userInfo[EditorCommandUserInfo.documentID] = tabID.uuidString
         }
-#if os(macOS)
-        if let targetWindow = hostWindowNumber ?? NSApp.keyWindow?.windowNumber ?? NSApp.mainWindow?.windowNumber {
-            userInfo[EditorCommandUserInfo.windowNumber] = targetWindow
-        }
-#endif
         NotificationCenter.default.post(name: .moveCursorToLine, object: line, userInfo: userInfo)
     }
 
@@ -4304,7 +4435,10 @@ struct ContentView: View {
             cursorOwnerID: "toc-sidebar",
             accentWidth: isTOCSidebarResizeHandleHovered || tocSidebarResizeStartWidth != nil ? 2 : 0,
             accentColor: Color.accentColor.opacity(0.55),
-            surfaceStyle: macResizeHandleSurfaceStyle,
+            // Keep the resize boundary on the same material as the editor
+            // window. A solid theme color creates a white strip in translucent
+            // mode even though both adjacent panes use the window material.
+            surfaceStyle: macInterPaneBackgroundStyle,
             isActive: isTOCSidebarResizeHandleHovered || tocSidebarResizeStartWidth != nil,
             isDragging: tocSidebarResizeStartWidth != nil,
             isHovered: $isTOCSidebarResizeHandleHovered,
@@ -4360,6 +4494,9 @@ struct ContentView: View {
                 }
                 if isConvertingTextToMarkdown {
                     markdownConversionProgressBanner
+                }
+                if isStructuringTextAsJSON {
+                    jsonStructuringProgressBanner
                 }
 #if os(macOS)
                 if showBracketHelperBarMac {

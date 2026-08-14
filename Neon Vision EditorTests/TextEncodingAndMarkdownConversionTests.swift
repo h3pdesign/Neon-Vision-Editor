@@ -17,6 +17,15 @@ final class TextEncodingAndMarkdownConversionTests: XCTestCase {
         }
     }
 
+    private struct JSONPlanClient: AIClient {
+        func streamSuggestions(prompt: String) -> AsyncStream<String> {
+            AsyncStream { continuation in
+                continuation.yield("{\\\"summary\\\":\\\"Extracted\\\",\\\"source_quotes\\\":[\\\"Important note\\\"]}")
+                continuation.finish()
+            }
+        }
+    }
+
     func testUTF8BOMRoundTripsWithoutBecomingDocumentText() throws {
         let encoding = TextEncodingDescriptor(identifier: .utf8WithBOM)
         let data = try XCTUnwrap(encoding.encodedData(for: "Résumé"))
@@ -227,5 +236,39 @@ final class TextEncodingAndMarkdownConversionTests: XCTestCase {
         XCTAssertTrue(
             PlainTextMarkdownConversionError.providerInvalidPlan.localizedDescription.contains("Apple Intelligence")
         )
+    }
+
+    func testJSONStructurePresetsExposeUsefulStableCategories() {
+        XCTAssertTrue(PlainTextJSONStructureMode.allCases.contains(.automatic))
+        XCTAssertTrue(PlainTextJSONStructureMode.allCases.contains(.tasks))
+        XCTAssertTrue(PlainTextJSONStructureMode.allCases.contains(.research))
+        XCTAssertTrue(PlainTextJSONStructureMode.tasks.promptInstructions.contains("action"))
+        XCTAssertTrue(PlainTextJSONStructureMode.research.promptInstructions.contains("source_quotes"))
+    }
+
+    func testJSONProposalValidatesAndPreservesSource() throws {
+        let source = "Important note"
+        let proposal = try PlainTextJSONConverter.validateProposal(
+            source: source,
+            json: "{\"summary\":\"Extracted\",\"source_quotes\":[\"Important note\"]}",
+            mode: .automatic
+        )
+        XCTAssertEqual(proposal.source, source)
+        XCTAssertTrue(proposal.json.contains("\"summary\""))
+        XCTAssertEqual(proposal.recordsExtracted, 1)
+    }
+
+    func testJSONProviderConversionRejectsInvalidJSON() async {
+        do {
+            _ = try await PlainTextJSONConverter.convertWithConfiguredProvider(
+                "Important note",
+                mode: .automatic,
+                client: JSONPlanClient()
+            )
+            XCTFail("Expected invalid JSON response to be rejected")
+        } catch PlainTextJSONStructureError.invalidJSON {
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
     }
 }

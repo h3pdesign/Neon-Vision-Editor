@@ -25,9 +25,6 @@ extension ContentView {
             markdownPreviewRenderedHTML = ""
             markdownPreviewRenderSignature = ""
         }
-        .onChange(of: currentContent) { _, _ in
-            scheduleMarkdownPreviewRender()
-        }
         .onChange(of: viewModel.tabsObservationToken) { _, _ in
             scheduleMarkdownPreviewRender()
         }

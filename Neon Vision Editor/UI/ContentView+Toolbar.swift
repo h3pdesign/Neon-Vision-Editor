@@ -1038,7 +1038,7 @@ extension ContentView {
                 }
             }
         } label: {
-            Text(languageLabel(for: currentLanguagePickerBinding.wrappedValue))
+            Text(toolbarLanguageLabel(for: currentLanguagePickerBinding.wrappedValue))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .fixedSize(horizontal: true, vertical: false)
@@ -1070,6 +1070,9 @@ extension ContentView {
         .help("Language")
         .accessibilityLabel("Language picker")
         .accessibilityHint("Choose syntax language for the current tab")
+#if os(iOS)
+        .accessibilityValue(languageLabel(for: currentLanguagePickerBinding.wrappedValue))
+#endif
         .layoutPriority(2)
 #if os(visionOS)
         .tint(Color.white.opacity(0.96))

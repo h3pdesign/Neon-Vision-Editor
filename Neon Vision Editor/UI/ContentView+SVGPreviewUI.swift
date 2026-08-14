@@ -8,12 +8,23 @@ extension ContentView {
     var webPreviewPane: some View {
         VStack(alignment: .leading, spacing: 0) {
             webPreviewHeader
-            MarkdownPreviewWebView(
-                html: webPreviewHTML(from: currentContent),
-                baseURL: localWebPreviewBaseURL
-            )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityLabel("\(webPreviewTitle) Content")
+            if viewModel.selectedTab?.usesFileBackedStorage == true {
+                Text("Web preview is unavailable for large virtual documents.")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityLabel("Web preview unavailable for large virtual documents")
+            } else {
+                MarkdownPreviewWebView(
+                    html: webPreviewHTML(from: currentContent),
+                    baseURL: localWebPreviewBaseURL,
+                    // HTML/SVG preview is intentionally browser-like. Keep
+                    // Markdown preview inert, but allow authored web content to
+                    // use WebKit's normal JavaScript rendering path here.
+                    allowsContentJavaScript: true
+                )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityLabel("\(webPreviewTitle) Content")
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(editorSurfaceBackgroundStyle)
@@ -64,7 +75,7 @@ extension ContentView {
     }
 
     private var webPreviewStatusText: String {
-        let byteCount = currentContent.utf8.count
+        let byteCount = viewModel.selectedTab?.fileByteCount ?? currentContent.utf8.count
         if byteCount >= 1_000_000 {
             return String(format: "%.1f MB", Double(byteCount) / 1_000_000.0)
         }
@@ -156,7 +167,7 @@ extension ContentView {
 
     private var webPreviewCSPMeta: String {
         """
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob: file:; style-src 'unsafe-inline' file:; font-src data: file:; media-src data: blob: file:;">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: file: https:; img-src data: blob: file: https:; script-src 'unsafe-inline' 'unsafe-eval' data: blob: file: https:; style-src 'unsafe-inline' data: blob: file: https:; font-src data: blob: file: https:; media-src data: blob: file: https:; connect-src data: blob: file: https: wss:; frame-src data: blob: file: https:;">
         """
     }
 

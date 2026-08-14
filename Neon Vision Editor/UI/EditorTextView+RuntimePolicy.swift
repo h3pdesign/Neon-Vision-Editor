@@ -4,22 +4,6 @@ import OSLog
 
 nonisolated let syntaxHighlightSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "SyntaxHighlight")
 
-#if os(macOS)
-extension Notification.Name {
-    static let editorPointerInteraction = Notification.Name("NeonEditorPointerInteraction")
-}
-
-enum MacEditorContentInstallRefreshPolicy {
-    // A full TextKit pass repairs stale glyph maps after a document swap, but it is
-    // disproportionately expensive for larger documents. Those use visible-range refreshes.
-    static let fullLayoutMaxUTF16Length = 120_000
-
-    static func shouldInvalidateFullRange(textLength: Int) -> Bool {
-        textLength <= fullLayoutMaxUTF16Length
-    }
-}
-#endif
-
 enum EditorRuntimeLimits {
     // Above this, keep editing responsive by skipping regex-heavy syntax passes.
     static let syntaxMinimalUTF16Length = 1_200_000
@@ -142,20 +126,7 @@ enum SyntaxFontEmphasis: Sendable {
     case markdownHeading
 }
 
-#if os(macOS)
-func fontWithSymbolicTrait(_ font: NSFont, trait: NSFontDescriptor.SymbolicTraits) -> NSFont {
-    // Always derive emphasis from the base font's non-emphasis face. NSTextView can
-    // report the selected character's font as its default font after a row click;
-    // carrying that trait forward makes subsequent passes alternate emphasis.
-    let emphasisTraits: NSFontDescriptor.SymbolicTraits = [.bold, .italic]
-    let traits = font.fontDescriptor.symbolicTraits.subtracting(emphasisTraits).union(trait)
-    let descriptor = font.fontDescriptor.withSymbolicTraits(traits)
-    guard let adjustedFont = NSFont(descriptor: descriptor, size: font.pointSize) else {
-        return font
-    }
-    return adjustedFont
-}
-#else
+#if !os(macOS)
 func fontWithSymbolicTrait(_ font: UIFont, trait: UIFontDescriptor.SymbolicTraits) -> UIFont {
     let emphasisTraits: UIFontDescriptor.SymbolicTraits = [.traitBold, .traitItalic]
     let traits = font.fontDescriptor.symbolicTraits.subtracting(emphasisTraits).union(trait)

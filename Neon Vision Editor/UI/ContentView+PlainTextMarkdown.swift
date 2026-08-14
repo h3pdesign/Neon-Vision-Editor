@@ -127,7 +127,7 @@ extension ContentView {
         .accessibilityLabel("Converting text to Markdown with \(markdownConversionProviderName ?? "Apple Intelligence")")
     }
 
-    private func configuredMarkdownConversionClient() -> AIClient? {
+    func configuredMarkdownConversionClient() -> AIClient? {
         switch selectedModel {
         case .appleIntelligence:
             return nil

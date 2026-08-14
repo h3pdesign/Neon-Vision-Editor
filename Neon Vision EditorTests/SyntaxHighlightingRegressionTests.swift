@@ -34,6 +34,15 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"(?s)<!--.*?-->"#))
     }
 
+    func testEverySelectableSyntaxLanguageHasRendererPatternsExceptPlainText() {
+        for language in CodeTemplateCatalog.supportedLanguages where language != "plain" {
+            XCTAssertFalse(
+                getSyntaxPatterns(for: language, colors: colors).isEmpty,
+                "\(language) has no syntax patterns for the Core Text renderer."
+            )
+        }
+    }
+
     func testHTMLAndCSSPatternsMatchTagsAndProperties() {
         let htmlPatterns = getSyntaxPatterns(for: "html", colors: colors)
         let cssPatterns = getSyntaxPatterns(for: "css", colors: colors)
@@ -200,6 +209,16 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         for (language, sample) in samples {
             XCTAssertTrue(anySyntaxPatternMatches(sample, from: getSyntaxPatterns(for: language, colors: colors)), language)
         }
+    }
+
+    func testTypstAndCetzPatternsMatchMarkupMathAndDrawingSyntax() {
+        let patterns = getSyntaxPatterns(for: "typst", colors: colors)
+        let sample = "#let title = [Hello]\n#set text(size: 11pt)\n$ x^2 + y^2 $\n#import \"@preview/cetz:0.3.1\": canvas, draw\n#canvas({ draw.line((0pt, 0pt), (10pt, 10pt)) })"
+
+        XCTAssertTrue(anySyntaxPatternMatches(sample, from: patterns))
+        XCTAssertTrue(matchesRegex(sample, pattern: #"#[A-Za-z_][A-Za-z0-9_-]*"#))
+        XCTAssertTrue(matchesRegex(sample, pattern: #"\$[^$]+\$"#))
+        XCTAssertTrue(matchesRegex(sample, pattern: #"\b(?:canvas|draw)\b"#))
     }
 
     func testLargeSVGKeepsResponsiveVisibleRangePolicy() {
@@ -528,74 +547,7 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(matchesAnyPattern(in: sample, from: patterns, expected: #"\b0x[0-9A-Fa-f]+\b"#))
     }
 
-#if os(macOS)
-    func testContentInstallRefreshPolicyLimitsFullLayoutToSmallDocuments() {
-        XCTAssertTrue(MacEditorContentInstallRefreshPolicy.shouldInvalidateFullRange(textLength: 120_000))
-        XCTAssertFalse(MacEditorContentInstallRefreshPolicy.shouldInvalidateFullRange(textLength: 120_001))
-        XCTAssertFalse(MacEditorContentInstallRefreshPolicy.shouldInvalidateFullRange(textLength: EditorRuntimeLimits.syntaxMinimalUTF16Length))
-    }
 
-    func testBoldKeywordSelectionOverlaysUseStableContiguousLayoutPolicy() {
-        XCTAssertFalse(
-            CustomTextEditor.shouldAllowNonContiguousLayout(
-                wrapMode: false,
-                boldKeywords: true,
-                highlightCurrentLine: true,
-                highlightMatchingBrackets: false,
-                isLargeFileMode: false
-            ),
-            "Bold keywords plus current-line overlay should avoid AppKit non-contiguous layout flicker while line wrap is off."
-        )
-        XCTAssertFalse(
-            CustomTextEditor.shouldAllowNonContiguousLayout(
-                wrapMode: false,
-                boldKeywords: true,
-                highlightCurrentLine: false,
-                highlightMatchingBrackets: true,
-                isLargeFileMode: false
-            ),
-            "Bold keywords plus bracket overlay should avoid AppKit non-contiguous layout flicker while line wrap is off."
-        )
-        XCTAssertFalse(
-            CustomTextEditor.shouldAllowNonContiguousLayout(
-                wrapMode: false,
-                boldKeywords: false,
-                highlightCurrentLine: true,
-                highlightMatchingBrackets: true,
-                isLargeFileMode: false
-            ),
-            "Normal files use contiguous TextKit layout so loaded content and mouse hit testing share one stable glyph map."
-        )
-        XCTAssertFalse(
-            CustomTextEditor.shouldAllowNonContiguousLayout(
-                wrapMode: true,
-                boldKeywords: false,
-                highlightCurrentLine: false,
-                highlightMatchingBrackets: false,
-                isLargeFileMode: false
-            )
-        )
-        XCTAssertTrue(
-            CustomTextEditor.shouldAllowNonContiguousLayout(
-                wrapMode: false,
-                boldKeywords: false,
-                highlightCurrentLine: false,
-                highlightMatchingBrackets: false,
-                isLargeFileMode: true
-            )
-        )
-        XCTAssertTrue(
-            CustomTextEditor.shouldAllowNonContiguousLayout(
-                wrapMode: false,
-                boldKeywords: true,
-                highlightCurrentLine: true,
-                highlightMatchingBrackets: true,
-                isLargeFileMode: true
-            ),
-            "Large-file mode suppresses selection overlays so TextKit can retain non-contiguous layout."
-        )
-    }
-#endif
 
     func testCodeMinimapMarksCommentsAndSections() {
         let sample = """

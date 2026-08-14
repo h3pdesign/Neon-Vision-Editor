@@ -17,6 +17,12 @@ final class MacOverlayScrollerTests: XCTestCase {
 
         XCTAssertTrue(scrollView.autohidesScrollers)
         XCTAssertEqual(scrollView.scrollerStyle, .overlay)
+        if let verticalScroller = scrollView.verticalScroller {
+            XCTAssertEqual(verticalScroller.controlSize, .mini)
+        }
+        if let horizontalScroller = scrollView.horizontalScroller {
+            XCTAssertEqual(horizontalScroller.controlSize, .mini)
+        }
     }
 
     func testOverlayConfigurationIsIdempotent() {
@@ -30,6 +36,7 @@ final class MacOverlayScrollerTests: XCTestCase {
 
         XCTAssertEqual(scrollView.scrollerStyleSetCount, 1)
     }
+
 
     func testSwiftUIListConfiguresOnlyItsEnclosingScrollView() async {
         let rootView = List {

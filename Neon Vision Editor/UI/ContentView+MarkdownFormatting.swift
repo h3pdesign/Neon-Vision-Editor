@@ -336,17 +336,24 @@ extension ContentView {
 
     func applyMarkdownFormatting(_ action: MarkdownFormattingAction) {
 #if os(macOS)
-        guard let textView = activeEditorTextView() else { return }
-        applyMarkdownFormatting(action, text: textView.string, selection: textView.selectedRange()) { replacement in
-            guard let storage = textView.textStorage,
-                  NSMaxRange(replacement.range) <= storage.length else { return }
-            storage.beginEditing()
-            storage.replaceCharacters(in: replacement.range, with: replacement.text)
-            storage.endEditing()
-            textView.setSelectedRange(Self.clampedSelection(replacement.selection, textLength: storage.length))
-            textView.didChangeText()
-            finalizeMarkdownFormattingMutation(textView.string)
-            textView.window?.makeFirstResponder(textView)
+        guard let tab = viewModel.selectedTab,
+              let selection = currentSelectionSnapshotRange,
+              NSMaxRange(selection) <= tab.document.utf16Length,
+              !requiresMaterializedEditorTransform() else { return }
+        applyMarkdownFormatting(action, text: tab.document.string(), selection: selection) { replacement in
+            NotificationCenter.default.post(
+                name: .replaceEditorRangeRequested,
+                object: nil,
+                userInfo: [
+                    EditorCommandUserInfo.documentID: tab.id.uuidString,
+                    EditorCommandUserInfo.rangeLocation: replacement.range.location,
+                    EditorCommandUserInfo.rangeLength: replacement.range.length,
+                    EditorCommandUserInfo.replacementText: replacement.text,
+                    EditorCommandUserInfo.windowNumber: hostWindowNumber as Any
+                ]
+            )
+            currentLanguageBinding.wrappedValue = "markdown"
+            scheduleHighlightRefresh()
         }
 #elseif canImport(UIKit)
         guard let textView = activeEditorInputTextView() else { return }

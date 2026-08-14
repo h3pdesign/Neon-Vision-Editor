@@ -626,6 +626,19 @@ struct NeonVisionEditorApp: App {
         WindowViewModelRegistry.shared.activeViewModel() ?? appDelegate.viewModel ?? viewModel
     }
 
+    private var menuBarDocumentStatus: (title: String, symbol: String, color: Color) {
+        guard let tab = activeEditorViewModel.selectedTab else {
+            return ("No Document Open", "doc.text", .secondary)
+        }
+        if activeEditorViewModel.pendingExternalFileConflict?.tabID == tab.id {
+            return ("\(tab.name) · External Conflict", "exclamationmark.triangle.fill", .red)
+        }
+        if tab.isDirty {
+            return ("\(tab.name) · Unsaved Changes", "pencil.circle.fill", .orange)
+        }
+        return ("\(tab.name) · Saved", "checkmark.circle.fill", .green)
+    }
+
     private var appleAIStatusColor: Color {
         let status = appleAIStatus.lowercased()
         if status.contains("error") || status.contains("unavailable") {
@@ -793,9 +806,12 @@ struct NeonVisionEditorApp: App {
         .defaultSize(width: 860, height: 520)
         .handlesExternalEvents(matching: [])
 
-        MenuBarExtra("Neon Vision Editor", systemImage: "chevron.left.forwardslash.chevron.right", isInserted: $showMenuBarIconMac) {
-            Label("Neon Vision Editor", systemImage: "chevron.left.forwardslash.chevron.right")
+        MenuBarExtra("Neon Vision Editor", systemImage: menuBarDocumentStatus.symbol, isInserted: $showMenuBarIconMac) {
+            Label("Neon Vision Editor", systemImage: "doc.text")
                 .font(.headline)
+
+            Label(menuBarDocumentStatus.title, systemImage: menuBarDocumentStatus.symbol)
+                .foregroundStyle(menuBarDocumentStatus.color)
 
             Label {
                 HStack(spacing: 5) {
@@ -895,6 +911,13 @@ struct NeonVisionEditorApp: App {
                     Label("Check for Updates…", systemImage: "arrow.triangle.2.circlepath.circle")
                 }
             }
+
+            Divider()
+
+            Button("Quit Neon Vision Editor") {
+                NSApp.terminate(nil)
+            }
+            .keyboardShortcut("q")
         }
 
         .commands {

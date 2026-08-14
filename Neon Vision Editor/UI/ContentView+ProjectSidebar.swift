@@ -140,9 +140,9 @@ extension ContentView {
 #endif
     }
 
-    /// The resize hit target must use the same surface as the adjacent pane.
-    /// A separate visual-effect view produces a visible material mismatch in
-    /// translucency mode, especially at the 11-point hit target boundary.
+    /// The resize hit target must use the same surface as the adjacent panes.
+    /// Keeping the material here avoids a visible strip or desktop bleed-through
+    /// at the 11-point interaction boundary.
     var macResizeHandleSurfaceStyle: AnyShapeStyle {
 #if os(macOS)
         editorSurfaceBackgroundStyle
@@ -266,7 +266,12 @@ extension ContentView {
                     revealURL: projectTreeRevealURL,
                     gitFileStatusMap: gitViewModel.fileStatusMap,
                     embeddedHeader: AnyView(utilitySidebarHeader(integratedIntoProjectCard: true)),
-                    onLoadDirectory: { refreshProjectTreeSubtree(at: $0) }
+                    onLoadDirectory: { directory, completion in
+                        refreshProjectTreeSubtree(at: directory, completion: completion)
+                    },
+                    onExpandAllDirectories: { completion in
+                        expandAllProjectDirectories(completion: completion)
+                    }
                 )
             }
         }

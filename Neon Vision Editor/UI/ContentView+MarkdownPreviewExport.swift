@@ -443,6 +443,16 @@ extension ContentView {
         // is closed. Its render pipeline must therefore not depend on the
         // inline preview's visibility.
         guard showMarkdownPreviewPane || isPDFNoteMarkdownPreviewVisible || showDetachedPreviewWindow else { return }
+        // The virtual editor must not be promoted to a whole-document String by
+        // the preview pipeline. Preview rendering is intentionally unavailable
+        // for file-backed documents until it has a bounded source adapter.
+        guard viewModel.selectedTab?.usesFileBackedStorage != true else {
+            markdownPreviewRenderTask?.cancel()
+            markdownPreviewRenderTask = nil
+            isMarkdownPreviewRendering = false
+            markdownPreviewRenderedHTML = ""
+            return
+        }
         let signature = markdownPreviewCurrentRenderSignature
         // Local images are embedded from disk. Do not reuse HTML that could have been
         // generated before the document URL or its sibling assets were available.

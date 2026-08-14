@@ -176,7 +176,10 @@ final class EditorInputTextView: UITextView {
     }
 
     override var keyCommands: [UIKeyCommand]? {
-        guard UIDevice.current.userInterfaceIdiom == .pad else { return super.keyCommands }
+        guard UIDevice.current.userInterfaceIdiom == .pad ||
+              UIDevice.current.userInterfaceIdiom == .phone else {
+            return super.keyCommands
+        }
         let baseCommands = hardwareKeyboardEditingCommands(merging: super.keyCommands)
         guard UserDefaults.standard.bool(forKey: vimInterceptionDefaultsKey),
               UserDefaults.standard.bool(forKey: vimModeDefaultsKey) else {
@@ -1815,6 +1818,7 @@ struct CustomTextEditor: UIViewRepresentable {
             NotificationCenter.default.addObserver(self, selector: #selector(replaceRange(_:)), name: .replaceEditorRangeRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveSelectedLines(_:)), name: .moveSelectedLinesRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(scrollViewportToFraction(_:)), name: .scrollEditorViewportToFraction, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(requestEditorViewport(_:)), name: .requestEditorViewport, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(updateKeyboardAccessoryVisibility(_:)), name: .keyboardAccessoryBarVisibilityChanged, object: nil)
         }
 
@@ -2194,6 +2198,16 @@ struct CustomTextEditor: UIViewRepresentable {
             let maxOffsetY = max(minOffsetY, textView.contentSize.height - visibleHeight + textView.adjustedContentInset.bottom)
             let clampedY = min(max(targetY, minOffsetY), maxOffsetY)
             textView.setContentOffset(CGPoint(x: textView.contentOffset.x, y: clampedY), animated: false)
+            postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
+        }
+
+        @objc private func requestEditorViewport(_ notification: Notification) {
+            if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+               parent.documentID?.uuidString != targetDocumentID {
+                return
+            }
+            guard let textView else { return }
+            textView.layoutIfNeeded()
             postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
         }
 

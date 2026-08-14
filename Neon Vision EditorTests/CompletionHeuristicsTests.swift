@@ -3,6 +3,19 @@ import XCTest
 
 @MainActor
 final class CompletionHeuristicsTests: XCTestCase {
+    func testTypstUsesCodeCompletionAndLineComments() {
+        XCTAssertFalse(CompletionHeuristics.usesNaturalLanguageCompletion(for: "typst"))
+
+        let comment = NSString(string: "// A Typst comment")
+        XCTAssertTrue(
+            CompletionHeuristics.isLikelyInCommentOrString(
+                in: comment,
+                caretLocation: comment.length,
+                language: "typst"
+            )
+        )
+    }
+
     func testLocalSuggestionPrefersNearbyDocumentWord() {
         let text = """
         let recentWorkspacePath = projectURL.path

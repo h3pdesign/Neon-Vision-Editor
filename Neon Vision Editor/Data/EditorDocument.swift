@@ -13,6 +13,7 @@ enum EditorDocumentStorageKind: Sendable {
 struct EditorDocumentViewport: Equatable {
     let text: String
     let startByteOffset: Int
+    let startUTF16Offset: Int
     let lineRange: ClosedRange<Int>
     let generation: UInt64
 }
@@ -25,12 +26,12 @@ protocol EditorDocument: AnyObject {
     var lineCount: Int { get }
 
     func string() -> String
-    func replace(range: NSRange, with replacement: String)
+    func replace(range: NSRange, with replacement: String) throws
     /// Applies a native UTF-16 edit without exposing the document's storage.
     /// Large live editors use the viewport overload below; this is the
     /// backend-neutral fallback for non-viewport commands.
-    func replace(utf16Range: NSRange, with replacement: String)
-    func replaceAll(with text: String)
+    func replace(utf16Range: NSRange, with replacement: String) throws
+    func replaceAll(with text: String) throws
     func markClean()
     func viewport(aroundLine line: Int, maximumByteCount: Int) throws -> EditorDocumentViewport
     func replace(in viewport: EditorDocumentViewport, utf16Range: NSRange, with replacement: String) throws

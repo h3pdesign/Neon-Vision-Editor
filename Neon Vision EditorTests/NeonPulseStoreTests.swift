@@ -56,4 +56,24 @@ nonisolated final class NeonPulseStoreTests: XCTestCase {
         store.saveStatus(status)
         XCTAssertEqual(store.status(), status)
     }
+
+    @MainActor
+    func testInboxWriterCreatesAndAppendsMarkdownFile() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("NeonPulseInboxTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let first = NeonPulseCapture(text: "First note", createdAt: Date(timeIntervalSince1970: 10))
+        let second = NeonPulseCapture(text: "Second\nnote", createdAt: Date(timeIntervalSince1970: 20))
+
+        XCTAssertNotNil(NeonPulseInboxWriter.append(first, to: directory))
+        XCTAssertNotNil(NeonPulseInboxWriter.append(second, to: directory))
+
+        let contents = try String(contentsOf: directory.appendingPathComponent("Neon Inbox.md"), encoding: .utf8)
+        XCTAssertTrue(contents.hasPrefix("# Neon Inbox\n"))
+        XCTAssertTrue(contents.contains("- [ ] First note"))
+        XCTAssertTrue(contents.contains("- [ ] Second note"))
+    }
+
 }

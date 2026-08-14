@@ -1615,45 +1615,48 @@ private struct GitHistoryGraphCanvas: View {
             }
             .frame(width: canvasSize.width, height: canvasSize.height)
 
-            ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
-                Button {
-                    onSelect(entry)
-                } label: {
-                    HStack(spacing: 8) {
-                        Text(entry.shortHash)
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                            .frame(width: 56, alignment: .leading)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(entry.message)
-                                .font(.caption)
-                                .lineLimit(1)
-                            Text(graphSubtitle(for: entry))
-                                .font(.caption2)
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(entries.enumerated()), id: \.element.id) { _, entry in
+                    Button {
+                        onSelect(entry)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text(entry.shortHash)
+                                .font(.caption.monospaced())
                                 .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                                .frame(width: 56, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(entry.message)
+                                    .font(.caption)
+                                    .lineLimit(1)
+                                Text(graphSubtitle(for: entry))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
+                            changeStatView(entry)
+                            if entry.isMerge {
+                                Image(systemName: "arrow.triangle.merge")
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
+                            }
                         }
-                        Spacer(minLength: 0)
-                        changeStatView(entry)
-                        if entry.isMerge {
-                            Image(systemName: "arrow.triangle.merge")
-                                .font(.caption2)
-                                .foregroundStyle(.orange)
-                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .frame(width: cardWidth, height: rowHeight, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(entry.hash == selectedHash ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.08))
+                        )
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .frame(width: cardWidth, alignment: .leading)
-                    .contentShape(Rectangle())
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(entry.hash == selectedHash ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.08))
-                    )
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(graphAccessibilityLabel(for: entry))
                 }
-                .buttonStyle(.plain)
-                .position(x: graphWidth + (cardWidth / 2), y: rowY(index))
-                .accessibilityLabel(graphAccessibilityLabel(for: entry))
             }
+            .frame(width: cardWidth, alignment: .leading)
+            .offset(x: graphWidth, y: rowY(0) - (rowHeight / 2))
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
         .accessibilityElement(children: .contain)

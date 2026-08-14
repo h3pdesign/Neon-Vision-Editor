@@ -345,7 +345,8 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - Files below 100 MB remain editable. The app starts a lightweight file-loading profile at 2 MB and can enable Large File Mode earlier for documents with high character or line counts.
 - Large File Mode favors responsive opening, scrolling, and typing: full-document syntax analysis, minimap, preview, symbols, word count, and diff can be deferred or temporarily unavailable. The active mode and file size are shown in the editor status UI.
 - Choose **Standard** for normal processing, **Responsive** for chunked installation and deferred work, or **Plain Text** when an unstyled editor is the safest choice for an unusually large document.
-- The v1.4.0 text-rendering core uses a backend-neutral `EditorDocument` contract and a virtualized bounded viewport on macOS. The native editor renders the active window, requests new windows around the scroll anchor, preserves caret/selection positions, and rejects stale viewport generations instead of rebuilding the entire text buffer.
+- The v1.4.0 text-rendering core uses a backend-neutral `EditorDocument` contract and a virtualized bounded viewport on macOS. The renderer draws the active window, requests new windows around the scroll anchor, preserves caret/selection positions, and rejects stale viewport generations instead of rebuilding the entire text buffer.
+- macOS uses a native-free virtual renderer for every editable file. It draws only the bounded viewport with Core Text `CTLine` objects, caches visible line layouts, applies syntax colors only to visible lines, and swaps bounded windows around the scroll anchor. It does not use `NSTextView` or TextKit. iOS/iPadOS/visionOS retain their separate `UITextView` editor path.
 - Files at **100 MB or more** open as a clearly marked, read-only **Partial Open**. Neon reads only the first 4 MB, ending at a line boundary where possible; it never loads the full file into the editor buffer or permits saving the partial content over the source.
 - Broad Swift 6-ready syntax highlighting (including TeX/LaTeX), inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
 - Optional Code Minimap gives a compact file overview, click-to-jump navigation, and a draggable viewport marker without changing the default editor surface.
@@ -420,10 +421,10 @@ flowchart LR
   ACT["App Layer: user actions (toolbar/menu/shortcuts)"]
   VM["App Layer: EditorViewModel (@MainActor state owner)"]
   CMD["App Layer: serialized tab commands + resource identity"]
-  TEXT["Core: native NSTextView/UITextView editor bridges"]
+  TEXT["Core: virtual Core Text macOS renderer + UITextView iOS/iPadOS/visionOS bridge"]
   DOC["Core: document load/save + conflict pipeline"]
   FBD["Core: EditorDocument + file-backed bounded viewport"]
-  VTR["Core: virtual native text rendering + visible-range highlighting"]
+  VTR["Core: native-free Core Text viewport renderer + visible-range highlighting"]
   OBS["Core: NSFilePresenter open-document observation"]
   HL["Core: syntax highlighting + runtime limits"]
   STRUCT["Core: CSV/TSV, plist + crash-report modes"]
@@ -475,15 +476,16 @@ flowchart LR
 
   class Mac,Touch platform;
   class ACT,VM,CMD app;
-  class TEXT,DOC,OBS,HL,STRUCT,PREV,MINI,NAV,REMOTE,DESKTOP core;
+  class TEXT,DOC,FBD,VTR,OBS,HL,STRUCT,PREV,MINI,NAV,REMOTE,DESKTOP core;
   class STORE,PREFS,SEC,POLICY infra;
   class MAS,DIRECT distribution;
 ```
 
 - `EditorViewModel` is the single UI-facing orchestration point per window/scene.
 - Serialized tab commands separate a UI tab from the document resource it represents, preserving per-document cursor and viewport state across asynchronous loads and refreshes.
+- `EditorDocument` and the file-backed viewport layer form the document/rendering core for large editable files. The native-free Core Text renderer consumes bounded windows, preserves selection across replacements, and rejects stale generations before applying edits or rendering work.
 - Open local documents use `NSFilePresenter` events and bounded metadata/content checks. Clean buffers refresh in place; dirty buffers enter Keep Local, Reload from Disk, or Compare.
-- Native editor bridges own TextKit/UIKit allocation and scrolling. SwiftUI owns pane allocation, including the macOS wrapped source/preview split.
+- The macOS renderer owns Core Text allocation, input, selection, and virtual scrolling. The iOS/iPadOS/visionOS bridge owns UIKit text input. SwiftUI owns pane allocation, including the macOS wrapped source/preview split.
 - File access, parsing, diffing, structured snapshots, and other heavy work stay off the main actor; UI state mutations return to `@MainActor`.
 - Platform shells stay thin. visionOS shares the UIKit-family editor while adapting presentation for spatial layouts.
 - Remote sessions stay opt-in; macOS owns SSH and broker hosting while iPhone, iPad, and Apple Vision Pro attach as clients.

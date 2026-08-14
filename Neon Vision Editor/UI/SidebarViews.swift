@@ -54,8 +54,10 @@ struct SidebarView: View {
     let content: String
     let language: String
     let contentUTF16Length: Int?
+    let documentID: UUID?
     let translucentBackgroundEnabled: Bool
     let onItemSelected: (() -> Void)?
+    let onJumpToLine: ((Int) -> Void)?
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 #if os(macOS)
@@ -87,6 +89,9 @@ struct SidebarView: View {
             }
         }
         .listStyle(platformListStyle)
+#if os(iOS)
+        .environment(\.defaultMinListRowHeight, isCompactTOCWidth ? 28 : 44)
+#endif
         .scrollIndicators(.automatic)
         .scrollContentBackground(.hidden)
         .background(Color.clear)
@@ -132,7 +137,7 @@ struct SidebarView: View {
     }
 
     private var sidebarSurfaceStroke: Color {
-        colorScheme == .dark
+        return colorScheme == .dark
             ? Color.white.opacity(0.20)
             : Color.black.opacity(0.14)
     }
@@ -285,7 +290,9 @@ struct SidebarView: View {
 
     private var tocListRowInsets: EdgeInsets {
 #if os(iOS)
-        let verticalInset: CGFloat = isCompactTOCWidth ? 0 : 1
+        // Keep the compact row itself tight while separating adjacent entries
+        // by roughly 3 points to improve heading scanability.
+        let verticalInset: CGFloat = isCompactTOCWidth ? 1.5 : 1
         return EdgeInsets(
             top: verticalInset,
             leading: isCompactTOCWidth ? 6 : 0,
@@ -299,7 +306,7 @@ struct SidebarView: View {
 
     private var tocRowVerticalPadding: CGFloat {
 #if os(iOS)
-        isCompactTOCWidth ? 5 : 6
+        isCompactTOCWidth ? 2.5 : 6
 #else
         8
 #endif
@@ -355,8 +362,26 @@ struct SidebarView: View {
 
     private func jump(to item: TOCItem) {
         guard let lineOneBased = item.line, lineOneBased > 0 else { return }
+        if let onJumpToLine {
+            onJumpToLine(lineOneBased)
+            onItemSelected?()
+            return
+        }
         DispatchQueue.main.async {
-            NotificationCenter.default.post(name: .moveCursorToLine, object: lineOneBased)
+            var userInfo: [String: Any] = [:]
+            if let documentID {
+                userInfo[EditorCommandUserInfo.documentID] = documentID.uuidString
+            }
+#if os(macOS)
+            if let windowNumber = NSApp.keyWindow?.windowNumber {
+                userInfo[EditorCommandUserInfo.windowNumber] = windowNumber
+            }
+#endif
+            NotificationCenter.default.post(
+                name: .moveCursorToLine,
+                object: lineOneBased,
+                userInfo: userInfo
+            )
             onItemSelected?()
         }
     }
@@ -968,17 +993,25 @@ struct ProjectStructureSidebarView: View {
     let revealURL: URL?
     let gitFileStatusMap: [String: GitFileStatus]
     let embeddedHeader: AnyView?
-    var onLoadDirectory: ((URL) -> Void)? = nil
+    var onLoadDirectory: ((URL, @escaping @MainActor @Sendable () -> Void) -> Void)? = nil
+    var onExpandAllDirectories: ((@escaping @MainActor @Sendable () -> Void) -> Void)? = nil
     @State private var expandedDirectories: Set<String> = []
-    @State private var loadedDirectoryIDs: Set<String> = []
+    @SceneStorage("ProjectSidebarExpandedDirectories.v1") private var persistedExpansionState: String = ""
+    @State private var persistedExpansionByRoot: [String: [String]] = [:]
+    @State private var expansionPersistenceTask: Task<Void, Never>?
+    @State private var loadingDirectoryIDs: Set<String> = []
+    @State private var isExpandingAllDirectories = false
+    @State private var expandAllContinuationTask: Task<Void, Never>?
     @State private var hoveredNodeID: String? = nil
     @State private var fileIconStyleCache: [String: FileIconStyle] = [:]
+    @State private var recentProjectFolders: [RecentProjectFoldersStore.Item] = []
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 #if os(macOS)
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
 #endif
     @AppStorage("SettingsProjectSidebarDensity") private var sidebarDensityRaw: String = SidebarDensity.compact.rawValue
+    @AppStorage("SettingsProjectSidebarFontSize") private var sidebarFontSize: Double = 13
     @AppStorage("SettingsProjectSidebarAutoCollapseDeep") private var autoCollapseDeepFolders: Bool = true
     @AppStorage("SettingsProjectSidebarDisclosureSymbolStyle") private var disclosureSymbolStyleRaw: String = SidebarDisclosureSymbolStyle.chevron.rawValue
     @AppStorage("SettingsProjectSidebarSortOrder") private var sidebarSortOrderRaw: String = SidebarSortOrder.name.rawValue
@@ -1016,7 +1049,10 @@ struct ProjectStructureSidebarView: View {
         .padding(sidebarCardOuterPadding)
         .onAppear {
             refreshFileIconStyleCache()
+            recentProjectFolders = RecentProjectFoldersStore.items(limit: 5)
+            restorePersistedExpansionState()
             revealTargetIfNeeded()
+            loadExpandedUnloadedDirectories()
 #if os(macOS) && !APP_STORE_BUILD
             if activateTerminalToken != 0 {
                 activeTab = .terminal
@@ -1034,9 +1070,14 @@ struct ProjectStructureSidebarView: View {
 #endif
         }
         .onChange(of: revealPath) { _, _ in revealTargetIfNeeded() }
+        .onChange(of: rootFolderURL?.standardizedFileURL.path) { _, _ in
+            restorePersistedExpansionState()
+            loadExpandedUnloadedDirectories()
+        }
         .onChange(of: nodes.count) { _, _ in
             refreshFileIconStyleCache()
             revealTargetIfNeeded()
+            loadExpandedUnloadedDirectories()
         }
         .onChange(of: activateFindInFilesToken) { _, _ in
             activeTab = .search
@@ -1052,6 +1093,10 @@ struct ProjectStructureSidebarView: View {
             } else if activeTab == .diff {
                 activeTab = .files
             }
+        }
+        .onDisappear {
+            expansionPersistenceTask?.cancel()
+            persistExpansionStateNow()
         }
 #if os(macOS)
         .overlay(alignment: boundaryEdge == .leading ? .leading : .trailing) {
@@ -1162,9 +1207,9 @@ struct ProjectStructureSidebarView: View {
                         .accessibilityLabel(NSLocalizedString("Open folder", comment: "Project sidebar open folder accessibility label"))
                         .accessibilityHint(NSLocalizedString("Select a project folder to show in the sidebar", comment: "Project sidebar open folder accessibility hint"))
 
-                        if !RecentProjectFoldersStore.items(limit: 5).isEmpty {
+                        if !recentProjectFolders.isEmpty {
                             Menu {
-                                ForEach(RecentProjectFoldersStore.items(limit: 5)) { item in
+                                ForEach(recentProjectFolders) { item in
                                     Button {
                                         onOpenProjectFolder(item.url)
                                     } label: {
@@ -1301,6 +1346,37 @@ struct ProjectStructureSidebarView: View {
                         }
                         .padding(2)
                         .background(Color.secondary.opacity(0.07), in: Capsule(style: .continuous))
+
+                        HStack(spacing: 2) {
+                            Button {
+                                adjustSidebarFontSize(by: -1)
+                            } label: {
+                                sidebarActionIcon("textformat.size.smaller")
+                            }
+                            .buttonStyle(.borderless)
+                            .disabled(sidebarFontSize <= minimumSidebarFontSize)
+                            .help("Decrease Project Sidebar Font Size")
+                            .accessibilityLabel("Decrease Project Sidebar Font Size")
+
+                            Text("\(Int(sidebarFontSize.rounded()))")
+                                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .frame(minWidth: 22)
+                                .accessibilityLabel("Project Sidebar Font Size")
+                                .accessibilityValue("\(Int(sidebarFontSize.rounded())) points")
+
+                            Button {
+                                adjustSidebarFontSize(by: 1)
+                            } label: {
+                                sidebarActionIcon("textformat.size.larger")
+                            }
+                            .buttonStyle(.borderless)
+                            .disabled(sidebarFontSize >= maximumSidebarFontSize)
+                            .help("Increase Project Sidebar Font Size")
+                            .accessibilityLabel("Increase Project Sidebar Font Size")
+                        }
+                        .padding(2)
+                        .background(Color.secondary.opacity(0.07), in: Capsule(style: .continuous))
                     }
                     .font(.system(size: isCompactDensity ? 13 : 14, weight: .medium))
 
@@ -1338,14 +1414,24 @@ struct ProjectStructureSidebarView: View {
                 } else {
                     ForEach(visibleNodes) { node in
                         projectNodeView(node, level: 0)
-                            .macOverlayScrollerStyle(node.id == visibleNodes.first?.id)
                     }
                 }
             }
+            .transaction { transaction in
+                transaction.animation = nil
+            }
             .listStyle(platformListStyle)
-            .scrollIndicators(.automatic)
+#if os(iOS)
+            .environment(\.defaultMinListRowHeight, isCompactProjectLayout ? 24 : 44)
+#endif
+            // SwiftUI may repaint an automatic List scroller after the shared
+            // AppKit configurator applies the idle-hidden state. Keep the
+            // baseline hidden and let MacOverlayScrollerPolicy reveal it only
+            // for a live scroll.
+            .scrollIndicators(.never)
             .scrollContentBackground(.hidden)
             .background(Color.clear)
+            .macOverlayScrollerStyle(transparentBackground: true)
             .contextMenu {
                 if let rootFolderURL {
                     Button {
@@ -1623,7 +1709,13 @@ struct ProjectStructureSidebarView: View {
     @ViewBuilder
     private var sidebarContainerBorderOverlay: some View {
 #if os(macOS)
-        sidebarContainerShape.stroke(sidebarSurfaceStroke, lineWidth: 1.2)
+        if translucentBackgroundEnabled {
+            // Continue the editor/window material through the boundary instead
+            // of painting a bright outline or exposing a clear hole.
+            sidebarContainerShape.stroke(sidebarSurfaceFill, lineWidth: 1.2)
+        } else {
+            sidebarContainerShape.stroke(sidebarSurfaceStroke, lineWidth: 1.2)
+        }
 #elseif os(iOS)
         sidebarContainerShape.stroke(sidebarSurfaceStroke, lineWidth: 1.2)
 #else
@@ -1657,17 +1749,80 @@ struct ProjectStructureSidebarView: View {
     }
 
     private func expandAllDirectories() {
-        expandedDirectories = allDirectoryNodeIDs(in: nodes, level: 0)
+        isExpandingAllDirectories = true
+        if let onExpandAllDirectories {
+            onExpandAllDirectories {
+                Task { @MainActor in
+                    await Task.yield()
+                    guard isExpandingAllDirectories else { return }
+                    expandedDirectories = allDirectoryNodeIDs(in: nodes)
+                    persistExpansionState()
+                    isExpandingAllDirectories = false
+                }
+            }
+        } else {
+            expandedDirectories = allDirectoryNodeIDs(in: nodes)
+            persistExpansionState()
+            loadExpandedUnloadedDirectories()
+        }
     }
 
     private func collapseAllDirectories() {
+        isExpandingAllDirectories = false
+        expandAllContinuationTask?.cancel()
+        expandAllContinuationTask = nil
         expandedDirectories.removeAll()
+        persistExpansionState()
+    }
+
+    private func restorePersistedExpansionState() {
+        guard let rootPath = rootFolderURL?.standardizedFileURL.path else {
+            expandedDirectories.removeAll()
+            return
+        }
+        guard let data = persistedExpansionState.data(using: .utf8),
+              let stored = try? JSONDecoder().decode([String: [String]].self, from: data) else {
+            persistedExpansionByRoot = [:]
+            expandedDirectories.removeAll()
+            return
+        }
+        persistedExpansionByRoot = stored
+        expandedDirectories = Set(stored[rootPath] ?? [])
+    }
+
+    private func persistExpansionState() {
+        guard let rootPath = rootFolderURL?.standardizedFileURL.path else { return }
+        var stored = persistedExpansionByRoot
+        stored[rootPath] = expandedDirectories.sorted()
+        persistedExpansionByRoot = stored
+        expansionPersistenceTask?.cancel()
+        expansionPersistenceTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard !Task.isCancelled else { return }
+            persistExpansionStateNow()
+        }
+    }
+
+    private func persistExpansionStateNow() {
+        guard !persistedExpansionByRoot.isEmpty,
+              let data = try? JSONEncoder().encode(persistedExpansionByRoot),
+              let value = String(data: data, encoding: .utf8) else { return }
+        persistedExpansionState = value
+        expansionPersistenceTask = nil
     }
 
     private var filteredNodes: [ProjectTreeNode] {
+        // The filesystem loader already returns children in directory-first,
+        // case-insensitive name order. Reusing that tree is critical during
+        // disclosure navigation: rebuilding every loaded descendant on each
+        // SwiftUI body pass makes a folder tap proportional to the whole tree.
+        if fileFilter == .all, sidebarSortOrder == .name, sidebarGrouping == .none {
+            return nodes
+        }
         let filtered = fileFilter == .all ? nodes : nodes.compactMap(filteredNode(_:))
         return sortedNodes(filtered)
     }
+
 
     private var sidebarSortOrder: SidebarSortOrder {
         SidebarSortOrder(rawValue: sidebarSortOrderRaw) ?? .name
@@ -1679,7 +1834,12 @@ struct ProjectStructureSidebarView: View {
 
     private func sortedNodes(_ input: [ProjectTreeNode]) -> [ProjectTreeNode] {
         input.map { node in
-            ProjectTreeNode(url: node.url, isDirectory: node.isDirectory, children: sortedNodes(node.children))
+            ProjectTreeNode(
+                url: node.url,
+                isDirectory: node.isDirectory,
+                children: sortedNodes(node.children),
+                childrenLoaded: node.childrenLoaded
+            )
         }.sorted { lhs, rhs in
             if lhs.isDirectory != rhs.isDirectory { return lhs.isDirectory }
             if sidebarGrouping == .type && lhs.isDirectory == rhs.isDirectory {
@@ -1704,13 +1864,19 @@ struct ProjectStructureSidebarView: View {
         sidebarSortOrderRaw = SidebarSortOrder.name.rawValue
         sidebarGroupingRaw = SidebarGrouping.none.rawValue
         sidebarDensityRaw = SidebarDensity.compact.rawValue
+        sidebarFontSize = 13
     }
 
     private func filteredNode(_ node: ProjectTreeNode) -> ProjectTreeNode? {
         if node.isDirectory {
             let children = node.children.compactMap(filteredNode(_:))
             guard fileFilter == .all || !children.isEmpty else { return nil }
-            return ProjectTreeNode(url: node.url, isDirectory: true, children: children)
+            return ProjectTreeNode(
+                url: node.url,
+                isDirectory: true,
+                children: children,
+                childrenLoaded: node.childrenLoaded
+            )
         }
         return matchesFileFilter(node) ? node : nil
     }
@@ -1737,14 +1903,11 @@ struct ProjectStructureSidebarView: View {
         }
     }
 
-    private func allDirectoryNodeIDs(in treeNodes: [ProjectTreeNode], level: Int) -> Set<String> {
+    private func allDirectoryNodeIDs(in treeNodes: [ProjectTreeNode]) -> Set<String> {
         var result: Set<String> = []
         for node in treeNodes where node.isDirectory {
-            let shouldInclude = !autoCollapseDeepFolders || level < 2
-            if shouldInclude {
-                result.insert(node.id)
-            }
-            result.formUnion(allDirectoryNodeIDs(in: node.children, level: level + 1))
+            result.insert(node.id)
+            result.formUnion(allDirectoryNodeIDs(in: node.children))
         }
         return result
     }
@@ -1758,12 +1921,11 @@ struct ProjectStructureSidebarView: View {
                     set: { isExpanded in
                         if isExpanded {
                             expandedDirectories.insert(node.id)
-                            if node.children.isEmpty, !loadedDirectoryIDs.contains(node.id) {
-                                loadedDirectoryIDs.insert(node.id)
-                                onLoadDirectory?(node.url)
-                            }
+                            persistExpansionState()
+                            loadDirectoryIfNeeded(node)
                         } else {
                             expandedDirectories.remove(node.id)
+                            persistExpansionState()
                         }
                     }
                 )) {
@@ -1994,13 +2156,13 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var rowVerticalPadding: CGFloat {
-        if isCompactProjectLayout { return isCompactDensity ? 3.5 : 6 }
+        if isCompactProjectLayout { return isCompactDensity ? 3 : 5 }
         if isRegularPadLayout { return isCompactDensity ? 5 : 8 }
         return isCompactDensity ? 6 : 10
     }
 
     private var directoryRowVerticalPadding: CGFloat {
-        rowVerticalPadding + (isCompactDensity ? 1 : 2)
+        rowVerticalPadding + (isCompactProjectLayout ? 0.5 : (isCompactDensity ? 1 : 2))
     }
 
     private var rowHorizontalPadding: CGFloat {
@@ -2094,7 +2256,17 @@ struct ProjectStructureSidebarView: View {
     }
 
     private var rowFont: Font {
-        .system(size: isCompactDensity ? 13 : 14, weight: .medium)
+        .system(size: CGFloat(sidebarFontSize), weight: .medium)
+    }
+
+    private let minimumSidebarFontSize: Double = 10
+    private let maximumSidebarFontSize: Double = 28
+
+    private func adjustSidebarFontSize(by delta: Double) {
+        sidebarFontSize = min(
+            maximumSidebarFontSize,
+            max(minimumSidebarFontSize, sidebarFontSize + delta)
+        )
     }
 
     private var rowSelectedForegroundColor: Color {
@@ -2139,7 +2311,7 @@ struct ProjectStructureSidebarView: View {
     private func rowOuterSpacing(for level: Int, isDirectory: Bool) -> CGFloat {
 #if os(iOS)
         if isDirectory, level == 0 {
-            return isCompactDensity ? 0.25 : 0.5
+            return isCompactProjectLayout ? 0 : (isCompactDensity ? 0.25 : 0.5)
         }
 #else
         _ = level
@@ -2226,6 +2398,47 @@ struct ProjectStructureSidebarView: View {
         guard let revealPath else { return }
         guard let pathIDs = directoryPathIDs(for: revealPath, in: nodes) else { return }
         expandedDirectories.formUnion(pathIDs)
+        loadExpandedUnloadedDirectories()
+    }
+
+    private func loadExpandedUnloadedDirectories() {
+        for node in directoryNodes(in: nodes)
+        where expandedDirectories.contains(node.id) && !node.childrenLoaded {
+            loadDirectoryIfNeeded(node)
+        }
+    }
+
+    private func loadDirectoryIfNeeded(_ node: ProjectTreeNode) {
+        guard node.isDirectory,
+              !node.childrenLoaded,
+              loadingDirectoryIDs.insert(node.id).inserted else { return }
+        onLoadDirectory?(node.url) {
+            loadingDirectoryIDs.remove(node.id)
+            guard isExpandingAllDirectories else { return }
+            // The parent updates its tree state immediately before invoking
+            // this completion. Yield once so this child observes the new
+            // subtree, then continue the explicit Expand All session without
+            // adding a global tree observer to every SwiftUI body update.
+            scheduleExpandAllContinuation()
+        }
+    }
+
+    private func scheduleExpandAllContinuation() {
+        expandAllContinuationTask?.cancel()
+        expandAllContinuationTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            guard !Task.isCancelled, isExpandingAllDirectories else { return }
+            expandedDirectories.formUnion(allDirectoryNodeIDs(in: nodes))
+            persistExpansionState()
+            loadExpandedUnloadedDirectories()
+            expandAllContinuationTask = nil
+        }
+    }
+
+    private func directoryNodes(in treeNodes: [ProjectTreeNode]) -> [ProjectTreeNode] {
+        treeNodes.flatMap { node in
+            node.isDirectory ? [node] + directoryNodes(in: node.children) : []
+        }
     }
 
     private func directoryPathIDs(for targetPath: String, in treeNodes: [ProjectTreeNode]) -> [String]? {
@@ -2496,5 +2709,8 @@ struct ProjectTreeNode: Identifiable {
     let url: URL
     let isDirectory: Bool
     var children: [ProjectTreeNode]
+    /// A lazy directory begins unloaded even though its child array is empty.
+    /// This distinguishes it from an expanded directory that was read and is empty.
+    var childrenLoaded: Bool = false
     var id: String { url.path }
 }

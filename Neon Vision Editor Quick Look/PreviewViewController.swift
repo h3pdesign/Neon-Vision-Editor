@@ -23,6 +23,22 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         preferredContentSize = Self.preferredPreviewSize
     }
 
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        configurePreviewWindow()
+    }
+
+    private func configurePreviewWindow() {
+        guard let window = view.window else { return }
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.styleMask.insert(.fullSizeContentView)
+        window.isMovableByWindowBackground = true
+        window.hasShadow = true
+    }
+
     func preparePreviewOfFile(at url: URL) async throws {
         // Quick Look may reuse the controller across files; clear previous content.
         view.subviews.forEach { $0.removeFromSuperview() }

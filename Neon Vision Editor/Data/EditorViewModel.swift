@@ -205,6 +205,7 @@ private enum EditorLoadHelper {
                 return DecodedFileText(text: decoded, encoding: encoding)
             }
         }
+
         if allowsFullFileFallback,
            let fallback = try? String(contentsOf: fileURL, encoding: .utf8) {
             return DecodedFileText(text: fallback, encoding: .utf8)
@@ -328,6 +329,7 @@ private struct EditorFileLoadResult: Sendable {
     let isLargeCandidate: Bool
     let byteCount: Int
     let isPartialPreview: Bool
+    let fileBackedEncoding: TextEncodingDescriptor?
 }
 
 private struct EditorFileSavePayload: Sendable {
@@ -429,6 +431,18 @@ final class TabData: Identifiable {
         contentStorage = document
     }
 
+    /// Installs a freshly loaded local document without replacing its piece-table
+    /// source with the loader's compatibility string projection.
+    @discardableResult
+    func installLoadedFileBackedDocument(_ document: FileBackedTextDocument) -> Bool {
+        guard !isRemoteDocument else { return false }
+        contentStorage = document
+        document.markClean()
+        isDirty = false
+        contentRevision &+= 1
+        return true
+    }
+
 
     @discardableResult
     func replaceContentStorage(
@@ -444,7 +458,11 @@ final class TabData: Identifiable {
            contentStorage.string() == text {
             return false
         }
-        contentStorage.replaceAll(with: text)
+        do {
+            try contentStorage.replaceAll(with: text)
+        } catch {
+            return false
+        }
         contentStorage.markClean()
         contentRevision &+= 1
         if markDirty && !isDirty {
@@ -462,10 +480,14 @@ final class TabData: Identifiable {
         if safeLength == 0, replacement.isEmpty {
             return false
         }
-        contentStorage.replace(
-            utf16Range: NSRange(location: safeLocation, length: safeLength),
-            with: replacement
-        )
+        do {
+            try contentStorage.replace(
+                utf16Range: NSRange(location: safeLocation, length: safeLength),
+                with: replacement
+            )
+        } catch {
+            return false
+        }
         contentRevision &+= 1
         if markDirty && !isDirty {
             isDirty = true
@@ -1242,12 +1264,16 @@ class EditorViewModel {
             tabs[index].isPartialFilePreview = isPartialPreview
             tabs[index].fileByteCount = byteCount
             tabs[index].isReadOnlyPreview = isPartialPreview
-            tabs[index].attachFileBackedDocument(fileBackedDocument)
-            let didChange = tabs[index].replaceContentStorage(
-                with: content,
-                markDirty: false,
-                compareIfLengthAtMost: nil
-            )
+            let didChange: Bool
+            if let fileBackedDocument {
+                didChange = tabs[index].installLoadedFileBackedDocument(fileBackedDocument)
+            } else {
+                didChange = tabs[index].replaceContentStorage(
+                    with: content,
+                    markDirty: false,
+                    compareIfLengthAtMost: nil
+                )
+            }
             tabs[index].isLoadingContent = false
             if isExternalRefresh {
                 tabs[index].noteExternalContentRefresh()
@@ -1351,6 +1377,7 @@ class EditorViewModel {
         "mdown": "markdown",
         "mkdn": "markdown",
         "mdx": "markdown",
+        "typ": "typst",
         "tex": "tex",
         "latex": "tex",
         "bib": "tex",
@@ -1544,10 +1571,11 @@ class EditorViewModel {
     }
 
     // Incremental piece-table mutation path used by the editor delegates for large content responsiveness.
-    func applyTabContentEdit(tabID: UUID, range: NSRange, replacement: String) {
-        guard let index = tabIndex(for: tabID) else { return }
-        guard !tabs[index].isReadOnlyPreview else { return }
-        guard !tabs[index].isLoadingContent else { return }
+    @discardableResult
+    func applyTabContentEdit(tabID: UUID, range: NSRange, replacement: String) -> Bool {
+        guard let index = tabIndex(for: tabID) else { return false }
+        guard !tabs[index].isReadOnlyPreview else { return false }
+        guard !tabs[index].isLoadingContent else { return false }
 
         let outcome = applyTabCommand(
             .updateContent(
@@ -1559,9 +1587,9 @@ class EditorViewModel {
                 )
             )
         )
-        guard outcome.didChangeContent,
-              let commandIndex = outcome.index,
-              let contentRevision = outcome.contentRevision else { return }
+        guard outcome.didChangeContent else { return false }
+        guard let commandIndex = outcome.index else { return false }
+        guard let contentRevision = outcome.contentRevision else { return false }
 
         handleLanguageMetadataAfterMutation(
             tabID: tabID,
@@ -1569,18 +1597,20 @@ class EditorViewModel {
             contentRevision: contentRevision,
             contentSnapshot: nil
         )
+        return true
     }
 
+    @discardableResult
     func applyTabContentEdit(
         tabID: UUID,
         viewport: EditorDocumentViewport,
         range: NSRange,
         replacement: String
-    ) {
+    ) -> Bool {
         guard let index = tabIndex(for: tabID),
               !tabs[index].isReadOnlyPreview,
-              !tabs[index].isLoadingContent else { return }
-        guard tabs[index].replaceContent(in: viewport, range: range, with: replacement) else { return }
+              !tabs[index].isLoadingContent else { return false }
+        guard tabs[index].replaceContent(in: viewport, range: range, with: replacement) else { return false }
         recordTabStateMutation()
         handleLanguageMetadataAfterMutation(
             tabID: tabID,
@@ -1588,6 +1618,7 @@ class EditorViewModel {
             contentRevision: tabs[index].contentRevision,
             contentSnapshot: nil
         )
+        return true
     }
 
     // Manually sets language and locks automatic switching.
@@ -1669,6 +1700,10 @@ class EditorViewModel {
               !tabs[index].isReadOnlyPreview,
               !tabs[index].isLoadingContent else { return }
         let tab = tabs[index]
+        guard !tab.usesFileBackedStorage else {
+            fileEncodingErrorMessage = "Changing text encoding is not available for large virtual documents yet. Save using the original UTF-8 encoding."
+            return
+        }
         guard encoding.encodedData(for: tab.lineEnding.applying(to: tab.document.string())) != nil else {
             fileEncodingErrorMessage =
                 "\(encoding.displayName) cannot represent every character in this document. Choose a Unicode encoding to avoid data loss."
@@ -1864,6 +1899,7 @@ class EditorViewModel {
     func externalConflictComparisonSnapshot(tabID: UUID) async -> ExternalFileComparisonSnapshot? {
         guard let index = tabIndex(for: tabID),
               let url = tabs[index].fileURL else { return nil }
+        guard !tabs[index].usesFileBackedStorage else { return nil }
         let fileName = tabs[index].name
         let languageHint = tabs[index].language
         let isLargeCandidate = tabs[index].isLargeFileCandidate
@@ -1891,6 +1927,7 @@ class EditorViewModel {
     func compareCurrentTabAgainstDiskSnapshot(tabID: UUID) async -> DocumentComparisonSnapshot? {
         guard let index = tabIndex(for: tabID),
               let url = tabs[index].fileURL else { return nil }
+        guard !tabs[index].usesFileBackedStorage else { return nil }
         let tab = tabs[index]
         let tabName = tab.name
         let localContent = tab.document.string()
@@ -1921,6 +1958,7 @@ class EditorViewModel {
               leftTabID != rightTabID else { return nil }
         let left = tabs[leftIndex]
         let right = tabs[rightIndex]
+        guard !left.usesFileBackedStorage, !right.usesFileBackedStorage else { return nil }
         return DocumentComparisonSnapshot(
             title: "Compare Open Tabs",
             leftTitle: left.name,
@@ -1974,13 +2012,43 @@ class EditorViewModel {
         ]
 
         if panel.runModal() == .OK, let url = panel.url {
-            enqueueSave(tabID: tabID, to: url, updateFileURLOnSuccess: url, signpostName: "save_file_as")
+            if let document = tabs[index].fileBackedDocument {
+                saveFileBackedAs(tabID: tabID, document: document, to: url)
+            } else {
+                enqueueSave(tabID: tabID, to: url, updateFileURLOnSuccess: url, signpostName: "save_file_as")
+            }
         }
 #else
         // iOS/iPadOS: explicit Save As panel is not available here yet.
         // Keep document dirty so user can export/share via future document APIs.
         debugLog("Save As is currently only available on macOS.")
 #endif
+    }
+
+    private func saveFileBackedAs(tabID: UUID, document: FileBackedTextDocument, to destinationURL: URL) {
+        guard let index = tabIndex(for: tabID), tabs[index].fileBackedDocument === document else { return }
+        do {
+            try document.saveAtomically(to: destinationURL)
+            let replacement = try FileBackedTextDocument(
+                url: destinationURL,
+                knownUTF8Encoding: document.encodingDescriptor
+            )
+            let metadata = try destinationURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+            _ = tabs[index].installLoadedFileBackedDocument(replacement)
+            _ = applyTabCommand(
+                .markSaved(
+                    tabID: tabID,
+                    fileURL: destinationURL,
+                    fingerprint: nil,
+                    fileModificationDate: metadata.contentModificationDate,
+                    fileEncodingRawValue: replacement.encodingDescriptor.encodingRawValue,
+                    fileByteCount: metadata.fileSize
+                )
+            )
+            pendingExternalFileConflict = nil
+        } catch {
+            fileEncodingErrorMessage = "Couldn’t save \(destinationURL.lastPathComponent). The document was left unchanged. \(error.localizedDescription)"
+        }
     }
 
     func saveFileAs(tab: TabData) {
@@ -2793,7 +2861,7 @@ class EditorViewModel {
             "m", "mm", "cs", "json", "jsonc", "json5", "ndjson", "md", "markdown", "env", "proto",
             "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh", "fish", "pl", "pm", "lua", "r",
             "tf", "tfvars", "hcl", "xcconfig", "strings", "stringsdict", "jsx",
-            "tex", "latex", "bib", "sty", "cls", "vasp", "isoviz", "upf", "xyz", "xsf", "png", "pdf"
+            "typ", "tex", "latex", "bib", "sty", "cls", "vasp", "isoviz", "upf", "xyz", "xsf", "png", "pdf"
         ]
         if knownSupportedExtensions.contains(ext) {
             return true
@@ -2852,8 +2920,39 @@ class EditorViewModel {
               url.isFileURL,
               !isRemote,
               !isPartialPreview,
-              encoding.identifier == .utf8 else { return false }
+              encoding.identifier == .utf8 ||
+              encoding.identifier == .utf8WithBOM ||
+              encoding.identifier == .utf16LittleEndian ||
+              encoding.identifier == .utf16LittleEndianWithBOM ||
+              encoding.identifier == .utf16BigEndian ||
+              encoding.identifier == .utf16BigEndianWithBOM ||
+              encoding.identifier == .isoLatin1 ||
+              encoding.identifier == .isoLatin5 ||
+              encoding.identifier == .windowsCP1252 ||
+              encoding.identifier == .windowsCP1251 ||
+              encoding.identifier == .macOSRoman ||
+              encoding.identifier == .ascii else { return false }
         return true
+    }
+
+    nonisolated static func boundedUTF8Encoding(from data: Data) -> TextEncodingDescriptor? {
+        guard let encoding = FileBackedTextDocument.boundedEncoding(from: data) else { return nil }
+        return encoding.identifier == .utf8 || encoding.identifier == .utf8WithBOM ? encoding : nil
+    }
+
+
+    nonisolated static func boundedLoadEncodingForTesting(
+        from url: URL,
+        languageHint: String? = nil,
+        preferredEncoding: TextEncodingDescriptor? = nil
+    ) async throws -> TextEncodingDescriptor? {
+        let result = try await loadFileResult(
+            from: url,
+            extLangHint: languageHint,
+            isLargeCandidate: true,
+            preferredEncoding: preferredEncoding
+        )
+        return result.fileBackedEncoding
     }
 
     private nonisolated static func loadFileResult(
@@ -2885,7 +2984,8 @@ class EditorViewModel {
                     fileModificationDate: initialModificationDate,
                     isLargeCandidate: false,
                     byteCount: totalByteCount,
-                    isPartialPreview: true
+                    isPartialPreview: true,
+                    fileBackedEncoding: nil
                 )
             }
             let boundedPreviewLimit = EditorLoadHelper.boundedPreviewLimit(
@@ -2893,6 +2993,48 @@ class EditorViewModel {
                 byteCount: totalByteCount
             )
             let isPartialPreview = totalByteCount >= EditorLoadHelper.partialOpenByteThreshold || boundedPreviewLimit != nil
+
+            if isLargeCandidate, !isPartialPreview {
+                let prefix = try EditorLoadHelper.partialFileData(from: url, maximumByteCount: 64_000)
+                let encoding = preferredEncoding ?? FileBackedTextDocument.boundedEncoding(from: prefix)
+                if let encoding,
+                   Self.isFileBackedEligible(
+                       url: url,
+                       encoding: encoding,
+                       isRemote: false,
+                       isPartialPreview: false
+                   ) {
+                    return EditorFileLoadResult(
+                        content: "",
+                        fileEncodingRawValue: encoding.encodingRawValue,
+                        fileEncoding: encoding,
+                        lineEnding: prefix.contains(13) ? .crlf : .lf,
+                        detectedLanguage: extLangHint ?? "plain",
+                        languageLocked: extLangHint != nil,
+                        fingerprint: nil,
+                        fileModificationDate: initialModificationDate,
+                        isLargeCandidate: true,
+                        byteCount: totalByteCount,
+                        isPartialPreview: false,
+                        fileBackedEncoding: encoding
+                    )
+                }
+                let preview = String(decoding: prefix, as: UTF8.self)
+                return EditorFileLoadResult(
+                    content: preview + "\n\n[Large file preview only: encoding is not supported by the bounded editor.]\n",
+                    fileEncodingRawValue: TextEncodingDescriptor.utf8.encodingRawValue,
+                    fileEncoding: .utf8,
+                    lineEnding: prefix.contains(13) ? .crlf : .lf,
+                    detectedLanguage: "plain",
+                    languageLocked: false,
+                    fingerprint: nil,
+                    fileModificationDate: initialModificationDate,
+                    isLargeCandidate: true,
+                    byteCount: totalByteCount,
+                    isPartialPreview: true,
+                    fileBackedEncoding: nil
+                )
+            }
 
             let data: Data
             if isPartialPreview {
@@ -2947,7 +3089,8 @@ class EditorViewModel {
                 fileModificationDate: initialModificationDate,
                 isLargeCandidate: isPartialPreview || data.count >= EditorLoadHelper.largeFileCandidateByteThreshold,
                 byteCount: max(totalByteCount, data.count),
-                isPartialPreview: isPartialPreview
+                isPartialPreview: isPartialPreview,
+                fileBackedEncoding: nil
             )
         }.value
     }
@@ -3017,8 +3160,16 @@ class EditorViewModel {
         ),
         result.byteCount >= EditorLoadHelper.largeFileCandidateByteThreshold,
         let fileURL = loadedTab?.fileURL else { return nil }
+        if let fileBackedEncoding = result.fileBackedEncoding {
+            return try? FileBackedTextDocument(url: fileURL, knownEncoding: fileBackedEncoding)
+        }
         return try? FileBackedTextDocument(url: fileURL)
     }()
+
+    if result.fileBackedEncoding != nil, fileBackedDocument == nil {
+        await markTabLoadFailed(tabID: tabID)
+        return
+    }
 
         _ = await dispatchTabCommandSerialized(
             .applyLoadedTabState(

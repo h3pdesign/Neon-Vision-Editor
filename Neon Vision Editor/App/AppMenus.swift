@@ -29,7 +29,7 @@ struct NeonVisionMacAppCommands: Commands {
 
     private static let languageOptions = [
         "swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby",
-        "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html",
+        "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "typst",
         "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml",
         "toml", "nix", "eml", "csv", "ini", "vim", "log", "ipynb", "markdown", "tex", "bash", "zsh", "powershell",
         "standard", "plain"
@@ -445,11 +445,18 @@ struct NeonVisionMacAppCommands: Commands {
             }
             .disabled(!hasSelectedTab)
 
+            Button("Structure Text as JSON…") {
+                post(.structureTextAsJSONRequested)
+            }
+            .disabled(!hasSelectedTab)
+
+#if !APP_STORE_BUILD
             Divider()
 
             Button("Sidebar Terminal") {
                 post(.showIntegratedTerminalRequested)
             }
+#endif
 
             Divider()
 
@@ -597,6 +604,10 @@ struct NeonVisionMacAppCommands: Commands {
         Task {
             let current = activeEditorViewModel()
             guard let tab = current.selectedTab else { return }
+            guard tab.document.storageKind != .fileBacked else {
+                current.fileEncodingErrorMessage = "AI suggestions are unavailable for large file-backed documents. Use a bounded selection or open a smaller copy."
+                return
+            }
 
             let contentPrefix = String(tab.document.string().prefix(1000))
             let prompt = "Suggest improvements for this \(tab.language) code: \(contentPrefix)"
@@ -715,6 +726,7 @@ struct NeonVisionMacAppCommands: Commands {
         case "log": return "Log"
         case "ipynb": return "Jupyter Notebook"
         case "tex": return "TeX"
+        case "typst": return "Typst"
         case "html": return "HTML"
         case "expressionengine": return "ExpressionEngine"
         case "css": return "CSS"

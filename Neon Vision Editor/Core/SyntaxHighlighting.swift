@@ -1,8 +1,5 @@
 import SwiftUI
 import Foundation
-#if os(macOS)
-import AppKit
-#endif
 
 
 
@@ -327,35 +324,6 @@ nonisolated func fastHTMLSyntaxColorRanges(
     return out
 }
 
-#if os(macOS)
-@MainActor
-@discardableResult
-func applyMacSyntaxForegroundColors(
-    to textView: NSTextView,
-    in range: NSRange,
-    coloredRanges: [(NSRange, Color)]
-) -> Bool {
-    guard let layoutManager = textView.layoutManager,
-          let storage = textView.textStorage,
-          isSyntaxHighlightRangeValid(range, utf16Length: storage.length) else {
-        return false
-    }
-
-    layoutManager.removeTemporaryAttribute(.foregroundColor, forCharacterRange: range)
-    for (tokenRange, color) in coloredRanges {
-        guard isSyntaxHighlightRangeValid(tokenRange, utf16Length: storage.length) else { continue }
-        layoutManager.addTemporaryAttribute(
-            .foregroundColor,
-            value: NSColor(color),
-            forCharacterRange: tokenRange
-        )
-    }
-    layoutManager.invalidateDisplay(forCharacterRange: range)
-    textView.needsDisplay = true
-    return true
-}
-#endif
-
 struct SyntaxEmphasisPatterns: Sendable {
     let keyword: [String]
     let comment: [String]
@@ -380,6 +348,8 @@ private nonisolated func canonicalSyntaxLanguage(_ language: String) -> String {
         return "expressionengine"
     case "latex", "bibtex":
         return "tex"
+    case "typ":
+        return "typst"
     case "yml":
         return "yaml"
     default:
@@ -890,6 +860,17 @@ func getSyntaxPatterns(
             #"\$[^$\n]+\$|\$\$[\s\S]*?\$\$"#: colors.string,
             #"(?m)%.*$"#: colors.comment,
             #"\b[0-9]+(\.[0-9]+)?\b"#: colors.number
+        ]
+    case "typst":
+        return [
+            #"(?m)^\s*//.*$"#: colors.comment,
+            #"#[A-Za-z_][A-Za-z0-9_-]*"#: colors.keyword,
+            #"\$\$[\s\S]*?\$\$|\$[^$\n]+\$"#: colors.string,
+            #"\[[^\]\n]*\]"#: colors.attribute,
+            #"\"(?:[^\"\\]|\\.)*\""#: colors.string,
+            #"\b(?:canvas|draw|line|rect|circle|content|group|path|stroke|fill)\b"#: colors.builtin,
+            #"\b(?:true|false|auto|none)\b"#: colors.atom,
+            #"\b[0-9]+(?:\.[0-9]+)?(?:pt|mm|cm|in|em|%|deg)?\b"#: colors.number
         ]
     case "bash":
         return [

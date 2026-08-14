@@ -1,6 +1,7 @@
 import Foundation
 import CoreFoundation
 
+
 /// The concrete byte representation used for an open text document.
 ///
 /// `String.Encoding` alone cannot distinguish UTF-8 with a byte-order mark from
@@ -93,10 +94,9 @@ struct TextEncodingDescriptor: Identifiable, Hashable, Sendable {
         if data.starts(with: [0xFF, 0xFE]) { return Self(identifier: .utf16LittleEndianWithBOM) }
         if data.starts(with: [0xFE, 0xFF]) { return Self(identifier: .utf16BigEndianWithBOM) }
 
+        if String(data: data, encoding: .utf8) != nil { return .utf8 }
         for descriptor in all where descriptor.byteOrderMark == nil {
-            if String(data: data, encoding: descriptor.encoding) != nil {
-                return descriptor
-            }
+            if descriptor.decode(data) != nil { return descriptor }
         }
         return nil
     }

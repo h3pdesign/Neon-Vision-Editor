@@ -5,6 +5,19 @@ import UniformTypeIdentifiers
 import AppKit
 #endif
 
+struct NeonPulseInboxNotificationModifier: ViewModifier {
+    let viewModel: EditorViewModel
+
+    func body(content: Content) -> some View {
+        content.onReceive(NotificationCenter.default.publisher(for: .neonPulseInboxDidReceive)) { notification in
+            guard let url = notification.object as? URL else { return }
+            DispatchQueue.main.async {
+                _ = viewModel.openFile(url: url)
+            }
+        }
+    }
+}
+
 // MARK: - Search Panel Environment
 
 struct SearchPanelTranslucencyOverrideKey: EnvironmentKey {
@@ -4133,13 +4146,17 @@ extension Notification.Name {
     static let openRecentFileRequested = Notification.Name("openRecentFileRequested")
     static let recentFilesDidChange = Notification.Name("recentFilesDidChange")
     static let sharedImportsDidChange = Notification.Name("sharedImportsDidChange")
+    static let neonPulseInboxDidReceive = Notification.Name("neonPulseInboxDidReceive")
     static let sharedImportURLRequested = Notification.Name("sharedImportURLRequested")
     static let formatJSONDocumentRequested = Notification.Name("formatJSONDocumentRequested")
     static let combineJSONLinesRequested = Notification.Name("combineJSONLinesRequested")
     static let convertTextToMarkdownRequested = Notification.Name("convertTextToMarkdownRequested")
+    static let structureTextAsJSONRequested = Notification.Name("structureTextAsJSONRequested")
     static let showIntegratedTerminalRequested = Notification.Name("showIntegratedTerminalRequested")
     static let toggleCodeMinimapRequested = Notification.Name("toggleCodeMinimapRequested")
     static let editorViewportDidChange = Notification.Name("editorViewportDidChange")
+    static let requestEditorViewport = Notification.Name("requestEditorViewport")
+    static let virtualEditorTextDidChange = Notification.Name("virtualEditorTextDidChange")
     static let markdownPreviewViewportDidChange = Notification.Name("markdownPreviewViewportDidChange")
     static let scrollEditorViewportToFraction = Notification.Name("scrollEditorViewportToFraction")
 }
@@ -4221,6 +4238,8 @@ enum EditorCommandUserInfo {
     nonisolated static let replacementText = "replacementText"
     nonisolated static let bracketToken = "bracketToken"
     nonisolated static let sourceTextView = "sourceTextView"
+    nonisolated static let completionContext = "completionContext"
+    nonisolated static let completionCaretOffset = "completionCaretOffset"
     static let updaterCheckNow = "updaterCheckNow"
 }
 

@@ -100,27 +100,6 @@ struct SyntaxHighlightingRegressionRunner {
             "Large HTML visible range produced an invalid attribute range."
         )
 
-        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 640, height: 320))
-        textView.isRichText = false
-        textView.string = extendedHTML
-        require(
-            applyMacSyntaxForegroundColors(
-                to: textView,
-                in: NSRange(location: 0, length: extendedText.length),
-                coloredRanges: extendedRanges
-            ),
-            "AppKit syntax colors could not be applied."
-        )
-        let tagLocation = extendedText.range(of: "section").location
-        require(
-            textView.layoutManager?.temporaryAttribute(
-                .foregroundColor,
-                atCharacterIndex: tagLocation,
-                effectiveRange: nil
-            ) is NSColor,
-            "Plain-text NSTextView did not retain its temporary syntax color."
-        )
-
         require(isSyntaxHighlightRangeValid(NSRange(location: 0, length: 1), utf16Length: 1), "Valid highlight range was rejected.")
         require(!isSyntaxHighlightRangeValid(NSRange(location: 1, length: 1), utf16Length: 1), "Out-of-bounds highlight range was accepted.")
 

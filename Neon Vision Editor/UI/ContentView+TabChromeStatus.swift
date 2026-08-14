@@ -109,22 +109,18 @@ extension ContentView {
     @ViewBuilder
     var iOSUnifiedTopChromeHost: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    if isIPadToolbarLayout {
-                        iPadUnifiedToolbarRow
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                    } else {
-                        iPhoneUnifiedToolbarRow
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                    }
-                    tabBarView
-                }
-                if shouldPlaceMarkdownFormattingBelowTabs {
-                    iPhoneMarkdownFormattingTopChrome
-                }
+            if isIPadToolbarLayout {
+                iPadUnifiedToolbarRow
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+            } else {
+                iPhoneUnifiedToolbarRow
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+            }
+            tabBarView
+            if shouldPlaceMarkdownFormattingBelowTabs {
+                iPhoneMarkdownFormattingTopChrome
             }
         }
         .overlay(alignment: .bottom) {

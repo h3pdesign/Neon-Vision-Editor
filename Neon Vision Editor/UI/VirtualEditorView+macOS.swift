@@ -168,9 +168,16 @@ struct VirtualEditorView: NSViewRepresentable {
 
 enum VirtualEditorViewportGeometry {
     static func visibleSize(contentBounds: CGSize, scrollViewBounds: CGSize) -> CGSize {
-        CGSize(
-            width: max(contentBounds.width, scrollViewBounds.width, 1),
-            height: max(contentBounds.height, scrollViewBounds.height, 1)
+        // During a SwiftUI split-pane resize, AppKit can report the previous
+        // clip-view bounds while the scroll view has already received its new
+        // allocation. Prefer that allocation so wrapped fragments are rebuilt
+        // for the narrower editor pane. The clip view remains the fallback
+        // while the scroll view is not laid out yet.
+        let width = scrollViewBounds.width > 1 ? scrollViewBounds.width : contentBounds.width
+        let height = scrollViewBounds.height > 1 ? scrollViewBounds.height : contentBounds.height
+        return CGSize(
+            width: max(width, 1),
+            height: max(height, 1)
         )
     }
 }

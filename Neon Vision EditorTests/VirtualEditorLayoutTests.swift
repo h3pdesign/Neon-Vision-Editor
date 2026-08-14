@@ -100,6 +100,15 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(visibleSize, CGSize(width: 900, height: 700))
     }
 
+    func testPreviewSplitViewportUsesNewScrollViewWidthWhenClipViewIsStale() {
+        let visibleSize = VirtualEditorViewportGeometry.visibleSize(
+            contentBounds: CGSize(width: 900, height: 700),
+            scrollViewBounds: CGSize(width: 420, height: 700)
+        )
+
+        XCTAssertEqual(visibleSize, CGSize(width: 420, height: 700))
+    }
+
     func testCommandArrowNavigationRemainsWithAppKit() {
         XCTAssertTrue(VirtualEditorKeyRouting.shouldInterpretArrow(
             modifiers: [.command]

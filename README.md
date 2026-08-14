@@ -57,7 +57,7 @@
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.4.1** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-08-14** for latest release **v1.4.1**
+> Last updated (README): **2026-08-15** for latest release **v1.4.1**
 
 ## What's New in v1.4.0 and v1.4.1
 
@@ -164,7 +164,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=7906&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=7901&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>

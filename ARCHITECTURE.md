@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-08-12 (v1.4.0 file-backed large-document editing)
+Last updated: 2026-08-14 (v1.4.1 virtual-editor performance architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -45,7 +45,7 @@ The following ownership boundaries are intentional. Preserve them when adding a 
 - `EditorViewModel` is owned by each editor window. It owns document/tab state and receives file, save, refresh, and selection commands. A detached macOS window creates its own model; process-wide services must not hold a selected tab or caret.
 - `ContentView` owns scene-local presentation state: sheets, split visibility, project navigation, transient find/completion state, and the bridges from user actions to the model. Its extension files group those presentations, but do not change the ownership boundary.
 - PDF note state (`pdfNoteSourceURL`, `pdfNoteTabID`) and the optional existing Markdown preview are also scene-local. The source PDF remains the preview document while its attached note is selected in the editor pane.
-- `CustomTextEditor` and its coordinator own native-control lifecycle state only: delegate callbacks, transient TextKit work, visible-range rendering, and deferred highlight/install tasks. Every `updateNSView`/`updateUIView` refreshes the coordinator's `parent`; a configuration change must update the existing control rather than recreate it.
+- `CustomTextEditor` and its coordinator own UIKit-family text-control lifecycle state only: delegate callbacks, transient TextKit work, visible-range rendering, and deferred highlight/install tasks. `VirtualEditorView` owns the separate macOS Core Text viewport lifecycle. Configuration changes update either native control in place rather than recreating it.
 - `@AppStorage` values are durable user preferences, not document or window state. A key may be read by Settings, `ContentView`, and a native editor bridge, so rename or migration work must update all consumers. API tokens remain outside this schema in `SecureTokenStore`/Keychain.
 - Notifications carry window-scoped editor commands only when they include a window number. Broadcast notifications are reserved for process-wide updates such as preference changes.
 
@@ -85,7 +85,7 @@ Project-sidebar refresh is a separate operation. It reports visible progress on 
 
 The editor uses native text controls wrapped for SwiftUI:
 
-- macOS: `UI/EditorTextView+macOS.swift` wraps `NSTextView` in `NSScrollView` via `NSViewRepresentable`.
+- macOS: `UI/VirtualEditorView+macOS.swift` provides the production Core Text viewport renderer via `NSViewRepresentable`; it does not bind a full document string into SwiftUI.
 - iOS/iPadOS/visionOS: `UI/EditorTextView+iOS.swift` wraps `UITextView` via `UIViewRepresentable`.
 - Shared editor helpers and cross-platform state contracts live in `UI/EditorTextView.swift`.
 - macOS native behavior and draw-time overlays live in `UI/EditorTextView+macOSTextView.swift`.
@@ -96,7 +96,7 @@ The v1.4.0 editor uses a backend-neutral document core plus a virtualized native
 - `Data/EditorDocument.swift` defines `EditorDocumentStorageKind`, `EditorDocumentViewport`, and the bounded-window/edit contract shared by in-memory and file-backed documents.
 - `Data/FileBackedTextDocument.swift` keeps the unchanged source on disk, represents edits as replacement pieces, and streams atomic saves without materializing the full document for every mutation.
 - `Data/FileBackedTextViewportAdapter.swift` bridges bounded document windows into the editor layer.
-- The macOS `EditorTextView` coordinator installs only the active bounded viewport, translates the caret and selection when the window moves, and rejects stale viewport generations. Scrolling requests a new window around the anchor line instead of rebuilding the complete `NSTextView` content.
+- The macOS `VirtualEditorView` installs only the active bounded viewport, translates caret and selection when the window moves, and rejects stale viewport generations. A file-backed document completes its line index before activation; scrolling only reads and decodes the bounded window around its anchor line.
 - Virtualized viewport syntax highlighting and minimap updates are anchored to the visible range. Generation checks prevent late highlight or viewport work from replacing newer content or restoring stale selection state.
 
 This is a rendering and document-storage boundary, not a second editor implementation: small documents retain the ordinary native TextKit path, while large editable documents use the bounded virtual path and continue to save through the same document lifecycle and conflict pipeline.
@@ -109,7 +109,8 @@ Important editor invariants:
 - Line-number mode preserves AppKit's ruler-aware leading document origin; zero is not always the correct horizontal origin when the vertical ruler is visible.
 - Document installs distinguish resource switches, completed file loads, and external in-place edits. External refresh preserves the viewport, while a real resource switch restores that document's stored caret/viewport state.
 - iOS/iPadOS caret restoration is separate from focus restoration. Switching tabs restores position without making the editor first responder or showing the keyboard.
-- SwiftUI editor identity is tied to the tab, not the syntax language, so changing language or formatting settings updates the representable in place. The macOS virtualized bridge likewise updates the existing native control and swaps only its bounded viewport.
+- On iPhone, editor scrolling uses UIKit's `.onDrag` keyboard dismissal; iPad retains its non-dismissal behavior for pointer and hardware-keyboard workflows.
+- SwiftUI editor identity is tied to the tab, not the syntax language, so changing language or formatting settings updates the representable in place. The macOS virtualized bridge likewise updates the existing native control and swaps only its bounded viewport. It never relies on a compatibility `Binding<String>`.
 - The current editor intentionally uses TextKit 1 layout APIs for its line-number and overlay drawing paths. Writing Tools are disabled because the editor is plain-text/source-oriented. Treat a future TextKit 2 migration as a cross-platform editor project, not an isolated rendering cleanup.
 
 ## Highlighting, Minimap, and Scroll Performance
@@ -120,6 +121,7 @@ Important editor invariants:
 - Geometry-triggered macOS redraw is coalesced and limited to the visible character range for larger documents. Ordinary scrolling must not force full TextKit layout or display invalidation.
 - Minimap snapshots are keyed by tab, content revision, external-refresh revision, language, and large-file mode. Viewport publication uses thresholds so scrolling does not republish insignificant changes.
 - Line-number invalidation remains viewport-focused and must not retile or force editor-wide layout from draw callbacks.
+- Tab state publishes targeted structure, content, metadata, and persistence revisions. Selection, bounded viewport loading, SwiftUI updates, document projection, minimap/TOC/preview work, and first draw are signposted; completed tab-switch samples are retained locally for comparison.
 - Files below the 100 MB partial-open boundary remain editable. Responsive mode can use bounded viewport installation and deferred work for large editable documents; edits are applied through the active viewport and generation-checked rather than rebuilding a full document string. Files at or above 100 MB open as a clearly marked, read-only partial preview of the first 4 MB and cannot overwrite the source. Chunked installs and runtime limits protect typing, highlighting, undo, and memory use without imposing read-only mode on ordinary large editable files.
 
 ## Syntax, Language, Crash Reports, and Completion

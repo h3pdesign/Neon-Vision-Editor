@@ -69,7 +69,7 @@
 
 ### v1.4.1 Highlights
 
-- Uses a bounded macOS virtual editor with viewport-aware editing, selection, and scrolling for file-backed documents.
+- Uses a bounded macOS virtual editor with pre-indexed file-backed documents, viewport-aware editing, selection, and scrolling.
 - Adds project-sidebar expansion persistence, lazy directory loading, adjustable text size, and improved overlay scrollers.
 - Adds Typst templates and a safe plain-text-to-JSON structuring workflow.
 
@@ -358,11 +358,12 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - Large File Mode favors responsive opening, scrolling, and typing: full-document syntax analysis, minimap, preview, symbols, word count, and diff can be deferred or temporarily unavailable. The active mode and file size are shown in the editor status UI.
 - Choose **Standard** for normal processing, **Responsive** for chunked installation and deferred work, or **Plain Text** when an unstyled editor is the safest choice for an unusually large document.
 - The v1.4.0 text-rendering core uses a backend-neutral `EditorDocument` contract and a virtualized bounded viewport on macOS. The renderer draws the active window, requests new windows around the scroll anchor, preserves caret/selection positions, and rejects stale viewport generations instead of rebuilding the entire text buffer.
-- macOS uses a native-free virtual renderer for every editable file. It draws only the bounded viewport with Core Text `CTLine` objects, caches visible line layouts, applies syntax colors only to visible lines, and swaps bounded windows around the scroll anchor. It does not use `NSTextView` or TextKit. iOS/iPadOS/visionOS retain their separate `UITextView` editor path.
+- macOS uses a native-free virtual renderer for every editable file. It draws only the bounded viewport with Core Text `CTLine` objects, caches visible line layouts, applies syntax colors only to visible lines, and swaps bounded windows around the scroll anchor. File-backed documents finish indexing before this renderer activates, so scrolling never grows an index or projects a complete document string. iOS/iPadOS/visionOS retain their separate `UITextView` editor path.
 - Files at **100 MB or more** open as a clearly marked, read-only **Partial Open**. Neon reads only the first 4 MB, ending at a line boundary where possible; it never loads the full file into the editor buffer or permits saving the partial content over the source.
 - Broad Swift 6-ready syntax highlighting (including TeX/LaTeX), inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
 - Optional Code Minimap gives a compact file overview, click-to-jump navigation, and a draggable viewport marker without changing the default editor surface.
 - Invisible-character markers on iPhone and iPad render in a lightweight overlay so spaces, tabs, and newlines stay aligned while scrolling.
+- Scrolling the iPhone editor dismisses the software keyboard; iPad keeps the keyboard available while scrolling for its pointer and hardware-keyboard workflows.
 - Trackpad pinch on macOS and touch pinch on iPhone, iPad, and Apple Vision Pro adjust editor font size while retaining the normal font controls.
 - Optional Vim workflow support and starter templates for common languages.
 

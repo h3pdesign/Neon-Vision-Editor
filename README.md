@@ -69,9 +69,11 @@
 
 ### v1.4.1 Highlights
 
-- Uses a bounded macOS virtual editor with pre-indexed file-backed documents, viewport-aware editing, selection, and scrolling.
+- Uses a bounded macOS virtual editor with viewport-aware editing, selection, and scrolling for file-backed documents.
 - Adds project-sidebar expansion persistence, lazy directory loading, adjustable text size, and improved overlay scrollers.
 - Adds Typst templates and a safe plain-text-to-JSON structuring workflow.
+- Keeps every named iPhone and iPad toolbar-preset action directly reachable in the horizontal toolbar.
+- Adds pinch-to-zoom sizing for project-sidebar file items.
 
 ### v1.4.0 Context
 

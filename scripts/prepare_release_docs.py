@@ -6,6 +6,7 @@ Usage:
   scripts/prepare_release_docs.py v0.4.6 --date 2026-02-12
   scripts/prepare_release_docs.py 0.4.6 --date 2026-02-12
   scripts/prepare_release_docs.py v0.4.6 --check
+  scripts/prepare_release_docs.py v0.4.6 --preflight
 """
 
 from __future__ import annotations
@@ -477,48 +478,48 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 
 LOCALIZED_TIMELINE_COPY = {
-    "de": [
-        ("Quick Look und Einstellungen werden stabiler", "Verfeinert Quick Look und die Größenanpassung des macOS-Einstellungsfensters für einen ruhigeren Arbeitsablauf.", ["Quick Look", "Einstellungen", "macOS"]),
-        ("Toolbar und Quick Look bleiben lesbar", "Stellt die Kurzbezeichnungen der Toolbar wieder her und bündelt Quick Look in einem eigenständigen, überprüfbaren Build-Schema.", ["Symbolleiste", "Quick Look", "macOS"]),
-        ("Große Dokumente bleiben flüssig", "Verbessert den virtuellen macOS-Editor, die Projektnavigation und kompakte iPhone-Bedienelemente.", ["Editor", "Projekt", "iPhone"]),
-        ("Lesbare Vorschauen aus Milchglas", "Macht abgetrennte Markdown- und Finder-Quick-Look-Vorschauen transparenter und zugleich besser lesbar.", ["Vorschau", "Quick Look", "macOS"]),
-        ("Stabiles Layout und Markdown-Karten", "Hält den macOS-Editor beim Wechseln von Arbeitsbereichen stabil und platziert Markdown-Aktionen direkt in der Vorschau.", ["Editor", "Markdown", "macOS"]),
-    ],
-    "da": [
-        ("Quick Look og indstillinger bliver mere stabile", "Forfiner Quick Look og størrelsestilpasningen af macOS-indstillingsvinduet for et roligere arbejdsforløb.", ["Quick Look", "Indstillinger", "macOS"]),
-        ("Værktøjslinje og Quick Look forbliver læselige", "Gendanner værktøjslinjens korte etiketter og samler Quick Look i et selvstændigt, verificerbart byggeskema.", ["Værktøjslinje", "Quick Look", "macOS"]),
-        ("Store dokumenter forbliver hurtige", "Forbedrer den virtuelle macOS-editor, projektnavigationen og kompakte iPhone-kontroller.", ["Editor", "Projekt", "iPhone"]),
-        ("Læsbare frostede forhåndsvisninger", "Gør separate Markdown- og Finder Quick Look-forhåndsvisninger gennemsigtige og samtidig lettere at læse.", ["Forhåndsvisning", "Quick Look", "macOS"]),
-        ("Stabilt layout og Markdown-kort", "Holder macOS-editoren stabil ved skift af arbejdsområde og placerer Markdown-handlinger direkte i forhåndsvisningen.", ["Editor", "Markdown", "macOS"]),
-    ],
-    "fr": [
-        ("Quick Look et les réglages gagnent en stabilité", "Affine Quick Look et l’adaptation de taille de la fenêtre Réglages sur macOS pour un flux de travail plus calme.", ["Quick Look", "Réglages", "macOS"]),
-        ("Barre d’outils et Quick Look restent lisibles", "Restaure les libellés courts de la barre d’outils et regroupe Quick Look dans un schéma de build autonome et vérifiable.", ["Barre d’outils", "Quick Look", "macOS"]),
-        ("Les grands documents restent fluides", "Améliore l’éditeur virtuel macOS, la navigation de projet et les commandes compactes sur iPhone.", ["Éditeur", "Projet", "iPhone"]),
-        ("Des aperçus givrés lisibles", "Rend les aperçus Markdown détachés et Finder Quick Look transparents tout en améliorant leur lisibilité.", ["Aperçu", "Quick Look", "macOS"]),
-        ("Mise en page stable et cartes Markdown", "Maintient la stabilité de l’éditeur macOS lors des changements d’espace de travail et place les actions Markdown dans l’aperçu.", ["Éditeur", "Markdown", "macOS"]),
-    ],
-    "es": [
-        ("Quick Look y Ajustes ganan estabilidad", "Perfecciona Quick Look y el ajuste de tamaño de la ventana Ajustes de macOS para un flujo de trabajo más tranquilo.", ["Quick Look", "Ajustes", "macOS"]),
-        ("La barra y Quick Look siguen siendo legibles", "Restaura las etiquetas abreviadas de la barra y reúne Quick Look en un esquema de compilación autónomo y verificable.", ["Barra", "Quick Look", "macOS"]),
-        ("Los documentos grandes siguen siendo ágiles", "Mejora el editor virtual de macOS, la navegación de proyectos y los controles compactos del iPhone.", ["Editor", "Proyecto", "iPhone"]),
-        ("Vistas previas de vidrio esmerilado", "Mantiene transparentes las vistas previas Markdown separadas y de Finder Quick Look, con mejor legibilidad.", ["Vista previa", "Quick Look", "macOS"]),
-        ("Diseño estable y tarjetas Markdown", "Mantiene estable el editor de macOS al cambiar de espacio de trabajo y sitúa las acciones de Markdown en la vista previa.", ["Editor", "Markdown", "macOS"]),
-    ],
-    "ja": [
-        ("Quick Look と設定がさらに安定", "Quick Look と macOS 設定ウインドウのサイズ調整を改善し、より落ち着いた作業環境にします。", ["Quick Look", "設定", "macOS"]),
-        ("ツールバーと Quick Look の可読性を維持", "ツールバーの短いラベルを復元し、Quick Look を独立した検証可能なビルドスキームにまとめます。", ["ツールバー", "Quick Look", "macOS"]),
-        ("大きな書類も快適に操作", "macOS の仮想エディタ、プロジェクトナビゲーション、iPhone のコンパクトな操作を改善します。", ["エディタ", "プロジェクト", "iPhone"]),
-        ("読みやすいフロストガラスのプレビュー", "分離した Markdown と Finder Quick Look のプレビューを透明に保ちながら読みやすくします。", ["プレビュー", "Quick Look", "macOS"]),
-        ("安定したレイアウトと Markdown カード", "ワークスペースの切り替え時も macOS エディタを安定させ、Markdown の操作をプレビュー内に配置します。", ["エディタ", "Markdown", "macOS"]),
-    ],
-    "zh-Hans": [
-        ("Quick Look 与设置更加稳定", "优化 Quick Look 和 macOS 设置窗口的尺寸调整，让工作流程更加稳定。", ["Quick Look", "设置", "macOS"]),
-        ("工具栏与 Quick Look 保持清晰", "恢复工具栏的简短标签，并将 Quick Look 整合到独立且可验证的构建方案中。", ["工具栏", "Quick Look", "macOS"]),
-        ("大文档依然流畅", "改进 macOS 虚拟编辑器、项目导航和 iPhone 的紧凑控制。", ["编辑器", "项目", "iPhone"]),
-        ("更易读的磨砂玻璃预览", "让独立 Markdown 和 Finder Quick Look 预览保持透明，同时提高可读性。", ["预览", "Quick Look", "macOS"]),
-        ("稳定布局与 Markdown 卡片", "在切换工作区时保持 macOS 编辑器稳定，并将 Markdown 操作放在预览中。", ["编辑器", "Markdown", "macOS"]),
-    ],
+    "de": {
+        "v1.3.6": ("Quick Look und Einstellungen werden stabiler", "Verfeinert Quick Look und die Größenanpassung des macOS-Einstellungsfensters für einen ruhigeren Arbeitsablauf.", ["Quick Look", "Einstellungen", "macOS"]),
+        "v1.4.0": ("Toolbar und Quick Look bleiben lesbar", "Stellt die Kurzbezeichnungen der Toolbar wieder her und bündelt Quick Look in einem eigenständigen, überprüfbaren Build-Schema.", ["Symbolleiste", "Quick Look", "macOS"]),
+        "v1.4.1": ("Große Dokumente bleiben flüssig", "Verbessert den virtuellen macOS-Editor, die Projektnavigation und kompakte iPhone-Bedienelemente.", ["Editor", "Projekt", "iPhone"]),
+        "v1.4.2": ("Lesbare Vorschauen aus Milchglas", "Macht abgetrennte Markdown- und Finder-Quick-Look-Vorschauen transparenter und zugleich besser lesbar.", ["Vorschau", "Quick Look", "macOS"]),
+        "v1.4.3": ("Stabiles Layout und Markdown-Karten", "Hält den macOS-Editor beim Wechseln von Arbeitsbereichen stabil und platziert Markdown-Aktionen direkt in der Vorschau.", ["Editor", "Markdown", "macOS"]),
+    },
+    "da": {
+        "v1.3.6": ("Quick Look og indstillinger bliver mere stabile", "Forfiner Quick Look og størrelsestilpasningen af macOS-indstillingsvinduet for et roligere arbejdsforløb.", ["Quick Look", "Indstillinger", "macOS"]),
+        "v1.4.0": ("Værktøjslinje og Quick Look forbliver læselige", "Gendanner værktøjslinjens korte etiketter og samler Quick Look i et selvstændigt, verificerbart byggeskema.", ["Værktøjslinje", "Quick Look", "macOS"]),
+        "v1.4.1": ("Store dokumenter forbliver hurtige", "Forbedrer den virtuelle macOS-editor, projektnavigationen og kompakte iPhone-kontroller.", ["Editor", "Projekt", "iPhone"]),
+        "v1.4.2": ("Læsbare frostede forhåndsvisninger", "Gør separate Markdown- og Finder Quick Look-forhåndsvisninger gennemsigtige og samtidig lettere at læse.", ["Forhåndsvisning", "Quick Look", "macOS"]),
+        "v1.4.3": ("Stabilt layout og Markdown-kort", "Holder macOS-editoren stabil ved skift af arbejdsområde og placerer Markdown-handlinger direkte i forhåndsvisningen.", ["Editor", "Markdown", "macOS"]),
+    },
+    "fr": {
+        "v1.3.6": ("Quick Look et les réglages gagnent en stabilité", "Affine Quick Look et l’adaptation de taille de la fenêtre Réglages sur macOS pour un flux de travail plus calme.", ["Quick Look", "Réglages", "macOS"]),
+        "v1.4.0": ("Barre d’outils et Quick Look restent lisibles", "Restaure les libellés courts de la barre d’outils et regroupe Quick Look dans un schéma de build autonome et vérifiable.", ["Barre d’outils", "Quick Look", "macOS"]),
+        "v1.4.1": ("Les grands documents restent fluides", "Améliore l’éditeur virtuel macOS, la navigation de projet et les commandes compactes sur iPhone.", ["Éditeur", "Projet", "iPhone"]),
+        "v1.4.2": ("Des aperçus givrés lisibles", "Rend les aperçus Markdown détachés et Finder Quick Look transparents tout en améliorant leur lisibilité.", ["Aperçu", "Quick Look", "macOS"]),
+        "v1.4.3": ("Mise en page stable et cartes Markdown", "Maintient la stabilité de l’éditeur macOS lors des changements d’espace de travail et place les actions Markdown dans l’aperçu.", ["Éditeur", "Markdown", "macOS"]),
+    },
+    "es": {
+        "v1.3.6": ("Quick Look y Ajustes ganan estabilidad", "Perfecciona Quick Look y el ajuste de tamaño de la ventana Ajustes de macOS para un flujo de trabajo más tranquilo.", ["Quick Look", "Ajustes", "macOS"]),
+        "v1.4.0": ("La barra y Quick Look siguen siendo legibles", "Restaura las etiquetas abreviadas de la barra y reúne Quick Look en un esquema de compilación autónomo y verificable.", ["Barra", "Quick Look", "macOS"]),
+        "v1.4.1": ("Los documentos grandes siguen siendo ágiles", "Mejora el editor virtual de macOS, la navegación de proyectos y los controles compactos del iPhone.", ["Editor", "Proyecto", "iPhone"]),
+        "v1.4.2": ("Vistas previas de vidrio esmerilado", "Mantiene transparentes las vistas previas Markdown separadas y de Finder Quick Look, con mejor legibilidad.", ["Vista previa", "Quick Look", "macOS"]),
+        "v1.4.3": ("Diseño estable y tarjetas Markdown", "Mantiene estable el editor de macOS al cambiar de espacio de trabajo y sitúa las acciones de Markdown en la vista previa.", ["Editor", "Markdown", "macOS"]),
+    },
+    "ja": {
+        "v1.3.6": ("Quick Look と設定がさらに安定", "Quick Look と macOS 設定ウインドウのサイズ調整を改善し、より落ち着いた作業環境にします。", ["Quick Look", "設定", "macOS"]),
+        "v1.4.0": ("ツールバーと Quick Look の可読性を維持", "ツールバーの短いラベルを復元し、Quick Look を独立した検証可能なビルドスキームにまとめます。", ["ツールバー", "Quick Look", "macOS"]),
+        "v1.4.1": ("大きな書類も快適に操作", "macOS の仮想エディタ、プロジェクトナビゲーション、iPhone のコンパクトな操作を改善します。", ["エディタ", "プロジェクト", "iPhone"]),
+        "v1.4.2": ("読みやすいフロストガラスのプレビュー", "分離した Markdown と Finder Quick Look のプレビューを透明に保ちながら読みやすくします。", ["プレビュー", "Quick Look", "macOS"]),
+        "v1.4.3": ("安定したレイアウトと Markdown カード", "ワークスペースの切り替え時も macOS エディタを安定させ、Markdown の操作をプレビュー内に配置します。", ["エディタ", "Markdown", "macOS"]),
+    },
+    "zh-Hans": {
+        "v1.3.6": ("Quick Look 与设置更加稳定", "优化 Quick Look 和 macOS 设置窗口的尺寸调整，让工作流程更加稳定。", ["Quick Look", "设置", "macOS"]),
+        "v1.4.0": ("工具栏与 Quick Look 保持清晰", "恢复工具栏的简短标签，并将 Quick Look 整合到独立且可验证的构建方案中。", ["工具栏", "Quick Look", "macOS"]),
+        "v1.4.1": ("大文档依然流畅", "改进 macOS 虚拟编辑器、项目导航和 iPhone 的紧凑控制。", ["编辑器", "项目", "iPhone"]),
+        "v1.4.2": ("更易读的磨砂玻璃预览", "让独立 Markdown 和 Finder Quick Look 预览保持透明，同时提高可读性。", ["预览", "Quick Look", "macOS"]),
+        "v1.4.3": ("稳定布局与 Markdown 卡片", "在切换工作区时保持 macOS 编辑器稳定，并将 Markdown 操作放在预览中。", ["编辑器", "Markdown", "macOS"]),
+    },
 }
 
 README_PREVIOUS_RELEASE_OVERRIDES = {
@@ -529,13 +530,13 @@ README_PREVIOUS_RELEASE_OVERRIDES = {
 def rebuild_localized_website_release_timeline(website: str, changelog: str, current_tag: str, locale: str) -> str:
     source_entries = release_timeline_entries(changelog, current_tag)
     copy = LOCALIZED_TIMELINE_COPY[locale]
-    expected_tags = ("v1.3.6", "v1.4.0", "v1.4.1", "v1.4.2", "v1.4.3")
-    if tuple(entry[0] for entry in source_entries) != expected_tags or len(source_entries) != len(copy):
-        raise ValueError(f"Localized timeline copy is incomplete for {locale}.")
+    source_tags = tuple(entry[0] for entry in source_entries)
+    missing_tags = [tag for tag in source_tags if tag not in copy]
+    if missing_tags:
+        raise ValueError(f"Localized timeline copy is incomplete for {locale}: missing {', '.join(missing_tags)}.")
     entries: list[str] = []
-    if len(source_entries) != len(copy):
-        raise ValueError("Release timeline source and copy lengths differ.")
-    for (tag, date, _, _, _), (title, description, tags) in zip(source_entries, copy):
+    for tag, date, _, _, _ in source_entries:
+        title, description, tags = copy[tag]
         current_class = " current" if tag == current_tag else ""
         tag_html = "".join(f"<span>{html.escape(item)}</span>" for item in tags)
         entries.extend([
@@ -556,6 +557,13 @@ def rebuild_localized_website_release_timeline(website: str, changelog: str, cur
     if not pattern.search(website):
         raise ValueError(f"Localized website timeline markers are missing for {locale}.")
     return pattern.sub(replacement, website, count=1)
+
+
+def validate_release_input(changelog: str, tag: str) -> None:
+    if not has_changelog_section(changelog, tag):
+        raise ValueError(f"CHANGELOG.md has no section for {tag}.")
+    for locale, path in LOCALIZED_WEBSITES.items():
+        rebuild_localized_website_release_timeline(read_text(path), changelog, tag, locale)
 
 
 def replace_website_value(website: str, pattern: str, replacement: str, label: str) -> str:
@@ -827,11 +835,6 @@ def update_readme_release_refs(readme: str, tag: str) -> str:
         readme,
     )
     readme = re.sub(
-        r"(?m)^(\| \*\*Beta\*\* \| [^|]+ \| [^|]+ \| \[TestFlight Invite\]\(https://testflight\.apple\.com/join/YWB2fGAP\) \| )\*\*v[^*]+\*\*( \| Early access builds for feedback; availability may vary by review state \|)$",
-        r"\1**Availability varies**\2",
-        readme,
-    )
-    readme = re.sub(
         r"(?m)^        <td>v[^<]+ release docs current; v[^<]+ direct download current</td>$",
         f"        <td>{tag} release docs current; {tag} direct download current</td>",
         readme,
@@ -1081,6 +1084,11 @@ def parse_args() -> argparse.Namespace:
         help="Verify release docs are already up to date without writing files.",
     )
     parser.add_argument(
+        "--preflight",
+        action="store_true",
+        help="Validate the changelog and localized timeline inputs before release preparation mutates project metadata.",
+    )
+    parser.add_argument(
         "--build",
         help="Release build number used by static website fallbacks. Release preparation supplies this after bumping the project build.",
     )
@@ -1090,11 +1098,18 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     tag = normalize_tag(args.tag)
+    if args.check and args.preflight:
+        raise ValueError("--check and --preflight cannot be used together.")
     if args.build is not None and not re.fullmatch(r"[1-9]\d*", args.build):
         raise ValueError("Build number must be a positive integer.")
     release_date = args.date or dt.date.today().isoformat()
 
     original_changelog = read_text(CHANGELOG)
+    if args.preflight:
+        validate_release_input(original_changelog, tag)
+        print(f"Release input preflight passed for {tag}.")
+        return 0
+
     changelog = original_changelog
     if not has_changelog_section(changelog, tag):
         promoted = promote_unreleased_section(changelog, tag, release_date)

@@ -3,11 +3,19 @@ set -euo pipefail
 
 TAG="${1:-}"
 if [[ -z "$TAG" ]]; then
-  echo "Usage: scripts/ci/release_notes_quality_gate.sh <tag>" >&2
+  echo "Usage: scripts/ci/release_notes_quality_gate.sh <tag> [--preflight]" >&2
   exit 1
 fi
 if [[ "$TAG" != v* ]]; then
   TAG="v$TAG"
+fi
+
+PREFLIGHT_ONLY=0
+if [[ "${2:-}" == "--preflight" ]]; then
+  PREFLIGHT_ONLY=1
+elif [[ -n "${2:-}" ]]; then
+  echo "Unknown argument: ${2}" >&2
+  exit 1
 fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -18,8 +26,13 @@ if [[ ! -f "CHANGELOG.md" || ! -f "README.md" ]]; then
   exit 1
 fi
 
-echo "Running docs sync check for ${TAG}..."
-scripts/prepare_release_docs.py "${TAG}" --check
+if [[ "$PREFLIGHT_ONLY" -eq 1 ]]; then
+  echo "Running source preflight for ${TAG}..."
+  scripts/prepare_release_docs.py "${TAG}" --preflight
+else
+  echo "Running docs sync check for ${TAG}..."
+  scripts/prepare_release_docs.py "${TAG}" --check
+fi
 
 echo "Validating changelog section for ${TAG}..."
 SECTION_FILE="/tmp/release-notes-gate-${TAG}.md"
@@ -50,50 +63,52 @@ if (( why_upgrade_count < 3 )); then
   exit 1
 fi
 
-echo "Validating README What's New heading..."
-RELEASE_TAGS=()
-while IFS= read -r release_tag; do
-  RELEASE_TAGS+=("${release_tag}")
-done < <(grep -E '^## \[v[^]]+\] - [0-9]{4}-[0-9]{2}-[0-9]{2}\r?$' CHANGELOG.md | sed -E 's/\r$//' | sed -E 's/^## \[(v[^]]+)\].*$/\1/')
-PREV_TAG=""
-for i in "${!RELEASE_TAGS[@]}"; do
-  if [[ "${RELEASE_TAGS[$i]}" == "${TAG}" ]]; then
-    if (( i + 1 < ${#RELEASE_TAGS[@]} )); then
-      PREV_TAG="${RELEASE_TAGS[$((i + 1))]}"
+if [[ "$PREFLIGHT_ONLY" -eq 0 ]]; then
+  echo "Validating README What's New heading..."
+  RELEASE_TAGS=()
+  while IFS= read -r release_tag; do
+    RELEASE_TAGS+=("${release_tag}")
+  done < <(grep -E '^## \[v[^]]+\] - [0-9]{4}-[0-9]{2}-[0-9]{2}\r?$' CHANGELOG.md | sed -E 's/\r$//' | sed -E 's/^## \[(v[^]]+)\].*$/\1/')
+  PREV_TAG=""
+  for i in "${!RELEASE_TAGS[@]}"; do
+    if [[ "${RELEASE_TAGS[$i]}" == "${TAG}" ]]; then
+      if (( i + 1 < ${#RELEASE_TAGS[@]} )); then
+        PREV_TAG="${RELEASE_TAGS[$((i + 1))]}"
+      fi
+      break
     fi
-    break
-  fi
-done
+  done
 
-# A correction release may deliberately document an earlier viable fallback
-# instead of its immediate predecessor. The release-doc generator writes this
-# line only for such an explicit override; keep the gate aligned with it while
-# requiring that the referenced release really exists in the changelog.
-DOCUMENTED_PREV_TAG="$(sed -nE 's/^> Previous viable fallback: \*\*(v[^*]+)\*\*$/\1/p' README.md)"
-if [[ -n "${DOCUMENTED_PREV_TAG}" ]]; then
-  if ! grep -qF "## [${DOCUMENTED_PREV_TAG}]" CHANGELOG.md; then
-    echo "README previous viable fallback ${DOCUMENTED_PREV_TAG} is not present in CHANGELOG.md." >&2
-    exit 1
+  # A correction release may deliberately document an earlier viable fallback
+  # instead of its immediate predecessor. The release-doc generator writes this
+  # line only for such an explicit override; keep the gate aligned with it while
+  # requiring that the referenced release really exists in the changelog.
+  DOCUMENTED_PREV_TAG="$(sed -nE 's/^> Previous viable fallback: \*\*(v[^*]+)\*\*$/\1/p' README.md)"
+  if [[ -n "${DOCUMENTED_PREV_TAG}" ]]; then
+    if ! grep -qF "## [${DOCUMENTED_PREV_TAG}]" CHANGELOG.md; then
+      echo "README previous viable fallback ${DOCUMENTED_PREV_TAG} is not present in CHANGELOG.md." >&2
+      exit 1
+    fi
+    PREV_TAG="${DOCUMENTED_PREV_TAG}"
   fi
-  PREV_TAG="${DOCUMENTED_PREV_TAG}"
-fi
 
-current_semver="${TAG#v}"
-prev_semver="${PREV_TAG#v}"
-if [[ -n "${PREV_TAG}" ]] && [[ "${current_semver}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ "${prev_semver}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  IFS=. read -r current_major current_minor current_patch <<<"${current_semver}"
-  IFS=. read -r prev_major prev_minor prev_patch <<<"${prev_semver}"
-  if [[ "${prev_major}" == "${current_major}" ]] \
-    && [[ "${prev_minor}" == "${current_minor}" ]] \
-    && (( current_patch == prev_patch + 1 )); then
-    grep -nE "^## What's New in ${PREV_TAG} and ${TAG}\\r?$" README.md >/dev/null
-  else
+  current_semver="${TAG#v}"
+  prev_semver="${PREV_TAG#v}"
+  if [[ -n "${PREV_TAG}" ]] && [[ "${current_semver}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ "${prev_semver}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    IFS=. read -r current_major current_minor current_patch <<<"${current_semver}"
+    IFS=. read -r prev_major prev_minor prev_patch <<<"${prev_semver}"
+    if [[ "${prev_major}" == "${current_major}" ]] \
+      && [[ "${prev_minor}" == "${current_minor}" ]] \
+      && (( current_patch == prev_patch + 1 )); then
+      grep -nE "^## What's New in ${PREV_TAG} and ${TAG}\\r?$" README.md >/dev/null
+    else
+      grep -nE "^## What's New Since ${PREV_TAG}\\r?$" README.md >/dev/null
+    fi
+  elif [[ -n "${PREV_TAG}" ]]; then
     grep -nE "^## What's New Since ${PREV_TAG}\\r?$" README.md >/dev/null
+  else
+    grep -nE "^## What's New in ${TAG}\\r?$" README.md >/dev/null
   fi
-elif [[ -n "${PREV_TAG}" ]]; then
-  grep -nE "^## What's New Since ${PREV_TAG}\\r?$" README.md >/dev/null
-else
-  grep -nE "^## What's New in ${TAG}\\r?$" README.md >/dev/null
 fi
 
 bash scripts/ci/release_milestone_preflight.sh "${TAG}"

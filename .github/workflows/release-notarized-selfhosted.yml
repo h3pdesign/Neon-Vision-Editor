@@ -88,6 +88,12 @@ jobs:
           find scripts -type f -name "*.sh" -exec perl -pi -e 's/\r$//' {} +
           chmod +x scripts/ci/select_xcode17.sh
 
+      - name: Validate release input
+        env:
+          TAG_NAME: ${{ inputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: scripts/ci/release_notes_quality_gate.sh "$TAG_NAME"
+
       - name: Select/verify Xcode 17+
         run: |
           set -euo pipefail

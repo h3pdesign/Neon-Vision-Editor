@@ -43,6 +43,12 @@ jobs:
           git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
           git checkout FETCH_HEAD
 
+      - name: Validate release input
+        env:
+          TAG_NAME: ${{ inputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: scripts/ci/release_notes_quality_gate.sh "$TAG_NAME"
+
       - name: Select Xcode 17+
         id: xcode_mode
         run: |

@@ -38,6 +38,12 @@ jobs:
           set -euo pipefail
           source scripts/ci/select_xcode17.sh
 
+      - name: Validate release input
+        env:
+          TAG_NAME: ${{ inputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: scripts/ci/release_notes_quality_gate.sh "$TAG_NAME"
+
       - name: Build macOS archive
         env:
           ARCHIVE_PATH: ${{ runner.temp }}/NeonVisionEditor.xcarchive

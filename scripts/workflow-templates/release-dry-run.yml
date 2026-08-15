@@ -36,6 +36,8 @@ jobs:
       - name: Run release preflight
         env:
           TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           scripts/ci/release_preflight.sh "$TAG"
+          scripts/ci/release_notes_quality_gate.sh "$TAG"

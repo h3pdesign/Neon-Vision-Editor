@@ -79,6 +79,9 @@ is_allowed_release_dirty_path() {
     CHANGELOG.md|README.md|\
     "Neon Vision Editor/UI/PanelsAndHelpers.swift"|\
     "Neon Vision Editor.xcodeproj/project.pbxproj"|\
+    site/index.html|site/changelog.html|\
+    site/de/index.html|site/da/index.html|site/fr/index.html|\
+    site/es/index.html|site/ja/index.html|site/zh-Hans/index.html|\
     docs/images/neon-vision-release-history-0.1-to-0.5.svg|\
     docs/images/neon-vision-release-history-0.1-to-0.5-light.svg|\
     docs/images/release-download-trend.svg|\
@@ -219,8 +222,10 @@ if git rev-parse "$TAG" >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "Validating release input before changing project metadata..."
+scripts/ci/release_notes_quality_gate.sh "$TAG" --preflight
+
 assert_ssh_signing_configuration
-bash scripts/ci/release_milestone_preflight.sh "$TAG"
 
 EXPECTED_VERSION="${TAG#v}"
 PBXPROJ_FILE="Neon Vision Editor.xcodeproj/project.pbxproj"

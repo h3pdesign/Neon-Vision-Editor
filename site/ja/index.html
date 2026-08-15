@@ -751,6 +751,9 @@
       letter-spacing: -0.05em;
     }
 
+    .developer-note > div:first-child { display: flex; flex-direction: column; }
+    .developer-avatar { display: block; width: clamp(88px, 8vw, 112px); height: clamp(88px, 8vw, 112px); margin-top: auto; margin-bottom: 12px; border: 4px solid var(--paper-solid); border-radius: 50%; object-fit: cover; object-position: center 30%; box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18); }
+
     .developer-note-copy { max-width: 720px; }
     .developer-note-copy p { color: var(--muted); font-size: 1.04rem; }
     .developer-note-copy p:last-child { margin-bottom: 0; }
@@ -901,7 +904,21 @@
       box-shadow: var(--shadow);
     }
 
+    .feature-band + .intro { margin-top: clamp(64px, 7vw, 112px); }
+
     .section-title { max-width: 680px; margin-bottom: 28px; }
+
+    .editor-core-hero,
+    .toolbar-presets-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
+      gap: clamp(28px, 5vw, 68px);
+      align-items: start;
+    }
+
+    .editor-core-hero .section-title,
+    .toolbar-presets-hero .section-title { max-width: none; margin-bottom: 0; }
+    .toolbar-presets-hero .media-card { width: min(100%, 520px); justify-self: end; }
 
     .story {
       display: grid;
@@ -1232,6 +1249,8 @@
       .channel-card { min-height: 0; }
       .trust-summary { padding-block: 10px; }
       .developer-note { grid-template-columns: 1fr; margin-bottom: 76px; }
+      .editor-core-hero, .toolbar-presets-hero { grid-template-columns: 1fr; }
+      .toolbar-presets-hero .media-card { width: 100%; justify-self: stretch; }
       .intro, .story, .story.reverse { grid-template-columns: 1fr; padding-bottom: 0; }
       .intro { gap: 30px; }
       .workflow-grid { grid-template-columns: 1fr; }
@@ -1505,6 +1524,7 @@
       <div>
         <p class="eyebrow">h3p が開発</p>
         <h2 id="developer-note-title">Neon Vision Editor の開発者、Hilthart Pedersen。</h2>
+        <img class="developer-avatar" src="../docs/images/hilthart-pedersen-avatar.png" width="112" height="112" alt="Hilthart Pedersen のポートレート">
       </div>
       <div class="developer-note-copy">
         <p><strong>Hilthart Pedersen</strong> です。<strong>h3p</strong> として知られ、GitHub では <a href="https://github.com/h3pdesign">h3pdesign</a> として活動しています。Neon Vision Editor は、基本的なテキストエディタと完全な IDE の間を埋める、Apple 向けの独立したエディタです。</p>
@@ -1515,6 +1535,12 @@
         <p>iCloud Driveやネットワークフォルダに文書を置いたり、別のアプリで同じファイルを開くと、外部変更を見逃したり、目の前の作業を上書きしたりしがちです。</p>
         <p>Neonは開いている文書の外部更新を監視します。ファイルが別の場所で変更され、タブに未保存の編集がなければ、その場で更新し、カーソルや選択、スクロール位置、プレビュー元を保ちます。</p>
       </div>
+    </section>
+
+    <section class="feature-band" id="large-document-editor" aria-labelledby="large-document-editor-title">
+      <div class="editor-core-hero"><div class="section-title"><p class="eyebrow">v1.4.0 の新機能</p><h2 id="large-document-editor-title">大きな文書も、すべてを一度に読み込まず軽快に操作できます。</h2><p>Neon の macOS エディタはディスク上のファイルを直接扱い、編集中の箇所の周囲だけに限定した仮想ビューポートを維持します。編集のたびに文書全体のバッファを再構築せず、通常の編集ワークフローを保ちます。</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">v1.4.1 をダウンロード</a></p></div><figure class="media-card editor-core-shot"><img src="../docs/images/release-v1-4-1-editor-core.png" width="1499" height="1215" loading="lazy" decoding="async" alt="行番号、タブ、コンパクトなツールバーを備えた macOS 版 Neon Vision Editor v1.4.1"></figure></div>
+      <div class="story"><div class="story-copy"><p class="story-tag">ファイルベースのエディタアーキテクチャ</p><h2>文書全体を作り直さずに、編集、スクロール、選択、保存。</h2><p>仮想ビューポートはスクロール位置を追い、アクティブなウィンドウを置き換える際にもカーソルと選択を保ちます。構文処理と行レイアウトは表示範囲に限定されます。</p><p>エンコーディング、改行、外部変更の処理、アトミック保存は同じファイルワークフローに残ります。100 MB 以上のファイルは、安全に確認できる明確な読み取り専用の部分プレビューとして開きます。</p></div></div>
+      <div class="markdown-feature-points" aria-label="大きな文書の編集機能"><div class="markdown-feature-point"><strong>限定された表示範囲</strong><span>大きなファイルでも、操作中の編集ウィンドウだけを維持します。</span></div><div class="markdown-feature-point"><strong>見えている作業を優先</strong><span>行レイアウトと構文色分けは画面上の内容に集中します。</span></div><div class="markdown-feature-point"><strong>安全なファイル処理</strong><span>選択、エンコーディング、改行、外部変更、アトミック保存を保持します。</span></div><div class="markdown-feature-point"><strong>部分表示の保護</strong><span>100 MB 以上のファイルも過大なバッファを作らずに確認できます。</span></div></div>
     </section>
 
     <section class="intro" id="workflows" aria-labelledby="workflow-title">
@@ -1657,8 +1683,8 @@
     </section>
 
     <section class="feature-band" id="release-1-2-1" aria-labelledby="release-1-2-1-title">
-      <div class="section-title"><p class="eyebrow">v1.2.1 の新機能</p><h2 id="release-1-2-1-title">すべての Apple デバイスで、より分かりやすいツールバー。</h2><p>v1.2.1 では、macOS、iPadOS、iOS に合わせたコンパクトな記号と一貫した操作を持つツールバープリセットを追加しました。設定から標準、集中、開発者、レビュー、完全の各ワークフローを選べます。iOS の透明なステータスバー構成も維持されます。</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">v1.4.1 をダウンロード</a></p></div>
-      <div class="story"><div class="story-copy"><p class="story-tag">ツールバープリセットとレイアウトの安定性</p><h2>必要なツールを選びながら、文書を見失わない。</h2><p>macOS と iPadOS ではコンパクトなラベルでツールバーを読みやすくし、iPhone では限られた空間に合わせてアイコンを優先します。日常の編集、集中した執筆、開発、レビュー、完全なワークスペースを簡単に切り替えられます。</p><p>iOS の透明なステータスバーとナビゲーション面も、既存のエディタやプレビューのレイアウトを変えずに復元しました。</p></div><figure class="media-card"><a class="screenshot-link" href="../docs/images/release-v1-2-1-toolbar-presets.png" aria-label="v1.2.1 の製品スクリーンショットを開く"><img src="../docs/images/release-v1-2-1-toolbar-presets.png" width="1192" height="1232" loading="lazy" decoding="async" alt="ネイティブツールバー、PDF プレビュー、Markdown 文書、プロジェクトワークスペースを表示する Neon Vision Editor"></a></figure></div>
+      <div class="toolbar-presets-hero"><div class="section-title"><p class="eyebrow">v1.2.1 の新機能</p><h2 id="release-1-2-1-title">すべての Apple デバイスに、より明快なツールバーを。</h2><p>バージョン 1.2.1 では、macOS、iPadOS、iOS で一貫したコンパクトな操作を提供する、プラットフォームに最適化されたツールバープリセットを追加しました。設定から標準、集中、開発、レビュー、完全なワークフローを選択でき、iOS は透明なステータスバー構成を維持します。</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">v1.4.1 をダウンロード</a></p></div><figure class="media-card"><a class="screenshot-link" href="../docs/images/release-v1-4-1-toolbar-presets.png" aria-label="v1.4.1 のツールバープリセット画面を開く"><img src="../docs/images/release-v1-4-1-toolbar-presets.png" width="2024" height="1874" loading="lazy" decoding="async" alt="Neon Vision Editor のツールバープリセット"></a></figure></div>
+      <div class="story"><div class="story-copy"><p class="story-tag">ツールバープリセットとレイアウトの安定性</p><h2>必要なツールを選びながら、文書を見失わない。</h2><p>macOS と iPadOS ではコンパクトなラベルでツールバーを読みやすくし、iPhone では限られた空間に合わせてアイコンを優先します。日常の編集、集中した執筆、開発、レビュー、完全なワークスペースを簡単に切り替えられます。</p><p>iOS の透明なステータスバーとナビゲーション面も、既存のエディタやプレビューのレイアウトを変えずに復元しました。</p></div></div>
       <div class="markdown-feature-points" aria-label="v1.2.1 の機能"><div class="markdown-feature-point"><strong>プラットフォーム最適化ツールバー</strong><span>macOS、iPadOS、iOS でコンパクトかつ一貫した操作。</span></div><div class="markdown-feature-point"><strong>5つのワークスペースプリセット</strong><span>標準、集中、開発者、レビュー、完全。</span></div><div class="markdown-feature-point"><strong>分かりやすいカスタマイズ</strong><span>設定からツールバーとプロジェクト操作を構成できます。</span></div><div class="markdown-feature-point"><strong>安定した iOS サーフェス</strong><span>透明なステータスバーと既存のレイアウトを維持します。</span></div></div>
     </section>
 

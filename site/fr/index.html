@@ -751,6 +751,9 @@
       letter-spacing: -0.05em;
     }
 
+    .developer-note > div:first-child { display: flex; flex-direction: column; }
+    .developer-avatar { display: block; width: clamp(88px, 8vw, 112px); height: clamp(88px, 8vw, 112px); margin-top: auto; margin-bottom: 12px; border: 4px solid var(--paper-solid); border-radius: 50%; object-fit: cover; object-position: center 30%; box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18); }
+
     .developer-note-copy { max-width: 720px; }
     .developer-note-copy p { color: var(--muted); font-size: 1.04rem; }
     .developer-note-copy p:last-child { margin-bottom: 0; }
@@ -901,7 +904,21 @@
       box-shadow: var(--shadow);
     }
 
+    .feature-band + .intro { margin-top: clamp(64px, 7vw, 112px); }
+
     .section-title { max-width: 680px; margin-bottom: 28px; }
+
+    .editor-core-hero,
+    .toolbar-presets-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
+      gap: clamp(28px, 5vw, 68px);
+      align-items: start;
+    }
+
+    .editor-core-hero .section-title,
+    .toolbar-presets-hero .section-title { max-width: none; margin-bottom: 0; }
+    .toolbar-presets-hero .media-card { width: min(100%, 520px); justify-self: end; }
 
     .story {
       display: grid;
@@ -1232,6 +1249,8 @@
       .channel-card { min-height: 0; }
       .trust-summary { padding-block: 10px; }
       .developer-note { grid-template-columns: 1fr; margin-bottom: 76px; }
+      .editor-core-hero, .toolbar-presets-hero { grid-template-columns: 1fr; }
+      .toolbar-presets-hero .media-card { width: 100%; justify-self: stretch; }
       .intro, .story, .story.reverse { grid-template-columns: 1fr; padding-bottom: 0; }
       .intro { gap: 30px; }
       .workflow-grid { grid-template-columns: 1fr; }
@@ -1505,6 +1524,7 @@
       <div>
         <p class="eyebrow">Développé par h3p</p>
         <h2 id="developer-note-title">Hilthart Pedersen — le développeur derrière Neon Vision Editor.</h2>
+        <img class="developer-avatar" src="../docs/images/hilthart-pedersen-avatar.png" width="112" height="112" alt="Portrait de Hilthart Pedersen">
       </div>
       <div class="developer-note-copy">
         <p>Je suis <strong>Hilthart Pedersen</strong>, connu sous le nom <strong>h3p</strong> et sur GitHub sous le nom <a href="https://github.com/h3pdesign">h3pdesign</a>. Je développe Neon Vision Editor comme un éditeur Apple indépendant, entre l’éditeur de texte basique et l’IDE complet.</p>
@@ -1515,6 +1535,12 @@
         <p>Avec des documents dans iCloud Drive, un dossier réseau ou une autre app, un éditeur peut manquer les changements externes ou pire, écraser votre travail.</p>
         <p>Neon surveille les mises à jour externes des documents ouverts. Si un fichier change et que l’onglet est propre, il se rafraîchit sur place en conservant le curseur, la sélection, le défilement et la source de l’aperçu.</p>
       </div>
+    </section>
+
+    <section class="feature-band" id="large-document-editor" aria-labelledby="large-document-editor-title">
+      <div class="editor-core-hero"><div class="section-title"><p class="eyebrow">Nouveautés de v1.4.0</p><h2 id="large-document-editor-title">Les documents volumineux restent réactifs sans tout charger d’un coup.</h2><p>L’éditeur macOS de Neon travaille désormais à partir du fichier sur le disque et maintient une fenêtre virtuelle limitée autour de la zone en cours d’édition. Il évite ainsi de reconstruire tout le tampon du document à chaque modification tout en conservant le flux d’édition habituel.</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">Télécharger v1.4.1</a></p></div><figure class="media-card editor-core-shot"><img src="../docs/images/release-v1-4-1-editor-core.png" width="1499" height="1215" loading="lazy" decoding="async" alt="Neon Vision Editor v1.4.1 sur macOS avec numéros de ligne, onglets et commandes compactes"></figure></div>
+      <div class="story"><div class="story-copy"><p class="story-tag">Architecture d’éditeur basée sur les fichiers</p><h2>Modifiez, faites défiler, sélectionnez et enregistrez sans reconstruire tout le document.</h2><p>La fenêtre virtuelle suit le défilement et préserve le curseur et la sélection lorsqu’elle remplace la fenêtre active. Le travail de syntaxe et la mise en page des lignes restent limités à la zone visible.</p><p>Encodage, fins de ligne, gestion des modifications externes et enregistrements atomiques restent dans le même flux de fichier. Les fichiers de 100 Mo ou plus s’ouvrent en aperçu partiel clairement signalé, en lecture seule.</p></div></div>
+      <div class="markdown-feature-points" aria-label="Fonctionnalités pour documents volumineux"><div class="markdown-feature-point"><strong>Fenêtre limitée</strong><span>Seule la fenêtre d’édition active reste chargée dans les grands fichiers.</span></div><div class="markdown-feature-point"><strong>Priorité au visible</strong><span>La mise en page et la coloration syntaxique se concentrent sur le contenu affiché.</span></div><div class="markdown-feature-point"><strong>Flux de fichier sûr</strong><span>Sélections, encodage, fins de ligne, modifications externes et enregistrements atomiques sont préservés.</span></div><div class="markdown-feature-point"><strong>Protection d’aperçu</strong><span>Les fichiers de 100 Mo ou plus restent inspectables sans tampon surdimensionné.</span></div></div>
     </section>
 
     <section class="intro" id="workflows" aria-labelledby="workflow-title">
@@ -1657,8 +1683,8 @@
     </section>
 
     <section class="feature-band" id="release-1-2-1" aria-labelledby="release-1-2-1-title">
-      <div class="section-title"><p class="eyebrow">Nouveautés de v1.2.1</p><h2 id="release-1-2-1-title">Une barre d’outils plus claire sur chaque appareil Apple.</h2><p>La version 1.2.1 ajoute des préréglages de barre d’outils optimisés pour chaque plateforme, avec des symboles compacts et des contrôles cohérents sur macOS, iPadOS et iOS. Configurez les modes standard, concentré, développeur, révision ou complet depuis les réglages, tout en conservant la composition transparente de la barre d’état sur iOS.</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">Télécharger v1.4.1</a></p></div>
-      <div class="story"><div class="story-copy"><p class="story-tag">Préréglages de barre d’outils et stabilité de la mise en page</p><h2>Choisissez vos outils sans perdre le document.</h2><p>Les libellés compacts gardent les barres d’outils macOS et iPadOS lisibles, tandis que l’iPhone privilégie les icônes lorsque l’espace est limité. Les préréglages facilitent le passage entre édition quotidienne, écriture concentrée, développement, révision et espace complet.</p><p>La version restaure également la composition transparente de la barre d’état et de la surface de navigation iOS sans modifier la mise en page existante.</p></div><figure class="media-card"><a class="screenshot-link" href="../docs/images/release-v1-2-1-toolbar-presets.png" aria-label="Ouvrir la capture produit v1.2.1"><img src="../docs/images/release-v1-2-1-toolbar-presets.png" width="1192" height="1232" loading="lazy" decoding="async" alt="Neon Vision Editor avec barre d’outils native, aperçu PDF, document Markdown et espace de projet"></a></figure></div>
+      <div class="toolbar-presets-hero"><div class="section-title"><p class="eyebrow">Nouveautés de v1.2.1</p><h2 id="release-1-2-1-title">Une barre d’outils plus claire pour chaque appareil Apple.</h2><p>La version 1.2.1 ajoute des préréglages de barre d’outils optimisés pour chaque plateforme, avec des symboles compacts et des commandes cohérentes sur macOS, iPadOS et iOS. Configurez les flux standard, concentré, développement, révision ou complet depuis Réglages, tandis qu’iOS conserve sa barre d’état transparente.</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">Télécharger v1.4.1</a></p></div><figure class="media-card"><a class="screenshot-link" href="../docs/images/release-v1-4-1-toolbar-presets.png" aria-label="Ouvrir la capture des préréglages de barre d’outils v1.4.1"><img src="../docs/images/release-v1-4-1-toolbar-presets.png" width="2024" height="1874" loading="lazy" decoding="async" alt="Préréglages de barre d’outils dans Neon Vision Editor"></a></figure></div>
+      <div class="story"><div class="story-copy"><p class="story-tag">Préréglages de barre d’outils et stabilité de la mise en page</p><h2>Choisissez vos outils sans perdre le document.</h2><p>Les libellés compacts gardent les barres d’outils macOS et iPadOS lisibles, tandis que l’iPhone privilégie les icônes lorsque l’espace est limité. Les préréglages facilitent le passage entre édition quotidienne, écriture concentrée, développement, révision et espace complet.</p><p>La version restaure également la composition transparente de la barre d’état et de la surface de navigation iOS sans modifier la mise en page existante.</p></div></div>
       <div class="markdown-feature-points" aria-label="Fonctionnalités de la version 1.2.1"><div class="markdown-feature-point"><strong>Barres d’outils optimisées</strong><span>Des contrôles compacts et cohérents sur macOS, iPadOS et iOS.</span></div><div class="markdown-feature-point"><strong>Cinq préréglages</strong><span>Standard, concentré, développeur, révision et complet.</span></div><div class="markdown-feature-point"><strong>Personnalisation plus claire</strong><span>Configurez les actions de la barre d’outils et du projet depuis les réglages.</span></div><div class="markdown-feature-point"><strong>Surfaces iOS stables</strong><span>Conservez la barre d’état transparente et la mise en page existante.</span></div></div>
     </section>
 

@@ -751,6 +751,9 @@
       letter-spacing: -0.05em;
     }
 
+    .developer-note > div:first-child { display: flex; flex-direction: column; }
+    .developer-avatar { display: block; width: clamp(88px, 8vw, 112px); height: clamp(88px, 8vw, 112px); margin-top: auto; margin-bottom: 12px; border: 4px solid var(--paper-solid); border-radius: 50%; object-fit: cover; object-position: center 30%; box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18); }
+
     .developer-note-copy { max-width: 720px; }
     .developer-note-copy p { color: var(--muted); font-size: 1.04rem; }
     .developer-note-copy p:last-child { margin-bottom: 0; }
@@ -901,7 +904,21 @@
       box-shadow: var(--shadow);
     }
 
+    .feature-band + .intro { margin-top: clamp(64px, 7vw, 112px); }
+
     .section-title { max-width: 680px; margin-bottom: 28px; }
+
+    .editor-core-hero,
+    .toolbar-presets-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
+      gap: clamp(28px, 5vw, 68px);
+      align-items: start;
+    }
+
+    .editor-core-hero .section-title,
+    .toolbar-presets-hero .section-title { max-width: none; margin-bottom: 0; }
+    .toolbar-presets-hero .media-card { width: min(100%, 520px); justify-self: end; }
 
     .story {
       display: grid;
@@ -1232,6 +1249,8 @@
       .channel-card { min-height: 0; }
       .trust-summary { padding-block: 10px; }
       .developer-note { grid-template-columns: 1fr; margin-bottom: 76px; }
+      .editor-core-hero, .toolbar-presets-hero { grid-template-columns: 1fr; }
+      .toolbar-presets-hero .media-card { width: 100%; justify-self: stretch; }
       .intro, .story, .story.reverse { grid-template-columns: 1fr; padding-bottom: 0; }
       .intro { gap: 30px; }
       .workflow-grid { grid-template-columns: 1fr; }
@@ -1505,6 +1524,7 @@
       <div>
         <p class="eyebrow">Udviklet af h3p</p>
         <h2 id="developer-note-title">Hilthart Pedersen — udvikleren bag Neon Vision Editor.</h2>
+        <img class="developer-avatar" src="../docs/images/hilthart-pedersen-avatar.png" width="112" height="112" alt="Portræt af Hilthart Pedersen">
       </div>
       <div class="developer-note-copy">
         <p>Jeg er <strong>Hilthart Pedersen</strong>, kendt som <strong>h3p</strong> og på GitHub som <a href="https://github.com/h3pdesign">h3pdesign</a>. Jeg udvikler Neon Vision Editor som en uafhængig Apple-editor mellem en enkel teksteditor og et komplet IDE.</p>
@@ -1515,6 +1535,12 @@
         <p>Når dokumenter ligger i iCloud Drive, en netværksmappe eller åbnes i en anden app, kan en editor overse ændringer eller overskrive dit aktuelle arbejde.</p>
         <p>Neon overvåger nu åbne dokumenter for eksterne ændringer. Rene faner opdateres på stedet, mens markør, markering, rulning og forhåndsvisning bevares.</p>
       </div>
+    </section>
+
+    <section class="feature-band" id="large-document-editor" aria-labelledby="large-document-editor-title">
+      <div class="editor-core-hero"><div class="section-title"><p class="eyebrow">Nyt i v1.4.0</p><h2 id="large-document-editor-title">Store dokumenter forbliver responsive uden at indlæse alt på én gang.</h2><p>Neons macOS-editor arbejder nu direkte med filen på disken og holder et afgrænset virtuelt udsnit omkring den del, du redigerer. Det undgår at genopbygge en komplet dokumentbuffer ved hver ændring og bevarer den normale redigeringsarbejdsgang.</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">Hent v1.4.1</a></p></div><figure class="media-card editor-core-shot"><img src="../docs/images/release-v1-4-1-editor-core.png" width="1499" height="1215" loading="lazy" decoding="async" alt="Neon Vision Editor v1.4.1 på macOS med linjenumre, faner og kompakte værktøjslinjer"></figure></div>
+      <div class="story"><div class="story-copy"><p class="story-tag">Filbaseret editorarkitektur</p><h2>Redigér, scroll, vælg og gem uden at genopbygge hele dokumentet.</h2><p>Det virtuelle udsnit følger scrollpositionen og bevarer markør og markering, når det erstatter det aktive vindue. Syntaksarbejde og linjelayout begrænses til det synlige område.</p><p>Kodning, linjeskift, håndtering af eksterne ændringer og atomiske gemninger forbliver i samme filarbejdsgang. Filer på 100 MB eller mere åbnes som en tydeligt mærket skrivebeskyttet delvis forhåndsvisning.</p></div></div>
+      <div class="markdown-feature-points" aria-label="Funktioner til store dokumenter"><div class="markdown-feature-point"><strong>Afgrænset udsnit</strong><span>Kun det aktive redigeringsvindue forbliver aktivt i store filer.</span></div><div class="markdown-feature-point"><strong>Synligt arbejde først</strong><span>Linjelayout og syntaksfarvning fokuserer på indholdet på skærmen.</span></div><div class="markdown-feature-point"><strong>Sikker filarbejdsgang</strong><span>Markeringer, kodning, linjeskift, eksterne ændringer og atomiske gemninger bevares.</span></div><div class="markdown-feature-point"><strong>Delvis visning</strong><span>Filer på 100 MB eller mere kan undersøges uden en overdimensioneret editorbuffer.</span></div></div>
     </section>
 
     <section class="intro" id="workflows" aria-labelledby="workflow-title">
@@ -1657,8 +1683,8 @@
     </section>
 
     <section class="feature-band" id="release-1-2-1" aria-labelledby="release-1-2-1-title">
-      <div class="section-title"><p class="eyebrow">Nyt i v1.2.1</p><h2 id="release-1-2-1-title">En tydeligere værktøjslinje til alle Apple-enheder.</h2><p>Version 1.2.1 tilføjer platformstilpassede værktøjslinjeforudindstillinger med kompakte symboler og ensartede kontroller på macOS, iPadOS og iOS. Vælg standard, fokuseret, udvikler-, gennemgangs- eller komplet workflow i Indstillinger, mens iOS bevarer den gennemsigtige statuslinje.</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">Hent v1.4.1</a></p></div>
-      <div class="story"><div class="story-copy"><p class="story-tag">Værktøjslinjeforudindstillinger og layoutstabilitet</p><h2>Vælg de værktøjer, du skal bruge, uden at miste dokumentet.</h2><p>Kompakte etiketter holder macOS- og iPadOS-værktøjslinjer læselige, mens iPhone bruger ikoner først, hvor pladsen er begrænset. Forudindstillinger gør det nemt at skifte mellem daglig redigering, fokuseret skrivning, udvikling, gennemgang og det komplette arbejdsområde.</p><p>Udgivelsen gendanner også den gennemsigtige iOS-statuslinje og navigationsflade uden at ændre det eksisterende editor- eller preview-layout.</p></div><figure class="media-card"><a class="screenshot-link" href="../docs/images/release-v1-2-1-toolbar-presets.png" aria-label="Åbn produktbilledet for v1.2.1"><img src="../docs/images/release-v1-2-1-toolbar-presets.png" width="1192" height="1232" loading="lazy" decoding="async" alt="Neon Vision Editor med indbygget værktøjslinje, PDF-visning, Markdown-dokument og projektarbejdsområde"></a></figure></div>
+      <div class="toolbar-presets-hero"><div class="section-title"><p class="eyebrow">Ny i v1.2.1</p><h2 id="release-1-2-1-title">En klarere værktøjslinje til enhver Apple-enhed.</h2><p>Version 1.2.1 tilføjer platformoptimerede værktøjslinjeforudindstillinger med kompakte symboler og ensartede kontroller på macOS, iPadOS og iOS. Vælg standard-, fokus-, udvikler-, review- eller komplette arbejdsgange fra Indstillinger, mens iOS bevarer sin gennemsigtige statuslinje.</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">Hent v1.4.1</a></p></div><figure class="media-card"><a class="screenshot-link" href="../docs/images/release-v1-4-1-toolbar-presets.png" aria-label="Åbn skærmbilledet af værktøjslinjen i v1.4.1"><img src="../docs/images/release-v1-4-1-toolbar-presets.png" width="2024" height="1874" loading="lazy" decoding="async" alt="Værktøjslinjeforudindstillinger i Neon Vision Editor"></a></figure></div>
+      <div class="story"><div class="story-copy"><p class="story-tag">Værktøjslinjeforudindstillinger og layoutstabilitet</p><h2>Vælg de værktøjer, du skal bruge, uden at miste dokumentet.</h2><p>Kompakte etiketter holder macOS- og iPadOS-værktøjslinjer læselige, mens iPhone bruger ikoner først, hvor pladsen er begrænset. Forudindstillinger gør det nemt at skifte mellem daglig redigering, fokuseret skrivning, udvikling, gennemgang og det komplette arbejdsområde.</p><p>Udgivelsen gendanner også den gennemsigtige iOS-statuslinje og navigationsflade uden at ændre det eksisterende editor- eller preview-layout.</p></div></div>
       <div class="markdown-feature-points" aria-label="Funktioner i version 1.2.1"><div class="markdown-feature-point"><strong>Platformstilpassede værktøjslinjer</strong><span>Kompakte, ensartede kontroller til macOS, iPadOS og iOS.</span></div><div class="markdown-feature-point"><strong>Fem forudindstillinger</strong><span>Standard, fokuseret, udvikler, gennemgang og komplet.</span></div><div class="markdown-feature-point"><strong>Tydeligere tilpasning</strong><span>Konfigurer handlinger i værktøjslinje og projektpanel fra Indstillinger.</span></div><div class="markdown-feature-point"><strong>Stabile iOS-flader</strong><span>Bevar den gennemsigtige statuslinje og det eksisterende layout.</span></div></div>
     </section>
 

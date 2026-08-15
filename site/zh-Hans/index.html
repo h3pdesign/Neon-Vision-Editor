@@ -751,6 +751,9 @@
       letter-spacing: -0.05em;
     }
 
+    .developer-note > div:first-child { display: flex; flex-direction: column; }
+    .developer-avatar { display: block; width: clamp(88px, 8vw, 112px); height: clamp(88px, 8vw, 112px); margin-top: auto; margin-bottom: 12px; border: 4px solid var(--paper-solid); border-radius: 50%; object-fit: cover; object-position: center 30%; box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18); }
+
     .developer-note-copy { max-width: 720px; }
     .developer-note-copy p { color: var(--muted); font-size: 1.04rem; }
     .developer-note-copy p:last-child { margin-bottom: 0; }
@@ -901,7 +904,21 @@
       box-shadow: var(--shadow);
     }
 
+    .feature-band + .intro { margin-top: clamp(64px, 7vw, 112px); }
+
     .section-title { max-width: 680px; margin-bottom: 28px; }
+
+    .editor-core-hero,
+    .toolbar-presets-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
+      gap: clamp(28px, 5vw, 68px);
+      align-items: start;
+    }
+
+    .editor-core-hero .section-title,
+    .toolbar-presets-hero .section-title { max-width: none; margin-bottom: 0; }
+    .toolbar-presets-hero .media-card { width: min(100%, 520px); justify-self: end; }
 
     .story {
       display: grid;
@@ -1232,6 +1249,8 @@
       .channel-card { min-height: 0; }
       .trust-summary { padding-block: 10px; }
       .developer-note { grid-template-columns: 1fr; margin-bottom: 76px; }
+      .editor-core-hero, .toolbar-presets-hero { grid-template-columns: 1fr; }
+      .toolbar-presets-hero .media-card { width: 100%; justify-self: stretch; }
       .intro, .story, .story.reverse { grid-template-columns: 1fr; padding-bottom: 0; }
       .intro { gap: 30px; }
       .workflow-grid { grid-template-columns: 1fr; }
@@ -1505,6 +1524,7 @@
       <div>
         <p class="eyebrow">由 h3p 开发</p>
         <h2 id="developer-note-title">Neon Vision Editor 的开发者：Hilthart Pedersen。</h2>
+        <img class="developer-avatar" src="../docs/images/hilthart-pedersen-avatar.png" width="112" height="112" alt="Hilthart Pedersen 肖像">
       </div>
       <div class="developer-note-copy">
         <p>我是 <strong>Hilthart Pedersen</strong>，常用名是 <strong>h3p</strong>，在 GitHub 上使用 <a href="https://github.com/h3pdesign">h3pdesign</a>。我将 Neon Vision Editor 作为一款独立的 Apple 编辑器进行开发，定位在基础文本编辑器和完整 IDE 之间。</p>
@@ -1515,6 +1535,12 @@
         <p>如果文档位于 iCloud Drive、网络文件夹，或在其他应用中打开同一文件，编辑器可能错过外部更改，甚至覆盖眼前的工作。</p>
         <p>Neon 会监视打开文档的外部更新。文件在其他位置更改且当前标签页干净时，它会原地刷新，并保留光标、选择、滚动位置和当前预览源。</p>
       </div>
+    </section>
+
+    <section class="feature-band" id="large-document-editor" aria-labelledby="large-document-editor-title">
+      <div class="editor-core-hero"><div class="section-title"><p class="eyebrow">v1.4.0 新功能</p><h2 id="large-document-editor-title">大型文档无需一次性加载全部内容，也能保持流畅响应。</h2><p>Neon 的 macOS 编辑器现在直接基于磁盘中的文件工作，并在正在编辑的位置周围保留一个有界的虚拟视口。这样无需在每次编辑时重建完整文档缓冲区，同时保留正常的编辑流程。</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">下载 v1.4.1</a></p></div><figure class="media-card editor-core-shot"><img src="../docs/images/release-v1-4-1-editor-core.png" width="1499" height="1215" loading="lazy" decoding="async" alt="带行号、标签页和紧凑工具栏控件的 macOS 版 Neon Vision Editor v1.4.1"></figure></div>
+      <div class="story"><div class="story-copy"><p class="story-tag">基于文件的编辑器架构</p><h2>无需重建整篇文档，也能编辑、滚动、选择和保存。</h2><p>虚拟视口会跟随滚动位置，并在替换活动窗口时保留光标和选区。语法处理和行布局仅限于可见范围。</p><p>编码、换行符、外部更改处理和原子保存仍属于同一文件工作流。100 MB 及以上的文件会作为清晰标记的只读部分预览打开，便于安全检查。</p></div></div>
+      <div class="markdown-feature-points" aria-label="大型文档编辑功能"><div class="markdown-feature-point"><strong>有界视口</strong><span>浏览大型文件时，只有当前编辑窗口保持活动。</span></div><div class="markdown-feature-point"><strong>优先处理可见内容</strong><span>行布局和语法着色聚焦于屏幕上的内容。</span></div><div class="markdown-feature-point"><strong>安全文件工作流</strong><span>保留选区、编码、换行符、外部更改和原子保存。</span></div><div class="markdown-feature-point"><strong>部分预览保护</strong><span>100 MB 及以上的文件可安全检查，无需超大编辑器缓冲区。</span></div></div>
     </section>
 
     <section class="intro" id="workflows" aria-labelledby="workflow-title">
@@ -1657,8 +1683,8 @@
     </section>
 
     <section class="feature-band" id="release-1-2-1" aria-labelledby="release-1-2-1-title">
-      <div class="section-title"><p class="eyebrow">v1.2.1 新功能</p><h2 id="release-1-2-1-title">为每一台 Apple 设备提供更清晰的工具栏。</h2><p>v1.2.1 为 macOS、iPadOS 和 iOS 带来经过平台优化的工具栏预设、紧凑符号和一致的控件。你可以在设置中配置标准、专注、开发者、审阅或完整工作流，同时保留 iOS 透明的状态栏组合。</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">下载 v1.4.1</a></p></div>
-      <div class="story"><div class="story-copy"><p class="story-tag">工具栏预设与布局稳定性</p><h2>选择需要的工具，同时保留当前文档。</h2><p>紧凑标签让 macOS 和 iPadOS 工具栏更易阅读；在空间有限的 iPhone 上，工具栏优先使用图标。预设让你可以在日常编辑、专注写作、开发、审阅和完整工作区之间快速切换。</p><p>此版本还恢复了 iOS 透明的状态栏和导航表面组合，同时不改变现有的编辑器和预览布局。</p></div><figure class="media-card"><a class="screenshot-link" href="../docs/images/release-v1-2-1-toolbar-presets.png" aria-label="打开 v1.2.1 产品截图"><img src="../docs/images/release-v1-2-1-toolbar-presets.png" width="1192" height="1232" loading="lazy" decoding="async" alt="Neon Vision Editor 显示原生工具栏、PDF 预览、Markdown 文档和项目工作区"></a></figure></div>
+      <div class="toolbar-presets-hero"><div class="section-title"><p class="eyebrow">v1.2.1 新功能</p><h2 id="release-1-2-1-title">为每台 Apple 设备提供更清晰的工具栏。</h2><p>1.2.1 版为 macOS、iPadOS 和 iOS 加入了针对平台优化的工具栏预设，提供紧凑的图标和一致的控制项。你可在“设置”中配置标准、专注、开发、审阅或完整工作流，同时 iOS 保留透明状态栏布局。</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">下载 v1.4.1</a></p></div><figure class="media-card"><a class="screenshot-link" href="../docs/images/release-v1-4-1-toolbar-presets.png" aria-label="打开 v1.4.1 工具栏预设截图"><img src="../docs/images/release-v1-4-1-toolbar-presets.png" width="2024" height="1874" loading="lazy" decoding="async" alt="Neon Vision Editor 中的工具栏预设"></a></figure></div>
+      <div class="story"><div class="story-copy"><p class="story-tag">工具栏预设与布局稳定性</p><h2>选择需要的工具，同时保留当前文档。</h2><p>紧凑标签让 macOS 和 iPadOS 工具栏更易阅读；在空间有限的 iPhone 上，工具栏优先使用图标。预设让你可以在日常编辑、专注写作、开发、审阅和完整工作区之间快速切换。</p><p>此版本还恢复了 iOS 透明的状态栏和导航表面组合，同时不改变现有的编辑器和预览布局。</p></div></div>
       <div class="markdown-feature-points" aria-label="v1.2.1 功能"><div class="markdown-feature-point"><strong>平台优化工具栏</strong><span>为 macOS、iPadOS 和 iOS 提供紧凑且一致的控件。</span></div><div class="markdown-feature-point"><strong>五种工作区预设</strong><span>标准、专注、开发者、审阅和完整。</span></div><div class="markdown-feature-point"><strong>更清晰的自定义</strong><span>在设置中配置工具栏和项目侧栏操作。</span></div><div class="markdown-feature-point"><strong>稳定的 iOS 表面</strong><span>保留透明状态栏组合和现有布局。</span></div></div>
     </section>
 

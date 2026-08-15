@@ -752,6 +752,9 @@
       letter-spacing: -0.05em;
     }
 
+    .developer-note > div:first-child { display: flex; flex-direction: column; }
+    .developer-avatar { display: block; width: clamp(88px, 8vw, 112px); height: clamp(88px, 8vw, 112px); margin-top: auto; margin-bottom: 12px; border: 4px solid var(--paper-solid); border-radius: 50%; object-fit: cover; object-position: center 30%; box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18); }
+
     .developer-note-copy { max-width: 720px; }
     .developer-note-copy p { color: var(--muted); font-size: 1.04rem; }
     .developer-note-copy p:last-child { margin-bottom: 0; }
@@ -902,7 +905,21 @@
       box-shadow: var(--shadow);
     }
 
+    .feature-band + .intro { margin-top: clamp(64px, 7vw, 112px); }
+
     .section-title { max-width: 680px; margin-bottom: 28px; }
+
+    .editor-core-hero,
+    .toolbar-presets-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
+      gap: clamp(28px, 5vw, 68px);
+      align-items: start;
+    }
+
+    .editor-core-hero .section-title,
+    .toolbar-presets-hero .section-title { max-width: none; margin-bottom: 0; }
+    .toolbar-presets-hero .media-card { width: min(100%, 520px); justify-self: end; }
 
     .story {
       display: grid;
@@ -1233,6 +1250,8 @@
       .channel-card { min-height: 0; }
       .trust-summary { padding-block: 10px; }
       .developer-note { grid-template-columns: 1fr; margin-bottom: 76px; }
+      .editor-core-hero, .toolbar-presets-hero { grid-template-columns: 1fr; }
+      .toolbar-presets-hero .media-card { width: 100%; justify-self: stretch; }
       .intro, .story, .story.reverse { grid-template-columns: 1fr; padding-bottom: 0; }
       .intro { gap: 30px; }
       .workflow-grid { grid-template-columns: 1fr; }
@@ -1506,6 +1525,7 @@
       <div>
         <p class="eyebrow">Entwickelt von h3p</p>
         <h2 id="developer-note-title">Hilthart Pedersen — der Entwickler hinter Neon Vision Editor.</h2>
+        <img class="developer-avatar" src="../docs/images/hilthart-pedersen-avatar.png" width="112" height="112" alt="Porträt von Hilthart Pedersen">
       </div>
       <div class="developer-note-copy">
         <p>Ich bin <strong>Hilthart Pedersen</strong>, online als <strong>h3p</strong> und auf GitHub als <a href="https://github.com/h3pdesign">h3pdesign</a>. Ich entwickle Neon Vision Editor als unabhängigen Apple-Editor für den Raum zwischen einfachem Texteditor und vollständiger IDE.</p>
@@ -1516,6 +1536,12 @@
         <p>Wenn Dokumente in iCloud Drive oder einem Netzwerkordner liegen oder dieselbe Datei in einer anderen App geöffnet ist, kann ein Editor externe Änderungen übersehen oder schlimmer noch die aktuelle Arbeit überschreiben.</p>
         <p>Neon überwacht geöffnete Dokumente auf externe Änderungen. Ändert sich eine Datei an anderer Stelle und ist der Tab sauber, wird er direkt aktualisiert, ohne dass Sie ihn schließen und erneut öffnen müssen. Cursorposition, Auswahl, Scrollposition und aktuelle Vorschauquelle bleiben erhalten.</p>
       </div>
+    </section>
+
+    <section class="feature-band" id="large-document-editor" aria-labelledby="large-document-editor-title">
+      <div class="editor-core-hero"><div class="section-title"><p class="eyebrow">Neu in v1.4.0</p><h2 id="large-document-editor-title">Große Dokumente bleiben reaktionsschnell, ohne alles auf einmal zu laden.</h2><p>Der macOS-Editor von Neon arbeitet direkt mit der Datei auf dem Datenträger und hält einen begrenzten virtuellen Bereich um die gerade bearbeitete Stelle aktiv. So wird nicht bei jeder Änderung ein vollständiger Dokumentpuffer neu aufgebaut, während der normale Bearbeitungsablauf erhalten bleibt.</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">v1.4.1 herunterladen</a></p></div><figure class="media-card editor-core-shot"><img src="../docs/images/release-v1-4-1-editor-core.png" width="1499" height="1215" loading="lazy" decoding="async" alt="Neon Vision Editor v1.4.1 auf macOS mit Zeilennummern, Tabs und kompakten Symbolleisten"></figure></div>
+      <div class="story"><div class="story-copy"><p class="story-tag">Dateibasierte Editorarchitektur</p><h2>Bearbeiten, scrollen, auswählen und sichern — ohne das ganze Dokument neu aufzubauen.</h2><p>Der virtuelle Bereich folgt der Scrollposition und bewahrt Cursor und Auswahl, wenn er das aktive Fenster ersetzt. Syntaxarbeit und Zeilenlayout bleiben auf den sichtbaren Bereich begrenzt.</p><p>Kodierung, Zeilenenden, externe Änderungen und atomisches Sichern bleiben Teil desselben Dateiablaufs. Dateien ab 100 MB öffnen als klar gekennzeichnete schreibgeschützte Teilvorschau zur sicheren Prüfung.</p></div></div>
+      <div class="markdown-feature-points" aria-label="Funktionen für große Dokumente"><div class="markdown-feature-point"><strong>Begrenzter Bereich</strong><span>Nur das aktive Bearbeitungsfenster bleibt beim Navigieren durch große Dateien aktiv.</span></div><div class="markdown-feature-point"><strong>Sichtbares zuerst</strong><span>Zeilenlayout und Syntaxfärbung konzentrieren sich auf den sichtbaren Inhalt.</span></div><div class="markdown-feature-point"><strong>Sicherer Dateiablauf</strong><span>Auswahl, Kodierung, Zeilenenden, externe Änderungen und atomisches Sichern bleiben erhalten.</span></div><div class="markdown-feature-point"><strong>Schutz bei Teilansicht</strong><span>Dateien ab 100 MB bleiben prüfbar, ohne einen übergroßen Editorpuffer zu riskieren.</span></div></div>
     </section>
 
     <section class="intro" id="workflows" aria-labelledby="workflow-title">
@@ -1658,13 +1684,8 @@
     </section>
 
     <section class="feature-band" id="release-1-2-1" aria-labelledby="release-1-2-1-title">
-      <div class="section-title">
-        <p class="eyebrow">Neu in v1.2.1</p>
-        <h2 id="release-1-2-1-title">Eine klarere Symbolleiste für jedes Apple-Gerät.</h2>
-        <p>Version 1.2.1 bringt plattformoptimierte Symbolleisten-Voreinstellungen mit kompakten Symbolen und einheitlichen Steuerelementen für macOS, iPadOS und iOS. In den Einstellungen können Sie Standard-, Fokus-, Entwickler-, Review- oder vollständige Workflows konfigurieren; iOS behält dabei seine transparente Statusleiste.</p>
-        <p class="markdown-feature-cta"><a class="button" href="#get-neon">v1.4.1 herunterladen</a></p>
-      </div>
-      <div class="story"><div class="story-copy"><p class="story-tag">Symbolleisten-Voreinstellungen und Layoutstabilität</p><h2>Die benötigten Werkzeuge wählen, ohne das Dokument zu verlieren.</h2><p>Kompakte Beschriftungen halten Symbolleisten auf macOS und iPadOS lesbar; auf dem iPhone bleiben sie platzsparend symbolorientiert. Voreinstellungen erleichtern den Wechsel zwischen täglicher Bearbeitung, fokussiertem Schreiben, Entwicklung, Review und dem vollständigen Arbeitsbereich.</p><p>Außerdem stellt das Release die transparente iOS-Statusleiste und Navigationsfläche wieder her, ohne das bestehende Editor- oder Vorschau-Layout zu ändern.</p></div><figure class="media-card"><a class="screenshot-link" href="../docs/images/release-v1-2-1-toolbar-presets.png" aria-label="v1.2.1-Produkt-Screenshot öffnen"><img src="../docs/images/release-v1-2-1-toolbar-presets.png" width="1192" height="1232" loading="lazy" decoding="async" alt="Neon Vision Editor mit nativer Symbolleiste, PDF-Vorschau, Markdown-Dokument und Projektarbeitsbereich"></a></figure></div>
+      <div class="toolbar-presets-hero"><div class="section-title"><p class="eyebrow">Neu in v1.2.1</p><h2 id="release-1-2-1-title">Eine klarere Symbolleiste für jedes Apple-Gerät.</h2><p>Version 1.2.1 bringt plattformoptimierte Symbolleisten-Voreinstellungen mit kompakten Symbolen und einheitlichen Steuerelementen für macOS, iPadOS und iOS. In den Einstellungen können Sie Standard-, Fokus-, Entwickler-, Review- oder vollständige Workflows konfigurieren; iOS behält dabei seine transparente Statusleiste.</p><p class="markdown-feature-cta"><a class="button" href="#get-neon">v1.4.1 herunterladen</a></p></div><figure class="media-card"><a class="screenshot-link" href="../docs/images/release-v1-4-1-toolbar-presets.png" aria-label="v1.4.1-Symbolleisten-Screenshot öffnen"><img src="../docs/images/release-v1-4-1-toolbar-presets.png" width="2024" height="1874" loading="lazy" decoding="async" alt="Symbolleisten-Voreinstellungen in Neon Vision Editor"></a></figure></div>
+      <div class="story"><div class="story-copy"><p class="story-tag">Symbolleisten-Voreinstellungen und Layoutstabilität</p><h2>Die benötigten Werkzeuge wählen, ohne das Dokument zu verlieren.</h2><p>Kompakte Beschriftungen halten Symbolleisten auf macOS und iPadOS lesbar; auf dem iPhone bleiben sie platzsparend symbolorientiert. Voreinstellungen erleichtern den Wechsel zwischen täglicher Bearbeitung, fokussiertem Schreiben, Entwicklung, Review und dem vollständigen Arbeitsbereich.</p><p>Außerdem stellt das Release die transparente iOS-Statusleiste und Navigationsfläche wieder her, ohne das bestehende Editor- oder Vorschau-Layout zu ändern.</p></div></div>
       <div class="markdown-feature-points" aria-label="Funktionen von Version 1.2.1"><div class="markdown-feature-point"><strong>Plattformoptimierte Symbolleisten</strong><span>Kompakte, einheitliche Steuerelemente für macOS, iPadOS und iOS.</span></div><div class="markdown-feature-point"><strong>Fünf Arbeitsbereichs-Voreinstellungen</strong><span>Standard, Fokus, Entwickler, Review und vollständig.</span></div><div class="markdown-feature-point"><strong>Klarere Anpassung</strong><span>Symbolleisten- und Projektleistenaktionen in den Einstellungen konfigurieren.</span></div><div class="markdown-feature-point"><strong>Stabile iOS-Flächen</strong><span>Transparente Statusleiste und bestehendes Layout beibehalten.</span></div></div>
     </section>
 

@@ -4256,7 +4256,6 @@ struct ContentView: View {
             autoIndentEnabled: autoIndentEnabled,
             autoCloseBracketsEnabled: autoCloseBracketsEnabled,
             isSplitPaneResizeInProgress: previewPaneResizeStartWidth != nil,
-            preferredLayoutWidth: brainDumpLayoutEnabled ? 920 : nil,
             onFontSizeChange: { setEditorFontSize(Double($0)) },
             onTextMutation: { mutation in
                 if let viewport = mutation.viewport {

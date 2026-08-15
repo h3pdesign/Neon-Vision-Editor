@@ -106,6 +106,10 @@ extension ContentView {
             .accessibilityLabel("Sync preview with editor scrolling")
             .accessibilityValue(markdownPreviewSynchronousScroll ? "On" : "Off")
 #endif
+#if os(macOS)
+            markdownPreviewPaneExportMenu
+            markdownPreviewPaneStyleMenu
+#endif
             Button(action: closeMarkdownPreview) {
                 Image(systemName: "xmark")
             }
@@ -116,6 +120,74 @@ extension ContentView {
         .padding(.vertical, 9)
         .background(editorSurfaceBackgroundStyle)
     }
+
+#if os(macOS)
+    private var markdownPreviewPaneExportMenu: some View {
+        Menu {
+            Button(action: { exportMarkdownPreviewPDF() }) {
+                Label(NSLocalizedString("Export PDF", comment: ""), systemImage: "square.and.arrow.down")
+            }
+
+            Menu {
+                Button {
+                    markdownPDFExportModeRaw = MarkdownPDFExportMode.paginatedFit.rawValue
+                } label: {
+                    if markdownPDFExportModeRaw == MarkdownPDFExportMode.paginatedFit.rawValue {
+                        Label(NSLocalizedString("Paginated Fit", comment: ""), systemImage: "checkmark")
+                    } else {
+                        Text(NSLocalizedString("Paginated Fit", comment: ""))
+                    }
+                }
+                Button {
+                    markdownPDFExportModeRaw = MarkdownPDFExportMode.onePageFit.rawValue
+                } label: {
+                    if markdownPDFExportModeRaw == MarkdownPDFExportMode.onePageFit.rawValue {
+                        Label(NSLocalizedString("One Page Fit", comment: ""), systemImage: "checkmark")
+                    } else {
+                        Text(NSLocalizedString("One Page Fit", comment: ""))
+                    }
+                }
+            } label: {
+                Label(NSLocalizedString("PDF Mode", comment: ""), systemImage: "doc.text")
+            }
+
+            Divider()
+
+            Button(action: { copyMarkdownPreviewHTML() }) {
+                Label(NSLocalizedString("Copy HTML", comment: ""), systemImage: "doc.on.doc")
+            }
+            Button(action: { copyMarkdownPreviewMarkdown() }) {
+                Label(NSLocalizedString("Copy Markdown", comment: ""), systemImage: "doc.on.clipboard")
+            }
+        } label: {
+            Image(systemName: "square.and.arrow.down")
+        }
+        .menuStyle(.borderlessButton)
+        .help(NSLocalizedString("Markdown Preview Export Options", comment: ""))
+        .accessibilityLabel(NSLocalizedString("Export Markdown preview as PDF", comment: ""))
+    }
+
+    private var markdownPreviewPaneStyleMenu: some View {
+        Menu {
+            ForEach(Self.markdownPreviewTemplateOptions) { option in
+                Button {
+                    markdownPreviewTemplateRaw = option.id
+                } label: {
+                    if markdownPreviewTemplateRaw == option.id {
+                        Label(NSLocalizedString(option.title, comment: ""), systemImage: "checkmark")
+                    } else {
+                        Text(NSLocalizedString(option.title, comment: ""))
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "paintbrush")
+        }
+        .menuStyle(.borderlessButton)
+        .help(NSLocalizedString("Markdown Preview Template", comment: ""))
+        .accessibilityLabel(NSLocalizedString("Markdown Preview Template", comment: ""))
+    }
+#endif
 
     private var iPhoneMarkdownPreviewWebViewHorizontalInset: CGFloat { 12 }
     @ViewBuilder

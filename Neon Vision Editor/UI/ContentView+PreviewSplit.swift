@@ -3,6 +3,19 @@ import SwiftUI
 import UIKit
 #endif
 
+#if os(macOS)
+enum PreviewPaneResizeGeometry {
+    static func width(
+        startWidth: CGFloat,
+        translation: CGFloat,
+        minimumWidth: CGFloat,
+        maximumWidth: CGFloat
+    ) -> CGFloat {
+        min(max(startWidth - translation, minimumWidth), maximumWidth)
+    }
+}
+#endif
+
 // MARK: - Preview Split Coordination
 
 extension ContentView {
@@ -324,13 +337,24 @@ extension ContentView {
                 let startWidth = previewPaneResizeStartWidth ?? clampedPreviewPaneWidth
                 if previewPaneResizeStartWidth == nil {
                     previewPaneResizeStartWidth = startWidth
+                    // The parent geometry changes as this divider moves. Keep
+                    // its constraint stable for this gesture so the divider
+                    // follows the pointer instead of feeding layout changes
+                    // back into the active drag.
+                    previewPaneResizeMaximumWidth = maximumPreviewPaneWidth
                 }
-                let proposed = startWidth - value.translation.width
-                let clamped = min(max(proposed, minimumPreviewPaneWidth), maximumPreviewPaneWidth)
+                let clamped = PreviewPaneResizeGeometry.width(
+                    startWidth: startWidth,
+                    translation: value.translation.width,
+                    minimumWidth: minimumPreviewPaneWidth,
+                    maximumWidth: previewPaneResizeMaximumWidth ?? maximumPreviewPaneWidth
+                )
                 previewPaneWidth = Double(clamped)
             }
             .onEnded { _ in
+                previewPaneWidth = Double(clampedPreviewPaneWidth)
                 previewPaneResizeStartWidth = nil
+                previewPaneResizeMaximumWidth = nil
                 isPreviewPaneResizeHandleHovered = false
                 MacSidebarResizeCursor.reset(ownerID: "preview-pane")
             }

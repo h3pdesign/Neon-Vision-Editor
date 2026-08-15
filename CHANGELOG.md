@@ -4,6 +4,31 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.4.3] - 2026-08-15
+
+### Why Upgrade
+
+- Keeps macOS editing stable while changing workspace and Brain Dump layouts.
+- Makes Markdown preview actions easier to reach without crowding the main toolbar.
+
+### Highlights
+
+- Moves Markdown preview export and style actions into the split preview header.
+- Adds a dedicated Markdown Cards button to the Standard and Writing toolbar presets.
+
+### Fixes
+
+- Prevents preview-divider resizing from feeding geometry changes back into the editor while dragging.
+- Restores the virtual editor's usable width after sidebar, preview, and workspace changes.
+- Prevents the first editor row from drawing beneath the tab bar.
+- Prevents Brain Dump from collapsing open-document text into one-character columns.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v1.4.2] - 2026-08-15
 
 ### Why Upgrade

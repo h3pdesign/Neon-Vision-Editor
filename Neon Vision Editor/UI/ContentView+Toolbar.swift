@@ -173,11 +173,11 @@ enum ToolbarPreset: String, CaseIterable, Identifiable {
         case .standard:
             return [
                 "openFile", "newTab", "closeAllTabs", "saveFile", "saveFileAs", "newWindow",
-                "codeMinimap", "previewActions", "findReplace", "findInFiles",
+                "codeMinimap", "previewActions", "markdownProjectPreview", "findReplace", "findInFiles",
                 "toggleSidebar", "toggleProjectSidebar", "brainDump", "help", "languageIndicator", "settings"
             ]
         case .writing:
-            return ["openFile", "newTab", "saveFile", "findReplace", "editorLayout", "previewActions", "settings", "help"]
+            return ["openFile", "newTab", "saveFile", "findReplace", "editorLayout", "previewActions", "markdownProjectPreview", "settings", "help"]
         case .developer:
             return ["openFile", "newTab", "saveFile", "codeSnapshot", "findReplace", "findInFiles", "compare", "splitEditor", "gitChanges", "settings"]
         case .review:
@@ -187,7 +187,7 @@ enum ToolbarPreset: String, CaseIterable, Identifiable {
         case .all:
             return [
                 "openFile", "newTab", "closeAllTabs", "saveFile", "saveFileAs", "newWindow", "codeSnapshot",
-                "editorLayout", "previewActions", "findReplace", "findInFiles",
+                "editorLayout", "previewActions", "markdownProjectPreview", "findReplace", "findInFiles",
                 "compare", "splitEditor", "gitChanges", "settings", "help"
             ]
         case .custom:
@@ -202,10 +202,10 @@ enum ToolbarPreset: String, CaseIterable, Identifiable {
         case .standard:
             return [
                 "openFile", "undo", "newTab", "saveFile", "findReplace", "findInFiles", "markdownPreview",
-                "codeMinimap", "toggleSidebar", "toggleProjectSidebar", "brainDump", "gitChanges", "settings", "help"
+                "markdownProjectPreview", "codeMinimap", "toggleSidebar", "toggleProjectSidebar", "brainDump", "gitChanges", "settings", "help"
             ]
         case .writing:
-            return ["openFile", "undo", "saveFile", "findReplace", "markdownPreview", "markdownPreviewStyle", "lineWrap", "settings", "help"]
+            return ["openFile", "undo", "saveFile", "findReplace", "markdownPreview", "markdownProjectPreview", "markdownPreviewStyle", "lineWrap", "settings", "help"]
         case .developer:
             return ["openFile", "undo", "newTab", "saveFile", "findReplace", "findInFiles", "compareTabs", "gitChanges", "splitEditor", "settings", "help"]
         case .review:
@@ -261,7 +261,7 @@ enum ToolbarIconOption: String, CaseIterable, Identifiable {
         case .saveFileAs: return "Save As"
         case .codeSnapshot: return "Code Snapshot"
         case .markdownPreview: return "Markdown Preview"
-        case .markdownProjectPreview: return "Project Preview Cards"
+        case .markdownProjectPreview: return "Markdown Cards"
         case .codeMinimap: return "Code Minimap"
         case .indentationGuides: return "Indentation Guides"
         case .markdownPreviewExport: return "Export PDF"
@@ -2209,13 +2209,15 @@ extension ContentView {
                 Label("Open in Separate Window", systemImage: "rectangle.on.rectangle")
             }
             .disabled(!isPreviewSupportedDocument)
-            Divider()
-            Button(action: {
-                toggleMarkdownProjectPreviewFromToolbar()
-            }) {
-                Label(isMarkdownProjectPreviewPresented ? "Hide Project Cards" : "Show Project Cards", systemImage: "square.grid.2x2")
+            if !isMacToolbarItemVisible("markdownProjectPreview") {
+                Divider()
+                Button(action: {
+                    toggleMarkdownProjectPreviewFromToolbar()
+                }) {
+                    Label(isMarkdownProjectPreviewPresented ? "Hide Project Cards" : "Show Project Cards", systemImage: "square.grid.2x2")
+                }
+                .disabled(projectRootFolderURL == nil || !hasMarkdownOrPDFProjectPreviewFiles || isSafeModeActive)
             }
-            .disabled(projectRootFolderURL == nil || !hasMarkdownOrPDFProjectPreviewFiles || isSafeModeActive)
         } label: {
             Image(systemName: isPreviewVisible ? "eye.fill" : "eye")
         }
@@ -2379,6 +2381,21 @@ extension ContentView {
                 : "Preview is unavailable for this document"
         )
         .accessibilityLabel(previewTitle)
+
+        if isMacToolbarItemVisible("markdownProjectPreview") {
+            Button(action: { toggleMarkdownProjectPreviewFromToolbar() }) {
+                Label(
+                    isMarkdownProjectPreviewPresented ? "Hide Markdown Cards" : "Show Markdown Cards",
+                    systemImage: isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2"
+                )
+                .foregroundStyle(isMarkdownProjectPreviewPresented ? Color.accentColor : macToolbarSymbolColor)
+            }
+            .disabled(projectRootFolderURL == nil || !hasMarkdownOrPDFProjectPreviewFiles || isSafeModeActive)
+            .help(isMarkdownProjectPreviewPresented ? "Hide Markdown Cards" : "Show Markdown Cards")
+            .accessibilityLabel("Markdown Cards")
+            .accessibilityValue(isMarkdownProjectPreviewPresented ? "Shown" : "Hidden")
+            .accessibilityHint("Shows Markdown and PDF files from the current project as preview cards")
+        }
 
         if isMacToolbarItemVisible("codeMinimap") {
             codeMinimapControl
@@ -2651,23 +2668,6 @@ extension ContentView {
                     .accessibilityLabel("Code completion provider")
             }
 
-            if showMarkdownPreviewPane && isMarkdownPreviewDocument {
-                Menu {
-                    markdownPreviewExportToolbarMenuContent
-                } label: {
-                    Label("Export PDF", systemImage: "square.and.arrow.down")
-                        .foregroundStyle(macToolbarSymbolColor)
-                }
-                .help(NSLocalizedString("Markdown Preview Export Options", comment: "Toolbar help for markdown preview export options"))
-
-                Menu {
-                    markdownPreviewTemplateMenuItems
-                } label: {
-                    Label(NSLocalizedString("Preview Style", comment: "Markdown preview style menu label"), systemImage: "paintbrush")
-                        .foregroundStyle(macToolbarSymbolColor)
-                }
-                .help(NSLocalizedString("Markdown Preview Template", comment: "Toolbar help for markdown preview style menu"))
-            }
         }
         }
 #else

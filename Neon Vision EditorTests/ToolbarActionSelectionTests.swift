@@ -93,10 +93,15 @@ final class ToolbarActionSelectionTests: XCTestCase {
 
     func testToolbarPresetsExposeStablePlatformActions() {
         XCTAssertEqual(ToolbarPreset.standard.macOSIDs.first, "openFile")
+        XCTAssertTrue(ToolbarPreset.standard.macOSIDs.contains("markdownProjectPreview"))
         XCTAssertTrue(ToolbarPreset.developer.macOSIDs.contains("gitChanges"))
         XCTAssertTrue(ToolbarPreset.writing.mobileIDs.contains("markdownPreview"))
+        XCTAssertTrue(ToolbarPreset.writing.macOSIDs.contains("markdownProjectPreview"))
+        XCTAssertTrue(ToolbarPreset.standard.mobileIDs.contains("markdownProjectPreview"))
+        XCTAssertTrue(ToolbarPreset.writing.mobileIDs.contains("markdownProjectPreview"))
         XCTAssertFalse(ToolbarPreset.focus.mobileIDs.contains("gitChanges"))
         XCTAssertTrue(ToolbarPreset.all.macOSIDs.contains("help"))
+        XCTAssertTrue(ToolbarPreset.all.macOSIDs.contains("markdownProjectPreview"))
         XCTAssertTrue(ToolbarPreset.all.mobileIDs.contains("markdownProjectPreview"))
         XCTAssertTrue(ToolbarPreset.all.mobileIDs.contains("fontIncrease"))
         XCTAssertEqual(ToolbarPreset.mobileSelectableIDs.count, Set(ToolbarPreset.mobileSelectableIDs).count)

@@ -10,6 +10,15 @@ struct VirtualEditorVisualFragment {
 }
 
 enum VirtualEditorVisualLayout {
+    static func baseline(
+        rowOrigin: Int,
+        lineHeight: CGFloat,
+        fontAscender: CGFloat,
+        topInset: CGFloat = 2
+    ) -> CGFloat {
+        CGFloat(rowOrigin) * lineHeight + fontAscender + topInset
+    }
+
     static func fragments(
         for attributed: NSAttributedString,
         lineStartUTF16: Int,
@@ -100,8 +109,18 @@ struct VirtualEditorView: NSViewRepresentable {
     let highlightsMatchingBrackets: Bool
     let autoIndentEnabled: Bool
     let autoCloseBracketsEnabled: Bool
+    let isSplitPaneResizeInProgress: Bool
+    let preferredLayoutWidth: CGFloat?
     let onFontSizeChange: ((CGFloat) -> Void)?
     let onTextMutation: ((EditorTextMutation) -> Bool)?
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: VirtualEditorScrollView, context: Context) -> CGSize? {
+        VirtualEditorLayoutSizing.sizeThatFits(
+            proposedWidth: proposal.width,
+            proposedHeight: proposal.height,
+            preferredWidth: preferredLayoutWidth
+        )
+    }
 
     func makeNSView(context: Context) -> VirtualEditorScrollView {
         let view = VirtualEditorScrollView()
@@ -129,6 +148,7 @@ struct VirtualEditorView: NSViewRepresentable {
             highlightsMatchingBrackets: highlightsMatchingBrackets,
             autoIndentEnabled: autoIndentEnabled,
             autoCloseBracketsEnabled: autoCloseBracketsEnabled,
+            isSplitPaneResizeInProgress: isSplitPaneResizeInProgress,
             onFontSizeChange: onFontSizeChange,
             onTextMutation: onTextMutation
         )
@@ -160,26 +180,58 @@ struct VirtualEditorView: NSViewRepresentable {
             highlightsMatchingBrackets: highlightsMatchingBrackets,
             autoIndentEnabled: autoIndentEnabled,
             autoCloseBracketsEnabled: autoCloseBracketsEnabled,
+            isSplitPaneResizeInProgress: isSplitPaneResizeInProgress,
             onFontSizeChange: onFontSizeChange,
             onTextMutation: onTextMutation
         )
     }
 }
 
+enum VirtualEditorLayoutSizing {
+    static func sizeThatFits(
+        proposedWidth: CGFloat?,
+        proposedHeight: CGFloat?,
+        preferredWidth: CGFloat?
+    ) -> CGSize? {
+        guard let preferredWidth, preferredWidth > 1 else {
+            return nil
+        }
+        let resolvedWidth: CGFloat
+        if let proposedWidth, proposedWidth > 1 {
+            resolvedWidth = min(proposedWidth, preferredWidth)
+        } else {
+            resolvedWidth = preferredWidth
+        }
+        return CGSize(width: resolvedWidth, height: max(proposedHeight ?? 400, 1))
+    }
+}
+
 enum VirtualEditorViewportGeometry {
+    static func stabilizedSize(
+        _ candidate: CGSize,
+        previous: CGSize,
+        minimumUsableWidth: CGFloat
+    ) -> CGSize? {
+        guard candidate.width < minimumUsableWidth else { return candidate }
+        guard previous.width >= minimumUsableWidth else { return nil }
+        return CGSize(width: previous.width, height: candidate.height)
+    }
+
     static func visibleSize(
         contentBounds: CGSize,
         scrollViewBounds: CGSize,
         verticalScrollerWidth: CGFloat
     ) -> CGSize {
-        // During a SwiftUI split-pane resize, AppKit can report the previous
-        // clip-view bounds while the scroll view has already received its new
-        // allocation. When that happens, exclude the vertical scroller width:
-        // wrapping to the full scroll-view width places trailing glyphs under
-        // the scroller until the next layout pass.
+        // The clip view can retain the document's previous width while SwiftUI
+        // has already changed the scroll view allocation. Only trust that
+        // width once it agrees with the allocation; otherwise use the current
+        // allocation so wrapping catches up after a sidebar closes as well as
+        // while one opens. Excluding the vertical scroller also prevents
+        // trailing glyphs from being placed underneath it.
         let allocatedContentWidth = max(1, scrollViewBounds.width - verticalScrollerWidth)
         let width: CGFloat
-        if contentBounds.width > 1, contentBounds.width <= scrollViewBounds.width {
+        if contentBounds.width > 1,
+           abs(contentBounds.width - allocatedContentWidth) <= 1 {
             width = contentBounds.width
         } else if scrollViewBounds.width > 1 {
             width = allocatedContentWidth
@@ -194,6 +246,12 @@ enum VirtualEditorViewportGeometry {
     }
 }
 
+enum VirtualEditorResizePolicy {
+    static func shouldReflow(isSplitPaneResizeInProgress: Bool) -> Bool {
+        !isSplitPaneResizeInProgress
+    }
+}
+
 enum VirtualEditorKeyRouting {
     static func shouldInterpretArrow(modifiers: NSEvent.ModifierFlags) -> Bool {
         modifiers.contains(.command) || modifiers.contains(.control)
@@ -203,6 +261,10 @@ enum VirtualEditorKeyRouting {
 @MainActor
 final class VirtualEditorScrollView: NSScrollView {
     private let canvas = VirtualEditorCanvas()
+    private var lastUsableViewportSize = CGSize.zero
+    private var isSplitPaneResizeInProgress = false
+    private var viewportGeometryRetryCount = 0
+    private var isViewportGeometryRetryScheduled = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -289,8 +351,10 @@ final class VirtualEditorScrollView: NSScrollView {
         lineWrapEnabled: Bool, showsInvisibleCharacters: Bool, showsIndentationGuides: Bool,
         showsScopeGuides: Bool, highlightsScopeBackground: Bool,
         highlightsMatchingBrackets: Bool, autoIndentEnabled: Bool, autoCloseBracketsEnabled: Bool,
+        isSplitPaneResizeInProgress: Bool,
         onFontSizeChange: ((CGFloat) -> Void)?, onTextMutation: ((EditorTextMutation) -> Bool)?
     ) {
+        self.isSplitPaneResizeInProgress = isSplitPaneResizeInProgress
         hasHorizontalScroller = !lineWrapEnabled
         MacOverlayScrollerPolicy.configure(self, clearBackground: true)
         canvas.configure(
@@ -312,7 +376,9 @@ final class VirtualEditorScrollView: NSScrollView {
         if let documentID {
             EditorPerformanceMonitor.shared.markSwiftUIEditorUpdated(tabID: documentID)
         }
-        updateCanvasGeometry()
+        if VirtualEditorResizePolicy.shouldReflow(isSplitPaneResizeInProgress: isSplitPaneResizeInProgress) {
+            updateCanvasGeometry()
+        }
     }
 
     override func layout() {
@@ -320,19 +386,59 @@ final class VirtualEditorScrollView: NSScrollView {
         updateCanvasGeometry()
     }
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard window != nil else { return }
+
+        // SwiftUI can replace the surrounding hierarchy (for example when a
+        // workspace mode hides every sidebar) before the scroll view receives
+        // its final bounds. Restart the bounded retry budget at the AppKit
+        // attachment point so the canvas is remeasured after that layout pass.
+        viewportGeometryRetryCount = 0
+        scheduleViewportGeometryRetry()
+    }
+
     private func updateCanvasGeometry() {
-        let didResize = canvas.setViewportSize(visibleViewportSize)
+        guard VirtualEditorResizePolicy.shouldReflow(isSplitPaneResizeInProgress: isSplitPaneResizeInProgress) else {
+            return
+        }
+        guard let viewportSize = visibleViewportSize else {
+            scheduleViewportGeometryRetry()
+            return
+        }
+        viewportGeometryRetryCount = 0
+        let didResize = canvas.setViewportSize(viewportSize)
         guard didResize || canvas.frame.width <= 1 else { return }
         canvas.recalculateVisualMetrics()
         canvas.setFrameSize(NSSize(width: canvas.contentWidth, height: canvas.logicalHeight))
     }
 
-    private var visibleViewportSize: CGSize {
-        VirtualEditorViewportGeometry.visibleSize(
+    private var visibleViewportSize: CGSize? {
+        let candidate = VirtualEditorViewportGeometry.visibleSize(
             contentBounds: contentView.bounds.size,
             scrollViewBounds: bounds.size,
             verticalScrollerWidth: verticalScroller?.frame.width ?? 0
         )
+        let stabilized = VirtualEditorViewportGeometry.stabilizedSize(
+            candidate,
+            previous: lastUsableViewportSize,
+            minimumUsableWidth: canvas.minimumUsableViewportWidth
+        )
+        if stabilized != nil, candidate.width >= canvas.minimumUsableViewportWidth {
+            lastUsableViewportSize = candidate
+        }
+        return stabilized
+    }
+
+    private func scheduleViewportGeometryRetry() {
+        guard !isViewportGeometryRetryScheduled, viewportGeometryRetryCount < 3 else { return }
+        isViewportGeometryRetryScheduled = true
+        viewportGeometryRetryCount += 1
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { [weak self] in
+            guard let self else { return }
+            self.isViewportGeometryRetryScheduled = false
+            self.updateCanvasGeometry()
+        }
     }
 
     @objc private func frameDidChange() {
@@ -342,7 +448,15 @@ final class VirtualEditorScrollView: NSScrollView {
     @objc private func boundsDidChange() {
         let scrollY = contentView.bounds.minY
         let didScroll = abs(scrollY - canvas.lastScrollY) >= 0.5
-        let didResize = canvas.setViewportSize(visibleViewportSize)
+        let didResize: Bool
+        if VirtualEditorResizePolicy.shouldReflow(isSplitPaneResizeInProgress: isSplitPaneResizeInProgress),
+           let viewportSize = visibleViewportSize {
+            viewportGeometryRetryCount = 0
+            didResize = canvas.setViewportSize(viewportSize)
+        } else {
+            scheduleViewportGeometryRetry()
+            didResize = false
+        }
         guard didScroll || didResize else { return }
         canvas.lastScrollY = scrollY
         let previousViewportOrigin = canvas.viewportLineOrigin
@@ -433,6 +547,10 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var lineHeight: CGFloat { max(1, (editorFont.ascender - editorFont.descender + editorFont.leading + 4) * lineHeightMultiplier) }
     private var editorFont: NSFont { resolvedEditorFont }
     private var gutterWidth: CGFloat { max(44, CGFloat(max(1, document?.lineCount ?? 1).description.count) * editorFontSize * 0.7 + 18) }
+    var minimumUsableViewportWidth: CGFloat {
+        let characterWidth = ("m" as NSString).size(withAttributes: [.font: editorFont]).width
+        return gutterWidth + 16 + characterWidth * 4
+    }
     private var visualRowIndex: VirtualEditorVisualRowIndex {
         VirtualEditorVisualRowIndex(logicalLineCount: document?.lineCount ?? 1, estimatedRowsPerLogicalLine: estimatedRowsPerLogicalLine)
     }
@@ -804,7 +922,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private func visualRows() -> [VisualRow] {
         let availableWidth = max(1, bounds.width - gutterWidth - 16)
         var rows: [VisualRow] = []
-        var baseline = CGFloat(visualRowIndex.rowOrigin(forLogicalLine: viewportLineOrigin)) * lineHeight + 8
+        var baseline = VirtualEditorVisualLayout.baseline(
+            rowOrigin: visualRowIndex.rowOrigin(forLogicalLine: viewportLineOrigin),
+            lineHeight: lineHeight,
+            fontAscender: editorFont.ascender
+        )
         for localLine in lineStarts.indices {
             let estimatedBaseline = baseline
             let viewportMaxY = bounds.maxY + lineHeight * 2

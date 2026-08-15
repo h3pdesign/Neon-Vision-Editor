@@ -780,6 +780,7 @@ struct ContentView: View {
     @State var isTOCSidebarResizeHandleHovered: Bool = false
     @SceneStorage("PreviewPaneWidthV3") var previewPaneWidth: Double = 0
     @State var previewPaneResizeStartWidth: CGFloat? = nil
+    @State var previewPaneResizeMaximumWidth: CGFloat? = nil
     @State var isPreviewPaneResizeHandleHovered: Bool = false
     @State var previewPaneAvailableWidth: CGFloat = 0
     @SceneStorage("MarkdownProjectPreviewWidthV1") var markdownProjectPreviewWidth: Double = 500
@@ -4254,6 +4255,8 @@ struct ContentView: View {
             highlightsMatchingBrackets: effectiveBracketHighlight,
             autoIndentEnabled: autoIndentEnabled,
             autoCloseBracketsEnabled: autoCloseBracketsEnabled,
+            isSplitPaneResizeInProgress: previewPaneResizeStartWidth != nil,
+            preferredLayoutWidth: brainDumpLayoutEnabled ? 920 : nil,
             onFontSizeChange: { setEditorFontSize(Double($0)) },
             onTextMutation: { mutation in
                 if let viewport = mutation.viewport {

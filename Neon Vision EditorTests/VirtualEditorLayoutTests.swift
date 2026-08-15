@@ -55,6 +55,17 @@ final class VirtualEditorLayoutTests: XCTestCase {
         }
     }
 
+    func testFirstVisualRowBaselineLeavesRoomForTheFontAscender() {
+        XCTAssertEqual(
+            VirtualEditorVisualLayout.baseline(
+                rowOrigin: 0,
+                lineHeight: 21,
+                fontAscender: 13
+            ),
+            15
+        )
+    }
+
     func testVisualFragmentsSplitLongLineAtAvailableWidth() {
         let text = "abcdefghijklmnopqrstuvwxyz"
         let fragments = VirtualEditorVisualLayout.fragments(
@@ -101,6 +112,49 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(visibleSize, CGSize(width: 885, height: 700))
     }
 
+    func testWorkspaceModeReplacementUsesTheAllocatedScrollWidth() {
+        let visibleSize = VirtualEditorViewportGeometry.visibleSize(
+            contentBounds: CGSize(width: 1, height: 1),
+            scrollViewBounds: CGSize(width: 600, height: 700),
+            verticalScrollerWidth: 15
+        )
+
+        XCTAssertEqual(visibleSize, CGSize(width: 585, height: 700))
+    }
+
+    func testBrainDumpEditorSuppliesAWidthWhenSwiftUIHasNoProposal() {
+        XCTAssertEqual(
+            VirtualEditorLayoutSizing.sizeThatFits(
+                proposedWidth: nil,
+                proposedHeight: 700,
+                preferredWidth: 920
+            ),
+            CGSize(width: 920, height: 700)
+        )
+    }
+
+    func testBrainDumpEditorUsesTheParentProposalUpToItsPreferredWidth() {
+        XCTAssertEqual(
+            VirtualEditorLayoutSizing.sizeThatFits(
+                proposedWidth: 600,
+                proposedHeight: 700,
+                preferredWidth: 920
+            ),
+            CGSize(width: 600, height: 700)
+        )
+    }
+
+    func testBrainDumpEditorRejectsCollapsedWidthProposal() {
+        XCTAssertEqual(
+            VirtualEditorLayoutSizing.sizeThatFits(
+                proposedWidth: 1,
+                proposedHeight: 700,
+                preferredWidth: 920
+            ),
+            CGSize(width: 920, height: 700)
+        )
+    }
+
     func testPreviewSplitViewportExcludesVerticalScrollerWhenClipViewIsStale() {
         let visibleSize = VirtualEditorViewportGeometry.visibleSize(
             contentBounds: CGSize(width: 900, height: 700),
@@ -119,6 +173,40 @@ final class VirtualEditorLayoutTests: XCTestCase {
         )
 
         XCTAssertEqual(visibleSize, CGSize(width: 405, height: 700))
+    }
+
+    func testSidebarCloseUsesExpandedScrollAllocationWhenClipViewIsStale() {
+        let visibleSize = VirtualEditorViewportGeometry.visibleSize(
+            contentBounds: CGSize(width: 405, height: 700),
+            scrollViewBounds: CGSize(width: 900, height: 700),
+            verticalScrollerWidth: 15
+        )
+
+        XCTAssertEqual(visibleSize, CGSize(width: 885, height: 700))
+    }
+
+    func testCollapsedInitialViewportIsDeferredUntilLayoutProvidesUsableWidth() {
+        XCTAssertNil(VirtualEditorViewportGeometry.stabilizedSize(
+            CGSize(width: 1, height: 700),
+            previous: .zero,
+            minimumUsableWidth: 90
+        ))
+    }
+
+    func testPreviewPaneDragUsesItsCapturedMaximumWidth() {
+        let width = PreviewPaneResizeGeometry.width(
+            startWidth: 420,
+            translation: -180,
+            minimumWidth: 280,
+            maximumWidth: 600
+        )
+
+        XCTAssertEqual(width, 600)
+    }
+
+    func testSplitPaneResizeDefersVirtualEditorReflow() {
+        XCTAssertFalse(VirtualEditorResizePolicy.shouldReflow(isSplitPaneResizeInProgress: true))
+        XCTAssertTrue(VirtualEditorResizePolicy.shouldReflow(isSplitPaneResizeInProgress: false))
     }
 
     func testCommandArrowNavigationRemainsWithAppKit() {

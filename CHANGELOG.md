@@ -4,6 +4,32 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.4.2] - 2026-08-15
+
+### Why Upgrade
+
+- Makes detached Markdown previews easier to read over the desktop while preserving a transparent glass appearance.
+- Keeps macOS editor, sidebar, and preview surfaces visually consistent when translucency is enabled or disabled.
+- Aligns build metadata across every app target for reliable Xcode Cloud archives.
+
+### Highlights
+
+- Adds a light frosted-glass layer to detached Markdown previews and Finder Quick Look Markdown previews.
+- Uses the selected translucent window mode consistently across editor-related macOS surfaces.
+- Uses ultra-thin material for macOS sidebars when window translucency is disabled.
+
+### Fixes
+
+- Prevents the editor canvas from reverting to a white background when translucency is disabled.
+- Prevents vertical seams between editor panes in translucent mode and restores reliable line wrapping after tab or preview changes.
+- Keeps app, extension, widget, App Clip, and Watch targets on one build number.
+
+### Breaking changes
+- None.
+
+### Migration
+- None.
+
 ## [v1.4.1] - 2026-08-14
 
 ### Why Upgrade

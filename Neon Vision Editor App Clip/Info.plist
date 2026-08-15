@@ -40,8 +40,6 @@
 	<true/>
 	<key>UILaunchScreen</key>
 	<dict/>
-	<key>UILaunchStoryboardName</key>
-	<string></string>
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleDefault</string>
 	<key>UISupportedInterfaceOrientations</key>

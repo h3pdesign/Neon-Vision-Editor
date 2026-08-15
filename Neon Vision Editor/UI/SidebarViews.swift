@@ -1,35 +1,6 @@
 import SwiftUI
 import Foundation
 
-#if os(macOS)
-
-
-// MARK: - macOS Sidebar Materials
-
-private enum MacTranslucencyMode: String {
-    case subtle
-    case balanced
-    case vibrant
-
-    var material: Material {
-        switch self {
-        case .subtle, .balanced:
-            return .thickMaterial
-        case .vibrant:
-            return .regularMaterial
-        }
-    }
-
-    var opacity: Double {
-        switch self {
-        case .subtle: return 0.82
-        case .balanced: return 0.72
-        case .vibrant: return 0.62
-        }
-    }
-}
-#endif
-
 // MARK: - Sidebar Table of Contents
 
 struct SidebarView: View {
@@ -60,9 +31,6 @@ struct SidebarView: View {
     let onJumpToLine: ((Int) -> Void)?
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-#if os(macOS)
-    @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
-#endif
     @State private var tocItems: [TOCItem] = [
         TOCItem(id: "empty", title: "No content available", line: nil, level: 1, kind: .placeholder)
     ]
@@ -123,14 +91,13 @@ struct SidebarView: View {
     private var sidebarSurfaceFill: AnyShapeStyle {
         if translucentBackgroundEnabled {
             #if os(macOS)
-            let mode = MacTranslucencyMode(rawValue: macTranslucencyModeRaw) ?? .balanced
-            return AnyShapeStyle(mode.material.opacity(mode.opacity))
+            return AnyShapeStyle(Color.clear)
             #else
             return AnyShapeStyle(.ultraThinMaterial)
             #endif
         }
 #if os(macOS)
-        return AnyShapeStyle(currentEditorTheme(colorScheme: colorScheme).background)
+        return AnyShapeStyle(.ultraThinMaterial)
 #else
         return AnyShapeStyle(currentEditorTheme(colorScheme: colorScheme).background)
 #endif
@@ -1007,9 +974,6 @@ struct ProjectStructureSidebarView: View {
     @State private var recentProjectFolders: [RecentProjectFoldersStore.Item] = []
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-#if os(macOS)
-    @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
-#endif
     @AppStorage("SettingsProjectSidebarDensity") private var sidebarDensityRaw: String = SidebarDensity.compact.rawValue
     @AppStorage("SettingsProjectSidebarFontSize") private var sidebarFontSize: Double = 13
     @AppStorage("SettingsProjectSidebarAutoCollapseDeep") private var autoCollapseDeepFolders: Bool = true
@@ -1188,7 +1152,11 @@ struct ProjectStructureSidebarView: View {
 
     private var sidebarTabRailFill: AnyShapeStyle {
         if translucentBackgroundEnabled {
+#if os(macOS)
+            return AnyShapeStyle(Color.clear)
+#else
             return AnyShapeStyle(.thinMaterial)
+#endif
         }
         return AnyShapeStyle(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.045))
     }
@@ -1579,14 +1547,13 @@ struct ProjectStructureSidebarView: View {
     private var sidebarSurfaceFill: AnyShapeStyle {
         if translucentBackgroundEnabled {
             #if os(macOS)
-            let mode = MacTranslucencyMode(rawValue: macTranslucencyModeRaw) ?? .balanced
-            return AnyShapeStyle(mode.material.opacity(mode.opacity))
+            return AnyShapeStyle(Color.clear)
             #else
             return AnyShapeStyle(.ultraThinMaterial)
             #endif
         }
 #if os(macOS)
-        return AnyShapeStyle(currentEditorTheme(colorScheme: colorScheme).background)
+        return AnyShapeStyle(.ultraThinMaterial)
 #else
         return AnyShapeStyle(currentEditorTheme(colorScheme: colorScheme).background)
 #endif

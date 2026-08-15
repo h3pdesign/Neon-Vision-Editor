@@ -172,6 +172,7 @@ extension ContentView {
             indexedFileCount: projectFileIndexSnapshot.entries.count,
             isPreparingPreviews: markdownProjectPreviewModel.isLoading,
             previewStatus: markdownProjectPreviewModel.loadingStatus,
+            translucentBackgroundEnabled: enableTranslucentWindow,
             mode: Binding(
                 get: { markdownProjectPreviewMode },
                 set: { markdownProjectPreviewMode = $0 }

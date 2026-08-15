@@ -1076,48 +1076,46 @@ struct ContentView: View {
         }
     }
 #if os(macOS)
-    private enum MacTranslucencyMode: String {
-        case subtle
-        case balanced
-        case vibrant
-
-        var material: Material {
-            switch self {
-            case .subtle, .balanced:
-                return .thickMaterial
-            case .vibrant:
-                return .regularMaterial
-            }
+    enum MacEditorSurfacePolicy {
+        static func paneBackground(translucent: Bool, solid: Color) -> Color {
+            translucent ? .clear : solid
         }
 
-        var opacity: Double {
-            switch self {
-            case .subtle: return 0.82
-            case .balanced: return 0.72
-            case .vibrant: return 0.62
+        static func windowBackground(translucent: Bool, modeRaw: String, isDarkMode: Bool) -> NSColor {
+            let whiteLevel: CGFloat
+            let translucentAlpha: CGFloat
+            switch modeRaw {
+            case "subtle":
+                whiteLevel = isDarkMode ? 0.18 : 0.90
+                translucentAlpha = 0.92
+            case "vibrant":
+                whiteLevel = isDarkMode ? 0.12 : 0.82
+                translucentAlpha = 0.84
+            default:
+                whiteLevel = isDarkMode ? 0.15 : 0.86
+                translucentAlpha = 0.88
             }
+            return NSColor(calibratedWhite: whiteLevel, alpha: translucent ? translucentAlpha : 1)
         }
-
-        var toolbarOpacity: Double {
-            switch self {
-            case .subtle: return 0.76
-            case .balanced: return 0.66
-            case .vibrant: return 0.56
-            }
-        }
-
-    }
-
-    private var macTranslucencyMode: MacTranslucencyMode {
-        MacTranslucencyMode(rawValue: macTranslucencyModeRaw) ?? .balanced
     }
 
     private let bracketHelperTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
     private var macUnifiedTranslucentMaterialStyle: AnyShapeStyle {
-        AnyShapeStyle(macTranslucencyMode.material.opacity(macTranslucencyMode.opacity))
+        AnyShapeStyle(
+            MacEditorSurfacePolicy.paneBackground(
+                translucent: enableTranslucentWindow,
+                solid: macSolidSurfaceColor
+            )
+        )
     }
     private var macSolidSurfaceColor: Color {
-        return currentEditorTheme(colorScheme: colorScheme).background
+        Color(
+            MacEditorSurfacePolicy.windowBackground(
+                translucent: false,
+                modeRaw: macTranslucencyModeRaw,
+                isDarkMode: colorScheme == .dark
+            )
+        )
     }
     private var macChromeBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
@@ -1128,7 +1126,7 @@ struct ContentView: View {
 
     private var macToolbarBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
-            return AnyShapeStyle(macTranslucencyMode.material.opacity(macTranslucencyMode.toolbarOpacity))
+            return macUnifiedTranslucentMaterialStyle
         }
         return AnyShapeStyle(macSolidSurfaceColor)
     }
@@ -1167,10 +1165,7 @@ struct ContentView: View {
 
     var editorSurfaceBackgroundStyle: AnyShapeStyle {
 #if os(macOS)
-        if enableTranslucentWindow {
-            return macUnifiedTranslucentMaterialStyle
-        }
-        return AnyShapeStyle(macSolidSurfaceColor)
+        return macUnifiedTranslucentMaterialStyle
 #else
         if useIOSUnifiedSolidSurfaces {
             return AnyShapeStyle(iOSNonTranslucentSurfaceColor)
@@ -1327,8 +1322,11 @@ struct ContentView: View {
             targetWindow.titlebarSeparatorStyle = .none
         }
         if !enableTranslucentWindow {
-            let bg = currentEditorTheme(colorScheme: colorScheme).background
-            targetWindow.backgroundColor = NSColor(bg)
+            targetWindow.backgroundColor = MacEditorSurfacePolicy.windowBackground(
+                translucent: false,
+                modeRaw: macTranslucencyModeRaw,
+                isDarkMode: colorScheme == .dark
+            )
         }
     }
 

@@ -16,7 +16,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
 
     override func loadView() {
         let visualEffectView = NSVisualEffectView()
-        visualEffectView.material = .underWindowBackground
+        visualEffectView.material = .contentBackground
         visualEffectView.blendingMode = .behindWindow
         visualEffectView.state = .active
         self.view = visualEffectView

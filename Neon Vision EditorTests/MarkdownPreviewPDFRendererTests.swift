@@ -24,6 +24,11 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertTrue(result.contains("html, body, .content { background: transparent !important; }"))
     }
 
+    func testDetachedPreviewQuickLookGlassUsesOnlyALightTint() {
+        XCTAssertGreaterThan(DetachedPreviewWindowView.quickLookGlassTintOpacity, 0)
+        XCTAssertLessThanOrEqual(DetachedPreviewWindowView.quickLookGlassTintOpacity, 0.10)
+    }
+
     func testPaginatedSourceRangesCoverLongMarkdownWithoutGaps() {
         let ranges = MarkdownPreviewPDFRenderer.paginatedSourceRanges(
             sourceHeight: 4_850,

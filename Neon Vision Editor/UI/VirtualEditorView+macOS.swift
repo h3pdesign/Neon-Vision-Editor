@@ -696,12 +696,17 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         if let documentID {
             EditorPerformanceMonitor.shared.markTabSwitchFirstDraw(tabID: documentID)
         }
-        let dark = scheme == .dark
         if !translucentBackgroundEnabled {
-            (dark ? NSColor(calibratedWhite: 0.08, alpha: 1) : NSColor.textBackgroundColor).setFill()
+            let modeRaw = UserDefaults.standard.string(forKey: "SettingsMacTranslucencyMode") ?? "balanced"
+            ContentView.MacEditorSurfacePolicy.windowBackground(
+                translucent: false,
+                modeRaw: modeRaw,
+                isDarkMode: scheme == .dark
+            ).setFill()
             dirtyRect.fill()
         }
         guard !lineStarts.isEmpty else { return }
+        let dark = scheme == .dark
         let rows = visualRows()
         drawCurrentLineHighlight(rows: rows)
         drawSelectionBackground(rows: rows)

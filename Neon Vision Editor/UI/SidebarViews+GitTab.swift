@@ -26,9 +26,6 @@ struct GitChangesEditorView: View {
     @State private var pendingCommit: GitCommitPreview?
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-#if os(macOS)
-    @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
-#endif
 
     init(
         gitViewModel: GitViewModel,
@@ -43,14 +40,7 @@ struct GitChangesEditorView: View {
     private var surfaceBackground: AnyShapeStyle {
         if translucentBackgroundEnabled {
 #if os(macOS)
-            switch macTranslucencyModeRaw {
-            case "subtle":
-                return AnyShapeStyle(.thickMaterial.opacity(0.82))
-            case "vibrant":
-                return AnyShapeStyle(.regularMaterial.opacity(0.62))
-            default:
-                return AnyShapeStyle(.thickMaterial.opacity(0.72))
-            }
+            return AnyShapeStyle(Color.clear)
 #else
             return AnyShapeStyle(.ultraThinMaterial)
 #endif

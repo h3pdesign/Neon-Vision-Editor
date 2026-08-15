@@ -1110,6 +1110,8 @@ struct DetachedPreviewWindowPresenter: NSViewRepresentable {
         private func configureAppearance(of window: NSWindow) {
             window.isOpaque = !(parent.enableTranslucentWindow || parent.usesQuickLookTransparency)
             window.backgroundColor = parent.windowBackgroundColor
+            window.contentView?.wantsLayer = true
+            window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
             window.titlebarAppearsTransparent = true
             window.toolbarStyle = .unified
             window.styleMask.insert(.fullSizeContentView)
@@ -1150,6 +1152,8 @@ struct DetachedPreviewWindowPresenter: NSViewRepresentable {
 
 @MainActor
 struct DetachedPreviewWindowView: View {
+    static let quickLookGlassTintOpacity = 0.08
+
     let title: String
     let html: String
     let baseURL: URL?
@@ -1158,6 +1162,7 @@ struct DetachedPreviewWindowView: View {
     let usesQuickLookTransparency: Bool
     let translucencyModeRaw: String
     let onClose: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
 
     var previewHTML: String {
         Self.applyingEditorBackground(
@@ -1200,13 +1205,24 @@ struct DetachedPreviewWindowView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityLabel("Preview content")
         }
-        .background(surfaceBackground)
+        .background {
+            if usesQuickLookTransparency {
+                Rectangle()
+                    .fill(.thinMaterial)
+                    .overlay(quickLookGlassTint)
+            } else {
+                Rectangle()
+                    .fill(surfaceBackground)
+            }
+        }
+    }
+
+    private var quickLookGlassTint: Color {
+        (colorScheme == .dark ? Color.black : Color.white)
+            .opacity(Self.quickLookGlassTintOpacity)
     }
 
     private var surfaceBackground: AnyShapeStyle {
-        if usesQuickLookTransparency {
-            return AnyShapeStyle(.ultraThinMaterial)
-        }
         guard usesTranslucency else { return AnyShapeStyle(editorBackground) }
         switch translucencyModeRaw {
         case "subtle":

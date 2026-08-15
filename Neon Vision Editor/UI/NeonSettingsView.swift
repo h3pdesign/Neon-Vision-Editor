@@ -7360,13 +7360,13 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         switch translucencyModeRaw {
         case "subtle":
             whiteLevel = isDark ? 0.18 : 0.90
-            alpha = 0.82
+            alpha = 0.92
         case "vibrant":
             whiteLevel = isDark ? 0.12 : 0.82
-            alpha = 0.62
+            alpha = 0.84
         default:
             whiteLevel = isDark ? 0.15 : 0.86
-            alpha = 0.72
+            alpha = 0.88
         }
         return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
     }

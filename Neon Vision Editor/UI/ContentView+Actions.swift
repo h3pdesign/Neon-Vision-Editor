@@ -1281,22 +1281,12 @@ extension ContentView {
 
 #if os(macOS)
     private func editorTranslucentBackgroundColor(enabled: Bool, isDarkMode: Bool) -> NSColor {
-        guard enabled else { return NSColor.windowBackgroundColor }
         let modeRaw = UserDefaults.standard.string(forKey: "SettingsMacTranslucencyMode") ?? "balanced"
-        let whiteLevel: CGFloat
-        let alpha: CGFloat
-        switch modeRaw {
-        case "subtle":
-            whiteLevel = isDarkMode ? 0.18 : 0.90
-            alpha = 0.82
-        case "vibrant":
-            whiteLevel = isDarkMode ? 0.12 : 0.82
-            alpha = 0.62
-        default:
-            whiteLevel = isDarkMode ? 0.15 : 0.86
-            alpha = 0.72
-        }
-        return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
+        return ContentView.MacEditorSurfacePolicy.windowBackground(
+            translucent: enabled,
+            modeRaw: modeRaw,
+            isDarkMode: isDarkMode
+        )
     }
 #endif
 

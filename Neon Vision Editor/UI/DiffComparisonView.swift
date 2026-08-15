@@ -91,9 +91,9 @@ struct DiffComparisonView<Footer: View>: View {
 
     private var macTranslucentOpacity: Double {
         switch macTranslucencyModeRaw {
-        case "subtle": return 0.82
-        case "vibrant": return 0.62
-        default: return 0.72
+        case "subtle": return 0.92
+        case "vibrant": return 0.84
+        default: return 0.88
         }
     }
 

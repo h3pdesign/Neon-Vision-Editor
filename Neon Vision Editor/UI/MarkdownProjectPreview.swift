@@ -512,6 +512,7 @@ struct MarkdownProjectPreviewPanel: View {
     let indexedFileCount: Int
     let isPreparingPreviews: Bool
     let previewStatus: String
+    let translucentBackgroundEnabled: Bool
     @Binding var mode: MarkdownProjectPreviewMode
     @Binding var contentFilter: MarkdownProjectPreviewContentFilter
     @Binding var sortOrder: MarkdownProjectPreviewSortOrder
@@ -529,6 +530,7 @@ struct MarkdownProjectPreviewPanel: View {
         indexedFileCount: Int,
         isPreparingPreviews: Bool,
         previewStatus: String,
+        translucentBackgroundEnabled: Bool = false,
         mode: Binding<MarkdownProjectPreviewMode>,
         contentFilter: Binding<MarkdownProjectPreviewContentFilter>,
         sortOrder: Binding<MarkdownProjectPreviewSortOrder>,
@@ -545,6 +547,7 @@ struct MarkdownProjectPreviewPanel: View {
         self.indexedFileCount = indexedFileCount
         self.isPreparingPreviews = isPreparingPreviews
         self.previewStatus = previewStatus
+        self.translucentBackgroundEnabled = translucentBackgroundEnabled
         self._mode = mode
         self._contentFilter = contentFilter
         self._sortOrder = sortOrder
@@ -610,7 +613,11 @@ struct MarkdownProjectPreviewPanel: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
-            .background(.thinMaterial)
+            .background {
+                if !translucentBackgroundEnabled {
+                    Color.clear.background(.thinMaterial)
+                }
+            }
             .frame(minWidth: 480)
 #else
             VStack(alignment: .leading, spacing: 8) {
@@ -712,7 +719,11 @@ struct MarkdownProjectPreviewPanel: View {
             .padding(.horizontal, 12)
             .padding(.top, 15)
             .padding(.bottom, 9)
-            .background(.thinMaterial)
+            .background {
+                if !translucentBackgroundEnabled {
+                    Color.clear.background(.thinMaterial)
+                }
+            }
 #endif
 
             let isPreparing = !isIndexReady || isIndexing || isPreparingPreviews
@@ -768,12 +779,20 @@ struct MarkdownProjectPreviewPanel: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .background(.thinMaterial)
+                .background {
+                    if !translucentBackgroundEnabled {
+                        Color.clear.background(.thinMaterial)
+                    }
+                }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(!isIndexReady || isIndexing ? "Indexing project files" : previewStatus)
             }
         }
-        .background(.ultraThinMaterial)
+        .background {
+            if !translucentBackgroundEnabled {
+                Color.clear.background(.ultraThinMaterial)
+            }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Markdown files in current project")
     }

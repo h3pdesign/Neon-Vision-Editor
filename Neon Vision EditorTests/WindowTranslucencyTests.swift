@@ -13,6 +13,17 @@ import SwiftUI
 final class WindowTranslucencyTests: XCTestCase {
     // Verifies that the translucency toggle updates registered editor windows without touching unrelated panels.
     func testApplyWindowTranslucencyUpdatesMacWindowFlags() {
+        let defaults = UserDefaults.standard
+        let originalMode = defaults.object(forKey: "SettingsMacTranslucencyMode")
+        defaults.set("balanced", forKey: "SettingsMacTranslucencyMode")
+        defer {
+            if let originalMode {
+                defaults.set(originalMode, forKey: "SettingsMacTranslucencyMode")
+            } else {
+                defaults.removeObject(forKey: "SettingsMacTranslucencyMode")
+            }
+        }
+
         let testWindow = NSWindow(
             contentRect: NSRect(x: 40, y: 40, width: 480, height: 320),
             styleMask: [.titled, .closable, .resizable],
@@ -40,7 +51,14 @@ final class WindowTranslucencyTests: XCTestCase {
         sut.applyWindowTranslucency(false)
         XCTAssertTrue(testWindow.isOpaque)
         XCTAssertTrue(testWindow.titlebarAppearsTransparent)
-        XCTAssertEqual(testWindow.backgroundColor, NSColor.windowBackgroundColor)
+        XCTAssertEqual(
+            testWindow.backgroundColor,
+            ContentView.MacEditorSurfacePolicy.windowBackground(
+                translucent: false,
+                modeRaw: "balanced",
+                isDarkMode: false
+            )
+        )
     }
 
     func testMacSettingsWindowPolicyRemainsResizableAndScrollableAtMinimumSize() {
@@ -80,9 +98,9 @@ final class WindowTranslucencyTests: XCTestCase {
             effectiveColorScheme: .dark
         )
 
-        XCTAssertEqual(subtle.alphaComponent, 0.82, accuracy: 0.001)
-        XCTAssertEqual(balanced.alphaComponent, 0.72, accuracy: 0.001)
-        XCTAssertEqual(vibrant.alphaComponent, 0.62, accuracy: 0.001)
+        XCTAssertEqual(subtle.alphaComponent, 0.92, accuracy: 0.001)
+        XCTAssertEqual(balanced.alphaComponent, 0.88, accuracy: 0.001)
+        XCTAssertEqual(vibrant.alphaComponent, 0.84, accuracy: 0.001)
         XCTAssertGreaterThan(subtle.alphaComponent, balanced.alphaComponent)
         XCTAssertLessThan(vibrant.alphaComponent, balanced.alphaComponent)
         XCTAssertEqual(disabled, NSColor.windowBackgroundColor)
@@ -94,6 +112,56 @@ final class WindowTranslucencyTests: XCTestCase {
         XCTAssertFalse(scrollView.drawsBackground)
         XCTAssertEqual(scrollView.backgroundColor, .clear)
         XCTAssertFalse(scrollView.contentView.drawsBackground)
+    }
+
+    func testVirtualEditorCanvasUsesWindowBackgroundWhenTranslucencyIsDisabled() {
+        let defaults = UserDefaults.standard
+        let originalMode = defaults.object(forKey: "SettingsMacTranslucencyMode")
+        defaults.set("balanced", forKey: "SettingsMacTranslucencyMode")
+        defer {
+            if let originalMode {
+                defaults.set(originalMode, forKey: "SettingsMacTranslucencyMode")
+            } else {
+                defaults.removeObject(forKey: "SettingsMacTranslucencyMode")
+            }
+        }
+
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 1, height: 1))
+        let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: 1,
+            pixelsHigh: 1,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        )!
+        let context = NSGraphicsContext(bitmapImageRep: bitmap)!
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        canvas.draw(canvas.bounds)
+        NSGraphicsContext.restoreGraphicsState()
+
+        XCTAssertEqual(
+            bitmap.colorAt(x: 0, y: 0)?.usingColorSpace(.deviceRGB),
+            ContentView.MacEditorSurfacePolicy.windowBackground(
+                translucent: false,
+                modeRaw: "balanced",
+                isDarkMode: false
+            ).usingColorSpace(.deviceRGB)
+        )
+    }
+
+    func testTranslucentEditorPanesLeaveTheWindowSurfaceUncovered() {
+        let translucent = ContentView.MacEditorSurfacePolicy.paneBackground(translucent: true, solid: .red)
+        let opaque = ContentView.MacEditorSurfacePolicy.paneBackground(translucent: false, solid: .red)
+
+        XCTAssertEqual(NSColor(translucent).alphaComponent, 0, accuracy: 0.001)
+        XCTAssertEqual(NSColor(opaque), NSColor(.red))
     }
 }
 #endif

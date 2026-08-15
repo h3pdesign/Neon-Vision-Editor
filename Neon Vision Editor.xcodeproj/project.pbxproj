@@ -902,7 +902,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 993;
+				CURRENT_PROJECT_VERSION = 998;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -1136,7 +1136,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Neon Vision Editor/Neon Vision Editor macOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 993;
+				CURRENT_PROJECT_VERSION = 998;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -1302,7 +1302,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
-				CURRENT_PROJECT_VERSION = 993;
+				CURRENT_PROJECT_VERSION = 998;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;

@@ -110,8 +110,17 @@ struct VirtualEditorView: NSViewRepresentable {
     let autoIndentEnabled: Bool
     let autoCloseBracketsEnabled: Bool
     let isSplitPaneResizeInProgress: Bool
+    let preferredLayoutWidth: CGFloat?
     let onFontSizeChange: ((CGFloat) -> Void)?
     let onTextMutation: ((EditorTextMutation) -> Bool)?
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: VirtualEditorScrollView, context: Context) -> CGSize? {
+        VirtualEditorLayoutSizing.sizeThatFits(
+            proposedWidth: proposal.width,
+            proposedHeight: proposal.height,
+            preferredWidth: preferredLayoutWidth
+        )
+    }
 
     func makeNSView(context: Context) -> VirtualEditorScrollView {
         let view = VirtualEditorScrollView()
@@ -175,6 +184,25 @@ struct VirtualEditorView: NSViewRepresentable {
             onFontSizeChange: onFontSizeChange,
             onTextMutation: onTextMutation
         )
+    }
+}
+
+enum VirtualEditorLayoutSizing {
+    static let minimumUsableWidth: CGFloat = 90
+
+    static func sizeThatFits(
+        proposedWidth: CGFloat?,
+        proposedHeight: CGFloat?,
+        preferredWidth: CGFloat?
+    ) -> CGSize? {
+        let fallbackWidth = max(preferredWidth ?? 320, minimumUsableWidth)
+        let resolvedWidth: CGFloat
+        if let proposedWidth, proposedWidth >= minimumUsableWidth {
+            resolvedWidth = min(proposedWidth, preferredWidth ?? proposedWidth)
+        } else {
+            resolvedWidth = fallbackWidth
+        }
+        return CGSize(width: resolvedWidth, height: max(proposedHeight ?? 400, 1))
     }
 }
 

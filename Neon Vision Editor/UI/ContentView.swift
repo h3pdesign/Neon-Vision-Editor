@@ -2307,14 +2307,8 @@ struct ContentView: View {
     @ViewBuilder
     private var platformLayout: some View {
 #if os(macOS)
-        Group {
-            if shouldUseSplitView {
-                macOSTOCSplitLayout
-            } else {
-                editorView
-            }
-        }
-        .frame(minWidth: 600, minHeight: 400)
+        macOSTOCSplitLayout
+            .frame(minWidth: 600, minHeight: 400)
 #else
         NavigationStack {
             Group {
@@ -4256,6 +4250,7 @@ struct ContentView: View {
             autoIndentEnabled: autoIndentEnabled,
             autoCloseBracketsEnabled: autoCloseBracketsEnabled,
             isSplitPaneResizeInProgress: previewPaneResizeStartWidth != nil,
+            preferredLayoutWidth: brainDumpLayoutEnabled ? 920 : nil,
             onFontSizeChange: { setEditorFontSize(Double($0)) },
             onTextMutation: { mutation in
                 if let viewport = mutation.viewport {
@@ -4411,11 +4406,14 @@ struct ContentView: View {
 #if os(macOS)
     private var macOSTOCSplitLayout: some View {
         HStack(spacing: 0) {
-            sidebarView
-                .frame(width: clampedTOCSidebarWidth)
-                .background(editorSurfaceBackgroundStyle)
-            tocSidebarResizeHandle
+            if shouldUseSplitView {
+                sidebarView
+                    .frame(width: clampedTOCSidebarWidth)
+                    .background(editorSurfaceBackgroundStyle)
+                tocSidebarResizeHandle
+            }
             editorView
+                .layoutPriority(1)
         }
         .background(editorSurfaceBackgroundStyle)
     }

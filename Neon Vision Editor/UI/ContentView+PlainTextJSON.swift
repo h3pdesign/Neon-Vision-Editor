@@ -45,13 +45,13 @@ extension ContentView {
         jsonStructuringTask?.cancel()
         jsonStructuringTimeoutTask?.cancel()
         let requestID = UUID()
-        let client: AIClient?
-        if selectedModel == .appleIntelligence {
-            client = appleModelAvailable ? AppleIntelligenceAIClient() : nil
-        } else {
-            client = configuredMarkdownConversionClient()
+        let usesAppleIntelligence = selectedModel == .appleIntelligence
+        let configuredClient = usesAppleIntelligence ? nil : configuredMarkdownConversionClient()
+        guard !usesAppleIntelligence || appleModelAvailable else {
+            jsonStructuringErrorMessage = PlainTextJSONStructureError.appleIntelligenceUnavailable.localizedDescription
+            return
         }
-        guard let client else {
+        guard usesAppleIntelligence || configuredClient != nil else {
             jsonStructuringErrorMessage = "Configure the selected AI provider before structuring text as JSON."
             return
         }
@@ -60,13 +60,20 @@ extension ContentView {
         jsonStructuringTargetRange = selectedRange
         jsonStructuringProviderName = selectedModel.displayName
         isStructuringTextAsJSON = true
-        jsonStructuringTask = Task { [source, requestID, client, mode = jsonStructuringMode] in
+        jsonStructuringTask = Task { [source, requestID, configuredClient, mode = jsonStructuringMode, usesAppleIntelligence] in
             do {
-                let proposal = try await PlainTextJSONConverter.convertWithConfiguredProvider(
-                    source,
-                    mode: mode,
-                    client: client
-                )
+                let proposal: PlainTextJSONProposal
+                if usesAppleIntelligence {
+                    proposal = try await PlainTextJSONConverter.convertWithAppleIntelligence(source, mode: mode)
+                } else if let configuredClient {
+                    proposal = try await PlainTextJSONConverter.convertWithConfiguredProvider(
+                        source,
+                        mode: mode,
+                        client: configuredClient
+                    )
+                } else {
+                    return
+                }
                 try Task.checkCancellation()
                 guard jsonStructuringRequestID == requestID,
                       viewModel.selectedTabID == tab.id else { return }

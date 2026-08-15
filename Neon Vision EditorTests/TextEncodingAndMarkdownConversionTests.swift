@@ -271,4 +271,14 @@ final class TextEncodingAndMarkdownConversionTests: XCTestCase {
             XCTFail("Unexpected error: \(error)")
         }
     }
+
+    func testAppleJSONStructuringRejectsEmptyTextBeforeRequestingTheModel() async {
+        do {
+            _ = try await PlainTextJSONConverter.convertWithAppleIntelligence(" \n ", mode: .automatic)
+            XCTFail("Expected empty text to be rejected")
+        } catch PlainTextJSONStructureError.emptyDocument {
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
 }

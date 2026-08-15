@@ -10,6 +10,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - Keeps macOS editing stable while changing workspace and Brain Dump layouts.
 - Makes Markdown preview actions easier to reach without crowding the main toolbar.
+- Preserves full-width line wrapping while sidebars and split previews change.
 
 ### Highlights
 

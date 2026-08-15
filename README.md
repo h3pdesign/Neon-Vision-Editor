@@ -65,6 +65,7 @@
 
 - v1.4.3: Keeps macOS editing stable while changing workspace and Brain Dump layouts.
 - v1.4.3: Makes Markdown preview actions easier to reach without crowding the main toolbar.
+- v1.4.3: Preserves full-width line wrapping while sidebars and split previews change.
 
 ### v1.4.3 Highlights
 

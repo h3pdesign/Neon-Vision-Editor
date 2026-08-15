@@ -2568,10 +2568,10 @@ struct WelcomeTourView: View {
             bullets: [
                 "Editor Improvements: Keeps macOS editing stable while changing workspace and Brain Dump layouts.",
                 "Workflow Refinements: Makes Markdown preview actions easier to reach without crowding the main toolbar.",
-                "Performance Updates: Moves Markdown preview export and style actions into the split preview header.",
-                "Usability Updates: Adds a dedicated Markdown Cards button to the Standard and Writing toolbar presets.",
-                "Editor Improvements: Prevents preview-divider resizing from feeding geometry changes back into the editor while dragging.",
-                "Workflow Refinements: Restores the virtual editor's usable width after sidebar, preview, and workspace changes."
+                "Performance Updates: Preserves full-width line wrapping while sidebars and split previews change.",
+                "Usability Updates: Moves Markdown preview export and style actions into the split preview header.",
+                "Editor Improvements: Adds a dedicated Markdown Cards button to the Standard and Writing toolbar presets.",
+                "Workflow Refinements: Prevents preview-divider resizing from feeding geometry changes back into the editor while dragging."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

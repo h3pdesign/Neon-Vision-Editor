@@ -56,4 +56,12 @@ final class ShortcutPreferencesTests: XCTestCase {
             ).isEmpty
         )
     }
+
+    func testKeyboardAccessoryActionsUseDefaultsAndIgnoreUnknownValues() {
+        XCTAssertEqual(KeyboardAccessoryAction.configuredActions(rawValue: nil), KeyboardAccessoryAction.defaultActions)
+        XCTAssertEqual(
+            KeyboardAccessoryAction.configuredActions(rawValue: "find,unknown,save,find"),
+            [.save, .find]
+        )
+    }
 }

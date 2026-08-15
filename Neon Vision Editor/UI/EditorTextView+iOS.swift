@@ -88,7 +88,7 @@ final class EditorInputTextView: UITextView {
         }
     }
 
-    private lazy var bracketAccessoryView: UIView = {
+    private func makeKeyboardAccessoryView() -> UIView {
         let host = UIView()
         host.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.95)
         host.translatesAutoresizingMaskIntoConstraints = false
@@ -102,6 +102,27 @@ final class EditorInputTextView: UITextView {
         stack.spacing = 8
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
+
+        let accessoryActions = KeyboardAccessoryAction.configuredActions(
+            rawValue: UserDefaults.standard.string(forKey: KeyboardAccessoryAction.storageKey)
+        )
+        for action in accessoryActions {
+            let button = UIButton(type: .system)
+            button.accessibilityIdentifier = "keyboard-accessory-\(action.rawValue)"
+            button.accessibilityLabel = action.title
+            button.setImage(UIImage(systemName: action.symbolName), for: .normal)
+            button.tintColor = .label
+            button.addTarget(self, action: #selector(performKeyboardAccessoryAction(_:)), for: .touchUpInside)
+            stack.addArrangedSubview(button)
+        }
+
+        if !accessoryActions.isEmpty {
+            let divider = UIView()
+            divider.backgroundColor = UIColor.separator
+            divider.widthAnchor.constraint(equalToConstant: 1).isActive = true
+            divider.heightAnchor.constraint(equalToConstant: 22).isActive = true
+            stack.addArrangedSubview(divider)
+        }
 
         for token in bracketTokens {
             let button = UIButton(type: .system)
@@ -147,13 +168,14 @@ final class EditorInputTextView: UITextView {
         ])
 
         return host
-    }()
+    }
     private var isBracketAccessoryVisible: Bool = true
+    private var keyboardAccessoryActionsStorageValue: String?
 
     override init(frame: CGRect, textContainer: NSTextContainer?) {
         super.init(frame: frame, textContainer: textContainer)
         #if !os(visionOS)
-        inputAccessoryView = bracketAccessoryView
+        inputAccessoryView = makeKeyboardAccessoryView()
         #endif
         syncVimModeFromDefaults()
         NotificationCenter.default.addObserver(
@@ -167,7 +189,7 @@ final class EditorInputTextView: UITextView {
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         #if !os(visionOS)
-        inputAccessoryView = bracketAccessoryView
+        inputAccessoryView = makeKeyboardAccessoryView()
         #endif
         syncVimModeFromDefaults()
         NotificationCenter.default.addObserver(
@@ -183,14 +205,28 @@ final class EditorInputTextView: UITextView {
     }
 
     func setBracketAccessoryVisible(_ visible: Bool) {
-        guard isBracketAccessoryVisible != visible else { return }
+        let actionsStorageValue = UserDefaults.standard.string(forKey: KeyboardAccessoryAction.storageKey)
+        guard isBracketAccessoryVisible != visible ||
+                keyboardAccessoryActionsStorageValue != actionsStorageValue else {
+            return
+        }
         isBracketAccessoryVisible = visible
+        keyboardAccessoryActionsStorageValue = actionsStorageValue
         #if !os(visionOS)
-        inputAccessoryView = visible ? bracketAccessoryView : nil
+        inputAccessoryView = visible ? makeKeyboardAccessoryView() : nil
         #endif
         if isFirstResponder {
             reloadInputViews()
         }
+    }
+
+    @objc private func performKeyboardAccessoryAction(_ sender: UIButton) {
+        guard let rawValue = sender.accessibilityIdentifier,
+              KeyboardAccessoryAction(rawValue: rawValue.replacingOccurrences(of: "keyboard-accessory-", with: "")) != nil else { return }
+        NotificationCenter.default.post(
+            name: .keyboardAccessoryActionRequested,
+            object: rawValue.replacingOccurrences(of: "keyboard-accessory-", with: "")
+        )
     }
 
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {

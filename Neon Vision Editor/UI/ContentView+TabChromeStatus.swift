@@ -614,6 +614,14 @@ extension ContentView {
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                if statusBarShowCursor {
+                    Button(action: copyCurrentEditorReference) {
+                        Image(systemName: "doc.on.doc")
+                    }
+                    .buttonStyle(.plain)
+                    .help("Copy current editor reference")
+                    .accessibilityLabel("Copy current editor reference")
+                }
                 if effectiveLargeFileModeEnabled {
                     largeFileSessionBadge
                 }

@@ -155,14 +155,23 @@ final class VirtualEditorLayoutTests: XCTestCase {
         )
     }
 
-    func testRecreatedEditorRejectsCollapsedWidthProposalAfterTOCSidebarTransition() {
-        XCTAssertEqual(
+    func testStandardEditorDefersCollapsedWidthProposalToItsParent() {
+        XCTAssertNil(
             VirtualEditorLayoutSizing.sizeThatFits(
                 proposedWidth: 1,
                 proposedHeight: 700,
                 preferredWidth: nil
-            ),
-            CGSize(width: 320, height: 700)
+            )
+        )
+    }
+
+    func testStandardEditorHasNoSyntheticIntrinsicWidthDuringPreviewTransition() {
+        XCTAssertNil(
+            VirtualEditorLayoutSizing.sizeThatFits(
+                proposedWidth: nil,
+                proposedHeight: 700,
+                preferredWidth: nil
+            )
         )
     }
 

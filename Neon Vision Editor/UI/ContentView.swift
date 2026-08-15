@@ -513,6 +513,8 @@ struct ContentView: View {
     @State var singleContent: String = ""
     @State var singleLanguage: String = "plain"
     @State var caretStatus: String = "Ln 1, Col 1"
+    @State var caretLine: Int = 1
+    @State var caretColumn: Int = 1
     @AppStorage(SettingsPreferenceKey.editorFontSize) var editorFontSize: Double = 14
     @AppStorage(SettingsPreferenceKey.editorFontName) var editorFontName: String = ""
     @AppStorage(SettingsPreferenceKey.lineHeight) var editorLineHeight: Double = 1.0
@@ -819,6 +821,10 @@ struct ContentView: View {
     @AppStorage("SettingsForceLargeFileMode") var forceLargeFileMode: Bool = false
     @AppStorage("SettingsMobileEditingStatusPresetEnabled") var mobileEditingStatusPresetEnabled: Bool = false
     @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = false
+#if os(iOS) || os(visionOS)
+    @AppStorage("SettingsKeyboardShortcutAccessoryBarIOS") var keyboardShortcutAccessoryBarEnabledIOS: Bool = true
+    @AppStorage(KeyboardAccessoryAction.storageKey) var keyboardShortcutAccessoryActionsIOS: String = KeyboardAccessoryAction.storageValue(for: KeyboardAccessoryAction.defaultActions)
+#endif
     @AppStorage("SettingsShowBottomActionBarIOS") var showBottomActionBarIOS: Bool = true
     @AppStorage("SettingsUseLiquidGlassToolbarIOS") var shouldUseLiquidGlass: Bool = true
     @AppStorage("SettingsToolbarIconsBlueIOS") var toolbarIconsBlueIOS: Bool = false
@@ -1456,6 +1462,8 @@ struct ContentView: View {
                 if isSelectedTab,
                    let line = notif.userInfo?["line"] as? Int,
                    let col = notif.userInfo?["column"] as? Int {
+                    caretLine = max(1, line)
+                    caretColumn = max(1, col)
                     if line <= 0 {
                         caretStatus = "Pos \(col)"
                     } else {
@@ -2061,6 +2069,10 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .clearEditorRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 requestClearEditorContent()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .copyEditorReferenceRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                copyCurrentEditorReference()
             }
             .onReceive(NotificationCenter.default.publisher(for: .showInAppChangelogRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -4301,7 +4313,7 @@ struct ContentView: View {
             translucentBackgroundEnabled: enableTranslucentWindow,
             showKeyboardAccessoryBar: {
 #if os(iOS) || os(visionOS)
-                showKeyboardAccessoryBarIOS
+                showKeyboardAccessoryBarIOS || keyboardShortcutAccessoryBarIsVisible
 #else
                 true
 #endif
@@ -4350,6 +4362,51 @@ struct ContentView: View {
         .clipped()
 #endif
     }
+
+#if os(iOS) || os(visionOS)
+    private var keyboardShortcutAccessoryBarIsVisible: Bool {
+        keyboardShortcutAccessoryBarEnabledIOS
+    }
+#else
+    private var keyboardShortcutAccessoryBarIsVisible: Bool { false }
+#endif
+
+#if os(iOS) || os(visionOS)
+    private func performKeyboardAccessoryAction(_ action: KeyboardAccessoryAction) {
+        guard keyboardShortcutAccessoryBarIsVisible else { return }
+        switch action {
+        case .save: saveCurrentTabFromToolbar()
+        case .find: showFindReplace = true
+        case .undo: undoFromToolbar()
+        case .redo: redoFromToolbar()
+        }
+    }
+
+    private func applyingKeyboardAccessoryHandlers<Content: View>(to content: Content) -> some View {
+        content
+            .onChange(of: showKeyboardAccessoryBarIOS) { _, isVisible in
+                postKeyboardAccessoryVisibility(isVisible || keyboardShortcutAccessoryBarIsVisible)
+            }
+            .onChange(of: keyboardShortcutAccessoryBarEnabledIOS) { _, _ in
+                postKeyboardAccessoryVisibility(showKeyboardAccessoryBarIOS || keyboardShortcutAccessoryBarIsVisible)
+            }
+            .onChange(of: keyboardShortcutAccessoryActionsIOS) { _, _ in
+                postKeyboardAccessoryVisibility(showKeyboardAccessoryBarIOS || keyboardShortcutAccessoryBarIsVisible)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .keyboardAccessoryActionRequested)) { notification in
+                guard let rawValue = notification.object as? String,
+                      let action = KeyboardAccessoryAction(rawValue: rawValue) else { return }
+                performKeyboardAccessoryAction(action)
+            }
+    }
+
+    private func postKeyboardAccessoryVisibility(_ isVisible: Bool) {
+        NotificationCenter.default.post(
+            name: .keyboardAccessoryBarVisibilityChanged,
+            object: isVisible
+        )
+    }
+#endif
 
     private func editorTextBinding(for tabID: UUID?) -> Binding<String> {
         guard let tabID, tabID != viewModel.selectedTabID else { return currentContentBinding }
@@ -4906,13 +4963,7 @@ struct ContentView: View {
         )
 #if os(iOS) || os(visionOS)
         let eventAwareContent = AnyView(
-            eventAwareContentBase
-        .onChange(of: showKeyboardAccessoryBarIOS) { _, isVisible in
-            NotificationCenter.default.post(
-                name: .keyboardAccessoryBarVisibilityChanged,
-                object: isVisible
-            )
-        }
+            applyingKeyboardAccessoryHandlers(to: eventAwareContentBase)
         .onChange(of: horizontalSizeClass) { _, newClass in
             if UIDevice.current.userInterfaceIdiom == .pad && newClass != .regular && isPreviewVisible {
                 closeCurrentPreview()

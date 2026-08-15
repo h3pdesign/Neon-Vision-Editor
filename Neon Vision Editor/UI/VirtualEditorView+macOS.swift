@@ -195,14 +195,17 @@ enum VirtualEditorLayoutSizing {
         proposedHeight: CGFloat?,
         preferredWidth: CGFloat?
     ) -> CGSize? {
-        let fallbackWidth = max(preferredWidth ?? 320, minimumUsableWidth)
-        let resolvedWidth: CGFloat
         if let proposedWidth, proposedWidth >= minimumUsableWidth {
-            resolvedWidth = min(proposedWidth, preferredWidth ?? proposedWidth)
-        } else {
-            resolvedWidth = fallbackWidth
+            return CGSize(
+                width: min(proposedWidth, preferredWidth ?? proposedWidth),
+                height: max(proposedHeight ?? 400, 1)
+            )
         }
-        return CGSize(width: resolvedWidth, height: max(proposedHeight ?? 400, 1))
+        guard let preferredWidth else { return nil }
+        return CGSize(
+            width: max(preferredWidth, minimumUsableWidth),
+            height: max(proposedHeight ?? 400, 1)
+        )
     }
 }
 

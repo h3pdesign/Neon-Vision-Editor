@@ -376,6 +376,11 @@ struct NeonVisionMacAppCommands: Commands {
                 post(.clearEditorRequested)
             }
 
+            Button("Copy Current Editor Reference") {
+                post(.copyEditorReferenceRequested)
+            }
+            .disabled(!hasSelectedTab)
+
             Button("Add Next Match") {
                 post(.addNextMatchRequested)
             }

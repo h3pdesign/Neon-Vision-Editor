@@ -358,6 +358,17 @@ extension ContentView {
 #endif
     }
 
+    func redoFromToolbar() {
+#if os(macOS)
+        NSApp.sendAction(Selector(("redo:")), to: nil, from: nil)
+#elseif canImport(UIKit)
+        if let textView = activeEditorInputTextView(), !textView.isFirstResponder {
+            textView.becomeFirstResponder()
+        }
+        UIApplication.shared.sendAction(Selector(("redo:")), to: nil, from: nil, for: nil)
+#endif
+    }
+
     func saveCurrentTabFromToolbar() {
         guard let tab = viewModel.selectedTab else { return }
         guard !tab.isReadOnlyPreview else { return }
@@ -566,6 +577,22 @@ extension ContentView {
         currentContentBinding.wrappedValue = ""
 #endif
         caretStatus = "Ln 1, Col 1"
+        caretLine = 1
+        caretColumn = 1
+    }
+
+    func copyCurrentEditorReference() {
+        let fileReference = viewModel.selectedTab?.fileURL?.path
+            ?? viewModel.selectedTab?.name
+            ?? "Untitled"
+        let reference = "\(fileReference):\(caretLine):\(caretColumn)"
+#if os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(reference, forType: .string)
+#else
+        UIPasteboard.general.string = reference
+#endif
+        findStatusMessage = "Copied \(reference)"
     }
 
     func formatJSONDocument() {

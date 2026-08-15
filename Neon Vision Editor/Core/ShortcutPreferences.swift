@@ -59,6 +59,47 @@ enum EditorShortcutAction: String, CaseIterable, Identifiable {
     }
 }
 
+enum KeyboardAccessoryAction: String, CaseIterable, Identifiable {
+    case save
+    case find
+    case undo
+    case redo
+
+    static let storageKey = "SettingsKeyboardShortcutAccessoryActionsIOS"
+    static let defaultActions: [KeyboardAccessoryAction] = [.save, .find, .undo, .redo]
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .save: return "Save"
+        case .find: return "Find"
+        case .undo: return "Undo"
+        case .redo: return "Redo"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .save: return "square.and.arrow.down"
+        case .find: return "magnifyingglass"
+        case .undo: return "arrow.uturn.backward"
+        case .redo: return "arrow.uturn.forward"
+        }
+    }
+
+    static func configuredActions(rawValue: String?) -> [KeyboardAccessoryAction] {
+        let selected = Set((rawValue ?? defaultActions.map(\.rawValue).joined(separator: ","))
+            .split(separator: ",")
+            .compactMap { KeyboardAccessoryAction(rawValue: String($0)) })
+        return allCases.filter(selected.contains)
+    }
+
+    static func storageValue(for actions: [KeyboardAccessoryAction]) -> String {
+        allCases.filter(actions.contains).map(\.rawValue).joined(separator: ",")
+    }
+}
+
 struct EditorShortcutModifiers: OptionSet, Hashable {
     let rawValue: Int
     static let command = EditorShortcutModifiers(rawValue: 1 << 0)

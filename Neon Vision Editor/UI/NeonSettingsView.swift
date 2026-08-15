@@ -187,6 +187,10 @@ struct NeonSettingsView: View {
     @State private var remoteAttachCodeDraft: String = ""
     @State private var remoteBrowserPathDraft: String = "~"
     @State private var shortcutDrafts: [EditorShortcutAction: String] = [:]
+#if os(iOS)
+    @AppStorage("SettingsKeyboardShortcutAccessoryBarIOS") private var keyboardShortcutAccessoryBarEnabledIOS: Bool = true
+    @AppStorage(KeyboardAccessoryAction.storageKey) private var keyboardShortcutAccessoryActionsIOS: String = KeyboardAccessoryAction.storageValue(for: KeyboardAccessoryAction.defaultActions)
+#endif
     @State private var showToolbarIconChooser: Bool = false
     @State private var generalSettingsCardHeight: CGFloat = 0
 #if os(macOS)
@@ -6840,6 +6844,18 @@ struct NeonSettingsView: View {
             Text("Format: cmd+<key>, optional shift/alt/ctrl. Example: cmd+shift+f")
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
+#if os(iOS)
+            Divider()
+            Toggle("Show shortcut actions above the on-screen keyboard", isOn: $keyboardShortcutAccessoryBarEnabledIOS)
+            if keyboardShortcutAccessoryBarEnabledIOS {
+                ForEach(KeyboardAccessoryAction.allCases) { action in
+                    Toggle(action.title, isOn: keyboardAccessoryActionBinding(for: action))
+                }
+                Text("The actions appear before bracket tokens whenever the on-screen keyboard is shown.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+            }
+#endif
             if !shortcutConflictMessage.isEmpty {
                 Text(shortcutConflictMessage)
                     .font(Typography.footnote)
@@ -6851,6 +6867,23 @@ struct NeonSettingsView: View {
             .buttonStyle(.bordered)
         }
     }
+
+#if os(iOS)
+    private func keyboardAccessoryActionBinding(for action: KeyboardAccessoryAction) -> Binding<Bool> {
+        Binding(
+            get: { KeyboardAccessoryAction.configuredActions(rawValue: keyboardShortcutAccessoryActionsIOS).contains(action) },
+            set: { isEnabled in
+                var actions = KeyboardAccessoryAction.configuredActions(rawValue: keyboardShortcutAccessoryActionsIOS)
+                if isEnabled {
+                    if !actions.contains(action) { actions.append(action) }
+                } else {
+                    actions.removeAll { $0 == action }
+                }
+                keyboardShortcutAccessoryActionsIOS = KeyboardAccessoryAction.storageValue(for: actions)
+            }
+        )
+    }
+#endif
 
     private var shortcutConflictMessage: String {
         var collisionMap: [EditorShortcutDescriptor: [String]] = [:]

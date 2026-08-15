@@ -69,7 +69,9 @@ extension ContentView {
             .init(id: "cmd:toggle_comment", title: "Toggle Comment", subtitle: "Comment or uncomment the current line or selection", isPinned: false, canTogglePin: false),
             .init(id: "cmd:uppercase", title: "Convert to Uppercase", subtitle: "Convert selection to uppercase", isPinned: false, canTogglePin: false),
             .init(id: "cmd:lowercase", title: "Convert to Lowercase", subtitle: "Convert selection to lowercase", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:copy_reference", title: "Copy Editor Reference", subtitle: "Copy the current file, line, and column", isPinned: false, canTogglePin: false),
             .init(id: "cmd:sort_lines", title: "Sort Lines", subtitle: "Sort selected lines alphabetically", isPinned: false, canTogglePin: false),
+            .init(id: "cmd:sort_unique_lines", title: "Sort and Deduplicate Lines", subtitle: "Sort lines and remove duplicate entries", isPinned: false, canTogglePin: false),
             .init(id: "cmd:trim_whitespace", title: "Trim Trailing Whitespace", subtitle: "Remove trailing whitespace from all lines", isPinned: false, canTogglePin: false),
             .init(id: "cmd:join_lines", title: "Join Lines", subtitle: "Join selected lines into a single line", isPinned: false, canTogglePin: false),
             .init(id: "cmd:folder_compare", title: "Folder Compare…", subtitle: "Compare two folders and review changes", isPinned: false, canTogglePin: false),
@@ -313,8 +315,12 @@ extension ContentView {
             convertSelectionCase(to: .upper)
         case "cmd:lowercase":
             convertSelectionCase(to: .lower)
+        case "cmd:copy_reference":
+            copyCurrentEditorReference()
         case "cmd:sort_lines":
             sortSelectedLines()
+        case "cmd:sort_unique_lines":
+            sortSelectedLinesUniquely()
         case "cmd:trim_whitespace":
             trimTrailingWhitespaceInDocument()
         case "cmd:join_lines":
@@ -996,6 +1002,18 @@ extension ContentView {
         let source = currentContentBinding.wrappedValue
         let lines = source.components(separatedBy: .newlines).sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
         currentContentBinding.wrappedValue = lines.joined(separator: "\n")
+    }
+
+    func sortSelectedLinesUniquely() {
+        guard !requiresMaterializedEditorTransform() else { return }
+        currentContentBinding.wrappedValue = Self.sortedUniqueLines(currentContentBinding.wrappedValue)
+    }
+
+    static func sortedUniqueLines(_ source: String) -> String {
+        let sortedLines = source.components(separatedBy: .newlines)
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        var seen = Set<String>()
+        return sortedLines.filter { seen.insert($0).inserted }.joined(separator: "\n")
     }
 
     func joinSelectedLines() {

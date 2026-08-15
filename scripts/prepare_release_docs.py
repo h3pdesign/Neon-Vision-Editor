@@ -478,46 +478,46 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": [
-        ("Quick Look passt sich dem Erscheinungsbild an", "Stimmt Hintergrund, Syntaxfarben und Zeilennummern auf den hellen oder dunklen macOS-Modus ab.", ["Quick Look", "macOS", "Darstellung"]),
         ("Quick Look und Einstellungen werden stabiler", "Verfeinert Quick Look und die Größenanpassung des macOS-Einstellungsfensters für einen ruhigeren Arbeitsablauf.", ["Quick Look", "Einstellungen", "macOS"]),
         ("Toolbar und Quick Look bleiben lesbar", "Stellt die Kurzbezeichnungen der Toolbar wieder her und bündelt Quick Look in einem eigenständigen, überprüfbaren Build-Schema.", ["Symbolleiste", "Quick Look", "macOS"]),
         ("Große Dokumente bleiben flüssig", "Verbessert den virtuellen macOS-Editor, die Projektnavigation und kompakte iPhone-Bedienelemente.", ["Editor", "Projekt", "iPhone"]),
         ("Lesbare Vorschauen aus Milchglas", "Macht abgetrennte Markdown- und Finder-Quick-Look-Vorschauen transparenter und zugleich besser lesbar.", ["Vorschau", "Quick Look", "macOS"]),
+        ("Stabiles Layout und Markdown-Karten", "Hält den macOS-Editor beim Wechseln von Arbeitsbereichen stabil und platziert Markdown-Aktionen direkt in der Vorschau.", ["Editor", "Markdown", "macOS"]),
     ],
     "da": [
-        ("Quick Look følger udseendet", "Tilpasser baggrund, syntaksfarver og linjenumre til macOS i lys eller mørk tilstand.", ["Quick Look", "macOS", "Udseende"]),
         ("Quick Look og indstillinger bliver mere stabile", "Forfiner Quick Look og størrelsestilpasningen af macOS-indstillingsvinduet for et roligere arbejdsforløb.", ["Quick Look", "Indstillinger", "macOS"]),
         ("Værktøjslinje og Quick Look forbliver læselige", "Gendanner værktøjslinjens korte etiketter og samler Quick Look i et selvstændigt, verificerbart byggeskema.", ["Værktøjslinje", "Quick Look", "macOS"]),
         ("Store dokumenter forbliver hurtige", "Forbedrer den virtuelle macOS-editor, projektnavigationen og kompakte iPhone-kontroller.", ["Editor", "Projekt", "iPhone"]),
         ("Læsbare frostede forhåndsvisninger", "Gør separate Markdown- og Finder Quick Look-forhåndsvisninger gennemsigtige og samtidig lettere at læse.", ["Forhåndsvisning", "Quick Look", "macOS"]),
+        ("Stabilt layout og Markdown-kort", "Holder macOS-editoren stabil ved skift af arbejdsområde og placerer Markdown-handlinger direkte i forhåndsvisningen.", ["Editor", "Markdown", "macOS"]),
     ],
     "fr": [
-        ("Quick Look suit l’apparence", "Adapte le fond, les couleurs de syntaxe et les numéros de ligne au mode clair ou sombre de macOS.", ["Quick Look", "macOS", "Apparence"]),
         ("Quick Look et les réglages gagnent en stabilité", "Affine Quick Look et l’adaptation de taille de la fenêtre Réglages sur macOS pour un flux de travail plus calme.", ["Quick Look", "Réglages", "macOS"]),
         ("Barre d’outils et Quick Look restent lisibles", "Restaure les libellés courts de la barre d’outils et regroupe Quick Look dans un schéma de build autonome et vérifiable.", ["Barre d’outils", "Quick Look", "macOS"]),
         ("Les grands documents restent fluides", "Améliore l’éditeur virtuel macOS, la navigation de projet et les commandes compactes sur iPhone.", ["Éditeur", "Projet", "iPhone"]),
         ("Des aperçus givrés lisibles", "Rend les aperçus Markdown détachés et Finder Quick Look transparents tout en améliorant leur lisibilité.", ["Aperçu", "Quick Look", "macOS"]),
+        ("Mise en page stable et cartes Markdown", "Maintient la stabilité de l’éditeur macOS lors des changements d’espace de travail et place les actions Markdown dans l’aperçu.", ["Éditeur", "Markdown", "macOS"]),
     ],
     "es": [
-        ("Quick Look sigue la apariencia", "Adapta el fondo, los colores de sintaxis y los números de línea al modo claro u oscuro de macOS.", ["Quick Look", "macOS", "Apariencia"]),
         ("Quick Look y Ajustes ganan estabilidad", "Perfecciona Quick Look y el ajuste de tamaño de la ventana Ajustes de macOS para un flujo de trabajo más tranquilo.", ["Quick Look", "Ajustes", "macOS"]),
         ("La barra y Quick Look siguen siendo legibles", "Restaura las etiquetas abreviadas de la barra y reúne Quick Look en un esquema de compilación autónomo y verificable.", ["Barra", "Quick Look", "macOS"]),
         ("Los documentos grandes siguen siendo ágiles", "Mejora el editor virtual de macOS, la navegación de proyectos y los controles compactos del iPhone.", ["Editor", "Proyecto", "iPhone"]),
         ("Vistas previas de vidrio esmerilado", "Mantiene transparentes las vistas previas Markdown separadas y de Finder Quick Look, con mejor legibilidad.", ["Vista previa", "Quick Look", "macOS"]),
+        ("Diseño estable y tarjetas Markdown", "Mantiene estable el editor de macOS al cambiar de espacio de trabajo y sitúa las acciones de Markdown en la vista previa.", ["Editor", "Markdown", "macOS"]),
     ],
     "ja": [
-        ("Quick Look の外観対応", "背景、構文色、行番号を macOS のライト／ダークモードに合わせます。", ["Quick Look", "macOS", "外観"]),
         ("Quick Look と設定がさらに安定", "Quick Look と macOS 設定ウインドウのサイズ調整を改善し、より落ち着いた作業環境にします。", ["Quick Look", "設定", "macOS"]),
         ("ツールバーと Quick Look の可読性を維持", "ツールバーの短いラベルを復元し、Quick Look を独立した検証可能なビルドスキームにまとめます。", ["ツールバー", "Quick Look", "macOS"]),
         ("大きな書類も快適に操作", "macOS の仮想エディタ、プロジェクトナビゲーション、iPhone のコンパクトな操作を改善します。", ["エディタ", "プロジェクト", "iPhone"]),
         ("読みやすいフロストガラスのプレビュー", "分離した Markdown と Finder Quick Look のプレビューを透明に保ちながら読みやすくします。", ["プレビュー", "Quick Look", "macOS"]),
+        ("安定したレイアウトと Markdown カード", "ワークスペースの切り替え時も macOS エディタを安定させ、Markdown の操作をプレビュー内に配置します。", ["エディタ", "Markdown", "macOS"]),
     ],
     "zh-Hans": [
-        ("Quick Look 适配外观", "使背景、语法颜色和行号与 macOS 的浅色或深色模式保持一致。", ["Quick Look", "macOS", "外观"]),
         ("Quick Look 与设置更加稳定", "优化 Quick Look 和 macOS 设置窗口的尺寸调整，让工作流程更加稳定。", ["Quick Look", "设置", "macOS"]),
         ("工具栏与 Quick Look 保持清晰", "恢复工具栏的简短标签，并将 Quick Look 整合到独立且可验证的构建方案中。", ["工具栏", "Quick Look", "macOS"]),
         ("大文档依然流畅", "改进 macOS 虚拟编辑器、项目导航和 iPhone 的紧凑控制。", ["编辑器", "项目", "iPhone"]),
         ("更易读的磨砂玻璃预览", "让独立 Markdown 和 Finder Quick Look 预览保持透明，同时提高可读性。", ["预览", "Quick Look", "macOS"]),
+        ("稳定布局与 Markdown 卡片", "在切换工作区时保持 macOS 编辑器稳定，并将 Markdown 操作放在预览中。", ["编辑器", "Markdown", "macOS"]),
     ],
 }
 
@@ -529,7 +529,7 @@ README_PREVIOUS_RELEASE_OVERRIDES = {
 def rebuild_localized_website_release_timeline(website: str, changelog: str, current_tag: str, locale: str) -> str:
     source_entries = release_timeline_entries(changelog, current_tag)
     copy = LOCALIZED_TIMELINE_COPY[locale]
-    expected_tags = ("v1.3.5", "v1.3.6", "v1.4.0", "v1.4.1", "v1.4.2")
+    expected_tags = ("v1.3.6", "v1.4.0", "v1.4.1", "v1.4.2", "v1.4.3")
     if tuple(entry[0] for entry in source_entries) != expected_tags or len(source_entries) != len(copy):
         raise ValueError(f"Localized timeline copy is incomplete for {locale}.")
     entries: list[str] = []

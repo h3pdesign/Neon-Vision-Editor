@@ -2563,15 +2563,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.4.3",
-            subtitle: "Release highlights for v1.4.3.",
+            title: "What’s New in v1.4.4",
+            subtitle: "Release highlights for v1.4.4.",
             bullets: [
-                "Editor Improvements: Keeps macOS editing stable while changing workspace and Brain Dump layouts.",
-                "Workflow Refinements: Makes Markdown preview actions easier to reach without crowding the main toolbar.",
-                "Performance Updates: Preserves full-width line wrapping while sidebars and split previews change.",
-                "Usability Updates: Moves Markdown preview export and style actions into the split preview header.",
-                "Editor Improvements: Adds a dedicated Markdown Cards button to the Standard and Writing toolbar presets.",
-                "Workflow Refinements: Prevents preview-divider resizing from feeding geometry changes back into the editor while dragging."
+                "Editor Improvements: Makes the on-screen keyboard accessory reliable for touch editing on iPhone and iPad.",
+                "Workflow Refinements: Adds small editor commands that make sharing locations and cleaning lists faster.",
+                "Performance Updates: Preserves line wrapping through preview and sidebar layout transitions.",
+                "Reliable Saves: Adds configurable Save, Find, Undo, and Redo actions before bracket tokens above the on-screen keyboard.",
+                "Editor Improvements: Adds Copy Current Editor Reference and Sort & Deduplicate Lines commands.",
+                "Workflow Refinements: Restores the keyboard accessory when the software keyboard is visible, including Simulator sessions where a keyboard…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

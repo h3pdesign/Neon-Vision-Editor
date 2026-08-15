@@ -4,6 +4,33 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.4.4] - 2026-08-15
+
+### Why Upgrade
+
+- Makes the on-screen keyboard accessory reliable for touch editing on iPhone and iPad.
+- Adds small editor commands that make sharing locations and cleaning lists faster.
+- Preserves line wrapping through preview and sidebar layout transitions.
+
+### Highlights
+
+- Adds configurable Save, Find, Undo, and Redo actions before bracket tokens above the on-screen keyboard.
+- Adds Copy Current Editor Reference and Sort & Deduplicate Lines commands.
+
+### Fixes
+
+- Restores the keyboard accessory when the software keyboard is visible, including Simulator sessions where a keyboard controller is also present.
+- Prevents macOS virtual-editor width measurements from disabling line wrapping after preview or sidebar transitions.
+- Keeps the table-of-contents sidebar layout transition from leaving the editor at a stale width.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.4.3] - 2026-08-15
 
 ### Why Upgrade

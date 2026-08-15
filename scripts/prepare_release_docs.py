@@ -484,6 +484,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.4.1": ("Große Dokumente bleiben flüssig", "Verbessert den virtuellen macOS-Editor, die Projektnavigation und kompakte iPhone-Bedienelemente.", ["Editor", "Projekt", "iPhone"]),
         "v1.4.2": ("Lesbare Vorschauen aus Milchglas", "Macht abgetrennte Markdown- und Finder-Quick-Look-Vorschauen transparenter und zugleich besser lesbar.", ["Vorschau", "Quick Look", "macOS"]),
         "v1.4.3": ("Stabiles Layout und Markdown-Karten", "Hält den macOS-Editor beim Wechseln von Arbeitsbereichen stabil und platziert Markdown-Aktionen direkt in der Vorschau.", ["Editor", "Markdown", "macOS"]),
+        "v1.4.4": ("Zuverlässige Tastaturaktionen", "Zeigt Bearbeitungsaktionen über der Bildschirmtastatur und erhält den Zeilenumbruch bei Vorschau- und Seitenleistenwechseln.", ["Editor", "Tastatur", "iPhone"]),
     },
     "da": {
         "v1.3.6": ("Quick Look og indstillinger bliver mere stabile", "Forfiner Quick Look og størrelsestilpasningen af macOS-indstillingsvinduet for et roligere arbejdsforløb.", ["Quick Look", "Indstillinger", "macOS"]),
@@ -491,6 +492,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.4.1": ("Store dokumenter forbliver hurtige", "Forbedrer den virtuelle macOS-editor, projektnavigationen og kompakte iPhone-kontroller.", ["Editor", "Projekt", "iPhone"]),
         "v1.4.2": ("Læsbare frostede forhåndsvisninger", "Gør separate Markdown- og Finder Quick Look-forhåndsvisninger gennemsigtige og samtidig lettere at læse.", ["Forhåndsvisning", "Quick Look", "macOS"]),
         "v1.4.3": ("Stabilt layout og Markdown-kort", "Holder macOS-editoren stabil ved skift af arbejdsområde og placerer Markdown-handlinger direkte i forhåndsvisningen.", ["Editor", "Markdown", "macOS"]),
+        "v1.4.4": ("Pålidelige tastaturhandlinger", "Viser redigeringshandlinger over skærmtastaturet og bevarer linjeskift ved skift af forhåndsvisning og sidepanel.", ["Editor", "Tastatur", "iPhone"]),
     },
     "fr": {
         "v1.3.6": ("Quick Look et les réglages gagnent en stabilité", "Affine Quick Look et l’adaptation de taille de la fenêtre Réglages sur macOS pour un flux de travail plus calme.", ["Quick Look", "Réglages", "macOS"]),
@@ -498,6 +500,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.4.1": ("Les grands documents restent fluides", "Améliore l’éditeur virtuel macOS, la navigation de projet et les commandes compactes sur iPhone.", ["Éditeur", "Projet", "iPhone"]),
         "v1.4.2": ("Des aperçus givrés lisibles", "Rend les aperçus Markdown détachés et Finder Quick Look transparents tout en améliorant leur lisibilité.", ["Aperçu", "Quick Look", "macOS"]),
         "v1.4.3": ("Mise en page stable et cartes Markdown", "Maintient la stabilité de l’éditeur macOS lors des changements d’espace de travail et place les actions Markdown dans l’aperçu.", ["Éditeur", "Markdown", "macOS"]),
+        "v1.4.4": ("Actions clavier fiables", "Affiche les actions d’édition au-dessus du clavier à l’écran et préserve le retour à la ligne lors des changements d’aperçu ou de barre latérale.", ["Éditeur", "Clavier", "iPhone"]),
     },
     "es": {
         "v1.3.6": ("Quick Look y Ajustes ganan estabilidad", "Perfecciona Quick Look y el ajuste de tamaño de la ventana Ajustes de macOS para un flujo de trabajo más tranquilo.", ["Quick Look", "Ajustes", "macOS"]),
@@ -505,6 +508,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.4.1": ("Los documentos grandes siguen siendo ágiles", "Mejora el editor virtual de macOS, la navegación de proyectos y los controles compactos del iPhone.", ["Editor", "Proyecto", "iPhone"]),
         "v1.4.2": ("Vistas previas de vidrio esmerilado", "Mantiene transparentes las vistas previas Markdown separadas y de Finder Quick Look, con mejor legibilidad.", ["Vista previa", "Quick Look", "macOS"]),
         "v1.4.3": ("Diseño estable y tarjetas Markdown", "Mantiene estable el editor de macOS al cambiar de espacio de trabajo y sitúa las acciones de Markdown en la vista previa.", ["Editor", "Markdown", "macOS"]),
+        "v1.4.4": ("Acciones de teclado fiables", "Muestra acciones de edición sobre el teclado en pantalla y conserva el ajuste de línea al cambiar la vista previa o la barra lateral.", ["Editor", "Teclado", "iPhone"]),
     },
     "ja": {
         "v1.3.6": ("Quick Look と設定がさらに安定", "Quick Look と macOS 設定ウインドウのサイズ調整を改善し、より落ち着いた作業環境にします。", ["Quick Look", "設定", "macOS"]),
@@ -512,6 +516,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.4.1": ("大きな書類も快適に操作", "macOS の仮想エディタ、プロジェクトナビゲーション、iPhone のコンパクトな操作を改善します。", ["エディタ", "プロジェクト", "iPhone"]),
         "v1.4.2": ("読みやすいフロストガラスのプレビュー", "分離した Markdown と Finder Quick Look のプレビューを透明に保ちながら読みやすくします。", ["プレビュー", "Quick Look", "macOS"]),
         "v1.4.3": ("安定したレイアウトと Markdown カード", "ワークスペースの切り替え時も macOS エディタを安定させ、Markdown の操作をプレビュー内に配置します。", ["エディタ", "Markdown", "macOS"]),
+        "v1.4.4": ("信頼できるキーボード操作", "画面キーボードの上に編集操作を表示し、プレビューやサイドバーの切り替え時も行の折り返しを維持します。", ["エディタ", "キーボード", "iPhone"]),
     },
     "zh-Hans": {
         "v1.3.6": ("Quick Look 与设置更加稳定", "优化 Quick Look 和 macOS 设置窗口的尺寸调整，让工作流程更加稳定。", ["Quick Look", "设置", "macOS"]),
@@ -519,6 +524,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.4.1": ("大文档依然流畅", "改进 macOS 虚拟编辑器、项目导航和 iPhone 的紧凑控制。", ["编辑器", "项目", "iPhone"]),
         "v1.4.2": ("更易读的磨砂玻璃预览", "让独立 Markdown 和 Finder Quick Look 预览保持透明，同时提高可读性。", ["预览", "Quick Look", "macOS"]),
         "v1.4.3": ("稳定布局与 Markdown 卡片", "在切换工作区时保持 macOS 编辑器稳定，并将 Markdown 操作放在预览中。", ["编辑器", "Markdown", "macOS"]),
+        "v1.4.4": ("可靠的键盘操作", "在屏幕键盘上方显示编辑操作，并在切换预览或侧边栏时保持自动换行。", ["编辑器", "键盘", "iPhone"]),
     },
 }
 

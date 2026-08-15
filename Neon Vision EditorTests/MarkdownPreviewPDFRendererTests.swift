@@ -5,6 +5,25 @@ import PDFKit
 
 @MainActor
 final class MarkdownPreviewPDFRendererTests: XCTestCase {
+    func testDetachedPreviewUsesEditorBackgroundInsteadOfPreviewWhite() {
+        let html = "<html><head><style>body { background: white; }</style></head><body><main class=\"content\">Preview</main></body></html>"
+
+        let result = DetachedPreviewWindowView.applyingEditorBackground(to: html, color: "#101820")
+
+        XCTAssertTrue(result.contains("nve-detached-preview-background"))
+        XCTAssertTrue(result.contains("html, body, .content { background: #101820 !important; }"))
+        XCTAssertTrue(result.contains("</style></head>"))
+    }
+
+    func testDetachedPreviewKeepsItsBackgroundTransparentForTranslucentWindows() {
+        let result = DetachedPreviewWindowView.applyingEditorBackground(
+            to: "<html><head></head><body><main class=\"content\">Preview</main></body></html>",
+            color: "transparent"
+        )
+
+        XCTAssertTrue(result.contains("html, body, .content { background: transparent !important; }"))
+    }
+
     func testPaginatedSourceRangesCoverLongMarkdownWithoutGaps() {
         let ranges = MarkdownPreviewPDFRenderer.paginatedSourceRanges(
             sourceHeight: 4_850,

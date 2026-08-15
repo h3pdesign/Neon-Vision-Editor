@@ -39,9 +39,9 @@ struct MarkdownQuickLookView: View {
                 .padding(12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Keep the document legible over Finder while retaining the native
-        // translucent Quick Look glass treatment.
-        .background(.thinMaterial)
+        // Let Finder remain visible behind the document while preserving
+        // enough contrast for rendered Markdown.
+        .background(.ultraThinMaterial)
         .onChange(of: model.text) { _, newText in
             document = MarkdownQuickLookDocument(source: newText)
             showsTableOfContents = false

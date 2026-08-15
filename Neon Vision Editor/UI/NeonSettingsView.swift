@@ -254,6 +254,9 @@ struct NeonSettingsView: View {
 #endif
     @AppStorage("MarkdownPreviewBackgroundStyle") private var markdownPreviewBackgroundStyleRaw: String = "automatic"
     @AppStorage("MarkdownPreviewDialect") private var markdownPreviewDialectRaw: String = ContentView.MarkdownPreviewDialect.gfm.rawValue
+#if os(macOS)
+    @AppStorage("DetachedMarkdownPreviewUsesQuickLookTransparency") private var detachedMarkdownPreviewUsesQuickLookTransparency: Bool = false
+#endif
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewEnabled) private var markdownProjectPreviewEnabled: Bool = true
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewMode) private var markdownProjectPreviewModeRaw: String = MarkdownProjectPreviewMode.grid.rawValue
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewContentFilter) private var markdownProjectPreviewContentFilterRaw: String = MarkdownProjectPreviewContentFilter.markdown.rawValue
@@ -4047,6 +4050,11 @@ struct NeonSettingsView: View {
             Toggle("Sync preview with editor scrolling", isOn: $markdownPreviewSynchronousScroll)
                 .accessibilityLabel("Sync Markdown preview with editor scrolling")
                 .accessibilityHint("Keeps the preview aligned with the opened Markdown file. Off by default.")
+
+#if os(macOS)
+            Toggle("Use Quick Look glass in separate preview window", isOn: $detachedMarkdownPreviewUsesQuickLookTransparency)
+                .accessibilityHint("Uses an ultra-thin transparent glass background in detached Markdown preview windows. Off by default.")
+#endif
 
         }
         .frame(maxWidth: .infinity, alignment: .leading)

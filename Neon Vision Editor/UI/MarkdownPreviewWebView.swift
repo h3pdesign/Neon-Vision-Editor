@@ -26,6 +26,8 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> WKWebView {
         let webView = makeConfiguredWebView(allowsContentJavaScript: allowsContentJavaScript, scrollMessageHandler: context.coordinator)
+        webView.wantsLayer = true
+        webView.layer?.backgroundColor = NSColor.clear.cgColor
         webView.navigationDelegate = context.coordinator
         webView.loadHTMLString(html, baseURL: baseURL)
         applyMacOverlayScrollerStyle(in: webView)

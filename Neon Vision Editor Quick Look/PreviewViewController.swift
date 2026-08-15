@@ -33,8 +33,11 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         window.isOpaque = false
         window.backgroundColor = .clear
         window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
         window.styleMask.insert(.fullSizeContentView)
+        window.toolbarStyle = .unified
+        if #available(macOS 13.0, *) {
+            window.titlebarSeparatorStyle = .none
+        }
         window.isMovableByWindowBackground = true
         window.hasShadow = true
     }

@@ -167,13 +167,25 @@ struct VirtualEditorView: NSViewRepresentable {
 }
 
 enum VirtualEditorViewportGeometry {
-    static func visibleSize(contentBounds: CGSize, scrollViewBounds: CGSize) -> CGSize {
+    static func visibleSize(
+        contentBounds: CGSize,
+        scrollViewBounds: CGSize,
+        verticalScrollerWidth: CGFloat
+    ) -> CGSize {
         // During a SwiftUI split-pane resize, AppKit can report the previous
         // clip-view bounds while the scroll view has already received its new
-        // allocation. Prefer that allocation so wrapped fragments are rebuilt
-        // for the narrower editor pane. The clip view remains the fallback
-        // while the scroll view is not laid out yet.
-        let width = scrollViewBounds.width > 1 ? scrollViewBounds.width : contentBounds.width
+        // allocation. When that happens, exclude the vertical scroller width:
+        // wrapping to the full scroll-view width places trailing glyphs under
+        // the scroller until the next layout pass.
+        let allocatedContentWidth = max(1, scrollViewBounds.width - verticalScrollerWidth)
+        let width: CGFloat
+        if contentBounds.width > 1, contentBounds.width <= scrollViewBounds.width {
+            width = contentBounds.width
+        } else if scrollViewBounds.width > 1 {
+            width = allocatedContentWidth
+        } else {
+            width = contentBounds.width
+        }
         let height = scrollViewBounds.height > 1 ? scrollViewBounds.height : contentBounds.height
         return CGSize(
             width: max(width, 1),
@@ -318,7 +330,8 @@ final class VirtualEditorScrollView: NSScrollView {
     private var visibleViewportSize: CGSize {
         VirtualEditorViewportGeometry.visibleSize(
             contentBounds: contentView.bounds.size,
-            scrollViewBounds: bounds.size
+            scrollViewBounds: bounds.size,
+            verticalScrollerWidth: verticalScroller?.frame.width ?? 0
         )
     }
 

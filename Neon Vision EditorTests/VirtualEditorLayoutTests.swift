@@ -94,19 +94,31 @@ final class VirtualEditorLayoutTests: XCTestCase {
     func testNewFileViewportUsesEnclosingScrollViewWhenClipViewIsNotLaidOutYet() {
         let visibleSize = VirtualEditorViewportGeometry.visibleSize(
             contentBounds: CGSize(width: 1, height: 1),
-            scrollViewBounds: CGSize(width: 900, height: 700)
+            scrollViewBounds: CGSize(width: 900, height: 700),
+            verticalScrollerWidth: 15
         )
 
-        XCTAssertEqual(visibleSize, CGSize(width: 900, height: 700))
+        XCTAssertEqual(visibleSize, CGSize(width: 885, height: 700))
     }
 
-    func testPreviewSplitViewportUsesNewScrollViewWidthWhenClipViewIsStale() {
+    func testPreviewSplitViewportExcludesVerticalScrollerWhenClipViewIsStale() {
         let visibleSize = VirtualEditorViewportGeometry.visibleSize(
             contentBounds: CGSize(width: 900, height: 700),
-            scrollViewBounds: CGSize(width: 420, height: 700)
+            scrollViewBounds: CGSize(width: 420, height: 700),
+            verticalScrollerWidth: 15
         )
 
-        XCTAssertEqual(visibleSize, CGSize(width: 420, height: 700))
+        XCTAssertEqual(visibleSize, CGSize(width: 405, height: 700))
+    }
+
+    func testViewportUsesCurrentClipWidthWhenItHasAlreadyLaidOut() {
+        let visibleSize = VirtualEditorViewportGeometry.visibleSize(
+            contentBounds: CGSize(width: 405, height: 700),
+            scrollViewBounds: CGSize(width: 420, height: 700),
+            verticalScrollerWidth: 15
+        )
+
+        XCTAssertEqual(visibleSize, CGSize(width: 405, height: 700))
     }
 
     func testCommandArrowNavigationRemainsWithAppKit() {

@@ -1022,6 +1022,34 @@ struct DetachedPreviewWindowPresenter: NSViewRepresentable {
     let title: String
     let html: String
     let baseURL: URL?
+    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("EnableTranslucentWindow") private var enableTranslucentWindow: Bool = false
+    @AppStorage("SettingsMacTranslucencyMode") private var translucencyModeRaw: String = "balanced"
+    @AppStorage("DetachedMarkdownPreviewUsesQuickLookTransparency") private var usesQuickLookTransparency: Bool = false
+
+    private var editorBackground: Color {
+        currentEditorTheme(colorScheme: colorScheme).background
+    }
+
+    private var windowBackgroundColor: NSColor {
+        if usesQuickLookTransparency { return .clear }
+        guard enableTranslucentWindow else { return NSColor(editorBackground) }
+        let mode = translucencyModeRaw
+        let whiteLevel: CGFloat
+        let alpha: CGFloat
+        switch mode {
+        case "subtle":
+            whiteLevel = colorScheme == .dark ? 0.18 : 0.90
+            alpha = 0.82
+        case "vibrant":
+            whiteLevel = colorScheme == .dark ? 0.12 : 0.82
+            alpha = 0.62
+        default:
+            whiteLevel = colorScheme == .dark ? 0.15 : 0.86
+            alpha = 0.72
+        }
+        return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
+    }
 
     @MainActor
     final class Coordinator: NSObject, NSWindowDelegate {
@@ -1034,7 +1062,15 @@ struct DetachedPreviewWindowPresenter: NSViewRepresentable {
         }
 
         func content() -> DetachedPreviewWindowView {
-            DetachedPreviewWindowView(title: self.parent.title, html: self.parent.html, baseURL: self.parent.baseURL) {
+            DetachedPreviewWindowView(
+                title: self.parent.title,
+                html: self.parent.html,
+                baseURL: self.parent.baseURL,
+                editorBackground: self.parent.editorBackground,
+                usesTranslucency: self.parent.enableTranslucentWindow,
+                usesQuickLookTransparency: self.parent.usesQuickLookTransparency,
+                translucencyModeRaw: self.parent.translucencyModeRaw
+            ) {
                 self.parent.isPresented = false
             }
         }
@@ -1043,6 +1079,7 @@ struct DetachedPreviewWindowPresenter: NSViewRepresentable {
             if let window, let hostingController {
                 hostingController.rootView = content()
                 window.title = parent.title
+                configureAppearance(of: window)
                 window.makeKeyAndOrderFront(nil)
                 NSApp.activate(ignoringOtherApps: true)
                 return
@@ -1057,6 +1094,7 @@ struct DetachedPreviewWindowPresenter: NSViewRepresentable {
             )
             window.contentViewController = controller
             window.title = parent.title
+            configureAppearance(of: window)
             window.isReleasedWhenClosed = false
             window.tabbingMode = .disallowed
             window.minSize = NSSize(width: 640, height: 480)
@@ -1067,6 +1105,17 @@ struct DetachedPreviewWindowPresenter: NSViewRepresentable {
             self.hostingController = controller
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
+        }
+
+        private func configureAppearance(of window: NSWindow) {
+            window.isOpaque = !(parent.enableTranslucentWindow || parent.usesQuickLookTransparency)
+            window.backgroundColor = parent.windowBackgroundColor
+            window.titlebarAppearsTransparent = true
+            window.toolbarStyle = .unified
+            window.styleMask.insert(.fullSizeContentView)
+            if #available(macOS 13.0, *) {
+                window.titlebarSeparatorStyle = .none
+            }
         }
 
         func dismissIfNeeded() {
@@ -1104,7 +1153,31 @@ struct DetachedPreviewWindowView: View {
     let title: String
     let html: String
     let baseURL: URL?
+    let editorBackground: Color
+    let usesTranslucency: Bool
+    let usesQuickLookTransparency: Bool
+    let translucencyModeRaw: String
     let onClose: () -> Void
+
+    var previewHTML: String {
+        Self.applyingEditorBackground(
+            to: html,
+            color: (usesTranslucency || usesQuickLookTransparency) ? "transparent" : colorToHex(editorBackground)
+        )
+    }
+
+    static func applyingEditorBackground(to html: String, color: String) -> String {
+        let style = """
+        <style id="nve-detached-preview-background">
+        html, body, .content { background: \(color) !important; }
+        .content { border-color: transparent !important; box-shadow: none !important; }
+        </style>
+        """
+        if html.range(of: "</head>", options: .caseInsensitive) != nil {
+            return html.replacingOccurrences(of: "</head>", with: "\(style)</head>", options: .caseInsensitive)
+        }
+        return html + style
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1122,13 +1195,27 @@ struct DetachedPreviewWindowView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(.bar)
 
-            MarkdownPreviewWebView(html: html, baseURL: baseURL)
+            MarkdownPreviewWebView(html: previewHTML, baseURL: baseURL)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityLabel("Preview content")
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(surfaceBackground)
+    }
+
+    private var surfaceBackground: AnyShapeStyle {
+        if usesQuickLookTransparency {
+            return AnyShapeStyle(.ultraThinMaterial)
+        }
+        guard usesTranslucency else { return AnyShapeStyle(editorBackground) }
+        switch translucencyModeRaw {
+        case "subtle":
+            return AnyShapeStyle(Material.thick.opacity(0.82))
+        case "vibrant":
+            return AnyShapeStyle(Material.regular.opacity(0.62))
+        default:
+            return AnyShapeStyle(Material.thick.opacity(0.72))
+        }
     }
 }
 #endif

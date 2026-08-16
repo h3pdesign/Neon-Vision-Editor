@@ -18,7 +18,7 @@ Notes:
   - Runs scripts/prepare_release_docs.py
   - Auto-syncs MARKETING_VERSION in Xcode project to the release tag version
   - With --push, refreshes origin/main and preserves allowed release-doc changes
-  - Commits README.md, CHANGELOG.md, and Welcome Tour release page updates
+  - Commits README.md, ARCHITECTURE.md, CHANGELOG.md, and Welcome Tour release page updates
   - With --next, chooses the next stable tag; patch releases are capped at .9
   - Does not create a tag: the canonical GitHub-hosted workflow tags only after its gates pass
   - With --push, pushes only the prepared commit to origin/main
@@ -76,7 +76,7 @@ done
 is_allowed_release_dirty_path() {
   local path="$1"
   case "$path" in
-    CHANGELOG.md|README.md|\
+    CHANGELOG.md|README.md|ARCHITECTURE.md|\
     "Neon Vision Editor/UI/PanelsAndHelpers.swift"|\
     "Neon Vision Editor.xcodeproj/project.pbxproj"|\
     site/index.html|site/changelog.html|\
@@ -299,7 +299,7 @@ fi
 
 scripts/ci/validate_release_metadata.sh "$TAG"
 
-git add README.md CHANGELOG.md site/index.html site/changelog.html site/de/index.html site/da/index.html site/fr/index.html \
+git add README.md ARCHITECTURE.md CHANGELOG.md site/index.html site/changelog.html site/de/index.html site/da/index.html site/fr/index.html \
   site/es/index.html site/ja/index.html site/zh-Hans/index.html "Neon Vision Editor/UI/PanelsAndHelpers.swift" "$PBXPROJ_FILE" \
   docs/images/neon-vision-release-history-0.1-to-0.5.svg \
   docs/images/neon-vision-release-history-0.1-to-0.5-light.svg

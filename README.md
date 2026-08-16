@@ -188,6 +188,7 @@
 | Document | Purpose |
 |---|---|
 | [`CHANGELOG.md`](CHANGELOG.md) | Full release history and milestone issue coverage |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Current cross-platform architecture, ownership boundaries, performance rules, and verification model |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Local setup, build, and contribution workflow |
 | [`PRIVACY.md`](PRIVACY.md) | Privacy guarantees and data-handling policy |
 | [`SECURITY.md`](SECURITY.md) | Security policy and responsible disclosure |
@@ -348,6 +349,16 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="Privacy" src="https://img.shields.io/badge/Privacy-No%20Telemetry-111827?style=for-the-badge">
 </p>
 
+<!-- FEATURE_COVERAGE:START -->
+### Current Feature Coverage
+
+- **Editing utilities:** configurable iPhone/iPad keyboard actions, Copy Current Editor Reference, and Sort & Deduplicate Lines complement the regular save, find, undo, redo, and formatting commands.
+- **Languages and structured documents:** Swift 6-ready highlighting includes TeX/LaTeX and Typst/CeTZ-aware editing; CSV/TSV, property lists, Apple crash reports, and recognized logs can switch between structured and raw-text views, and plain text can be transformed into validated JSON through an explicit AI-assisted action.
+- **Project and preview workflows:** project-level Markdown/PDF cards reuse the project index for bounded excerpts and thumbnails, while Markdown, HTML, SVG, PDF, and PNG previews remain integrated with the editor.
+- **macOS integration:** the embedded Quick Look extension previews supported Markdown and source files in Finder, and detached Markdown previews can use the same glass treatment without changing editor content.
+- **Latest stable additions (v1.4.5):** Makes the active editor viewport width authoritative for virtual-row layout and fragment caching.
+<!-- FEATURE_COVERAGE:END -->
+
 ### Editing Core
 
 - Fast loading for regular and large text files with tabbed editing.
@@ -357,7 +368,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - The v1.4.0 text-rendering core uses a backend-neutral `EditorDocument` contract and a virtualized bounded viewport on macOS. The renderer draws the active window, requests new windows around the scroll anchor, preserves caret/selection positions, and rejects stale viewport generations instead of rebuilding the entire text buffer.
 - macOS uses a native-free virtual renderer for every editable file. It draws only the bounded viewport with Core Text `CTLine` objects, caches visible line layouts, applies syntax colors only to visible lines, and swaps bounded windows around the scroll anchor. File-backed documents finish indexing before this renderer activates, so scrolling never grows an index or projects a complete document string. iOS/iPadOS/visionOS retain their separate `UITextView` editor path.
 - Files at **100 MB or more** open as a clearly marked, read-only **Partial Open**. Neon reads only the first 4 MB, ending at a line boundary where possible; it never loads the full file into the editor buffer or permits saving the partial content over the source.
-- Broad Swift 6-ready syntax highlighting (including TeX/LaTeX), inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
+- Broad Swift 6-ready syntax highlighting (including TeX/LaTeX and Typst/CeTZ), inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
 - Optional Code Minimap gives a compact file overview, click-to-jump navigation, and a draggable viewport marker without changing the default editor surface.
 - Invisible-character markers on iPhone and iPad render in a lightweight overlay so spaces, tabs, and newlines stay aligned while scrolling.
 - Scrolling the iPhone editor dismisses the software keyboard; iPad keeps the keyboard available while scrolling for its pointer and hardware-keyboard workflows.

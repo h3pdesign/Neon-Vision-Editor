@@ -85,6 +85,7 @@ The workflow performs:
 4. Submit to notarization (`notarytool`)
 5. Staple ticket
 6. Zip app and upload to GitHub release asset (`--clobber`)
+7. After publication, `.github/workflows/post-release-documentation-sync.yml` waits at least ten minutes, regenerates release documentation from `CHANGELOG.md`, validates it, and signed-commits any repaired drift to `main`.
 
 ## 6b) Self-Hosted Runner Setup (Optional fallback)
 

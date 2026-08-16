@@ -22,6 +22,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
+ARCHITECTURE = ROOT / "ARCHITECTURE.md"
 WEBSITE = ROOT / "site" / "index.html"
 CHANGELOG_PAGE = ROOT / "site" / "changelog.html"
 LOCALIZED_WEBSITES = {
@@ -36,6 +37,16 @@ WELCOME_TOUR_SWIFT = ROOT / "Neon Vision Editor" / "UI" / "PanelsAndHelpers.swif
 WELCOME_TOUR_CARD_COUNT = 6
 WELCOME_TOUR_CARD_TEXT_BUDGET = 126
 RELEASE_TIMELINE_COUNT = 5
+
+README_FEATURE_COVERAGE = """<!-- FEATURE_COVERAGE:START -->
+### Current Feature Coverage
+
+- **Editing utilities:** configurable iPhone/iPad keyboard actions, Copy Current Editor Reference, and Sort & Deduplicate Lines complement the regular save, find, undo, redo, and formatting commands.
+- **Languages and structured documents:** Swift 6-ready highlighting includes TeX/LaTeX and Typst/CeTZ-aware editing; CSV/TSV, property lists, Apple crash reports, and recognized logs can switch between structured and raw-text views, and plain text can be transformed into validated JSON through an explicit AI-assisted action.
+- **Project and preview workflows:** project-level Markdown/PDF cards reuse the project index for bounded excerpts and thumbnails, while Markdown, HTML, SVG, PDF, and PNG previews remain integrated with the editor.
+- **macOS integration:** the embedded Quick Look extension previews supported Markdown and source files in Finder, and detached Markdown previews can use the same glass treatment without changing editor content.
+{latest_additions}
+<!-- FEATURE_COVERAGE:END -->"""
 
 
 def normalize_tag(raw: str) -> str:
@@ -53,6 +64,93 @@ def read_text(path: pathlib.Path) -> str:
 
 def write_text(path: pathlib.Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
+
+
+def replace_or_insert_managed_block(
+    content: str,
+    *,
+    start_marker: str,
+    end_marker: str,
+    replacement: str,
+    insert_before: str,
+) -> str:
+    start_count = content.count(start_marker)
+    end_count = content.count(end_marker)
+    if start_count != end_count or start_count > 1:
+        raise ValueError(f"Managed documentation markers are unbalanced: {start_marker} / {end_marker}")
+    if start_count == 1:
+        pattern = re.compile(
+            rf"{re.escape(start_marker)}.*?{re.escape(end_marker)}",
+            flags=re.S,
+        )
+        return pattern.sub(replacement, content, count=1)
+    anchor = content.find(insert_before)
+    if anchor < 0:
+        raise ValueError(f"Could not insert managed documentation block before: {insert_before.strip()}")
+    return content[:anchor] + replacement + "\n\n" + content[anchor:]
+
+
+def readme_feature_coverage(changelog: str, tag: str) -> str:
+    _, section = extract_changelog_section_meta(changelog, tag)
+    highlights = extract_heading_bullets(section, "Highlights", limit=6)
+    if highlights:
+        latest = "; ".join(item.rstrip(".") for item in highlights) + "."
+    else:
+        latest = "See the current release entry in `CHANGELOG.md`."
+    return README_FEATURE_COVERAGE.format(
+        latest_additions=f"- **Latest stable additions ({tag}):** {latest}"
+    )
+
+
+def update_readme_durable_documentation(readme: str, changelog: str, tag: str) -> str:
+    readme = readme.replace("```bash\n```bash\n", "```bash\n")
+    architecture_row = "| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Current cross-platform architecture, ownership boundaries, performance rules, and verification model |"
+    if architecture_row not in readme:
+        changelog_row = "| [`CHANGELOG.md`](CHANGELOG.md) | Full release history and milestone issue coverage |"
+        if changelog_row not in readme:
+            raise ValueError("README project-documentation table anchor is missing")
+        readme = readme.replace(changelog_row, changelog_row + "\n" + architecture_row, 1)
+    return replace_or_insert_managed_block(
+        readme,
+        start_marker="<!-- FEATURE_COVERAGE:START -->",
+        end_marker="<!-- FEATURE_COVERAGE:END -->",
+        replacement=readme_feature_coverage(changelog, tag),
+        insert_before="### Editing Core\n",
+    )
+
+
+def architecture_release_alignment(changelog: str, tag: str) -> str:
+    tags = [tag, *prior_release_tags(changelog, tag, limit=1)]
+    lines = ["<!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->", "## Current Release Alignment", ""]
+    for release_tag in tags:
+        release_date, section = extract_changelog_section_meta(changelog, release_tag)
+        lines.append(f"### {release_tag} ({release_date})")
+        lines.append("")
+        bullets = []
+        for heading in ("Highlights", "Fixes"):
+            bullets.extend(extract_heading_bullets(section, heading, limit=4))
+        lines.extend([f"- {item}" for item in bullets[:6]] or ["- See `CHANGELOG.md` for release details."])
+        lines.append("")
+    lines.append("This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.")
+    lines.append("<!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->")
+    return "\n".join(lines)
+
+
+def update_architecture_release_alignment(architecture: str, changelog: str, tag: str) -> str:
+    release_date, _ = extract_changelog_section_meta(changelog, tag)
+    architecture = re.sub(
+        r"(?m)^Last updated: .*$",
+        f"Last updated: {release_date} ({tag} release-aligned architecture)",
+        architecture,
+        count=1,
+    )
+    return replace_or_insert_managed_block(
+        architecture,
+        start_marker="<!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->",
+        end_marker="<!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->",
+        replacement=architecture_release_alignment(changelog, tag),
+        insert_before="## Platform and Product Targets\n",
+    )
 
 
 def has_changelog_section(changelog: str, tag: str) -> bool:
@@ -1146,6 +1244,10 @@ def main() -> int:
     readme = update_readme_latest_stable_line(readme, tag, changelog)
     readme = rebuild_readme_release_timeline(readme, changelog, tag)
     readme = rebuild_readme_changelog_table(readme, changelog, tag, limit=3)
+    readme = update_readme_durable_documentation(readme, changelog, tag)
+
+    original_architecture = read_text(ARCHITECTURE)
+    architecture = update_architecture_release_alignment(original_architecture, changelog, tag)
 
     original_welcome_src = read_text(WELCOME_TOUR_SWIFT)
     welcome_src = update_welcome_tour_release_page(original_welcome_src, tag, bullets)
@@ -1171,6 +1273,8 @@ def main() -> int:
             outdated_files.append(str(CHANGELOG))
         if readme != original_readme:
             outdated_files.append(str(README))
+        if architecture != original_architecture:
+            outdated_files.append(str(ARCHITECTURE))
         if welcome_src != original_welcome_src:
             outdated_files.append(str(WELCOME_TOUR_SWIFT))
         if website != original_website:
@@ -1194,12 +1298,14 @@ def main() -> int:
 
     write_text(CHANGELOG, changelog)
     write_text(README, readme)
+    write_text(ARCHITECTURE, architecture)
     write_text(WELCOME_TOUR_SWIFT, welcome_src)
     write_text(WEBSITE, website)
     write_text(CHANGELOG_PAGE, changelog_page)
     for locale, path in LOCALIZED_WEBSITES.items():
         write_text(path, localized_websites[locale])
-    print("Updated README release references and top 3 release rows.")
+    print("Updated README release references, durable feature coverage, and top 3 release rows.")
+    print("Updated architecture release alignment from CHANGELOG.")
     print("Updated English and localized GitHub Pages release fallbacks and timelines from CHANGELOG.")
     print(f"Updated Welcome Tour release page from CHANGELOG for {tag}.")
 

@@ -1,8 +1,29 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-08-14 (v1.4.1 virtual-editor performance architecture)
+Last updated: 2026-08-16 (v1.4.5 release-aligned architecture)
 
-Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
+Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
+
+<!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
+## Current Release Alignment
+
+### v1.4.5 (2026-08-16)
+
+- Makes the active editor viewport width authoritative for virtual-row layout and fragment caching.
+- Prevents virtual rows from being cached using the canvas's previous width during preview and sidebar transitions.
+- Stops overlay scrollbars from reserving an uneditable strip inside the editor viewport.
+- Invalidates cached row fragments when their wrapping width or wrap mode no longer matches the active viewport.
+
+### v1.4.4 (2026-08-15)
+
+- Adds configurable Save, Find, Undo, and Redo actions before bracket tokens above the on-screen keyboard.
+- Adds Copy Current Editor Reference and Sort & Deduplicate Lines commands.
+- Restores the keyboard accessory when the software keyboard is visible, including Simulator sessions where a keyboard controller is also present.
+- Prevents macOS virtual-editor width measurements from disabling line wrapping after preview or sidebar transitions.
+- Keeps the table-of-contents sidebar layout transition from leaving the editor at a stale width.
+
+This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
+<!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->
 
 ## Platform and Product Targets
 
@@ -83,13 +104,13 @@ Project-sidebar refresh is a separate operation. It reports visible progress on 
 
 ## Native Editor Stack and Virtual Text Rendering
 
-The editor uses native text controls wrapped for SwiftUI:
+The editor uses platform-native rendering and input surfaces wrapped for SwiftUI:
 
 - macOS: `UI/VirtualEditorView+macOS.swift` provides the production Core Text viewport renderer via `NSViewRepresentable`; it does not bind a full document string into SwiftUI.
 - iOS/iPadOS/visionOS: `UI/EditorTextView+iOS.swift` wraps `UITextView` via `UIViewRepresentable`.
 - Shared editor helpers and cross-platform state contracts live in `UI/EditorTextView.swift`.
-- macOS native behavior and draw-time overlays live in `UI/EditorTextView+macOSTextView.swift`.
-- macOS line numbers use `UI/LineNumberRulerView.swift`; UIKit-family line numbers and invisible-character markers use lightweight viewport overlays.
+- macOS drawing, line numbers, selection, hit testing, input, overlay scrollers, and viewport lifecycle live in `UI/VirtualEditorView+macOS.swift` and `UI/MacOverlayScrollers.swift`.
+- UIKit-family line numbers and invisible-character markers use lightweight viewport overlays in `UI/EditorTextView+iOS.swift`.
 
 The v1.4.0 editor uses a backend-neutral document core plus a virtualized native text-rendering path for large editable documents:
 
@@ -99,26 +120,27 @@ The v1.4.0 editor uses a backend-neutral document core plus a virtualized native
 - The macOS `VirtualEditorView` installs only the active bounded viewport, translates caret and selection when the window moves, and rejects stale viewport generations. A file-backed document completes its line index before activation; scrolling only reads and decodes the bounded window around its anchor line.
 - Virtualized viewport syntax highlighting and minimap updates are anchored to the visible range. Generation checks prevent late highlight or viewport work from replacing newer content or restoring stale selection state.
 
-This is a rendering and document-storage boundary, not a second editor implementation: small documents retain the ordinary native TextKit path, while large editable documents use the bounded virtual path and continue to save through the same document lifecycle and conflict pipeline.
+This is a rendering and document-storage boundary, not a second document model. Every editable macOS document uses the Core Text virtual renderer; ordinary documents can use an in-memory `EditorDocument`, while large documents can use file-backed bounded windows. Both continue to save through the same document lifecycle and conflict pipeline. UIKit-family platforms retain their separate `UITextView` implementation.
 
 Important editor invariants:
 
-- In macOS wrap mode, SwiftUI allocates the source pane and AppKit owns the document width. `NSTextView` is not horizontally resizable, its text container tracks the text-view width, and the scroll view has no horizontal scroll path.
-- Do not force document frames or transition-time text-container widths to repair split-layout symptoms. Preview, sidebar, tab, and window changes must naturally reallocate the source pane and let TextKit reflow.
-- In no-wrap mode, the text view may expand horizontally and expose the native horizontal scroller.
-- Line-number mode preserves AppKit's ruler-aware leading document origin; zero is not always the correct horizontal origin when the vertical ruler is visible.
+- In macOS wrap mode, SwiftUI allocates the source pane and the virtual canvas treats the current viewport width as authoritative. Visual-fragment caches are keyed by logical line, wrap mode, and available width so preview/sidebar transitions cannot reuse stale rows.
+- Overlay scrollbars do not consume editor layout width. The same viewport width drives wrapping, drawing, hit testing, selection, and writable content allocation.
+- Do not force document frames or transition-time widths to repair split-layout symptoms. Preview, sidebar, tab, and window changes must naturally reallocate the source pane and trigger one width-consistent virtual-row reflow.
+- In no-wrap mode, the virtual canvas may expand horizontally and expose the overlay horizontal scroller.
+- Line-number mode preserves the virtual renderer's gutter-aware leading origin; hit testing and selection must use the same gutter geometry as drawing.
 - Document installs distinguish resource switches, completed file loads, and external in-place edits. External refresh preserves the viewport, while a real resource switch restores that document's stored caret/viewport state.
 - iOS/iPadOS caret restoration is separate from focus restoration. Switching tabs restores position without making the editor first responder or showing the keyboard.
 - On iPhone, editor scrolling uses UIKit's `.onDrag` keyboard dismissal; iPad retains its non-dismissal behavior for pointer and hardware-keyboard workflows.
 - SwiftUI editor identity is tied to the tab, not the syntax language, so changing language or formatting settings updates the representable in place. The macOS virtualized bridge likewise updates the existing native control and swaps only its bounded viewport. It never relies on a compatibility `Binding<String>`.
-- The current editor intentionally uses TextKit 1 layout APIs for its line-number and overlay drawing paths. Writing Tools are disabled because the editor is plain-text/source-oriented. Treat a future TextKit 2 migration as a cross-platform editor project, not an isolated rendering cleanup.
+- The macOS renderer intentionally uses Core Text rather than TextKit for bounded visual rows. Writing Tools remain disabled because the editor is plain-text/source-oriented. Treat a future renderer migration as a cross-platform editor project, not an isolated layout cleanup.
 
 ## Highlighting, Minimap, and Scroll Performance
 
 - Syntax highlighting is regex-based, not TreeSitter-based.
 - `Core/SyntaxHighlighting.swift` owns patterns, theme colors, regex caching, bracket-scope matching, and bounded scanners for large JSON/Markdown-like content.
 - Highlight work is generation-checked and bounded to relevant ranges. Stale asynchronous passes must not restore an old selection or viewport.
-- Geometry-triggered macOS redraw is coalesced and limited to the visible character range for larger documents. Ordinary scrolling must not force full TextKit layout or display invalidation.
+- Geometry-triggered macOS redraw is coalesced and limited to visible virtual rows. Ordinary scrolling must not force full-document layout or display invalidation.
 - Minimap snapshots are keyed by tab, content revision, external-refresh revision, language, and large-file mode. Viewport publication uses thresholds so scrolling does not republish insignificant changes.
 - Line-number invalidation remains viewport-focused and must not retile or force editor-wide layout from draw callbacks.
 - Tab state publishes targeted structure, content, metadata, and persistence revisions. Selection, bounded viewport loading, SwiftUI updates, document projection, minimap/TOC/preview work, and first draw are signposted; completed tab-switch samples are retained locally for comparison.
@@ -133,7 +155,7 @@ Important editor invariants:
 - `Models/AIModel.swift` and `AI/AIClient.swift` define provider models and request plumbing.
 - `Core/AppleFMHelper.swift` owns optional on-device Apple Foundation Models access behind compile-time imports, runtime availability, and user settings.
 
-The language registry treats TeX/LaTeX as source text rather than a rendered document format. `.tex`, `.latex`, `.bib`, `.sty`, and `.cls` files are accepted, mapped to the `tex` syntax profile, and included in content-based LaTeX detection. NVE provides editing, completion heuristics, and syntax highlighting for these files; LaTeX compilation and PDF generation remain external toolchain workflows, normally launched through the macOS terminal.
+The language registry treats TeX/LaTeX and Typst as source text rather than rendered document formats. `.tex`, `.latex`, `.bib`, `.sty`, and `.cls` files map to the `tex` profile; `.typ` files and bounded Typst/CeTZ content heuristics map to `typst`. NVE provides editing, completion guidance, and syntax highlighting for these files; compilation and PDF generation remain external toolchain workflows, normally launched through the macOS terminal.
 
 ## Contextual AI Chat and Sidebar
 
@@ -169,6 +191,8 @@ The syntax regex cache is shared by app code, but reusable core files must remai
 - CSV/TSV documents can switch between an editable table and text. Table parsing, row limits, column sizing, and serialization remain bounded; truncated snapshots are read-only.
 - Property lists can switch between a parsed hierarchy and text.
 - Apple crash reports can switch between categorized summary and raw report text, with exception, termination, signal, and faulting-thread details emphasized by severity.
+- Recognized log documents can switch between structured event rows and raw text without creating a second document store.
+- `Core/PlainTextJSONStructuring.swift` and `UI/ContentView+PlainTextJSON.swift` own the explicit AI-assisted plain-text-to-JSON proposal, validation, and create-or-replace flow. Provider output is never applied before it parses as JSON and the user confirms the proposal.
 
 Parsing and snapshot construction run away from the main actor for non-trivial input. Structured views are alternate presentations of the same tab content, not independent document stores.
 
@@ -179,7 +203,8 @@ Parsing and snapshot construction run away from the main actor for non-trivial i
 - `UI/SidebarViews.swift` renders Files, Search, Diff, Git, and macOS Terminal surfaces.
 - iPhone and compact-width iPad use a condensed project header and tighter file rows so more of the hierarchy remains visible. macOS keeps its desktop spacing and two-line project-path presentation.
 - `UI/ContentView+QuickSwitcherFind.swift` owns Quick Open, symbol navigation, comparison entry points, and Find in Files presentation.
-- `UI/ContentView+Actions.swift` owns project setup, file search execution, file opening, and command handlers.
+- `UI/ContentView+Actions.swift` owns project setup, file search execution, file opening, Copy Current Editor Reference, and document-transform command handlers.
+- The command palette exposes Sort Lines and Sort & Deduplicate Lines through the same transform path; line-sort behavior is covered by `Neon Vision EditorTests/LineSortTests.swift`.
 - `UI/ContentView+TabChromeStatus.swift` owns tab selection/reordering chrome, selected/previous-tab markers, external-refresh status, and status-bar presentation.
 
 Find in Files prefers `rg` on macOS when available and falls back to bounded Swift scanning. Search locations use cached line-start offsets. Project tree/index work must retain cancellation and ignored-folder filtering so dependency and build folders do not dominate refresh work.
@@ -213,6 +238,7 @@ Diff building remains detached for non-trivial inputs. External-file and remote-
 - `UI/ContentView+MarkdownPreviewExport.swift` owns HTML generation, copy/export helpers, and PDF options.
 - `UI/MarkdownPreviewPDFRenderer.swift` renders one-page or paginated PDF output.
 - `UI/ContentView+DocumentPreviewUI.swift` selects native PDF/PNG preview surfaces and automatic activation paths.
+- `Neon Vision Editor Quick Look/PreviewViewController.swift` owns the Finder Quick Look extension lifecycle. `PreviewModel.swift`, `MarkdownQuickLookView.swift`, and `EditorView.swift` provide bounded read-only Markdown and source previews without launching the main editor or modifying files.
 
 Markdown, HTML, and SVG previews are opt-in. PDF and PNG previews open automatically when their documents are opened. Compact iPhone layouts use a sheet; macOS, regular-width iPad, and visionOS can use inline panes. Preview reloads are coalesced and preserve relative scroll position.
 
@@ -281,6 +307,7 @@ Do not reattach Sparkle to the shared/App Store target to simplify project confi
 - `scripts/append_release_build_metadata.sh` adds the signed app build number to release notes.
 - `scripts/ci/release_gate.sh`, `scripts/ci/build_platform_matrix.sh`, and `scripts/ci/run_syntax_highlighting_regressions.swift` provide release, cross-platform, and focused syntax validation.
 - `.github/workflows/release-github-only.yml` builds the direct target, publishes release assets and a signed Sparkle appcast, explicitly dispatches Pages after appcast publication, and can prepare the Homebrew Cask update.
+- `.github/workflows/post-release-documentation-sync.yml` waits at least ten minutes after each stable release, regenerates durable README, architecture, website, changelog, and Welcome Tour release surfaces from `CHANGELOG.md`, validates the result, and signed-commits any repaired drift to `main`.
 - Hosted and self-hosted notarized workflows are mirrored in `.github/workflows/` and `scripts/workflow-templates/`; changes to one path must keep its template counterpart synchronized.
 - Homebrew Cask handoff uses a short-lived GitHub App installation token to update a fork branch. The workflow summary exposes the exact upstream compare/PR URL when automatic upstream PR creation is not permitted.
 - `SHA256SUMS.txt`, release asset checksums, code-signature verification, notarization, appcast signatures, and Homebrew hashes all describe the same published ZIP/DMG artifacts and must be regenerated together when an asset is replaced.

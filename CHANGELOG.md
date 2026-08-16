@@ -4,6 +4,34 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.4.6] - 2026-08-16
+
+### Why Upgrade
+
+- Gives Finder Quick Look previews meaningful syntax colors across more supported languages and file types.
+- Keeps compact Finder previews focused on content while retaining navigation controls in the full Quick Look window.
+- Makes Markdown preview controls clearer, consistently aligned, and easier to identify.
+
+### Highlights
+
+- Adds dedicated Quick Look highlighting for SQL, TeX, configuration files, strings files, delimited data, logs, notebooks, Dockerfiles, and Makefiles.
+- Adds a post-release documentation workflow that waits for publication to settle, repairs release drift, validates the result, and creates a signed update when needed.
+
+### Fixes
+
+- Prevents supported Quick Look languages from falling back to mostly one-color plain text.
+- Preserves correct token ranges for Unicode text containing embedded CSS or JavaScript.
+- Hides Markdown controls and branding in compact Finder previews without removing them from the expanded Quick Look experience.
+- Replaces loosely aligned icon-only Markdown actions with an aligned Preview, Source, and Contents control group.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.4.5] - 2026-08-16
 
 ### Why Upgrade

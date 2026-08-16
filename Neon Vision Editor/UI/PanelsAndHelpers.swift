@@ -2563,15 +2563,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.4.4",
-            subtitle: "Release highlights for v1.4.4.",
+            title: "What’s New in v1.4.5",
+            subtitle: "Release highlights for v1.4.5.",
             bullets: [
-                "Editor Improvements: Makes the on-screen keyboard accessory reliable for touch editing on iPhone and iPad.",
-                "Workflow Refinements: Adds small editor commands that make sharing locations and cleaning lists faster.",
-                "Performance Updates: Preserves line wrapping through preview and sidebar layout transitions.",
-                "Reliable Saves: Adds configurable Save, Find, Undo, and Redo actions before bracket tokens above the on-screen keyboard.",
-                "Editor Improvements: Adds Copy Current Editor Reference and Sort & Deduplicate Lines commands.",
-                "Workflow Refinements: Restores the keyboard accessory when the software keyboard is visible, including Simulator sessions where a keyboard…"
+                "Editor Improvements: Keeps the macOS virtual editor writable across its full width after changing sidebars or Markdown preview.",
+                "Workflow Refinements: Restores line wrapping immediately when the editor viewport changes.",
+                "Performance Updates: Preserves fast tab switching while correcting viewport reflow.",
+                "Usability Updates: Makes the active editor viewport width authoritative for virtual-row layout and fragment caching.",
+                "Editor Improvements: Prevents virtual rows from being cached using the canvas's previous width during preview and sidebar transitions.",
+                "Workflow Refinements: Stops overlay scrollbars from reserving an uneditable strip inside the editor viewport."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

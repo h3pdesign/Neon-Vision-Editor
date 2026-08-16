@@ -118,7 +118,17 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.4.4</h2><span class="date">15 August 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.4.5</h2><span class="date">16 August 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Makes the active editor viewport width authoritative for virtual-row layout and fragment caching.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents virtual rows from being cached using the canvas&#x27;s previous width during preview and sidebar transitions.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Stops overlay scrollbars from reserving an uneditable strip inside the editor viewport.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Invalidates cached row fragments when their wrapping width or wrap mode no longer matches the active viewport.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.4.4</h2><span class="date">15 August 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Adds configurable Save, Find, Undo, and Redo actions before bracket tokens above the on-screen keyboard.</p></div>
           <div class="item"><span class="badge new">New</span><p>Adds Copy Current Editor Reference and Sort &amp; Deduplicate Lines commands.</p></div>

@@ -319,6 +319,12 @@ jobs:
           /usr/bin/codesign --verify --deep --strict "$MOUNT_POINT/Neon Vision Editor.app"
           scripts/ci/verify_icon_payload.sh "$MOUNT_POINT/Neon Vision Editor.app"
 
+      - name: Trigger delayed documentation self-heal
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ inputs.tag }}
+        run: gh workflow run post-release-documentation-sync.yml --ref main -f tag="$TAG_NAME"
+
       - name: Roll back broken published release asset
         if: ${{ failure() && steps.publish_release.outcome == 'success' }}
         env:

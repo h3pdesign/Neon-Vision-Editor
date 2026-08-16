@@ -24,7 +24,6 @@ jobs:
 
     steps:
       - name: Wait for release publication to settle
-        if: github.event_name == 'release'
         run: sleep 600
 
       - name: Checkout main

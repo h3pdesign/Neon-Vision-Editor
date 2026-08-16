@@ -831,6 +831,7 @@ jobs:
 
           gh_retry gh workflow run update-download-metrics.yml
           gh_retry gh workflow run sync-readme-appstore-versions.yml -f tag="$TAG_NAME"
+          gh_retry gh workflow run post-release-documentation-sync.yml --ref main -f tag="$TAG_NAME"
       - name: Roll back broken release assets
         if: ${{ failure() && steps.upload_release_assets.outcome == 'success' }}
         env:

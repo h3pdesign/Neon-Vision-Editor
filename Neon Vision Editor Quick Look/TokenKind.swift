@@ -41,7 +41,11 @@ struct SyntaxHighlighter {
     ]
 
     private let sqlKeywords: Set<String> = [
-        "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP", "TABLE", "FROM", "WHERE", "JOIN", "LEFT", "RIGHT", "INNER", "OUTER", "GROUP", "BY", "ORDER", "LIMIT", "VALUES", "INTO", "AS", "AND", "OR", "NOT", "NULL"
+        "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP", "TABLE", "VIEW", "INDEX",
+        "FROM", "WHERE", "JOIN", "LEFT", "RIGHT", "INNER", "OUTER", "ON", "GROUP", "BY", "HAVING", "ORDER", "LIMIT", "OFFSET",
+        "VALUES", "INTO", "AS", "AND", "OR", "NOT", "NULL", "TRUE", "FALSE", "IS", "IN", "LIKE", "EXISTS", "BETWEEN",
+        "UNION", "ALL", "DISTINCT", "ASC", "DESC", "CASE", "WHEN", "THEN", "ELSE", "END",
+        "PRIMARY", "FOREIGN", "KEY", "REFERENCES", "BEGIN", "COMMIT", "ROLLBACK"
     ]
 
     private let dataLanguageKeywords: Set<String> = [
@@ -53,21 +57,30 @@ struct SyntaxHighlighter {
     ]
 
     private let configKeywords: Set<String> = [
-        "server", "location", "upstream", "listen", "server_name", "proxy_pass", "include", "set", "map", "syntax", "message", "enum", "service", "rpc", "returns", "type", "interface", "query", "mutation", "subscription", "fragment"
+        "SERVER", "LOCATION", "UPSTREAM", "LISTEN", "SERVER_NAME", "PROXY_PASS", "INCLUDE", "SET", "MAP",
+        "SYNTAX", "MESSAGE", "ENUM", "SERVICE", "RPC", "RETURNS", "TYPE", "INTERFACE", "QUERY", "MUTATION", "SUBSCRIPTION", "FRAGMENT",
+        "FROM", "RUN", "COPY", "ADD", "CMD", "ENTRYPOINT", "ENV", "ARG", "WORKDIR", "EXPOSE", "VOLUME", "USER", "LABEL", "STOPSIGNAL", "HEALTHCHECK", "SHELL", "ONBUILD",
+        "DEFINE", "ENDEF", "IFEQ", "IFNEQ", "IFDEF", "IFNDEF", "ELSE", "ENDIF", "EXPORT", "UNEXPORT", "OVERRIDE", "PRIVATE", "VPATH"
     ]
 
-    func highlight(_ text: String, contentType: UTType, fileExtension: String? = nil) -> [Token] {
+    func highlight(
+        _ text: String,
+        contentType: UTType,
+        fileExtension: String? = nil,
+        fileName: String? = nil
+    ) -> [Token] {
         let ext = (fileExtension?.isEmpty == false ? fileExtension : contentType.preferredFilenameExtension)?.lowercased()
+        let normalizedFileName = fileName?.lowercased()
         if contentType.conforms(to: .swiftSource) || ext == "swift" {
             return highlightSwift(text)
-        } else if contentType.conforms(to: .json) || ["json", "jsonc", "json5"].contains(ext) {
+        } else if contentType.conforms(to: .json) || ["json", "jsonc", "json5", "ipynb"].contains(ext) {
             return highlightJSON(text)
         } else if ext == "md" || ext == "markdown" {
             return highlightMarkdown(text)
         } else if ext == "yaml" || ext == "yml" {
             return highlightYAML(text)
         } else if ["js", "jsx", "ts", "tsx", "mjs", "cjs"].contains(ext) {
-            return highlightProgramming(text, keywords: jsKeywords, lineComment: "//")
+            return highlightJavaScript(text)
         } else if ["py", "pyi"].contains(ext) {
             return highlightProgramming(text, keywords: pythonKeywords, lineComment: "#")
         } else if ["sh", "bash", "zsh", "fish", "ps1", "psm1"].contains(ext) {
@@ -79,16 +92,28 @@ struct SyntaxHighlighter {
         } else if ["rb", "pl", "pm", "lua", "r"].contains(ext) {
             return highlightProgramming(text, keywords: scriptingKeywords, lineComment: "#")
         } else if ext == "sql" {
-            return highlightProgramming(text, keywords: sqlKeywords, lineComment: "--")
-        } else if ["toml", "hcl", "tf", "xcconfig", "ini", "env", "dotenv"].contains(ext) {
+            return highlightProgramming(text, keywords: sqlKeywords, lineComment: "--", caseInsensitiveKeywords: true)
+        } else if ["toml", "xcconfig", "ini", "env", "dotenv"].contains(ext) {
+            return highlightKeyValue(text)
+        } else if ["hcl", "tf"].contains(ext) {
             return highlightProgramming(text, keywords: dataLanguageKeywords, lineComment: "#")
-        } else if ["nix", "nginx", "conf", "vim", "graphql", "gql", "dockerfile", "makefile", "mk"].contains(ext) {
-            return highlightProgramming(text, keywords: configKeywords, lineComment: "#")
+        } else if ["nix", "nginx", "conf", "vim", "graphql", "gql", "dockerfile", "makefile", "mk"].contains(ext)
+                    || normalizedFileName == "dockerfile"
+                    || normalizedFileName == "makefile" {
+            return highlightProgramming(text, keywords: configKeywords, lineComment: "#", caseInsensitiveKeywords: true)
         } else if ["html", "htm", "xhtml", "xml", "plist", "svg", "eex", "ee", "exp", "tmpl"].contains(ext) {
             return highlightMarkup(text)
         } else if ext == "css" {
             return highlightCSS(text)
-        } else if ["tex", "rst", "eml", "log", "crash", "crashlog", "csv", "strings", "ipynb"].contains(ext) {
+        } else if ext == "tex" {
+            return highlightTeX(text)
+        } else if ext == "strings" {
+            return highlightStringsFile(text)
+        } else if ext == "csv" {
+            return highlightDelimitedText(text)
+        } else if ["log", "crash", "crashlog"].contains(ext) {
+            return highlightLog(text)
+        } else if ["rst", "eml"].contains(ext) {
             return highlightProgramming(text, keywords: scriptingKeywords, lineComment: "#")
         } else if contentType.conforms(to: .plainText) {
             return [Token(range: text.startIndex..<text.endIndex, kind: .plain)]
@@ -218,7 +243,12 @@ struct SyntaxHighlighter {
                     else if c == "\"" { i = text.index(after: i); break }
                     i = text.index(after: i)
                 }
-                tokens.append(Token(range: start..<i, kind: .string))
+                var lookahead = i
+                while lookahead < text.endIndex, text[lookahead].isWhitespace {
+                    lookahead = text.index(after: lookahead)
+                }
+                let kind: TokenKind = lookahead < text.endIndex && text[lookahead] == ":" ? .keyword : .string
+                tokens.append(Token(range: start..<i, kind: kind))
             } else if ch.isNumber || ch == "-" {
                 let start = i
                 _ = consumeWhile { $0.isNumber || $0 == "." || $0 == "e" || $0 == "E" || $0 == "-" || $0 == "+" }
@@ -421,16 +451,18 @@ struct SyntaxHighlighter {
 
             // Keys before colon at line start (skip leading spaces)
             if ch == "\n" { let start = i; i = text.index(after: i); tokens.append(Token(range: start..<i, kind: .plain)); continue }
-            var j = i
-            while j < text.endIndex, text[j].isWhitespace, text[j] != "\n" { j = text.index(after: j) }
-            if j < text.endIndex, text[j] != "\n" {
-                var k = j
-                while k < text.endIndex, text[k] != ":" && text[k] != "\n" { k = text.index(after: k) }
-                if k < text.endIndex, text[k] == ":" {
-                    tokens.append(Token(range: j..<k, kind: .keyword))
-                    tokens.append(Token(range: k..<text.index(after: k), kind: .punctuation))
-                    i = text.index(after: k)
-                    continue
+            if isLineStart(i) {
+                var j = i
+                while j < text.endIndex, text[j].isWhitespace, text[j] != "\n" { j = text.index(after: j) }
+                if j < text.endIndex, text[j] != "\n" {
+                    var k = j
+                    while k < text.endIndex, text[k] != ":" && text[k] != "\n" { k = text.index(after: k) }
+                    if k < text.endIndex, text[k] == ":" {
+                        tokens.append(Token(range: j..<k, kind: .keyword))
+                        tokens.append(Token(range: k..<text.index(after: k), kind: .punctuation))
+                        i = text.index(after: k)
+                        continue
+                    }
                 }
             }
 
@@ -582,6 +614,8 @@ struct SyntaxHighlighter {
                 let word = String(text[start..<i])
                 if jsKeywords.contains(word) {
                     tokens.append(Token(range: start..<i, kind: .keyword))
+                } else if word.first?.isUppercase == true {
+                    tokens.append(Token(range: start..<i, kind: .type))
                 } else {
                     tokens.append(Token(range: start..<i, kind: .plain))
                 }
@@ -609,6 +643,7 @@ struct SyntaxHighlighter {
         _ text: String,
         keywords: Set<String>,
         lineComment: String,
+        caseInsensitiveKeywords: Bool = false,
         offset: String.Index? = nil,
         in source: String? = nil
     ) -> [Token] {
@@ -684,9 +719,16 @@ struct SyntaxHighlighter {
                 let start = i
                 _ = consumeWhile { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "$" }
                 let word = String(text[start..<i])
-                if keywords.contains(word) {
+                let keyword = caseInsensitiveKeywords ? word.uppercased() : word
+                var lookahead = i
+                while lookahead < text.endIndex, text[lookahead].isWhitespace {
+                    lookahead = text.index(after: lookahead)
+                }
+                if keywords.contains(keyword) {
                     tokens.append(Token(range: start..<i, kind: .keyword))
                 } else if word.first?.isUppercase == true {
+                    tokens.append(Token(range: start..<i, kind: .type))
+                } else if lookahead < text.endIndex, text[lookahead] == "(" {
                     tokens.append(Token(range: start..<i, kind: .type))
                 } else {
                     tokens.append(Token(range: start..<i, kind: .plain))
@@ -701,6 +743,256 @@ struct SyntaxHighlighter {
 
         guard let offset, let source else { return tokens }
         return tokens.map { Token(range: sourceRange($0.range, local: text, offset: offset, in: source), kind: $0.kind) }
+    }
+
+    private func highlightTeX(_ text: String) -> [Token] {
+        var tokens: [Token] = []
+        var index = text.startIndex
+
+        while index < text.endIndex {
+            let character = text[index]
+            if character == "%" {
+                let start = index
+                while index < text.endIndex, text[index] != "\n" { index = text.index(after: index) }
+                tokens.append(Token(range: start..<index, kind: .comment))
+            } else if character == "\\" {
+                let start = index
+                index = text.index(after: index)
+                if index < text.endIndex, text[index].isLetter {
+                    while index < text.endIndex, text[index].isLetter || text[index] == "@" {
+                        index = text.index(after: index)
+                    }
+                } else if index < text.endIndex {
+                    index = text.index(after: index)
+                }
+                tokens.append(Token(range: start..<index, kind: .keyword))
+            } else if character == "$" {
+                let start = index
+                let next = text.index(after: index)
+                let doubleDelimiter = next < text.endIndex && text[next] == "$"
+                index = doubleDelimiter ? text.index(after: next) : next
+                while index < text.endIndex {
+                    if text[index] == "$" {
+                        let following = text.index(after: index)
+                        if !doubleDelimiter || (following < text.endIndex && text[following] == "$") {
+                            index = doubleDelimiter ? text.index(after: following) : following
+                            break
+                        }
+                    }
+                    index = text.index(after: index)
+                }
+                tokens.append(Token(range: start..<index, kind: .string))
+            } else if character.isNumber {
+                let start = index
+                while index < text.endIndex, text[index].isNumber || text[index] == "." {
+                    index = text.index(after: index)
+                }
+                tokens.append(Token(range: start..<index, kind: .number))
+            } else {
+                let start = index
+                if "{}[]&_^~".contains(character) {
+                    index = text.index(after: index)
+                    tokens.append(Token(range: start..<index, kind: .punctuation))
+                } else {
+                    while index < text.endIndex {
+                        let current = text[index]
+                        if current == "%" || current == "\\" || current == "$" || current.isNumber || "{}[]&_^~".contains(current) {
+                            break
+                        }
+                        index = text.index(after: index)
+                    }
+                    tokens.append(Token(range: start..<index, kind: .plain))
+                }
+            }
+        }
+        return tokens
+    }
+
+    private func highlightKeyValue(_ text: String) -> [Token] {
+        var tokens: [Token] = []
+        var index = text.startIndex
+        var atLineStart = true
+
+        while index < text.endIndex {
+            let character = text[index]
+            if character == "\n" {
+                let start = index
+                index = text.index(after: index)
+                tokens.append(Token(range: start..<index, kind: .plain))
+                atLineStart = true
+                continue
+            }
+            if character == "#" || character == ";" {
+                let start = index
+                while index < text.endIndex, text[index] != "\n" { index = text.index(after: index) }
+                tokens.append(Token(range: start..<index, kind: .comment))
+                continue
+            }
+            if atLineStart && character == "[" {
+                let start = index
+                while index < text.endIndex, text[index] != "]" && text[index] != "\n" { index = text.index(after: index) }
+                if index < text.endIndex, text[index] == "]" { index = text.index(after: index) }
+                tokens.append(Token(range: start..<index, kind: .type))
+                atLineStart = false
+                continue
+            }
+            if atLineStart {
+                if character.isWhitespace {
+                    let start = index
+                    index = text.index(after: index)
+                    tokens.append(Token(range: start..<index, kind: .plain))
+                    continue
+                }
+                var separator = index
+                while separator < text.endIndex,
+                      text[separator] != "=",
+                      text[separator] != ":",
+                      text[separator] != "\n" {
+                    separator = text.index(after: separator)
+                }
+                if separator < text.endIndex, text[separator] == "=" || text[separator] == ":" {
+                    let trimmedEnd = text[..<separator].lastIndex { !$0.isWhitespace }.map { text.index(after: $0) } ?? separator
+                    tokens.append(Token(range: index..<trimmedEnd, kind: .keyword))
+                    if trimmedEnd < separator { tokens.append(Token(range: trimmedEnd..<separator, kind: .plain)) }
+                    let end = text.index(after: separator)
+                    tokens.append(Token(range: separator..<end, kind: .punctuation))
+                    index = end
+                    atLineStart = false
+                    continue
+                }
+                atLineStart = false
+            }
+            if character == "\"" || character == "'" {
+                let quote = character
+                let start = index
+                index = text.index(after: index)
+                var escaped = false
+                while index < text.endIndex {
+                    let current = text[index]
+                    if escaped { escaped = false }
+                    else if current == "\\" { escaped = true }
+                    else if current == quote { index = text.index(after: index); break }
+                    index = text.index(after: index)
+                }
+                tokens.append(Token(range: start..<index, kind: .string))
+            } else if character.isNumber || (character == "-" && text.index(after: index) < text.endIndex && text[text.index(after: index)].isNumber) {
+                let start = index
+                index = text.index(after: index)
+                while index < text.endIndex, text[index].isNumber || ".-_".contains(text[index]) {
+                    index = text.index(after: index)
+                }
+                tokens.append(Token(range: start..<index, kind: .number))
+            } else if character.isLetter {
+                let start = index
+                while index < text.endIndex, text[index].isLetter { index = text.index(after: index) }
+                let value = text[start..<index].lowercased()
+                let kind: TokenKind = ["true", "false", "null", "yes", "no", "on", "off"].contains(value) ? .keyword : .plain
+                tokens.append(Token(range: start..<index, kind: kind))
+            } else {
+                let start = index
+                index = text.index(after: index)
+                tokens.append(Token(range: start..<index, kind: character.isPunctuation || character.isSymbol ? .punctuation : .plain))
+            }
+        }
+        return tokens
+    }
+
+    private func highlightStringsFile(_ text: String) -> [Token] {
+        var tokens: [Token] = []
+        var index = text.startIndex
+        while index < text.endIndex {
+            if text[index...].hasPrefix("//") {
+                let start = index
+                while index < text.endIndex, text[index] != "\n" { index = text.index(after: index) }
+                tokens.append(Token(range: start..<index, kind: .comment))
+                continue
+            }
+            if text[index...].hasPrefix("/*") {
+                let start = index
+                index = text.index(index, offsetBy: 2)
+                while index < text.endIndex, !text[index...].hasPrefix("*/") { index = text.index(after: index) }
+                if index < text.endIndex { index = text.index(index, offsetBy: 2) }
+                tokens.append(Token(range: start..<index, kind: .comment))
+                continue
+            }
+            let character = text[index]
+            if character == "\"" {
+                let start = index
+                index = text.index(after: index)
+                var escaped = false
+                while index < text.endIndex {
+                    let current = text[index]
+                    if escaped { escaped = false }
+                    else if current == "\\" { escaped = true }
+                    else if current == "\"" { index = text.index(after: index); break }
+                    index = text.index(after: index)
+                }
+                var lookahead = index
+                while lookahead < text.endIndex, text[lookahead].isWhitespace { lookahead = text.index(after: lookahead) }
+                let kind: TokenKind = lookahead < text.endIndex && text[lookahead] == "=" ? .keyword : .string
+                tokens.append(Token(range: start..<index, kind: kind))
+            } else {
+                let start = index
+                index = text.index(after: index)
+                tokens.append(Token(range: start..<index, kind: character.isPunctuation || character.isSymbol ? .punctuation : .plain))
+            }
+        }
+        return tokens
+    }
+
+    private func highlightDelimitedText(_ text: String) -> [Token] {
+        var tokens: [Token] = []
+        var index = text.startIndex
+        var isHeader = true
+
+        while index < text.endIndex {
+            let character = text[index]
+            if character == "\"" {
+                let start = index
+                index = text.index(after: index)
+                while index < text.endIndex {
+                    if text[index] == "\"" {
+                        let next = text.index(after: index)
+                        if next < text.endIndex, text[next] == "\"" { index = text.index(after: next); continue }
+                        index = next
+                        break
+                    }
+                    index = text.index(after: index)
+                }
+                tokens.append(Token(range: start..<index, kind: isHeader ? .keyword : .string))
+            } else if character.isNumber || character == "-" {
+                let start = index
+                index = text.index(after: index)
+                while index < text.endIndex, text[index].isNumber || ".eE+-".contains(text[index]) { index = text.index(after: index) }
+                tokens.append(Token(range: start..<index, kind: isHeader ? .keyword : .number))
+            } else {
+                let start = index
+                if character == "," || character == ";" || character == "\t" {
+                    index = text.index(after: index)
+                    tokens.append(Token(range: start..<index, kind: .punctuation))
+                } else if character == "\n" {
+                    index = text.index(after: index)
+                    tokens.append(Token(range: start..<index, kind: .plain))
+                    isHeader = false
+                } else {
+                    while index < text.endIndex,
+                          text[index] != "\"",
+                          text[index] != ",",
+                          text[index] != ";",
+                          text[index] != "\t",
+                          text[index] != "\n" {
+                        index = text.index(after: index)
+                    }
+                    tokens.append(Token(range: start..<index, kind: isHeader ? .keyword : .plain))
+                }
+            }
+        }
+        return tokens
+    }
+
+    private func highlightLog(_ text: String) -> [Token] {
+        let severityKeywords: Set<String> = ["TRACE", "DEBUG", "INFO", "NOTICE", "WARN", "WARNING", "ERROR", "FAULT", "FATAL", "CRITICAL"]
+        return highlightProgramming(text, keywords: severityKeywords, lineComment: "#", caseInsensitiveKeywords: true)
     }
 
     private func highlightMarkup(_ text: String) -> [Token] {
@@ -877,11 +1169,11 @@ struct SyntaxHighlighter {
     }
 
     private func sourceRange(_ range: Range<String.Index>, local: String, offset: String.Index, in source: String) -> Range<String.Index> {
-        let startOffset = range.lowerBound.utf16Offset(in: local)
-        let endOffset = range.upperBound.utf16Offset(in: local)
-        let start = source.index(offset, offsetBy: startOffset)
-        let length = endOffset - startOffset
-        let end = source.index(start, offsetBy: length)
+        let baseOffset = offset.utf16Offset(in: source)
+        let startOffset = baseOffset + range.lowerBound.utf16Offset(in: local)
+        let endOffset = baseOffset + range.upperBound.utf16Offset(in: local)
+        let start = String.Index(utf16Offset: startOffset, in: source)
+        let end = String.Index(utf16Offset: endOffset, in: source)
         return start..<end
     }
 }

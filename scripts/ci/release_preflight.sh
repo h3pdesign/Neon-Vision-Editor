@@ -93,6 +93,13 @@ WORK_DIR="/tmp/nve_release_preflight_${SAFE_TAG}"
 rm -rf "$WORK_DIR"
 mkdir -p "$WORK_DIR"
 
+section "Quick Look syntax routes"
+xcrun swiftc \
+  "Neon Vision Editor Quick Look/TokenKind.swift" \
+  scripts/ci/quicklook_syntax_regressions.swift \
+  -o "${WORK_DIR}/quicklook-syntax-regressions"
+"${WORK_DIR}/quicklook-syntax-regressions"
+
 section "Critical runtime tests"
 echo "Running critical runtime tests..."
 run_critical_tests() {

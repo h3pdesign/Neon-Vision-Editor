@@ -10,14 +10,16 @@ import SwiftUI
 struct MarkdownQuickLookView: View {
     let model: PreviewModel
     let theme: EditorTheme
+    let showsControls: Bool
 
     @State private var showsTableOfContents = false
     @State private var showsSource = false
     @State private var document: MarkdownQuickLookDocument
 
-    init(model: PreviewModel, theme: EditorTheme) {
+    init(model: PreviewModel, theme: EditorTheme, showsControls: Bool) {
         self.model = model
         self.theme = theme
+        self.showsControls = showsControls
         _document = State(initialValue: MarkdownQuickLookDocument(source: model.text))
     }
 
@@ -28,6 +30,7 @@ struct MarkdownQuickLookView: View {
                     text: model.text,
                     contentType: model.contentType,
                     fileExtension: model.fileExtension,
+                    fileName: model.fileName,
                     theme: theme,
                     isTruncated: model.isTruncated
                 )
@@ -35,8 +38,11 @@ struct MarkdownQuickLookView: View {
                 documentView
             }
 
-            controls
-                .padding(12)
+            if showsControls {
+                controls
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Let Finder remain visible behind the document while preserving
@@ -64,7 +70,7 @@ struct MarkdownQuickLookView: View {
                         }
                     }
                     .padding(.horizontal, 28)
-                    .padding(.top, 58)
+                    .padding(.top, showsControls ? 64 : 24)
                     .padding(.bottom, 28)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
@@ -76,11 +82,11 @@ struct MarkdownQuickLookView: View {
     }
 
     private var controls: some View {
-        HStack(spacing: 3) {
+        HStack(alignment: .center, spacing: 2) {
             Button {
                 showsSource = false
             } label: {
-                Image(systemName: "eye")
+                Label("Preview", systemImage: "doc.richtext")
             }
             .accessibilityLabel("Show rendered Markdown preview")
             .accessibilityAddTraits(showsSource ? [] : .isSelected)
@@ -89,7 +95,7 @@ struct MarkdownQuickLookView: View {
             Button {
                 showsSource = true
             } label: {
-                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                Label("Source", systemImage: "chevron.left.forwardslash.chevron.right")
             }
             .accessibilityLabel("Show Markdown source")
             .accessibilityAddTraits(showsSource ? .isSelected : [])
@@ -103,19 +109,20 @@ struct MarkdownQuickLookView: View {
                 Button {
                     showsTableOfContents.toggle()
                 } label: {
-                    Image(systemName: "list.bullet.indent")
+                    Label("Contents", systemImage: "list.bullet.indent")
                 }
                 .accessibilityLabel(showsTableOfContents ? "Hide table of contents" : "Show table of contents")
                 .quickLookControl(isActive: showsTableOfContents)
             }
         }
         .padding(4)
-        .background(.regularMaterial, in: Capsule())
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
         .overlay {
-            Capsule()
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.10))
         }
-        .shadow(color: .black.opacity(0.10), radius: 5, y: 2)
+        .shadow(color: .black.opacity(0.10), radius: 6, y: 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func tableOfContents(proxy: ScrollViewProxy) -> some View {
@@ -158,11 +165,14 @@ struct MarkdownQuickLookView: View {
 
 private extension View {
     func quickLookControl(isActive: Bool) -> some View {
-        font(.system(size: 11, weight: .semibold))
+        buttonStyle(.plain)
+            .font(.system(size: 11, weight: .medium))
             .foregroundStyle(isActive ? Color.accentColor : Color.primary)
-            .frame(width: 26, height: 24)
-            .background(isActive ? Color.accentColor.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .labelStyle(.titleAndIcon)
+            .padding(.horizontal, 9)
+            .frame(height: 30, alignment: .center)
+            .background(isActive ? Color.accentColor.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 

@@ -16,7 +16,17 @@ struct PreviewModel {
     let text: String
     let contentType: UTType
     var fileExtension: String = ""
+    var fileName: String = ""
     var isTruncated: Bool = false
+}
+
+enum QuickLookLayout {
+    static let expandedChromeMinimumWidth: CGFloat = 720
+    static let expandedChromeMinimumHeight: CGFloat = 520
+
+    static func showsExpandedChrome(for size: CGSize) -> Bool {
+        size.width >= expandedChromeMinimumWidth && size.height >= expandedChromeMinimumHeight
+    }
 }
 
 struct EditorTheme {
@@ -80,21 +90,28 @@ struct PreviewRootView: View {
 
     var body: some View {
         let theme = EditorTheme.neon(for: colorScheme)
-        Group {
-            if isMarkdownDocument {
-                MarkdownQuickLookView(model: model, theme: theme)
-            } else {
-                EditorView(
-                    text: model.text,
-                    contentType: model.contentType,
-                    fileExtension: model.fileExtension,
-                    theme: theme,
-                    isTruncated: model.isTruncated
-                )
+        GeometryReader { geometry in
+            Group {
+                if isMarkdownDocument {
+                    MarkdownQuickLookView(
+                        model: model,
+                        theme: theme,
+                        showsControls: QuickLookLayout.showsExpandedChrome(for: geometry.size)
+                    )
+                } else {
+                    EditorView(
+                        text: model.text,
+                        contentType: model.contentType,
+                        fileExtension: model.fileExtension,
+                        fileName: model.fileName,
+                        theme: theme,
+                        isTruncated: model.isTruncated
+                    )
+                }
             }
+            .background(theme.background)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(theme.background)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var isMarkdownDocument: Bool {

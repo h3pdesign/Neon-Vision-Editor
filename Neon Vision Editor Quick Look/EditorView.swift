@@ -13,6 +13,7 @@ struct EditorView: View {
     let text: String
     let contentType: UTType
     let fileExtension: String
+    let fileName: String
     let theme: EditorTheme
     let isTruncated: Bool
 
@@ -21,6 +22,7 @@ struct EditorView: View {
             text: text,
             contentType: contentType,
             fileExtension: fileExtension,
+            fileName: fileName,
             theme: theme
         )
         .background(theme.background)
@@ -43,6 +45,7 @@ private struct CodePreviewView: NSViewRepresentable {
     let text: String
     let contentType: UTType
     let fileExtension: String
+    let fileName: String
     let theme: EditorTheme
 
     func makeCoordinator() -> Coordinator {
@@ -112,6 +115,7 @@ private struct CodePreviewView: NSViewRepresentable {
         let key = PreviewContentKey(
             text: text,
             extension: fileExtension,
+            fileName: fileName,
             type: contentType.identifier,
             themeIdentifier: theme.identifier
         )
@@ -148,7 +152,8 @@ private struct CodePreviewView: NSViewRepresentable {
         let tokens = highlighter.highlight(
             text,
             contentType: contentType,
-            fileExtension: fileExtension
+            fileExtension: fileExtension,
+            fileName: fileName
         )
         let result = NSMutableAttributedString(string: text)
         let font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
@@ -191,6 +196,7 @@ private struct CodePreviewView: NSViewRepresentable {
 private struct PreviewContentKey: Equatable {
     let text: String
     let `extension`: String
+    let fileName: String
     let type: String
     let themeIdentifier: String
 }

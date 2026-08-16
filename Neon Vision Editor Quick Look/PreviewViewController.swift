@@ -13,6 +13,7 @@ import UniformTypeIdentifiers
 class PreviewViewController: NSViewController, QLPreviewingController {
     private static let maximumPreviewBytes = 1_048_576
     private static let preferredPreviewSize = NSSize(width: 1_280, height: 900)
+    private weak var brandingBadge: NSView?
 
     override func loadView() {
         let visualEffectView = NSVisualEffectView()
@@ -26,6 +27,11 @@ class PreviewViewController: NSViewController, QLPreviewingController {
     override func viewDidAppear() {
         super.viewDidAppear()
         configurePreviewWindow()
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        brandingBadge?.isHidden = !QuickLookLayout.showsExpandedChrome(for: view.bounds.size)
     }
 
     private func configurePreviewWindow() {
@@ -62,6 +68,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
                 text: text,
                 contentType: contentType,
                 fileExtension: url.pathExtension,
+                fileName: url.lastPathComponent,
                 isTruncated: isTruncated
             )
         )
@@ -76,11 +83,13 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         ])
 
         let brandingBadge = makeBrandingBadge()
+        self.brandingBadge = brandingBadge
         view.addSubview(brandingBadge, positioned: .above, relativeTo: hosting)
         NSLayoutConstraint.activate([
             brandingBadge.topAnchor.constraint(equalTo: view.topAnchor, constant: 12),
             brandingBadge.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12)
         ])
+        brandingBadge.isHidden = !QuickLookLayout.showsExpandedChrome(for: view.bounds.size)
     }
 
     private func makeBrandingBadge() -> NSVisualEffectView {

@@ -9,6 +9,42 @@ struct VirtualEditorVisualFragment {
     let line: CTLine
 }
 
+struct VirtualEditorVisualFragmentCache {
+    private struct Entry {
+        let width: CGFloat
+        let wraps: Bool
+        let fragments: [VirtualEditorVisualFragment]
+    }
+
+    private var entries: [Int: Entry] = [:]
+
+    mutating func fragments(
+        for attributed: NSAttributedString,
+        localLine: Int,
+        lineStartUTF16: Int,
+        width: CGFloat,
+        wraps: Bool
+    ) -> [VirtualEditorVisualFragment] {
+        if let cached = entries[localLine],
+           abs(cached.width - width) < 0.5,
+           cached.wraps == wraps {
+            return cached.fragments
+        }
+        let fragments = VirtualEditorVisualLayout.fragments(
+            for: attributed,
+            lineStartUTF16: lineStartUTF16,
+            width: width,
+            wraps: wraps
+        )
+        entries[localLine] = Entry(width: width, wraps: wraps, fragments: fragments)
+        return fragments
+    }
+
+    mutating func removeAll(keepingCapacity: Bool = false) {
+        entries.removeAll(keepingCapacity: keepingCapacity)
+    }
+}
+
 enum VirtualEditorVisualLayout {
     static func baseline(
         rowOrigin: Int,
@@ -420,7 +456,9 @@ final class VirtualEditorScrollView: NSScrollView {
         let candidate = VirtualEditorViewportGeometry.visibleSize(
             contentBounds: contentView.bounds.size,
             scrollViewBounds: bounds.size,
-            verticalScrollerWidth: verticalScroller?.frame.width ?? 0
+            verticalScrollerWidth: scrollerStyle == .overlay
+                ? 0
+                : (verticalScroller?.frame.width ?? 0)
         )
         let stabilized = VirtualEditorViewportGeometry.stabilizedSize(
             candidate,
@@ -534,7 +572,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var lastConfigurationKey = ""
     private var layoutCache: [Int: CTLine] = [:]
     private var attributedLineCache: [Int: NSAttributedString] = [:]
-    private var visualFragmentCache: [Int: [VirtualEditorVisualFragment]] = [:]
+    private var visualFragmentCache = VirtualEditorVisualFragmentCache()
     private var visibleColors: [NSRange: NSColor] = [:]
     private var viewportSize: CGSize = .zero {
         didSet {
@@ -923,7 +961,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     private func visualRows() -> [VisualRow] {
-        let availableWidth = max(1, bounds.width - gutterWidth - 16)
+        // `bounds.width` is the document canvas width. During an AppKit resize
+        // it still contains the previous pane allocation until after visual
+        // metrics have been recalculated. The viewport is the current editor
+        // allocation and is therefore the authoritative wrapping width.
+        let availableWidth = max(1, viewportSize.width - gutterWidth - 16)
         var rows: [VisualRow] = []
         var baseline = VirtualEditorVisualLayout.baseline(
             rowOrigin: visualRowIndex.rowOrigin(forLogicalLine: viewportLineOrigin),
@@ -1001,22 +1043,18 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         width: CGFloat,
         dark: Bool
     ) -> [VirtualEditorVisualFragment] {
-        if let cached = visualFragmentCache[localLine] {
-            return cached
-        }
-        let fragments = VirtualEditorVisualLayout.fragments(
+        visualFragmentCache.fragments(
             for: cachedAttributedLine(
                 line,
                 localLine: localLine,
                 absoluteStart: absoluteStart,
                 dark: dark
             ),
+            localLine: localLine,
             lineStartUTF16: absoluteStart,
             width: width,
             wraps: lineWrapEnabled
         )
-        visualFragmentCache[localLine] = fragments
-        return fragments
     }
 
     private func syntaxThemeKey(for colorScheme: ColorScheme) -> String {

@@ -4,6 +4,32 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.4.5] - 2026-08-16
+
+### Why Upgrade
+
+- Keeps the macOS virtual editor writable across its full width after changing sidebars or Markdown preview.
+- Restores line wrapping immediately when the editor viewport changes.
+- Preserves fast tab switching while correcting viewport reflow.
+
+### Highlights
+
+- Makes the active editor viewport width authoritative for virtual-row layout and fragment caching.
+
+### Fixes
+
+- Prevents virtual rows from being cached using the canvas's previous width during preview and sidebar transitions.
+- Stops overlay scrollbars from reserving an uneditable strip inside the editor viewport.
+- Invalidates cached row fragments when their wrapping width or wrap mode no longer matches the active viewport.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.4.4] - 2026-08-15
 
 ### Why Upgrade

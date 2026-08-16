@@ -93,6 +93,81 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(fragments[0].lengthUTF16, text.utf16.count)
     }
 
+    func testWrapCacheTracksEverySidebarAndPreviewWidthTransition() {
+        let text = String(repeating: "pane transition wrapping ", count: 24)
+        let attributed = NSAttributedString(
+            string: text,
+            attributes: [.font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)]
+        )
+        var cache = VirtualEditorVisualFragmentCache()
+        let widths: [CGFloat] = [
+            1_100, // no sidebar or preview
+            820,   // sidebar only
+            620,   // preview only
+            340,   // sidebar and preview
+            620,   // sidebar closes
+            820,   // preview closes while sidebar remains
+            1_100  // sidebar closes
+        ]
+
+        let fragmentCounts = widths.map { width in
+            cache.fragments(
+                for: attributed,
+                localLine: 0,
+                lineStartUTF16: 0,
+                width: width,
+                wraps: true
+            ).count
+        }
+
+        XCTAssertGreaterThan(fragmentCounts[1], fragmentCounts[0])
+        XCTAssertGreaterThan(fragmentCounts[2], fragmentCounts[1])
+        XCTAssertGreaterThan(fragmentCounts[3], fragmentCounts[2])
+        XCTAssertEqual(fragmentCounts[4], fragmentCounts[2])
+        XCTAssertEqual(fragmentCounts[5], fragmentCounts[1])
+        XCTAssertEqual(fragmentCounts[6], fragmentCounts[0])
+    }
+
+    func testWrapCacheDoesNotReuseWrappedFragmentsAfterDisablingLineWrap() {
+        let attributed = NSAttributedString(
+            string: String(repeating: "long line ", count: 30),
+            attributes: [.font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)]
+        )
+        var cache = VirtualEditorVisualFragmentCache()
+
+        XCTAssertGreaterThan(cache.fragments(
+            for: attributed,
+            localLine: 0,
+            lineStartUTF16: 0,
+            width: 180,
+            wraps: true
+        ).count, 1)
+        XCTAssertEqual(cache.fragments(
+            for: attributed,
+            localLine: 0,
+            lineStartUTF16: 0,
+            width: 180,
+            wraps: false
+        ).count, 1)
+    }
+
+    func testCanvasFillsAndAcceptsInputAcrossEveryPaneTransition() throws {
+        let scrollView = VirtualEditorScrollView(frame: NSRect(x: 0, y: 0, width: 1_100, height: 700))
+        let widths: [CGFloat] = [1_100, 820, 620, 340, 620, 820, 1_100]
+
+        for width in widths {
+            scrollView.setFrameSize(NSSize(width: width, height: 700))
+            scrollView.layoutSubtreeIfNeeded()
+            scrollView.layout()
+
+            let visibleWidth = scrollView.contentView.bounds.width
+            let canvas = try XCTUnwrap(scrollView.documentView)
+            XCTAssertEqual(canvas.frame.width, visibleWidth, accuracy: 1)
+            XCTAssertTrue(canvas.acceptsFirstResponder)
+            XCTAssertNotNil(canvas.hitTest(NSPoint(x: max(0, visibleWidth - 2), y: 2)))
+        }
+    }
+
     func testLargeCSVViewportHasBoundedVisibleRowBudget() {
         let source = String(repeating: "a,b,c,d,e\n", count: 30_000)
         let logicalLineCount = source.split(separator: "\n", omittingEmptySubsequences: false).count

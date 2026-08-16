@@ -118,7 +118,19 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.4.5</h2><span class="date">16 August 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.4.6</h2><span class="date">16 August 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds dedicated Quick Look highlighting for SQL, TeX, configuration files, strings files, delimited data, logs, notebooks, Dockerfiles, and Makefiles.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds a post-release documentation workflow that waits for publication to settle, repairs release drift, validates the result, and creates a signed update when needed.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents supported Quick Look languages from falling back to mostly one-color plain text.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves correct token ranges for Unicode text containing embedded CSS or JavaScript.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Hides Markdown controls and branding in compact Finder previews without removing them from the expanded Quick Look experience.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Replaces loosely aligned icon-only Markdown actions with an aligned Preview, Source, and Contents control group.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.4.5</h2><span class="date">16 August 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Makes the active editor viewport width authoritative for virtual-row layout and fragment caching.</p></div>
           <div class="item"><span class="badge fixed">Fixed</span><p>Prevents virtual rows from being cached using the canvas&#x27;s previous width during preview and sidebar transitions.</p></div>

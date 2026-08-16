@@ -2563,15 +2563,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.4.5",
-            subtitle: "Release highlights for v1.4.5.",
+            title: "What’s New in v1.4.6",
+            subtitle: "Release highlights for v1.4.6.",
             bullets: [
-                "Editor Improvements: Keeps the macOS virtual editor writable across its full width after changing sidebars or Markdown preview.",
-                "Workflow Refinements: Restores line wrapping immediately when the editor viewport changes.",
-                "Performance Updates: Preserves fast tab switching while correcting viewport reflow.",
-                "Usability Updates: Makes the active editor viewport width authoritative for virtual-row layout and fragment caching.",
-                "Editor Improvements: Prevents virtual rows from being cached using the canvas's previous width during preview and sidebar transitions.",
-                "Workflow Refinements: Stops overlay scrollbars from reserving an uneditable strip inside the editor viewport."
+                "Editor Improvements: Gives Finder Quick Look previews meaningful syntax colors across more supported languages and file types.",
+                "Editor Navigation: Keeps compact Finder previews focused on content while retaining navigation controls in the full Quick Look window.",
+                "Performance Updates: Makes Markdown preview controls clearer, consistently aligned, and easier to identify.",
+                "Usability Updates: Adds dedicated Quick Look highlighting for SQL, TeX, configuration files, strings files, delimited data, logs, notebooks…",
+                "Editor Improvements: Adds a post-release documentation workflow that waits for publication to settle, repairs release drift, validates the…",
+                "Workflow Refinements: Prevents supported Quick Look languages from falling back to mostly one-color plain text."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -1,11 +1,20 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-08-16 (v1.4.5 release-aligned architecture)
+Last updated: 2026-08-16 (v1.4.6 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v1.4.6 (2026-08-16)
+
+- Adds dedicated Quick Look highlighting for SQL, TeX, configuration files, strings files, delimited data, logs, notebooks, Dockerfiles, and Makefiles.
+- Adds a post-release documentation workflow that waits for publication to settle, repairs release drift, validates the result, and creates a signed update when needed.
+- Prevents supported Quick Look languages from falling back to mostly one-color plain text.
+- Preserves correct token ranges for Unicode text containing embedded CSS or JavaScript.
+- Hides Markdown controls and branding in compact Finder previews without removing them from the expanded Quick Look experience.
+- Replaces loosely aligned icon-only Markdown actions with an aligned Preview, Source, and Contents control group.
 
 ### v1.4.5 (2026-08-16)
 
@@ -13,14 +22,6 @@ Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and vision
 - Prevents virtual rows from being cached using the canvas's previous width during preview and sidebar transitions.
 - Stops overlay scrollbars from reserving an uneditable strip inside the editor viewport.
 - Invalidates cached row fragments when their wrapping width or wrap mode no longer matches the active viewport.
-
-### v1.4.4 (2026-08-15)
-
-- Adds configurable Save, Find, Undo, and Redo actions before bracket tokens above the on-screen keyboard.
-- Adds Copy Current Editor Reference and Sort & Deduplicate Lines commands.
-- Restores the keyboard accessory when the software keyboard is visible, including Simulator sessions where a keyboard controller is also present.
-- Prevents macOS virtual-editor width measurements from disabling line wrapping after preview or sidebar transitions.
-- Keeps the table-of-contents sidebar layout transition from leaving the editor at a stale width.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

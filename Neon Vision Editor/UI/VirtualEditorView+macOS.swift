@@ -292,6 +292,8 @@ enum VirtualEditorResizePolicy {
 }
 
 enum VirtualEditorKeyRouting {
+    static let closeTabKeyCode: UInt16 = 13
+
     static func shouldInterpretArrow(modifiers: NSEvent.ModifierFlags) -> Bool {
         modifiers.contains(.command) || modifiers.contains(.control)
     }
@@ -1136,17 +1138,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     override func keyDown(with event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if modifiers == .command,
-           event.charactersIgnoringModifiers?.lowercased() == "w" {
-            var userInfo: [AnyHashable: Any] = [:]
-            if let windowNumber = window?.windowNumber {
-                userInfo[EditorCommandUserInfo.windowNumber] = windowNumber
-            }
-            NotificationCenter.default.post(
-                name: .closeSelectedTabRequested,
-                object: nil,
-                userInfo: userInfo.isEmpty ? nil : userInfo
-            )
+        if modifiers == .command, event.keyCode == VirtualEditorKeyRouting.closeTabKeyCode {
+            requestCloseSelectedTab()
             return
         }
         if VirtualEditorKeyRouting.shouldInterpretArrow(modifiers: modifiers) {
@@ -1162,6 +1155,18 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         case 126: moveCaretVertically(-1, extending: extending)
         default: interpretKeyEvents([event])
         }
+    }
+
+    private func requestCloseSelectedTab() {
+        var userInfo: [AnyHashable: Any] = [:]
+        if let windowNumber = window?.windowNumber {
+            userInfo[EditorCommandUserInfo.windowNumber] = windowNumber
+        }
+        NotificationCenter.default.post(
+            name: .closeSelectedTabRequested,
+            object: nil,
+            userInfo: userInfo.isEmpty ? nil : userInfo
+        )
     }
 
     private func wordBoundary(from position: Int, direction: Int) -> Int {

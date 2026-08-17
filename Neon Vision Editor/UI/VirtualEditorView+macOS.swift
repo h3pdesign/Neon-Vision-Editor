@@ -1136,6 +1136,19 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     override func keyDown(with event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if modifiers == .command,
+           event.charactersIgnoringModifiers?.lowercased() == "w" {
+            var userInfo: [AnyHashable: Any] = [:]
+            if let windowNumber = window?.windowNumber {
+                userInfo[EditorCommandUserInfo.windowNumber] = windowNumber
+            }
+            NotificationCenter.default.post(
+                name: .closeSelectedTabRequested,
+                object: nil,
+                userInfo: userInfo.isEmpty ? nil : userInfo
+            )
+            return
+        }
         if VirtualEditorKeyRouting.shouldInterpretArrow(modifiers: modifiers) {
             interpretKeyEvents([event])
             return

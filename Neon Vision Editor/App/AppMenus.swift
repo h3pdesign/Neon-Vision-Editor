@@ -245,7 +245,7 @@ struct NeonVisionMacAppCommands: Commands {
                 post(.closeSelectedTabRequested)
             }
             .modifier(dynamicShortcut(.closeTab))
-            .disabled(!hasActiveEditorWindow() || !hasSelectedTab)
+            .disabled(!hasSelectedTab)
         }
     }
 

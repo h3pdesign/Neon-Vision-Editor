@@ -952,7 +952,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         return created
     }
 
-    private struct VisualRow {
+    struct VisualRow {
         let logicalLine: Int
         let localStart: Int
         let fragment: VirtualEditorVisualFragment
@@ -1057,20 +1057,46 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         )
     }
 
-    private func visualRow(containing localLocation: Int, in rows: [VisualRow]) -> VisualRow? {
+    func visualRow(containing localLocation: Int, in rows: [VisualRow]) -> VisualRow? {
         guard !rows.isEmpty else { return nil }
-        for (index, row) in rows.enumerated() {
-            let start = row.fragment.absoluteStartUTF16
-            let end = start + row.fragment.lengthUTF16
-            // A shared wrap boundary belongs to the following fragment; a gap
-            // or the final endpoint remains owned by the current fragment.
-            let ownsEndpoint = localLocation == end &&
-                (index == rows.count - 1 || rows[index + 1].fragment.absoluteStartUTF16 > localLocation)
-            if localLocation >= start && (localLocation < end || ownsEndpoint) {
-                return row
+
+        // visualRows() is ordered by fragment start, so find the last row whose
+        // start is at or before the location instead of scanning every row.
+        var lower = 0
+        var upper = rows.count
+        while lower < upper {
+            let midpoint = (lower + upper) / 2
+            if rows[midpoint].fragment.absoluteStartUTF16 <= localLocation {
+                lower = midpoint + 1
+            } else {
+                upper = midpoint
             }
         }
-        return nil
+        let index = lower - 1
+        guard rows.indices.contains(index) else { return nil }
+
+        let row = rows[index]
+        let start = row.fragment.absoluteStartUTF16
+        let end = start + row.fragment.lengthUTF16
+        guard localLocation >= start,
+              (localLocation < end || ownsVisualRowEndpoint(
+                  localLocation,
+                  rowIndex: index,
+                  end: end,
+                  rows: rows
+              )) else { return nil }
+        return row
+    }
+
+    private func ownsVisualRowEndpoint(
+        _ localLocation: Int,
+        rowIndex: Int,
+        end: Int,
+        rows: [VisualRow]
+    ) -> Bool {
+        guard localLocation == end else { return false }
+        return rowIndex == rows.count - 1 ||
+            rows[rowIndex + 1].fragment.absoluteStartUTF16 > localLocation
     }
 
     private func syntaxThemeKey(for colorScheme: ColorScheme) -> String {

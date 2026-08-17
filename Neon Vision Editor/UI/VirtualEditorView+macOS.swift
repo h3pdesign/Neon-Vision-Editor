@@ -1058,16 +1058,19 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     private func visualRow(containing localLocation: Int, in rows: [VisualRow]) -> VisualRow? {
+        guard !rows.isEmpty else { return nil }
         for (index, row) in rows.enumerated() {
             let start = row.fragment.absoluteStartUTF16
             let end = start + row.fragment.lengthUTF16
+            // A shared wrap boundary belongs to the following fragment; a gap
+            // or the final endpoint remains owned by the current fragment.
             let ownsEndpoint = localLocation == end &&
                 (index == rows.count - 1 || rows[index + 1].fragment.absoluteStartUTF16 > localLocation)
             if localLocation >= start && (localLocation < end || ownsEndpoint) {
                 return row
             }
         }
-        return rows.last
+        return nil
     }
 
     private func syntaxThemeKey(for colorScheme: ColorScheme) -> String {

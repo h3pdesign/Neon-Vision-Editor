@@ -66,6 +66,38 @@ final class VirtualEditorLayoutTests: XCTestCase {
         )
     }
 
+    func testVisualRowOwnershipCoversWrapGapsAndEndpoints() {
+        let canvas = VirtualEditorCanvas(frame: .zero)
+        let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+
+        func row(start: Int, length: Int) -> VirtualEditorCanvas.VisualRow {
+            let line = CTLineCreateWithAttributedString(NSAttributedString(
+                string: String(repeating: "x", count: max(1, length)),
+                attributes: [.font: font]
+            ))
+            return VirtualEditorCanvas.VisualRow(
+                logicalLine: 0,
+                localStart: start,
+                fragment: VirtualEditorVisualFragment(
+                    absoluteStartUTF16: start,
+                    lengthUTF16: length,
+                    line: line
+                ),
+                baseline: 0,
+                isFirstFragment: start == 0
+            )
+        }
+
+        let rows = [row(start: 0, length: 5), row(start: 5, length: 5), row(start: 11, length: 0), row(start: 12, length: 3)]
+
+        XCTAssertEqual(canvas.visualRow(containing: 5, in: rows)?.fragment.absoluteStartUTF16, 5)
+        XCTAssertEqual(canvas.visualRow(containing: 10, in: rows)?.fragment.absoluteStartUTF16, 5)
+        XCTAssertEqual(canvas.visualRow(containing: 11, in: rows)?.fragment.absoluteStartUTF16, 11)
+        XCTAssertEqual(canvas.visualRow(containing: 15, in: rows)?.fragment.absoluteStartUTF16, 12)
+        XCTAssertNil(canvas.visualRow(containing: -1, in: rows))
+        XCTAssertNil(canvas.visualRow(containing: 16, in: rows))
+    }
+
     func testVisualFragmentsSplitLongLineAtAvailableWidth() {
         let text = "abcdefghijklmnopqrstuvwxyz"
         let fragments = VirtualEditorVisualLayout.fragments(

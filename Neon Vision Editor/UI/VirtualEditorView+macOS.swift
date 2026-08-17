@@ -971,7 +971,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         return created
     }
 
-    private struct VisualRow {
+    struct VisualRow {
         let logicalLine: Int
         let localStart: Int
         let fragment: VirtualEditorVisualFragment
@@ -1076,6 +1076,48 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         )
     }
 
+    func visualRow(containing localLocation: Int, in rows: [VisualRow]) -> VisualRow? {
+        guard !rows.isEmpty else { return nil }
+
+        // visualRows() is ordered by fragment start, so find the last row whose
+        // start is at or before the location instead of scanning every row.
+        var lower = 0
+        var upper = rows.count
+        while lower < upper {
+            let midpoint = (lower + upper) / 2
+            if rows[midpoint].fragment.absoluteStartUTF16 <= localLocation {
+                lower = midpoint + 1
+            } else {
+                upper = midpoint
+            }
+        }
+        let index = lower - 1
+        guard rows.indices.contains(index) else { return nil }
+
+        let row = rows[index]
+        let start = row.fragment.absoluteStartUTF16
+        let end = start + row.fragment.lengthUTF16
+        guard localLocation >= start,
+              (localLocation < end || ownsVisualRowEndpoint(
+                  localLocation,
+                  rowIndex: index,
+                  end: end,
+                  rows: rows
+              )) else { return nil }
+        return row
+    }
+
+    private func ownsVisualRowEndpoint(
+        _ localLocation: Int,
+        rowIndex: Int,
+        end: Int,
+        rows: [VisualRow]
+    ) -> Bool {
+        guard localLocation == end else { return false }
+        return rowIndex == rows.count - 1 ||
+            rows[rowIndex + 1].fragment.absoluteStartUTF16 > localLocation
+    }
+
     private func syntaxThemeKey(for colorScheme: ColorScheme) -> String {
         let syntax = currentEditorTheme(colorScheme: colorScheme).syntax
         return [
@@ -1088,7 +1130,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private func drawCurrentLineHighlight(rows: [VisualRow]) {
         guard highlightCurrentLine else { return }
         let local = absoluteCaret - viewportLineOriginStartUTF16
-        guard let row = rows.first(where: { local >= $0.fragment.absoluteStartUTF16 && local <= $0.fragment.absoluteStartUTF16 + $0.fragment.lengthUTF16 }) else { return }
+        guard let row = visualRow(containing: local, in: rows) else { return }
         NSColor.controlAccentColor.withAlphaComponent(0.08).setFill()
         NSRect(x: gutterWidth, y: row.baseline - lineHeight + 2, width: max(0, bounds.width - gutterWidth), height: lineHeight).fill()
     }
@@ -1113,7 +1155,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private func drawCaret(rows: [VisualRow]) {
         guard selection.length == 0 else { return }
         let local = absoluteCaret - viewportLineOriginStartUTF16
-        guard let row = rows.first(where: { local >= $0.fragment.absoluteStartUTF16 && local <= $0.fragment.absoluteStartUTF16 + $0.fragment.lengthUTF16 }) else { return }
+        guard let row = visualRow(containing: local, in: rows) else { return }
         let x = CGFloat(CTLineGetOffsetForStringIndex(row.fragment.line, local - row.fragment.absoluteStartUTF16, nil))
         NSColor.controlAccentColor.setFill()
         NSRect(x: gutterWidth + 8 + x, y: row.baseline - lineHeight + 2, width: 1.5, height: lineHeight).fill()
@@ -1662,7 +1704,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     private func caretPoint(localLocation: Int) -> CGPoint {
         let rows = visualRows()
-        guard let row = rows.first(where: { localLocation >= $0.fragment.absoluteStartUTF16 && localLocation <= $0.fragment.absoluteStartUTF16 + $0.fragment.lengthUTF16 }) else {
+        guard let row = visualRow(containing: localLocation, in: rows) else {
             return CGPoint(x: gutterWidth + 8, y: 8)
         }
         let x = CGFloat(CTLineGetOffsetForStringIndex(row.fragment.line, localLocation - row.fragment.absoluteStartUTF16, nil))

@@ -1639,7 +1639,10 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         reloadViewport(anchorLine: targetLine)
 
         if let preferredX {
-            let targetRows = visualRows().filter { $0.logicalLine == targetLine }
+            // reloadViewport replaced the old viewport, so its visual rows must
+            // be rebuilt before selecting the target row.
+            let reloadedRows = visualRows()
+            let targetRows = reloadedRows.filter { $0.logicalLine == targetLine }
             let targetRow = direction > 0 ? targetRows.first : targetRows.last
             if let targetRow {
                 moveCaret(to: caretLocation(in: targetRow, atX: preferredX), extending: extending)

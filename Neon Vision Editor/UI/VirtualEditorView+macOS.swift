@@ -1532,26 +1532,42 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             selection = NSRange(location: absoluteCaret, length: 0)
             selectionAnchor = nil
         } else {
-            let next = nextCaretLocation(from: absoluteCaret, delta: delta)
-            if extending {
-                let anchor = selectionAnchor ?? absoluteCaret
-                selectionAnchor = anchor
-                absoluteCaret = next
-                selection = NSRange(location: min(anchor, next), length: abs(anchor - next))
-            } else {
-                absoluteCaret = next
-                selection = NSRange(location: absoluteCaret, length: 0)
-                selectionAnchor = nil
-            }
+            applyCaretLocation(nextCaretLocation(from: absoluteCaret, delta: delta), extending: extending)
         }
+        finishCaretMovement()
+    }
+
+    private func moveCaret(to location: Int, extending: Bool) {
+        applyCaretLocation(location, extending: extending)
+        finishCaretMovement()
+    }
+
+    private func applyCaretLocation(_ location: Int, extending: Bool) {
+        let next = max(0, min(document?.utf16Length ?? location, location))
+        if extending {
+            let anchor = selectionAnchor ?? absoluteCaret
+            selectionAnchor = anchor
+            absoluteCaret = next
+            selection = NSRange(location: min(anchor, next), length: abs(anchor - next))
+        } else {
+            absoluteCaret = next
+            selection = NSRange(location: absoluteCaret, length: 0)
+            selectionAnchor = nil
+        }
+    }
+
+    private func finishCaretMovement() {
         ensureCaretVisible()
         publishCaret()
         needsDisplay = true
     }
 
     private func nextCaretLocation(from location: Int, delta: Int) -> Int {
-        guard delta == -1 || delta == 1, let document else {
+        guard let document else {
             return location
+        }
+        guard delta == -1 || delta == 1 else {
+            return max(0, min(document.utf16Length, location + delta))
         }
         if viewport == nil ||
             location < viewportStartUTF16 ||
@@ -1583,26 +1599,42 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     private func moveCaretVertically(_ direction: Int, extending: Bool) {
         let local = max(0, absoluteCaret - viewportLineOriginStartUTF16)
-        let currentLine = newlineCount(inUTF16PrefixOf: viewportText, length: local)
-        let currentStart = lineStarts[min(currentLine, lineStarts.count - 1)]
-        let column = local - currentStart
-        let targetLine = currentLine + direction
-        if targetLine < 0 || targetLine >= lineStarts.count {
-            let documentLine = lineForAbsoluteOffset(absoluteCaret)
-            let nextDocumentLine = min(max(0, documentLine + direction), max(0, (document?.lineCount ?? 1) - 1))
-            guard nextDocumentLine != documentLine else { return }
-            reloadViewport(anchorLine: nextDocumentLine)
-            let localTarget = max(0, min(lineStarts.count - 1, nextDocumentLine - viewportLineOrigin))
-            let targetStart = lineStarts[localTarget]
-            let targetEnd = localTarget + 1 < lineStarts.count ? lineStarts[localTarget + 1] : viewportText.utf16.count
-            let target = viewportLineOriginStartUTF16 + targetStart + min(column, max(0, targetEnd - targetStart))
-            moveCaret(target - absoluteCaret, extending: extending)
-            return
+        let rows = visualRows()
+        if let current = visualRow(containing: local, in: rows) {
+            let targetIndex = current.index + direction
+            if rows.indices.contains(targetIndex) {
+                let currentX = CGFloat(CTLineGetOffsetForStringIndex(
+                    current.row.fragment.line,
+                    local - current.row.fragment.absoluteStartUTF16,
+                    nil
+                ))
+                let targetRow = rows[targetIndex]
+                let targetOffset = CTLineGetStringIndexForPosition(
+                    targetRow.fragment.line,
+                    CGPoint(x: max(0, currentX), y: 0)
+                )
+                let localTarget = targetRow.fragment.absoluteStartUTF16 + min(
+                    targetOffset == kCFNotFound ? targetRow.fragment.lengthUTF16 : Int(targetOffset),
+                    targetRow.fragment.lengthUTF16
+                )
+                moveCaret(to: viewportLineOriginStartUTF16 + localTarget, extending: extending)
+                return
+            }
         }
-        let targetStart = lineStarts[targetLine]
-        let targetEnd = targetLine + 1 < lineStarts.count ? lineStarts[targetLine + 1] : viewportText.utf16.count
-        let target = viewportLineOriginStartUTF16 + targetStart + min(column, max(0, targetEnd - targetStart))
-        moveCaret(target - absoluteCaret, extending: extending)
+
+        let currentLine = lineForAbsoluteOffset(absoluteCaret)
+        let currentLocalLine = min(lineStarts.count - 1, newlineCount(inUTF16PrefixOf: viewportText, length: local))
+        let column = local - lineStarts[currentLocalLine]
+        let targetLine = currentLine + direction
+        guard targetLine >= 0, targetLine < (document?.lineCount ?? 1) else { return }
+        reloadViewport(anchorLine: targetLine)
+        let localLine = max(0, min(lineStarts.count - 1, targetLine - viewportLineOrigin))
+        let targetStart = lineStarts[localLine]
+        let targetEnd = localLine + 1 < lineStarts.count ? lineStarts[localLine + 1] : viewportText.utf16.count
+        moveCaret(
+            to: viewportLineOriginStartUTF16 + targetStart + min(column, max(0, targetEnd - targetStart)),
+            extending: extending
+        )
     }
 
     private func ensureCaretVisible() {

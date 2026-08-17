@@ -292,6 +292,7 @@ enum VirtualEditorResizePolicy {
 }
 
 enum VirtualEditorKeyRouting {
+    // macOS virtual-key code 13 is the physical W key.
     static let closeTabKeyCode: UInt16 = 13
 
     static func shouldInterpretArrow(modifiers: NSEvent.ModifierFlags) -> Bool {
@@ -1138,7 +1139,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     override func keyDown(with event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if modifiers == .command, event.keyCode == VirtualEditorKeyRouting.closeTabKeyCode {
+        let isCloseTabKey = event.charactersIgnoringModifiers?.lowercased() == "w" ||
+            event.keyCode == VirtualEditorKeyRouting.closeTabKeyCode
+        if modifiers.contains(.command),
+           !modifiers.contains(.option),
+           !modifiers.contains(.control),
+           isCloseTabKey {
             requestCloseSelectedTab()
             return
         }

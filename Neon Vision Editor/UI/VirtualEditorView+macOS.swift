@@ -1615,13 +1615,14 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let current = visualRow(containing: local, in: rows)
         let preferredX = current.map {
             CGFloat(CTLineGetOffsetForStringIndex(
-                $0.row.fragment.line,
-                local - $0.row.fragment.absoluteStartUTF16,
+                $0.fragment.line,
+                local - $0.fragment.absoluteStartUTF16,
                 nil
             ))
         }
         if let current {
-            let targetIndex = current.index + direction
+            guard let currentIndex = rows.firstIndex(of: current) else { return }
+            let targetIndex = currentIndex + direction
             if rows.indices.contains(targetIndex) {
                 moveCaret(
                     to: caretLocation(in: rows[targetIndex], atX: preferredX ?? 0),

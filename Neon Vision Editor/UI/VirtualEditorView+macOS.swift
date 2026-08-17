@@ -534,6 +534,11 @@ final class VirtualEditorScrollView: NSScrollView {
 
 @MainActor
 final class VirtualEditorCanvas: NSView, NSTextInputClient {
+    private enum Geometry {
+        static let gutterTextInset: CGFloat = 8
+        static let lineNumberTrailingInset: CGFloat = 8
+    }
+
     private var document: (any EditorDocument)?
     private var documentID: UUID?
     private var resourceID = ""
@@ -876,11 +881,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 let lineNumber = "\(row.logicalLine + 1)" as NSString
                 let numberWidth = lineNumber.size(withAttributes: [.font: editorFont]).width
                 lineNumber.draw(at: NSPoint(
-                    x: gutterWidth - numberWidth - 8,
+                    x: gutterWidth - numberWidth - Geometry.lineNumberTrailingInset,
+                    // Core Text receives a baseline; NSString.draw(at:) receives
+                    // an origin, so move the number origin above that baseline.
                     y: row.baseline - editorFont.ascender
                 ), withAttributes: [.font: editorFont, .foregroundColor: NSColor.secondaryLabelColor])
             }
-            context.textPosition = CGPoint(x: gutterWidth + 8, y: row.baseline)
+            context.textPosition = CGPoint(x: gutterWidth + Geometry.gutterTextInset, y: row.baseline)
             CTLineDraw(row.fragment.line, context)
             context.restoreGState()
             drawWhitespaceAndIndentationDecorations(for: row, dark: dark)
@@ -917,7 +924,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let leadingWhitespace = line.prefix { $0 == " " || $0 == "\t" }
         let markerColor = (dark ? NSColor.secondaryLabelColor : NSColor.tertiaryLabelColor).withAlphaComponent(0.45)
         let characterWidth = ("m" as NSString).size(withAttributes: [.font: editorFont]).width
-        let originX = gutterWidth + 8
+        let originX = gutterWidth + Geometry.gutterTextInset
         var column = 0
         for character in leadingWhitespace {
             let x = originX + CGFloat(column) * characterWidth
@@ -1132,7 +1139,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             guard left < right else { continue }
             let x = CGFloat(CTLineGetOffsetForStringIndex(row.fragment.line, left - start, nil))
             let rightX = CGFloat(CTLineGetOffsetForStringIndex(row.fragment.line, right - start, nil))
-            NSRect(x: gutterWidth + 8 + x, y: row.baseline - lineHeight + 2, width: max(2, rightX - x), height: lineHeight).fill()
+            NSRect(x: gutterWidth + Geometry.gutterTextInset + x, y: row.baseline - lineHeight + 2, width: max(2, rightX - x), height: lineHeight).fill()
         }
     }
 
@@ -1142,7 +1149,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         guard let row = visualRow(containing: local, in: rows) else { return }
         let x = CGFloat(CTLineGetOffsetForStringIndex(row.fragment.line, local - row.fragment.absoluteStartUTF16, nil))
         NSColor.controlAccentColor.setFill()
-        NSRect(x: gutterWidth + 8 + x, y: row.baseline - lineHeight + 2, width: 1.5, height: lineHeight).fill()
+        NSRect(x: gutterWidth + Geometry.gutterTextInset + x, y: row.baseline - lineHeight + 2, width: 1.5, height: lineHeight).fill()
     }
 
     private var viewportLineOriginStartUTF16: Int { viewport?.startUTF16Offset ?? 0 }
@@ -1670,10 +1677,10 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private func caretPoint(localLocation: Int) -> CGPoint {
         let rows = visualRows()
         guard let row = visualRow(containing: localLocation, in: rows) else {
-            return CGPoint(x: gutterWidth + 8, y: 8)
+            return CGPoint(x: gutterWidth + Geometry.gutterTextInset, y: 8)
         }
         let x = CGFloat(CTLineGetOffsetForStringIndex(row.fragment.line, localLocation - row.fragment.absoluteStartUTF16, nil))
-        return CGPoint(x: gutterWidth + 8 + x, y: row.baseline - lineHeight + 2)
+        return CGPoint(x: gutterWidth + Geometry.gutterTextInset + x, y: row.baseline - lineHeight + 2)
     }
 
     private func documentOffset(at point: NSPoint) -> Int {
@@ -1682,10 +1689,10 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         }
         let index = CTLineGetStringIndexForPosition(
             row.fragment.line,
-            CGPoint(x: max(0, point.x - gutterWidth - 8), y: 0)
+            CGPoint(x: max(0, point.x - gutterWidth - Geometry.gutterTextInset), y: 0)
         )
         let localOffset = index == kCFNotFound
-            ? (point.x <= gutterWidth + 8 ? 0 : row.fragment.lengthUTF16)
+            ? (point.x <= gutterWidth + Geometry.gutterTextInset ? 0 : row.fragment.lengthUTF16)
             : min(Int(index), row.fragment.lengthUTF16)
         return viewportLineOriginStartUTF16 + row.fragment.absoluteStartUTF16 + localOffset
     }

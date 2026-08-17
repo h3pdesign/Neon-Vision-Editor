@@ -875,7 +875,10 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             if showsLineNumbers, row.isFirstFragment {
                 let lineNumber = "\(row.logicalLine + 1)" as NSString
                 let numberWidth = lineNumber.size(withAttributes: [.font: editorFont]).width
-                lineNumber.draw(at: NSPoint(x: gutterWidth - numberWidth - 8, y: row.baseline), withAttributes: [.font: editorFont, .foregroundColor: NSColor.secondaryLabelColor])
+                lineNumber.draw(at: NSPoint(
+                    x: gutterWidth - numberWidth - 8,
+                    y: row.baseline - editorFont.ascender
+                ), withAttributes: [.font: editorFont, .foregroundColor: NSColor.secondaryLabelColor])
             }
             context.textPosition = CGPoint(x: gutterWidth + 8, y: row.baseline)
             CTLineDraw(row.fragment.line, context)

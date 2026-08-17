@@ -1057,6 +1057,19 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         )
     }
 
+    private func visualRow(containing localLocation: Int, in rows: [VisualRow]) -> VisualRow? {
+        for (index, row) in rows.enumerated() {
+            let start = row.fragment.absoluteStartUTF16
+            let end = start + row.fragment.lengthUTF16
+            let ownsEndpoint = localLocation == end &&
+                (index == rows.count - 1 || rows[index + 1].fragment.absoluteStartUTF16 > localLocation)
+            if localLocation >= start && (localLocation < end || ownsEndpoint) {
+                return row
+            }
+        }
+        return rows.last
+    }
+
     private func syntaxThemeKey(for colorScheme: ColorScheme) -> String {
         let syntax = currentEditorTheme(colorScheme: colorScheme).syntax
         return [
@@ -1069,7 +1082,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private func drawCurrentLineHighlight(rows: [VisualRow]) {
         guard highlightCurrentLine else { return }
         let local = absoluteCaret - viewportLineOriginStartUTF16
-        guard let row = rows.first(where: { local >= $0.fragment.absoluteStartUTF16 && local <= $0.fragment.absoluteStartUTF16 + $0.fragment.lengthUTF16 }) else { return }
+        guard let row = visualRow(containing: local, in: rows) else { return }
         NSColor.controlAccentColor.withAlphaComponent(0.08).setFill()
         NSRect(x: gutterWidth, y: row.baseline - lineHeight + 2, width: max(0, bounds.width - gutterWidth), height: lineHeight).fill()
     }
@@ -1094,7 +1107,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private func drawCaret(rows: [VisualRow]) {
         guard selection.length == 0 else { return }
         let local = absoluteCaret - viewportLineOriginStartUTF16
-        guard let row = rows.first(where: { local >= $0.fragment.absoluteStartUTF16 && local <= $0.fragment.absoluteStartUTF16 + $0.fragment.lengthUTF16 }) else { return }
+        guard let row = visualRow(containing: local, in: rows) else { return }
         let x = CGFloat(CTLineGetOffsetForStringIndex(row.fragment.line, local - row.fragment.absoluteStartUTF16, nil))
         NSColor.controlAccentColor.setFill()
         NSRect(x: gutterWidth + 8 + x, y: row.baseline - lineHeight + 2, width: 1.5, height: lineHeight).fill()
@@ -1624,7 +1637,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     private func caretPoint(localLocation: Int) -> CGPoint {
         let rows = visualRows()
-        guard let row = rows.first(where: { localLocation >= $0.fragment.absoluteStartUTF16 && localLocation <= $0.fragment.absoluteStartUTF16 + $0.fragment.lengthUTF16 }) else {
+        guard let row = visualRow(containing: localLocation, in: rows) else {
             return CGPoint(x: gutterWidth + 8, y: 8)
         }
         let x = CGFloat(CTLineGetOffsetForStringIndex(row.fragment.line, localLocation - row.fragment.absoluteStartUTF16, nil))

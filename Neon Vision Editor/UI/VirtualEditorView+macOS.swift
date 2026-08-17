@@ -292,8 +292,24 @@ enum VirtualEditorResizePolicy {
 }
 
 enum VirtualEditorKeyRouting {
-    // macOS virtual-key code 13 is the physical W key.
-    static let closeTabKeyCode: UInt16 = 13
+    static func matches(_ event: NSEvent, shortcut: EditorShortcutDescriptor) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        var modifiers: EditorShortcutModifiers = []
+        if flags.contains(.command) { modifiers.insert(.command) }
+        if flags.contains(.shift) { modifiers.insert(.shift) }
+        if flags.contains(.option) { modifiers.insert(.alternate) }
+        if flags.contains(.control) { modifiers.insert(.control) }
+        guard modifiers == shortcut.modifiers else { return false }
+
+        switch shortcut.key {
+        case "←": return event.keyCode == 123
+        case "→": return event.keyCode == 124
+        case "↓": return event.keyCode == 125
+        case "↑": return event.keyCode == 126
+        default:
+            return event.charactersIgnoringModifiers?.lowercased() == shortcut.key.lowercased()
+        }
+    }
 
     static func shouldInterpretArrow(modifiers: NSEvent.ModifierFlags) -> Bool {
         modifiers.contains(.command) || modifiers.contains(.control)
@@ -1138,16 +1154,14 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     override func keyDown(with event: NSEvent) {
-        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        let isCloseTabKey = event.charactersIgnoringModifiers?.lowercased() == "w" ||
-            event.keyCode == VirtualEditorKeyRouting.closeTabKeyCode
-        if modifiers.contains(.command),
-           !modifiers.contains(.option),
-           !modifiers.contains(.control),
-           isCloseTabKey {
+        if VirtualEditorKeyRouting.matches(
+            event,
+            shortcut: ShortcutPreferences.shortcut(for: .closeTab)
+        ) {
             requestCloseSelectedTab()
             return
         }
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if VirtualEditorKeyRouting.shouldInterpretArrow(modifiers: modifiers) {
             interpretKeyEvents([event])
             return

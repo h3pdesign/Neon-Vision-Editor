@@ -34,6 +34,7 @@ CLONES_API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/traffic/clones"
 VIEWS_API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/traffic/views"
 CLONES_WINDOW_DAYS = 14
 TREND_MIN_PAST_RELEASE_DOWNLOADS = 50
+TREND_MIN_LATEST_RELEASE_DOWNLOADS = 20
 TREND_RELEASE_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = ()
 DOWNLOAD_BASELINE_PATTERN = re.compile(r"<!--\s*nve-download-baseline:\s*(\d+)\s*-->")
 
@@ -144,6 +145,7 @@ def fetch_releases() -> list[ReleasePoint]:
 def grouped_release_points_for_trend(points: list[ReleasePoint]) -> list[ReleasePoint]:
     latest_published_at = max(point.published_at for point in points)
     past_points = [point for point in points if point.published_at < latest_published_at]
+    latest_points = [point for point in points if point.published_at == latest_published_at]
     grouped_by_tag: dict[str, ReleasePoint] = {}
     consumed: set[str] = set()
 
@@ -165,8 +167,11 @@ def grouped_release_points_for_trend(points: list[ReleasePoint]) -> list[Release
     trend_points = [
         point
         for point in grouped_by_tag.values()
-        if point.downloads > TREND_MIN_PAST_RELEASE_DOWNLOADS
+        if point.downloads >= TREND_MIN_PAST_RELEASE_DOWNLOADS
     ]
+    trend_points.extend(
+        point for point in latest_points if point.downloads >= TREND_MIN_LATEST_RELEASE_DOWNLOADS
+    )
     return sorted(trend_points, key=lambda r: r.published_at, reverse=True)
 
 
@@ -480,9 +485,9 @@ def generate_svg(
   <rect x="24" y="24" width="1152" height="572" rx="14" stroke="{palette["frame_stroke"]}" stroke-width="1.5"/>
 
   <text x="70" y="68" fill="{palette["title_text"]}" font-size="30" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">Release downloads</text>
-  <text x="70" y="96" fill="{palette["subtitle_text"]}" font-size="16" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Past releases with more than 50 downloads · updated SNAPSHOT_DATE</text>
+  <text x="70" y="96" fill="{palette["subtitle_text"]}" font-size="16" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">Prior releases: 50+ downloads · latest release: 20+ · updated SNAPSHOT_DATE</text>
   <rect x="862" y="46" width="268" height="58" rx="14" fill="{palette["panel_bg"]}" stroke="{palette["panel_stroke"]}" stroke-width="1"/>
-  <text x="884" y="70" fill="{palette["subtitle_text"]}" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">LATEST QUALIFYING RELEASE</text>
+  <text x="884" y="70" fill="{palette["subtitle_text"]}" font-size="12" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">LATEST DISPLAYED RELEASE</text>
   <text x="884" y="92" fill="{palette["title_text"]}" font-size="17" font-family="SF Pro Text, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-weight="700">{latest_point.tag} · {latest_point.downloads} downloads</text>
 
 GRID_LINES

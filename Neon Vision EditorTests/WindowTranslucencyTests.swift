@@ -146,14 +146,19 @@ final class WindowTranslucencyTests: XCTestCase {
         canvas.draw(canvas.bounds)
         NSGraphicsContext.restoreGraphicsState()
 
-        XCTAssertEqual(
-            bitmap.colorAt(x: 0, y: 0)?.usingColorSpace(.deviceRGB),
+        let actual = try! XCTUnwrap(bitmap.colorAt(x: 0, y: 0)?.usingColorSpace(.deviceRGB))
+        let expected = try! XCTUnwrap(
             ContentView.MacEditorSurfacePolicy.windowBackground(
                 translucent: false,
                 modeRaw: "balanced",
                 isDarkMode: false
             ).usingColorSpace(.deviceRGB)
         )
+        let bitmapComponentTolerance = 1.0 / 255.0
+        XCTAssertEqual(actual.redComponent, expected.redComponent, accuracy: bitmapComponentTolerance)
+        XCTAssertEqual(actual.greenComponent, expected.greenComponent, accuracy: bitmapComponentTolerance)
+        XCTAssertEqual(actual.blueComponent, expected.blueComponent, accuracy: bitmapComponentTolerance)
+        XCTAssertEqual(actual.alphaComponent, expected.alphaComponent, accuracy: bitmapComponentTolerance)
     }
 
     func testTranslucentEditorPanesLeaveTheWindowSurfaceUncovered() {

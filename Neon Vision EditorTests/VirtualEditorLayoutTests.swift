@@ -55,6 +55,32 @@ final class VirtualEditorLayoutTests: XCTestCase {
         }
     }
 
+    func testWrappedContinuationRowUsesLogicalLineCoreTextIndices() {
+        let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        let line = CTLineCreateWithAttributedString(NSAttributedString(
+            string: "continuation",
+            attributes: [.font: font]
+        ))
+        let row = VirtualEditorCanvas.VisualRow(
+            logicalLine: 4,
+            localStart: 100,
+            fragment: VirtualEditorVisualFragment(
+                absoluteStartUTF16: 112,
+                lengthUTF16: 8,
+                line: line
+            ),
+            baseline: 40,
+            isFirstFragment: false
+        )
+
+        XCTAssertEqual(row.coreTextStringIndex(forViewportOffset: 112), 12)
+        XCTAssertEqual(row.coreTextStringIndex(forViewportOffset: 120), 20)
+        XCTAssertEqual(row.viewportOffset(forCoreTextStringIndex: 12, trailingFallback: false), 112)
+        XCTAssertEqual(row.viewportOffset(forCoreTextStringIndex: 20, trailingFallback: false), 120)
+        XCTAssertEqual(row.viewportOffset(forCoreTextStringIndex: kCFNotFound, trailingFallback: false), 112)
+        XCTAssertEqual(row.viewportOffset(forCoreTextStringIndex: kCFNotFound, trailingFallback: true), 120)
+    }
+
     func testFirstVisualRowBaselineLeavesRoomForTheFontAscender() {
         XCTAssertEqual(
             VirtualEditorVisualLayout.baseline(
@@ -64,6 +90,29 @@ final class VirtualEditorLayoutTests: XCTestCase {
             ),
             15
         )
+    }
+
+    func testLineNumberOriginAlignsWithCoreTextBaselineAcrossFontSizes() {
+        for size: CGFloat in [11, 14, 24] {
+            let font = NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+            for multiplier: CGFloat in [1, 1.25, 1.6] {
+                let lineHeight = (font.ascender - font.descender + font.leading + 4) * multiplier
+                let baseline = VirtualEditorVisualLayout.baseline(
+                    rowOrigin: 3,
+                    lineHeight: lineHeight,
+                    fontAscender: font.ascender
+                )
+
+                XCTAssertEqual(
+                    VirtualEditorVisualLayout.lineNumberOriginY(
+                        baseline: baseline,
+                        fontAscender: font.ascender
+                    ),
+                    baseline - font.ascender,
+                    accuracy: 0.001
+                )
+            }
+        }
     }
 
     func testVisualRowOwnershipCoversWrapGapsAndEndpoints() {
@@ -345,6 +394,38 @@ final class VirtualEditorLayoutTests: XCTestCase {
         ))
         XCTAssertFalse(VirtualEditorKeyRouting.shouldInterpretArrow(
             modifiers: [.shift]
+        ))
+    }
+
+    func testCloseTabRoutingMatchesConfiguredShortcutExactly() {
+        let shortcut = EditorShortcutDescriptor(key: "k", modifiers: [.command, .shift])
+
+        XCTAssertTrue(VirtualEditorKeyRouting.matches(
+            charactersIgnoringModifiers: "k",
+            keyCode: 40,
+            modifiers: [.command, .shift],
+            shortcut: shortcut
+        ))
+        XCTAssertFalse(VirtualEditorKeyRouting.matches(
+            charactersIgnoringModifiers: "k",
+            keyCode: 40,
+            modifiers: [.command],
+            shortcut: shortcut
+        ))
+        XCTAssertFalse(VirtualEditorKeyRouting.matches(
+            charactersIgnoringModifiers: "k",
+            keyCode: 40,
+            modifiers: [.command, .shift, .option],
+            shortcut: shortcut
+        ))
+    }
+
+    func testDefaultCloseTabRoutingUsesPhysicalWKeyFallback() {
+        XCTAssertTrue(VirtualEditorKeyRouting.matches(
+            charactersIgnoringModifiers: "z",
+            keyCode: 13,
+            modifiers: [.command],
+            shortcut: EditorShortcutAction.closeTab.defaultShortcut
         ))
     }
 

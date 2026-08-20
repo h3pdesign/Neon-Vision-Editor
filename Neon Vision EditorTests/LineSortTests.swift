@@ -1,6 +1,7 @@
 import XCTest
 @testable import Neon_Vision_Editor
 
+@MainActor
 final class LineSortTests: XCTestCase {
     func testSortUniqueLinesSortsAndRemovesExactDuplicates() {
         XCTAssertEqual(

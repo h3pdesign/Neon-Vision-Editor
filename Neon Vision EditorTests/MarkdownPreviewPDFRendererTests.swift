@@ -5,6 +5,7 @@ import PDFKit
 
 @MainActor
 final class MarkdownPreviewPDFRendererTests: XCTestCase {
+#if os(macOS)
     func testDetachedPreviewUsesEditorBackgroundInsteadOfPreviewWhite() {
         let html = "<html><head><style>body { background: white; }</style></head><body><main class=\"content\">Preview</main></body></html>"
 
@@ -28,6 +29,7 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertGreaterThan(DetachedPreviewWindowView.quickLookGlassTintOpacity, 0)
         XCTAssertLessThanOrEqual(DetachedPreviewWindowView.quickLookGlassTintOpacity, 0.10)
     }
+#endif
 
     func testPaginatedSourceRangesCoverLongMarkdownWithoutGaps() {
         let ranges = MarkdownPreviewPDFRenderer.paginatedSourceRanges(

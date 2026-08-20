@@ -86,6 +86,7 @@ final class EditorViewModelTabTests: XCTestCase {
 
         let tab = TabData(name: "large.txt", content: "stale", language: "plain", fileURL: url)
         let document = try FileBackedTextDocument(url: url)
+        try document.prepareViewportIndex()
 
         XCTAssertTrue(tab.installLoadedFileBackedDocument(document))
         XCTAssertTrue(tab.usesFileBackedStorage)

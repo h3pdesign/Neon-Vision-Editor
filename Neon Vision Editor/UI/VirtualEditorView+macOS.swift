@@ -55,6 +55,10 @@ enum VirtualEditorVisualLayout {
         CGFloat(rowOrigin) * lineHeight + fontAscender + topInset
     }
 
+    static func lineNumberOriginY(baseline: CGFloat, fontAscender: CGFloat) -> CGFloat {
+        baseline - fontAscender
+    }
+
     static func fragments(
         for attributed: NSAttributedString,
         lineStartUTF16: Int,
@@ -292,6 +296,44 @@ enum VirtualEditorResizePolicy {
 }
 
 enum VirtualEditorKeyRouting {
+    // Carbon virtual key code for the physical W key.
+    private static let physicalWKeyCode: UInt16 = 13
+
+    static func matches(_ event: NSEvent, shortcut: EditorShortcutDescriptor) -> Bool {
+        matches(
+            charactersIgnoringModifiers: event.charactersIgnoringModifiers,
+            keyCode: event.keyCode,
+            modifiers: event.modifierFlags,
+            shortcut: shortcut
+        )
+    }
+
+    static func matches(
+        charactersIgnoringModifiers: String?,
+        keyCode: UInt16,
+        modifiers: NSEvent.ModifierFlags,
+        shortcut: EditorShortcutDescriptor
+    ) -> Bool {
+        let flags = modifiers.intersection(.deviceIndependentFlagsMask)
+        var resolvedModifiers: EditorShortcutModifiers = []
+        if flags.contains(.command) { resolvedModifiers.insert(.command) }
+        if flags.contains(.shift) { resolvedModifiers.insert(.shift) }
+        if flags.contains(.option) { resolvedModifiers.insert(.alternate) }
+        if flags.contains(.control) { resolvedModifiers.insert(.control) }
+        guard resolvedModifiers == shortcut.modifiers else { return false }
+
+        switch shortcut.key {
+        case "←": return keyCode == 123
+        case "→": return keyCode == 124
+        case "↓": return keyCode == 125
+        case "↑": return keyCode == 126
+        case "w" where keyCode == physicalWKeyCode:
+            return true
+        default:
+            return charactersIgnoringModifiers?.lowercased() == shortcut.key.lowercased()
+        }
+    }
+
     static func shouldInterpretArrow(modifiers: NSEvent.ModifierFlags) -> Bool {
         modifiers.contains(.command) || modifiers.contains(.control)
     }
@@ -534,6 +576,11 @@ final class VirtualEditorScrollView: NSScrollView {
 
 @MainActor
 final class VirtualEditorCanvas: NSView, NSTextInputClient {
+    private enum Geometry {
+        static let gutterTextInset: CGFloat = 8
+        static let lineNumberTrailingInset: CGFloat = 8
+    }
+
     private var document: (any EditorDocument)?
     private var documentID: UUID?
     private var resourceID = ""
@@ -568,6 +615,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var markedTextRange = NSRange(location: NSNotFound, length: 0)
     private var markedTextSelectedRange = NSRange(location: 0, length: 0)
     private var selectionAnchor: Int?
+    private var pendingDragPublication: DispatchWorkItem?
     private let documentUndoManager = UndoManager()
     private var lastConfigurationKey = ""
     private var layoutCache: [Int: CTLine] = [:]
@@ -875,9 +923,15 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             if showsLineNumbers, row.isFirstFragment {
                 let lineNumber = "\(row.logicalLine + 1)" as NSString
                 let numberWidth = lineNumber.size(withAttributes: [.font: editorFont]).width
-                lineNumber.draw(at: NSPoint(x: gutterWidth - numberWidth - 8, y: row.baseline), withAttributes: [.font: editorFont, .foregroundColor: NSColor.secondaryLabelColor])
+                lineNumber.draw(at: NSPoint(
+                    x: gutterWidth - numberWidth - Geometry.lineNumberTrailingInset,
+                    y: VirtualEditorVisualLayout.lineNumberOriginY(
+                        baseline: row.baseline,
+                        fontAscender: editorFont.ascender
+                    )
+                ), withAttributes: [.font: editorFont, .foregroundColor: NSColor.secondaryLabelColor])
             }
-            context.textPosition = CGPoint(x: gutterWidth + 8, y: row.baseline)
+            context.textPosition = CGPoint(x: gutterWidth + Geometry.gutterTextInset, y: row.baseline)
             CTLineDraw(row.fragment.line, context)
             context.restoreGState()
             drawWhitespaceAndIndentationDecorations(for: row, dark: dark)
@@ -914,7 +968,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let leadingWhitespace = line.prefix { $0 == " " || $0 == "\t" }
         let markerColor = (dark ? NSColor.secondaryLabelColor : NSColor.tertiaryLabelColor).withAlphaComponent(0.45)
         let characterWidth = ("m" as NSString).size(withAttributes: [.font: editorFont]).width
-        let originX = gutterWidth + 8
+        let originX = gutterWidth + Geometry.gutterTextInset
         var column = 0
         for character in leadingWhitespace {
             let x = originX + CGFloat(column) * characterWidth
@@ -958,6 +1012,27 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let fragment: VirtualEditorVisualFragment
         let baseline: CGFloat
         let isFirstFragment: Bool
+
+        private var fragmentStartInLine: Int {
+            fragment.absoluteStartUTF16 - localStart
+        }
+
+        private var fragmentEndInLine: Int {
+            fragmentStartInLine + fragment.lengthUTF16
+        }
+
+        func coreTextStringIndex(forViewportOffset offset: Int) -> Int {
+            min(max(offset - localStart, fragmentStartInLine), fragmentEndInLine)
+        }
+
+        func viewportOffset(forCoreTextStringIndex index: CFIndex, trailingFallback: Bool) -> Int {
+            guard index != kCFNotFound else {
+                return trailingFallback
+                    ? fragment.absoluteStartUTF16 + fragment.lengthUTF16
+                    : fragment.absoluteStartUTF16
+            }
+            return localStart + min(max(Int(index), fragmentStartInLine), fragmentEndInLine)
+        }
     }
 
     private func visualRows() -> [VisualRow] {
@@ -1058,6 +1133,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     func visualRow(containing localLocation: Int, in rows: [VisualRow]) -> VisualRow? {
+        guard let index = visualRowIndex(containing: localLocation, in: rows) else { return nil }
+        return rows[index]
+    }
+
+    private func visualRowIndex(containing localLocation: Int, in rows: [VisualRow]) -> Int? {
         guard !rows.isEmpty else { return nil }
 
         // visualRows() is ordered by fragment start, so find the last row whose
@@ -1085,7 +1165,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                   end: end,
                   rows: rows
               )) else { return nil }
-        return row
+        return index
     }
 
     private func ownsVisualRowEndpoint(
@@ -1127,9 +1207,17 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             let left = max(start, selectedStart)
             let right = min(end, selectedEnd)
             guard left < right else { continue }
-            let x = CGFloat(CTLineGetOffsetForStringIndex(row.fragment.line, left - start, nil))
-            let rightX = CGFloat(CTLineGetOffsetForStringIndex(row.fragment.line, right - start, nil))
-            NSRect(x: gutterWidth + 8 + x, y: row.baseline - lineHeight + 2, width: max(2, rightX - x), height: lineHeight).fill()
+            let x = CGFloat(CTLineGetOffsetForStringIndex(
+                row.fragment.line,
+                row.coreTextStringIndex(forViewportOffset: left),
+                nil
+            ))
+            let rightX = CGFloat(CTLineGetOffsetForStringIndex(
+                row.fragment.line,
+                row.coreTextStringIndex(forViewportOffset: right),
+                nil
+            ))
+            NSRect(x: gutterWidth + Geometry.gutterTextInset + x, y: row.baseline - lineHeight + 2, width: max(2, rightX - x), height: lineHeight).fill()
         }
     }
 
@@ -1137,9 +1225,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         guard selection.length == 0 else { return }
         let local = absoluteCaret - viewportLineOriginStartUTF16
         guard let row = visualRow(containing: local, in: rows) else { return }
-        let x = CGFloat(CTLineGetOffsetForStringIndex(row.fragment.line, local - row.fragment.absoluteStartUTF16, nil))
+        let x = CGFloat(CTLineGetOffsetForStringIndex(
+            row.fragment.line,
+            row.coreTextStringIndex(forViewportOffset: local),
+            nil
+        ))
         NSColor.controlAccentColor.setFill()
-        NSRect(x: gutterWidth + 8 + x, y: row.baseline - lineHeight + 2, width: 1.5, height: lineHeight).fill()
+        NSRect(x: gutterWidth + Geometry.gutterTextInset + x, y: row.baseline - lineHeight + 2, width: 1.5, height: lineHeight).fill()
     }
 
     private var viewportLineOriginStartUTF16: Int { viewport?.startUTF16Offset ?? 0 }
@@ -1159,8 +1251,26 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let caret = documentOffset(at: convert(event.locationInWindow, from: nil))
         absoluteCaret = caret
         selection = NSRange(location: min(selectionAnchor, caret), length: abs(selectionAnchor - caret))
-        publishCaret()
+        scheduleDragPublication()
         needsDisplay = true
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        pendingDragPublication?.cancel()
+        pendingDragPublication = nil
+        publishCaret()
+        super.mouseUp(with: event)
+    }
+
+    private func scheduleDragPublication() {
+        guard pendingDragPublication == nil else { return }
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.pendingDragPublication = nil
+            self.publishCaret()
+        }
+        pendingDragPublication = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: work)
     }
 
     override func magnify(with event: NSEvent) {
@@ -1177,6 +1287,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     override func keyDown(with event: NSEvent) {
+        if VirtualEditorKeyRouting.matches(
+            event,
+            shortcut: ShortcutPreferences.shortcut(for: .closeTab)
+        ) {
+            requestCloseSelectedTab()
+            return
+        }
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if VirtualEditorKeyRouting.shouldInterpretArrow(modifiers: modifiers) {
             interpretKeyEvents([event])
@@ -1191,6 +1308,18 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         case 126: moveCaretVertically(-1, extending: extending)
         default: interpretKeyEvents([event])
         }
+    }
+
+    private func requestCloseSelectedTab() {
+        var userInfo: [AnyHashable: Any] = [:]
+        if let windowNumber = window?.windowNumber {
+            userInfo[EditorCommandUserInfo.windowNumber] = windowNumber
+        }
+        NotificationCenter.default.post(
+            name: .closeSelectedTabRequested,
+            object: nil,
+            userInfo: userInfo.isEmpty ? nil : userInfo
+        )
     }
 
     private func wordBoundary(from position: Int, direction: Int) -> Int {
@@ -1532,26 +1661,42 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             selection = NSRange(location: absoluteCaret, length: 0)
             selectionAnchor = nil
         } else {
-            let next = nextCaretLocation(from: absoluteCaret, delta: delta)
-            if extending {
-                let anchor = selectionAnchor ?? absoluteCaret
-                selectionAnchor = anchor
-                absoluteCaret = next
-                selection = NSRange(location: min(anchor, next), length: abs(anchor - next))
-            } else {
-                absoluteCaret = next
-                selection = NSRange(location: absoluteCaret, length: 0)
-                selectionAnchor = nil
-            }
+            applyCaretLocation(nextCaretLocation(from: absoluteCaret, delta: delta), extending: extending)
         }
+        finishCaretMovement()
+    }
+
+    private func moveCaret(to location: Int, extending: Bool) {
+        applyCaretLocation(location, extending: extending)
+        finishCaretMovement()
+    }
+
+    private func applyCaretLocation(_ location: Int, extending: Bool) {
+        let next = max(0, min(document?.utf16Length ?? location, location))
+        if extending {
+            let anchor = selectionAnchor ?? absoluteCaret
+            selectionAnchor = anchor
+            absoluteCaret = next
+            selection = NSRange(location: min(anchor, next), length: abs(anchor - next))
+        } else {
+            absoluteCaret = next
+            selection = NSRange(location: absoluteCaret, length: 0)
+            selectionAnchor = nil
+        }
+    }
+
+    private func finishCaretMovement() {
         ensureCaretVisible()
         publishCaret()
         needsDisplay = true
     }
 
     private func nextCaretLocation(from location: Int, delta: Int) -> Int {
-        guard delta == -1 || delta == 1, let document else {
+        guard let document else {
             return location
+        }
+        guard delta == -1 || delta == 1 else {
+            return max(0, min(document.utf16Length, location + delta))
         }
         if viewport == nil ||
             location < viewportStartUTF16 ||
@@ -1581,28 +1726,64 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         return max(0, min(document.utf16Length, location + delta))
     }
 
+    private func caretLocation(in row: VisualRow, atX x: CGFloat) -> Int {
+        let lineIndex = CTLineGetStringIndexForPosition(
+            row.fragment.line,
+            CGPoint(x: max(0, x), y: 0)
+        )
+        let viewportOffset = row.viewportOffset(
+            forCoreTextStringIndex: lineIndex,
+            trailingFallback: true
+        )
+        return viewportLineOriginStartUTF16 + viewportOffset
+    }
+
     private func moveCaretVertically(_ direction: Int, extending: Bool) {
         let local = max(0, absoluteCaret - viewportLineOriginStartUTF16)
-        let currentLine = newlineCount(inUTF16PrefixOf: viewportText, length: local)
-        let currentStart = lineStarts[min(currentLine, lineStarts.count - 1)]
-        let column = local - currentStart
-        let targetLine = currentLine + direction
-        if targetLine < 0 || targetLine >= lineStarts.count {
-            let documentLine = lineForAbsoluteOffset(absoluteCaret)
-            let nextDocumentLine = min(max(0, documentLine + direction), max(0, (document?.lineCount ?? 1) - 1))
-            guard nextDocumentLine != documentLine else { return }
-            reloadViewport(anchorLine: nextDocumentLine)
-            let localTarget = max(0, min(lineStarts.count - 1, nextDocumentLine - viewportLineOrigin))
-            let targetStart = lineStarts[localTarget]
-            let targetEnd = localTarget + 1 < lineStarts.count ? lineStarts[localTarget + 1] : viewportText.utf16.count
-            let target = viewportLineOriginStartUTF16 + targetStart + min(column, max(0, targetEnd - targetStart))
-            moveCaret(target - absoluteCaret, extending: extending)
-            return
+        let rows = visualRows()
+        let currentRowIndex = visualRowIndex(containing: local, in: rows)
+        let preferredX: CGFloat? = currentRowIndex.map { index in
+            let row = rows[index]
+            return CGFloat(CTLineGetOffsetForStringIndex(
+                row.fragment.line,
+                row.coreTextStringIndex(forViewportOffset: local),
+                nil
+            ))
         }
-        let targetStart = lineStarts[targetLine]
-        let targetEnd = targetLine + 1 < lineStarts.count ? lineStarts[targetLine + 1] : viewportText.utf16.count
-        let target = viewportLineOriginStartUTF16 + targetStart + min(column, max(0, targetEnd - targetStart))
-        moveCaret(target - absoluteCaret, extending: extending)
+        if let currentRowIndex {
+            let targetRowIndex = currentRowIndex + direction
+            if rows.indices.contains(targetRowIndex) {
+                moveCaret(
+                    to: caretLocation(in: rows[targetRowIndex], atX: preferredX ?? 0),
+                    extending: extending
+                )
+                return
+            }
+        }
+
+        let currentLine = lineForAbsoluteOffset(absoluteCaret)
+        let currentLocalLine = min(lineStarts.count - 1, newlineCount(inUTF16PrefixOf: viewportText, length: local))
+        let column = local - lineStarts[currentLocalLine]
+        let targetLine = currentLine + direction
+        guard targetLine >= 0, targetLine < (document?.lineCount ?? 1) else { return }
+        reloadViewport(anchorLine: targetLine)
+
+        if let preferredX {
+            let targetRows = visualRows().filter { $0.logicalLine == targetLine }
+            let targetRow = direction > 0 ? targetRows.first : targetRows.last
+            if let targetRow {
+                moveCaret(to: caretLocation(in: targetRow, atX: preferredX), extending: extending)
+                return
+            }
+        }
+
+        let localLine = max(0, min(lineStarts.count - 1, targetLine - viewportLineOrigin))
+        let targetStart = lineStarts[localLine]
+        let targetEnd = localLine + 1 < lineStarts.count ? lineStarts[localLine + 1] : viewportText.utf16.count
+        moveCaret(
+            to: viewportLineOriginStartUTF16 + targetStart + min(column, max(0, targetEnd - targetStart)),
+            extending: extending
+        )
     }
 
     private func ensureCaretVisible() {
@@ -1667,10 +1848,14 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private func caretPoint(localLocation: Int) -> CGPoint {
         let rows = visualRows()
         guard let row = visualRow(containing: localLocation, in: rows) else {
-            return CGPoint(x: gutterWidth + 8, y: 8)
+            return CGPoint(x: gutterWidth + Geometry.gutterTextInset, y: 8)
         }
-        let x = CGFloat(CTLineGetOffsetForStringIndex(row.fragment.line, localLocation - row.fragment.absoluteStartUTF16, nil))
-        return CGPoint(x: gutterWidth + 8 + x, y: row.baseline - lineHeight + 2)
+        let x = CGFloat(CTLineGetOffsetForStringIndex(
+            row.fragment.line,
+            row.coreTextStringIndex(forViewportOffset: localLocation),
+            nil
+        ))
+        return CGPoint(x: gutterWidth + Geometry.gutterTextInset + x, y: row.baseline - lineHeight + 2)
     }
 
     private func documentOffset(at point: NSPoint) -> Int {
@@ -1679,12 +1864,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         }
         let index = CTLineGetStringIndexForPosition(
             row.fragment.line,
-            CGPoint(x: max(0, point.x - gutterWidth - 8), y: 0)
+            CGPoint(x: max(0, point.x - gutterWidth - Geometry.gutterTextInset), y: 0)
         )
-        let localOffset = index == kCFNotFound
-            ? (point.x <= gutterWidth + 8 ? 0 : row.fragment.lengthUTF16)
-            : min(Int(index), row.fragment.lengthUTF16)
-        return viewportLineOriginStartUTF16 + row.fragment.absoluteStartUTF16 + localOffset
+        let localOffset = row.viewportOffset(
+            forCoreTextStringIndex: index,
+            trailingFallback: point.x > gutterWidth + Geometry.gutterTextInset
+        )
+        return viewportLineOriginStartUTF16 + localOffset
     }
 
     private func publishTextChange() {

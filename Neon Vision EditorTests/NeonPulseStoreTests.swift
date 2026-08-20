@@ -91,7 +91,10 @@ nonisolated final class NeonPulseStoreTests: XCTestCase {
 #if os(iOS)
     @MainActor
     func testWatchPayloadHandoffFromBackgroundQueueRunsOnMainActor() async throws {
-        let capture = NeonPulseCapture(text: "Watch callback")
+        let capture = NeonPulseCapture(
+            text: "Watch callback",
+            createdAt: Date(timeIntervalSince1970: 1_750_000_000)
+        )
         let data = try XCTUnwrap(NeonPulseCodec.encode(capture))
         let delivered = expectation(description: "main-actor payload delivery")
 

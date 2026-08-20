@@ -400,19 +400,9 @@ final class EditorInputTextView: UITextView {
             } else {
                 insertText(sanitized)
             }
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                self.selectedRange = NSRange(location: 0, length: 0)
-                self.scrollRangeToVisible(NSRange(location: 0, length: 0))
-            }
             return
         }
         super.paste(sender)
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.selectedRange = NSRange(location: 0, length: 0)
-            self.scrollRangeToVisible(NSRange(location: 0, length: 0))
-        }
     }
 
     override func layoutSubviews() {
@@ -1860,6 +1850,7 @@ struct CustomTextEditor: UIViewRepresentable {
         private var lastCaretStatusLocation: Int = -1
         private var lastCaretStatusLine: Int = Int.min
         private var lastCaretStatusColumn: Int = Int.min
+        private var selectionUpdateGeneration: Int = 0
         private var fontSizePinchRecognizer: UIPinchGestureRecognizer?
         private var pinchStartFontSize: CGFloat?
         private var lastPinchFontSize: CGFloat?
@@ -1955,6 +1946,7 @@ struct CustomTextEditor: UIViewRepresentable {
             lastCaretStatusLocation = -1
             lastCaretStatusLine = Int.min
             lastCaretStatusColumn = Int.min
+            selectionUpdateGeneration &+= 1
             largeTextInstallGeneration &+= 1
             isInstallingLargeText = false
         }
@@ -2800,12 +2792,31 @@ struct CustomTextEditor: UIViewRepresentable {
             textView.setNeedsDisplay()
             let editorTextView = textView as? EditorInputTextView
             editorTextView?.currentLineHighlightOverlayView?.setNeedsDisplay()
+            selectionUpdateGeneration &+= 1
+            let generation = selectionUpdateGeneration
+            guard textView.selectedRange.length > 0 else {
+                publishSelectionState(for: textView)
+                return
+            }
+
+            // UIKit already paints the selection synchronously. Defer the derived
+            // selection text, caret status, and cursor-driven highlighting so a drag
+            // does not repeatedly scan/copy the document on the tracking run loop.
+            DispatchQueue.main.asyncAfter(deadline: .now() + (1.0 / 30.0)) { [weak self, weak textView] in
+                guard let self,
+                      let textView,
+                      self.textView === textView,
+                      self.selectionUpdateGeneration == generation else { return }
+                self.publishSelectionState(for: textView)
+            }
+        }
+
+        private func publishSelectionState(for textView: UITextView) {
             let nsText = (textView.text ?? "") as NSString
             publishSelectionSnapshot(from: nsText, selectedRange: textView.selectedRange)
             updateCaretStatus()
             if !(UIDevice.current.userInterfaceIdiom == .phone && textView.isFirstResponder) {
-                let nsLength = (textView.text as NSString?)?.length ?? 0
-                let immediateHighlight = nsLength < 200_000
+                let immediateHighlight = nsText.length < 200_000
                 scheduleHighlightIfNeeded(currentText: textView.text, immediate: immediateHighlight)
             }
         }

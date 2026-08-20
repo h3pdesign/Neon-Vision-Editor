@@ -68,6 +68,7 @@ struct NeonSettingsView: View {
     @AppStorage("EnableTranslucentWindow") private var translucentWindow: Bool = false
 #endif
     @AppStorage("SettingsMacTranslucencyMode") private var macTranslucencyModeRaw: String = "balanced"
+    @AppStorage("SettingsOpaqueEditorSurfaceMac") private var opaqueEditorSurfaceMac: Bool = true
     @AppStorage(AppearanceThemeCloudSync.enabledKey) private var iCloudAppearanceThemeSyncEnabled: Bool = false
     @AppStorage(AppearanceThemeCloudSync.statusKey) private var iCloudAppearanceThemeSyncStatus: String = AppearanceThemeCloudSync.currentStatus
     @AppStorage("SettingsReopenLastSession") private var reopenLastSession: Bool = true
@@ -1171,6 +1172,7 @@ struct NeonSettingsView: View {
             appearance,
             String(translucentWindow),
             macTranslucencyModeRaw,
+            String(opaqueEditorSurfaceMac),
             selectedTheme,
             themeTextHex,
             themeBackgroundHex,
@@ -2209,6 +2211,12 @@ struct NeonSettingsView: View {
                 if supportsTranslucency {
                     Toggle(localized("Translucent Window"), isOn: $translucentWindow)
                         .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Toggle(localized("Opaque Editor Canvas"), isOn: $opaqueEditorSurfaceMac)
+                        .help(localized("Uses the selected theme's solid background in the editor while keeping sidebars translucent."))
+                        .accessibilityHint(localized("Keeps editor colors fully opaque without disabling sidebar translucency."))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .disabled(translucentWindow)
 
                     HStack(alignment: .center, spacing: UI.space12) {
                         Text(localized("Translucency Mode"))
@@ -6106,6 +6114,7 @@ struct NeonSettingsView: View {
         lines.append("Editor.largeFileOpenMode: \(largeFileOpenModeRaw)")
         lines.append("Editor.minimapViewportLatencyMs: \(minimapLatency.map { String($0) } ?? "not measured")")
         lines.append("Window.translucency: \(translucentWindow)")
+        lines.append("Editor.opaqueSurface: \(opaqueEditorSurfaceMac)")
         lines.append("Reliability.lastLaunchPhase: \(reliability.lastLaunchPhase)")
         lines.append("Reliability.consecutiveFailedLaunches: \(reliability.consecutiveFailedLaunches)")
         lines.append("Reliability.safeModeRequestedForNextLaunch: \(reliability.safeModeRequestedForNextLaunch)")
@@ -7245,7 +7254,11 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         ensureObservers(for: window, coordinator: coordinator)
         coordinator.lastTranslucentEnabled = translucentEnabled
         coordinator.lastTranslucencyModeRaw = translucencyModeRaw
-        enforceResizableSettingsWindowBounds(on: window)
+        let isInitialLayout = !coordinator.didInitialApply
+
+        if isInitialLayout {
+            enforceResizableSettingsWindowBounds(on: window)
+        }
 
         if !coordinator.didConfigureWindowChrome {
             // Configure native Settings chrome once. Reassigning toolbarStyle on every
@@ -7258,18 +7271,14 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
                 window.titlebarSeparatorStyle = .none
             }
             window.representedURL = nil
+            window.styleMask.insert(.fullSizeContentView)
             coordinator.didConfigureWindowChrome = true
         }
-        // Keep the titlebar and content surface in the same transparency mode
-        // when the preference changes while Settings is already open.
+        // Changing the full-size content-view style mask causes AppKit to relayout
+        // the Settings window. Keep it stable and update only visual properties.
         window.titlebarAppearsTransparent = translucentEnabled
-        if translucentEnabled {
-            window.styleMask.insert(.fullSizeContentView)
-        } else {
-            window.styleMask.remove(.fullSizeContentView)
-        }
-        clampSettingsWindowToVisibleFrame(window)
-        if coordinator.stableTopEdge == nil {
+        if isInitialLayout {
+            clampSettingsWindowToVisibleFrame(window)
             coordinator.stableTopEdge = window.frame.maxY
         }
         if let preferredContentHeight,
@@ -7301,9 +7310,6 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         let settingsSurfaceColor = translucencyEnabledColor(enabled: translucentEnabled)
         window.backgroundColor = settingsSurfaceColor
         window.titlebarAppearsTransparent = translucentEnabled
-        if translucentEnabled {
-            window.styleMask.insert(.fullSizeContentView)
-        }
         window.contentView?.wantsLayer = true
         window.contentView?.layer?.backgroundColor = settingsSurfaceColor.cgColor
         coordinator.didInitialApply = true

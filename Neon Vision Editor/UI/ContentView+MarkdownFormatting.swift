@@ -131,10 +131,18 @@ extension ContentView {
         // inside the top safe-area host reserves an opaque-looking row and
         // prevents the document from remaining visible underneath.
         return false
-#elseif os(visionOS)
+        #elseif os(visionOS)
         return shouldShowMarkdownFormattingControls
+        #else
+        return false
+        #endif
+    }
+
+    var markdownFormattingOverlayTopInset: CGFloat {
+#if os(macOS)
+        54
 #else
-        return shouldShowMarkdownFormattingControls
+        0
 #endif
     }
 
@@ -151,6 +159,11 @@ extension ContentView {
         }
 #else
         markdownFormattingToolbar
+            .background(.regularMaterial, in: Capsule(style: .continuous))
+            .overlay(
+                Capsule(style: .continuous)
+                    .strokeBorder(.primary.opacity(0.12))
+            )
 #endif
     }
 
@@ -162,7 +175,7 @@ extension ContentView {
                     markdownFormattingMenuItems(primaryOnly: false)
                 } label: {
                     Image(systemName: "textformat")
-                        .frame(width: 28, height: 28)
+                        .frame(width: 24, height: 24)
                 }
                 .accessibilityLabel("Markdown Formatting")
                 .menuStyle(.borderlessButton)
@@ -171,14 +184,14 @@ extension ContentView {
                     markdownFormattingToolbarCollapsed = false
                 } label: {
                     Image(systemName: "chevron.down")
-                        .frame(width: 24, height: 28)
+                        .frame(width: 20, height: 24)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Expand Markdown Formatting Toolbar")
             }
-            .padding(4)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(2)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
         } else {
             markdownFormattingCapsule
         }
@@ -228,8 +241,6 @@ extension ContentView {
             .accessibilityLabel("Collapse Markdown Formatting Toolbar")
         }
         .padding(4)
-        .background(.thinMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(.primary.opacity(0.08)))
     }
 
     @ViewBuilder

@@ -583,6 +583,9 @@ struct ContentView: View {
 #else
     @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = false
 #endif
+#if os(macOS)
+    @AppStorage("SettingsOpaqueEditorSurfaceMac") var opaqueEditorSurfaceMac: Bool = true
+#endif
 #if os(iOS) || os(visionOS)
     @State private var previousKeyboardAccessoryVisibility: Bool? = nil
     @State var markdownPreviewSheetDetent: PresentationDetent = .medium
@@ -1124,6 +1127,18 @@ struct ContentView: View {
             )
         )
     }
+    private var macOpaqueEditorCanvasColor: Color {
+        currentEditorTheme(colorScheme: colorScheme).background
+    }
+    private var macEditorSurfaceBackgroundStyle: AnyShapeStyle {
+        if enableTranslucentWindow {
+            return AnyShapeStyle(Color.clear)
+        }
+        if opaqueEditorSurfaceMac {
+            return AnyShapeStyle(macOpaqueEditorCanvasColor)
+        }
+        return AnyShapeStyle(macSolidSurfaceColor)
+    }
     private var macChromeBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
             return macUnifiedTranslucentMaterialStyle
@@ -1172,12 +1187,20 @@ struct ContentView: View {
 
     var editorSurfaceBackgroundStyle: AnyShapeStyle {
 #if os(macOS)
-        return macUnifiedTranslucentMaterialStyle
+        return macEditorSurfaceBackgroundStyle
 #else
         if useIOSUnifiedSolidSurfaces {
             return AnyShapeStyle(iOSNonTranslucentSurfaceColor)
         }
         return enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear)
+#endif
+    }
+
+    var editorTranslucentBackgroundEnabled: Bool {
+#if os(macOS)
+        enableTranslucentWindow || !opaqueEditorSurfaceMac
+#else
+        enableTranslucentWindow
 #endif
     }
 
@@ -4250,7 +4273,7 @@ struct ContentView: View {
             fontName: editorFontName,
             lineHeightMultiplier: editorLineHeight,
             isReadOnly: isReadOnly,
-            translucentBackgroundEnabled: enableTranslucentWindow,
+            translucentBackgroundEnabled: editorTranslucentBackgroundEnabled,
             showsLineNumbers: showLineNumbers,
             highlightCurrentLine: effectiveHighlightCurrentLine,
             lineWrapEnabled: lineWrapEnabled.wrappedValue,
@@ -4310,7 +4333,7 @@ struct ContentView: View {
             isLineWrapEnabled: lineWrapEnabled,
             isLargeFileMode: effectiveLargeFileModeEnabled,
             showsCodeMinimap: effectiveShowCodeMinimap && supportsCodeMinimap(language: language),
-            translucentBackgroundEnabled: enableTranslucentWindow,
+            translucentBackgroundEnabled: editorTranslucentBackgroundEnabled,
             showKeyboardAccessoryBar: {
 #if os(iOS) || os(visionOS)
                 showKeyboardAccessoryBarIOS || keyboardShortcutAccessoryBarIsVisible
@@ -4567,9 +4590,14 @@ struct ContentView: View {
                 }
 #endif
 
-                if shouldShowMarkdownFormattingControls && !shouldOverlayMarkdownFormattingControls {
-                    markdownFormattingControlBar
-                }
+                    if shouldShowMarkdownFormattingControls
+                        && (!shouldOverlayMarkdownFormattingControls || shouldPlaceMarkdownFormattingBelowTabs) {
+                        HStack(spacing: 0) {
+                            Spacer(minLength: 0)
+                            markdownFormattingControlBar
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
 
                 if (isDelimitedFileLanguage || isPlistDocument || isAppleCrashReportDocument || isLogDocument) && !brainDumpLayoutEnabled {
                     structuredDataModeControl
@@ -4687,6 +4715,7 @@ struct ContentView: View {
             .overlay(alignment: markdownFormattingOverlayAlignment) {
                 if shouldOverlayMarkdownFormattingControls && !shouldPlaceMarkdownFormattingBelowTabs {
                     markdownFormattingControlBar
+                        .padding(.top, markdownFormattingOverlayTopInset)
                 }
             }
 
@@ -4956,6 +4985,11 @@ struct ContentView: View {
             // Force immediate recolor when translucency changes so syntax highlighting stays visible.
             highlightRefreshToken &+= 1
         }
+#if os(macOS)
+        .onChange(of: opaqueEditorSurfaceMac) { _, _ in
+            highlightRefreshToken &+= 1
+        }
+#endif
         .onChange(of: settingsThemeHexOverridesData) { _, _ in
             applyWindowTranslucency(enableTranslucentWindow)
             highlightRefreshToken &+= 1

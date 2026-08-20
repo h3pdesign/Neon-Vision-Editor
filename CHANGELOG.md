@@ -4,6 +4,36 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.5.0] - 2026-08-20
+
+### Why Upgrade
+
+- Makes the macOS virtual editor more dependable for selection, keyboard navigation, and tab closing.
+- Restores complete editor theme customization, including canvas, text, cursor, selection, and gutter colors.
+- Adds a polished code-snapshot workflow with more themes and export sizes for sharing source excerpts.
+
+### Highlights
+
+- Adds ten code-snapshot themes, gradient and transparent backgrounds, configurable window details, typography, padding, corners, and responsive export sizes.
+- Adds an opaque editor canvas option for true theme backgrounds while retaining translucent sidebars and window chrome.
+- Keeps the Markdown formatting toolbar available as a compact translucent control directly below the macOS tab bar.
+
+### Fixes
+
+- Aligns line numbers to the first visual row of wrapped content at every supported editor font size and line height.
+- Makes Up and Down arrow navigation move the caret between visual rows, including wrapped text and viewport transitions.
+- Routes Command-W from the editor to the selected tab and preserves the unsaved-changes confirmation instead of closing the window.
+- Applies selected theme colors consistently to editor text, canvas, line numbers, caret, selection, marked text, and input-method text.
+- Restores complete multi-line selection rendering in the virtual editor without sacrificing row virtualization performance.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.4.6] - 2026-08-16
 
 ### Why Upgrade

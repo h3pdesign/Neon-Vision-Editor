@@ -1,11 +1,20 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-08-16 (v1.4.6 release-aligned architecture)
+Last updated: 2026-08-20 (v1.5.0 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v1.5.0 (2026-08-20)
+
+- Adds ten code-snapshot themes, gradient and transparent backgrounds, configurable window details, typography, padding, corners, and responsive export sizes.
+- Adds an opaque editor canvas option for true theme backgrounds while retaining translucent sidebars and window chrome.
+- Keeps the Markdown formatting toolbar available as a compact translucent control directly below the macOS tab bar.
+- Aligns line numbers to the first visual row of wrapped content at every supported editor font size and line height.
+- Makes Up and Down arrow navigation move the caret between visual rows, including wrapped text and viewport transitions.
+- Routes Command-W from the editor to the selected tab and preserves the unsaved-changes confirmation instead of closing the window.
 
 ### v1.4.6 (2026-08-16)
 
@@ -15,13 +24,6 @@ Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and vision
 - Preserves correct token ranges for Unicode text containing embedded CSS or JavaScript.
 - Hides Markdown controls and branding in compact Finder previews without removing them from the expanded Quick Look experience.
 - Replaces loosely aligned icon-only Markdown actions with an aligned Preview, Source, and Contents control group.
-
-### v1.4.5 (2026-08-16)
-
-- Makes the active editor viewport width authoritative for virtual-row layout and fragment caching.
-- Prevents virtual rows from being cached using the canvas's previous width during preview and sidebar transitions.
-- Stops overlay scrollbars from reserving an uneditable strip inside the editor viewport.
-- Invalidates cached row fragments when their wrapping width or wrap mode no longer matches the active viewport.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

@@ -118,7 +118,21 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.4.6</h2><span class="date">16 August 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.5.0</h2><span class="date">20 August 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds ten code-snapshot themes, gradient and transparent backgrounds, configurable window details, typography, padding, corners, and responsive export sizes.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds an opaque editor canvas option for true theme backgrounds while retaining translucent sidebars and window chrome.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Keeps the Markdown formatting toolbar available as a compact translucent control directly below the macOS tab bar.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Aligns line numbers to the first visual row of wrapped content at every supported editor font size and line height.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Makes Up and Down arrow navigation move the caret between visual rows, including wrapped text and viewport transitions.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Routes Command-W from the editor to the selected tab and preserves the unsaved-changes confirmation instead of closing the window.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Applies selected theme colors consistently to editor text, canvas, line numbers, caret, selection, marked text, and input-method text.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Restores complete multi-line selection rendering in the virtual editor without sacrificing row virtualization performance.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.4.6</h2><span class="date">16 August 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Adds dedicated Quick Look highlighting for SQL, TeX, configuration files, strings files, delimited data, logs, notebooks, Dockerfiles, and Makefiles.</p></div>
           <div class="item"><span class="badge new">New</span><p>Adds a post-release documentation workflow that waits for publication to settle, repairs release drift, validates the result, and creates a signed update when needed.</p></div>

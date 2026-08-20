@@ -2563,15 +2563,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.4.6",
-            subtitle: "Release highlights for v1.4.6.",
+            title: "What’s New in v1.5.0",
+            subtitle: "Release highlights for v1.5.0.",
             bullets: [
-                "Editor Improvements: Gives Finder Quick Look previews meaningful syntax colors across more supported languages and file types.",
-                "Editor Navigation: Keeps compact Finder previews focused on content while retaining navigation controls in the full Quick Look window.",
-                "Performance Updates: Makes Markdown preview controls clearer, consistently aligned, and easier to identify.",
-                "Usability Updates: Adds dedicated Quick Look highlighting for SQL, TeX, configuration files, strings files, delimited data, logs, notebooks…",
-                "Editor Improvements: Adds a post-release documentation workflow that waits for publication to settle, repairs release drift, validates the…",
-                "Workflow Refinements: Prevents supported Quick Look languages from falling back to mostly one-color plain text."
+                "Editor Navigation: Makes the macOS virtual editor more dependable for selection, keyboard navigation, and tab closing.",
+                "Workflow Refinements: Restores complete editor theme customization, including canvas, text, cursor, selection, and gutter colors.",
+                "Performance Updates: Adds a polished code-snapshot workflow with more themes and export sizes for sharing source excerpts.",
+                "Editor Performance: Adds ten code-snapshot themes, gradient and transparent backgrounds, configurable window details, typography, padding…",
+                "Editor Improvements: Adds an opaque editor canvas option for true theme backgrounds while retaining translucent sidebars and window chrome.",
+                "Workflow Refinements: Keeps the Markdown formatting toolbar available as a compact translucent control directly below the macOS tab bar."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

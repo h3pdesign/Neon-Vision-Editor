@@ -585,6 +585,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.4.4": ("Zuverlässige Tastaturaktionen", "Zeigt Bearbeitungsaktionen über der Bildschirmtastatur und erhält den Zeilenumbruch bei Vorschau- und Seitenleistenwechseln.", ["Editor", "Tastatur", "iPhone"]),
         "v1.4.5": ("Editorbreite bleibt korrekt", "Hält den gesamten macOS-Editor nach Vorschau- und Seitenleistenwechseln beschreibbar und stellt den Zeilenumbruch sofort wieder her.", ["Editor", "Zeilenumbruch", "macOS"]),
         "v1.4.6": ("Quick Look zeigt mehr Syntaxfarben", "Erweitert die Syntaxfarben für unterstützte Dateitypen und hält kompakte Finder-Vorschauen frei von zusätzlichen Bedienelementen.", ["Quick Look", "Syntax", "macOS"]),
+        "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
         "v1.3.6": ("Quick Look og indstillinger bliver mere stabile", "Forfiner Quick Look og størrelsestilpasningen af macOS-indstillingsvinduet for et roligere arbejdsforløb.", ["Quick Look", "Indstillinger", "macOS"]),
@@ -595,6 +596,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.4.4": ("Pålidelige tastaturhandlinger", "Viser redigeringshandlinger over skærmtastaturet og bevarer linjeskift ved skift af forhåndsvisning og sidepanel.", ["Editor", "Tastatur", "iPhone"]),
         "v1.4.5": ("Korrekt editorbredde", "Holder hele macOS-editoren skrivbar efter skift af forhåndsvisning og sidepanel og gendanner linjeombrydning med det samme.", ["Editor", "Linjeombrydning", "macOS"]),
         "v1.4.6": ("Flere syntaksfarver i Quick Look", "Udvider syntaksfarverne til understøttede filtyper og holder kompakte Finder-forhåndsvisninger fri for ekstra betjeningselementer.", ["Quick Look", "Syntaks", "macOS"]),
+        "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
         "v1.3.6": ("Quick Look et les réglages gagnent en stabilité", "Affine Quick Look et l’adaptation de taille de la fenêtre Réglages sur macOS pour un flux de travail plus calme.", ["Quick Look", "Réglages", "macOS"]),
@@ -605,6 +607,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.4.4": ("Actions clavier fiables", "Affiche les actions d’édition au-dessus du clavier à l’écran et préserve le retour à la ligne lors des changements d’aperçu ou de barre latérale.", ["Éditeur", "Clavier", "iPhone"]),
         "v1.4.5": ("Largeur d’éditeur fiable", "Garde toute la largeur de l’éditeur macOS modifiable après les changements d’aperçu ou de barre latérale et rétablit immédiatement le retour à la ligne.", ["Éditeur", "Retour à la ligne", "macOS"]),
         "v1.4.6": ("Plus de couleurs de syntaxe dans Quick Look", "Étend les couleurs de syntaxe aux types de fichiers pris en charge et garde les aperçus compacts du Finder sans commandes supplémentaires.", ["Quick Look", "Syntaxe", "macOS"]),
+        "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
         "v1.3.6": ("Quick Look y Ajustes ganan estabilidad", "Perfecciona Quick Look y el ajuste de tamaño de la ventana Ajustes de macOS para un flujo de trabajo más tranquilo.", ["Quick Look", "Ajustes", "macOS"]),
@@ -615,6 +618,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.4.4": ("Acciones de teclado fiables", "Muestra acciones de edición sobre el teclado en pantalla y conserva el ajuste de línea al cambiar la vista previa o la barra lateral.", ["Editor", "Teclado", "iPhone"]),
         "v1.4.5": ("Ancho de editor fiable", "Mantiene editable todo el ancho del editor de macOS tras cambiar la vista previa o la barra lateral y restaura de inmediato el ajuste de línea.", ["Editor", "Ajuste de línea", "macOS"]),
         "v1.4.6": ("Más colores de sintaxis en Quick Look", "Amplía los colores de sintaxis para los tipos de archivo compatibles y mantiene las vistas compactas del Finder sin controles adicionales.", ["Quick Look", "Sintaxis", "macOS"]),
+        "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
         "v1.3.6": ("Quick Look と設定がさらに安定", "Quick Look と macOS 設定ウインドウのサイズ調整を改善し、より落ち着いた作業環境にします。", ["Quick Look", "設定", "macOS"]),
@@ -625,6 +629,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.4.4": ("信頼できるキーボード操作", "画面キーボードの上に編集操作を表示し、プレビューやサイドバーの切り替え時も行の折り返しを維持します。", ["エディタ", "キーボード", "iPhone"]),
         "v1.4.5": ("正確なエディタ幅", "プレビューやサイドバーの切り替え後も macOS エディタの全幅で編集でき、行の折り返しをすぐに復元します。", ["エディタ", "行の折り返し", "macOS"]),
         "v1.4.6": ("Quick Look の構文色を拡充", "対応するファイル形式の構文色を増やし、Finder のコンパクトなプレビューでは追加の操作を表示しません。", ["Quick Look", "構文", "macOS"]),
+        "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
         "v1.3.6": ("Quick Look 与设置更加稳定", "优化 Quick Look 和 macOS 设置窗口的尺寸调整，让工作流程更加稳定。", ["Quick Look", "设置", "macOS"]),
@@ -635,6 +640,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.4.4": ("可靠的键盘操作", "在屏幕键盘上方显示编辑操作，并在切换预览或侧边栏时保持自动换行。", ["编辑器", "键盘", "iPhone"]),
         "v1.4.5": ("可靠的编辑器宽度", "切换预览或侧边栏后，macOS 编辑器的整个宽度仍可编辑，并立即恢复自动换行。", ["编辑器", "自动换行", "macOS"]),
         "v1.4.6": ("Quick Look 展示更多语法颜色", "扩展受支持文件类型的语法配色，并让 Finder 的紧凑预览不显示额外控件。", ["Quick Look", "语法", "macOS"]),
+        "v1.5.0": ("编辑器与快照更加可靠", "改进 macOS 编辑器的选择、键盘导航和主题，并扩展代码快照导出功能。", ["编辑器", "主题", "快照"]),
     },
 }
 

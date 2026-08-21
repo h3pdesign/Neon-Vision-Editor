@@ -2563,15 +2563,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.5.0",
-            subtitle: "Release highlights for v1.5.0.",
+            title: "What’s New in v1.5.1",
+            subtitle: "Release highlights for v1.5.1.",
             bullets: [
-                "Editor Navigation: Makes the macOS virtual editor more dependable for selection, keyboard navigation, and tab closing.",
-                "Workflow Refinements: Restores complete editor theme customization, including canvas, text, cursor, selection, and gutter colors.",
-                "Performance Updates: Adds a polished code-snapshot workflow with more themes and export sizes for sharing source excerpts.",
-                "Editor Performance: Adds ten code-snapshot themes, gradient and transparent backgrounds, configurable window details, typography, padding…",
-                "Editor Improvements: Adds an opaque editor canvas option for true theme backgrounds while retaining translucent sidebars and window chrome.",
-                "Workflow Refinements: Keeps the Markdown formatting toolbar available as a compact translucent control directly below the macOS tab bar."
+                "Editor Improvements: Makes Markdown preview themes more vivid, differentiated, and reliable in both light and dark mode.",
+                "Workflow Refinements: Improves project-folder opening and stabilizes the Sparkle update dependency.",
+                "Performance Updates: Keeps live preview and exported Markdown styling aligned across supported appearances.",
+                "Usability Updates: Adds distinct Plasma and Deep Ocean palettes and strengthens High Contrast, Warm Sepia, Nordic Light, Article, Notebook…",
+                "iPhone TOC: Adds theme-specific heading accents, semantic color tokens, richer Markdown component styling, and live-preview/export CSS…",
+                "Workflow Refinements: Keeps legacy theme identifiers compatible while preventing visible theme palette collisions."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

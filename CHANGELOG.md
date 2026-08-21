@@ -10,6 +10,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - Makes Markdown preview themes more vivid, differentiated, and reliable in both light and dark mode.
 - Improves project-folder opening and stabilizes the Sparkle update dependency.
+- Keeps live preview and exported Markdown styling aligned across supported appearances.
 
 ### Highlights
 

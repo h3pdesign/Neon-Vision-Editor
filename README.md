@@ -70,6 +70,7 @@
 ### v1.5.1 Highlights
 
 - Adds distinct Plasma and Deep Ocean palettes and strengthens High Contrast, Warm Sepia, Nordic Light, Article, Notebook, Terminal Notes, and Developer Slate.
+- Adds Ember Glow, Forest Canopy, Ultraviolet, Cobalt, and Mint Paper for a broader set of vivid, differentiated preview styles.
 - Adds theme-specific heading accents, semantic color tokens, richer Markdown component styling, and live-preview/export CSS parity.
 - Keeps legacy theme identifiers compatible while preventing visible theme palette collisions.
 
@@ -359,7 +360,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - **Languages and structured documents:** Swift 6-ready highlighting includes TeX/LaTeX and Typst/CeTZ-aware editing; CSV/TSV, property lists, Apple crash reports, and recognized logs can switch between structured and raw-text views, and plain text can be transformed into validated JSON through an explicit AI-assisted action.
 - **Project and preview workflows:** project-level Markdown/PDF cards reuse the project index for bounded excerpts and thumbnails, while Markdown, HTML, SVG, PDF, and PNG previews remain integrated with the editor.
 - **macOS integration:** the embedded Quick Look extension previews supported Markdown and source files in Finder, and detached Markdown previews can use the same glass treatment without changing editor content.
-- **Latest stable additions (v1.5.1):** Adds distinct Plasma and Deep Ocean palettes and strengthens High Contrast, Warm Sepia, Nordic Light, Article, Notebook, Terminal Notes, and Developer Slate; Adds theme-specific heading accents, semantic color tokens, richer Markdown component styling, and live-preview/export CSS parity; Keeps legacy theme identifiers compatible while preventing visible theme palette collisions.
+- **Latest stable additions (v1.5.1):** Adds distinct Plasma and Deep Ocean palettes and strengthens High Contrast, Warm Sepia, Nordic Light, Article, Notebook, Terminal Notes, and Developer Slate; Adds Ember Glow, Forest Canopy, Ultraviolet, Cobalt, and Mint Paper for a broader set of vivid, differentiated preview styles; Adds theme-specific heading accents, semantic color tokens, richer Markdown component styling, and live-preview/export CSS parity; Keeps legacy theme identifiers compatible while preventing visible theme palette collisions.
 <!-- FEATURE_COVERAGE:END -->
 
 ### Editing Core

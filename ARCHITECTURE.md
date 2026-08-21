@@ -10,11 +10,11 @@ Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and vision
 ### v1.5.1 (2026-08-21)
 
 - Adds distinct Plasma and Deep Ocean palettes and strengthens High Contrast, Warm Sepia, Nordic Light, Article, Notebook, Terminal Notes, and Developer Slate.
+- Adds Ember Glow, Forest Canopy, Ultraviolet, Cobalt, and Mint Paper for a broader set of vivid, differentiated preview styles.
 - Adds theme-specific heading accents, semantic color tokens, richer Markdown component styling, and live-preview/export CSS parity.
 - Keeps legacy theme identifiers compatible while preventing visible theme palette collisions.
 - Separates Neon Editorial and Nordic Light from default palette fallbacks in the affected appearance modes.
 - Adds regression coverage for theme uniqueness, vivid component styling, image captions, and export parity.
-- Pins Sparkle to a reproducible `2.9.5` package version to avoid missing package-product resolution.
 
 ### v1.5.0 (2026-08-20)
 

@@ -67,7 +67,8 @@ final class MarkdownSyntaxHighlightingTests: XCTestCase {
         let visibleIDs = [
             "default", "neon-editorial", "developer-slate", "nordic-light", "solarized",
             "article", "notebook", "high-contrast", "terminal-notes", "warm-sepia",
-            "electric-pop", "aurora", "citrus", "plasma", "deep-ocean"
+            "electric-pop", "aurora", "citrus", "plasma", "deep-ocean", "ember-glow",
+            "forest-canopy", "ultraviolet", "cobalt", "mint-paper"
         ]
         let light = visibleIDs.map { ContentView.MarkdownPreviewSemanticPalette.make(template: $0, dark: false) }
         let dark = visibleIDs.map { ContentView.MarkdownPreviewSemanticPalette.make(template: $0, dark: true) }

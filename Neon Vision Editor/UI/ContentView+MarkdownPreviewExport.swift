@@ -208,7 +208,12 @@ extension ContentView {
         MarkdownPreviewTemplateOption(id: "aurora", title: "Aurora"),
         MarkdownPreviewTemplateOption(id: "citrus", title: "Citrus"),
         MarkdownPreviewTemplateOption(id: "plasma", title: "Plasma"),
-        MarkdownPreviewTemplateOption(id: "deep-ocean", title: "Deep Ocean")
+        MarkdownPreviewTemplateOption(id: "deep-ocean", title: "Deep Ocean"),
+        MarkdownPreviewTemplateOption(id: "ember-glow", title: "Ember Glow"),
+        MarkdownPreviewTemplateOption(id: "forest-canopy", title: "Forest Canopy"),
+        MarkdownPreviewTemplateOption(id: "ultraviolet", title: "Ultraviolet"),
+        MarkdownPreviewTemplateOption(id: "cobalt", title: "Cobalt"),
+        MarkdownPreviewTemplateOption(id: "mint-paper", title: "Mint Paper")
     ]
 
     var markdownPDFExportMode: MarkdownPDFExportMode {
@@ -2109,6 +2114,16 @@ extension ContentView {
                 return Self(bodyBackground: "#180515", contentBackground: "#270a25", contentBorder: "#7e1f69", text: "#fff0fb", heading: "#ffffff", muted: "#d9a6ca", accent: "#ff4d9d", link: "#ffb86b", codeBackground: "#1d071b", codeText: "#ffe6f6", codeBorder: "#9b3283", quoteBackground: "#3a0c2f", quoteBorder: "#a78bfa", tableHeader: "#501244", tableRow: "#32102b", divider: "#8c2a78", shadow: "rgba(48, 3, 39, 0.52)")
             case ("deep-ocean", true):
                 return Self(bodyBackground: "#03101f", contentBackground: "#071e35", contentBorder: "#155486", text: "#e6f7ff", heading: "#f5fcff", muted: "#8db6d2", accent: "#38bdf8", link: "#a5f3fc", codeBackground: "#04172a", codeText: "#dbf4ff", codeBorder: "#1f679a", quoteBackground: "#0a2c48", quoteBorder: "#fbbf24", tableHeader: "#0d3b5f", tableRow: "#092b47", divider: "#21628e", shadow: "rgba(0, 18, 38, 0.52)")
+            case ("ember-glow", true):
+                return Self(bodyBackground: "#1c0808", contentBackground: "#2a100d", contentBorder: "#78352a", text: "#fff1e8", heading: "#fffaf5", muted: "#d7a28f", accent: "#ff7043", link: "#ffb86b", codeBackground: "#200a09", codeText: "#ffe7d6", codeBorder: "#984534", quoteBackground: "#3b1712", quoteBorder: "#ffb347", tableHeader: "#4e1f16", tableRow: "#32130f", divider: "#914130", shadow: "rgba(38, 4, 0, 0.52)")
+            case ("forest-canopy", true):
+                return Self(bodyBackground: "#06150e", contentBackground: "#0c2417", contentBorder: "#23633b", text: "#e9fff0", heading: "#f4fff7", muted: "#8fc6a0", accent: "#7bed9f", link: "#67e8f9", codeBackground: "#071b10", codeText: "#ddffe7", codeBorder: "#2d7a48", quoteBackground: "#10351f", quoteBorder: "#bef264", tableHeader: "#16472a", tableRow: "#0f2e1d", divider: "#347c4b", shadow: "rgba(0, 25, 10, 0.48)")
+            case ("ultraviolet", true):
+                return Self(bodyBackground: "#0d0922", contentBackground: "#171039", contentBorder: "#4e3c96", text: "#f3efff", heading: "#ffffff", muted: "#b9a9e9", accent: "#a78bfa", link: "#67e8f9", codeBackground: "#100b2b", codeText: "#eee8ff", codeBorder: "#6550b5", quoteBackground: "#211650", quoteBorder: "#f472b6", tableHeader: "#2c2064", tableRow: "#1d1546", divider: "#5c49a1", shadow: "rgba(11, 3, 35, 0.56)")
+            case ("cobalt", true):
+                return Self(bodyBackground: "#050d20", contentBackground: "#0b1b3b", contentBorder: "#214c9a", text: "#e7efff", heading: "#f7faff", muted: "#91aee1", accent: "#60a5fa", link: "#93c5fd", codeBackground: "#07132e", codeText: "#e4eeff", codeBorder: "#2b61b5", quoteBackground: "#102653", quoteBorder: "#facc15", tableHeader: "#17346d", tableRow: "#102858", divider: "#3263ae", shadow: "rgba(0, 8, 30, 0.56)")
+            case ("mint-paper", true):
+                return Self(bodyBackground: "#061715", contentBackground: "#0d2522", contentBorder: "#26766a", text: "#e6fff8", heading: "#f2fffb", muted: "#8fc9bd", accent: "#34d399", link: "#93c5fd", codeBackground: "#081c19", codeText: "#dcfff4", codeBorder: "#318f7d", quoteBackground: "#123831", quoteBorder: "#fbbf24", tableHeader: "#185145", tableRow: "#10352e", divider: "#398b79", shadow: "rgba(0, 24, 18, 0.48)")
             case ("high-contrast", true):
                 return Self(bodyBackground: "#000000", contentBackground: "#050505", contentBorder: "#ffffff", text: "#ffffff", heading: "#ffffff", muted: "#e6e6e6", accent: "#ffff00", link: "#00ffff", codeBackground: "#000000", codeText: "#ffffff", codeBorder: "#ffffff", quoteBackground: "#111111", quoteBorder: "#ffff00", tableHeader: "#202020", tableRow: "#101010", divider: "#ffffff", shadow: "transparent")
             case ("warm-sepia", true):
@@ -2135,6 +2150,16 @@ extension ContentView {
                 return Self(bodyBackground: "#fff0f8", contentBackground: "#ffffff", contentBorder: "#f2afd2", text: "#421331", heading: "#2d0924", muted: "#925b7d", accent: "#d91578", link: "#b45309", codeBackground: "#ffedf7", codeText: "#4a1638", codeBorder: "#e6a1c7", quoteBackground: "#f3eeff", quoteBorder: "#7c3aed", tableHeader: "#ffd9ed", tableRow: "#fff7fb", divider: "#e6acd0", shadow: "rgba(125, 25, 91, 0.12)")
             case ("deep-ocean", false):
                 return Self(bodyBackground: "#eef9ff", contentBackground: "#ffffff", contentBorder: "#acd5ed", text: "#12344a", heading: "#062b48", muted: "#5b7e93", accent: "#087ea4", link: "#075985", codeBackground: "#eaf7ff", codeText: "#123a52", codeBorder: "#a8cee4", quoteBackground: "#fff7df", quoteBorder: "#b7791f", tableHeader: "#d8f0fb", tableRow: "#f5fbff", divider: "#a8cee4", shadow: "rgba(8, 74, 112, 0.11)")
+            case ("ember-glow", false):
+                return Self(bodyBackground: "#fff3ed", contentBackground: "#fffdfb", contentBorder: "#efb7a4", text: "#472116", heading: "#35130c", muted: "#8e6254", accent: "#dc4b2f", link: "#b45309", codeBackground: "#fff0e9", codeText: "#542317", codeBorder: "#e2a08c", quoteBackground: "#fff1e8", quoteBorder: "#ea580c", tableHeader: "#ffe0d2", tableRow: "#fff8f4", divider: "#e0a18d", shadow: "rgba(130, 47, 22, 0.12)")
+            case ("forest-canopy", false):
+                return Self(bodyBackground: "#effaf2", contentBackground: "#fcfffd", contentBorder: "#add8b9", text: "#173b25", heading: "#0c2c18", muted: "#5e856a", accent: "#16803c", link: "#0369a1", codeBackground: "#edf9ef", codeText: "#1c4b2a", codeBorder: "#a5cdb0", quoteBackground: "#e3f7e8", quoteBorder: "#16a34a", tableHeader: "#d1efd8", tableRow: "#f5fcf6", divider: "#98c6a2", shadow: "rgba(22, 91, 42, 0.10)")
+            case ("ultraviolet", false):
+                return Self(bodyBackground: "#f5f0ff", contentBackground: "#ffffff", contentBorder: "#d3c4f4", text: "#30204f", heading: "#21113e", muted: "#75649a", accent: "#7c3aed", link: "#0369a1", codeBackground: "#f4efff", codeText: "#3b2860", codeBorder: "#c4b5e8", quoteBackground: "#fceff8", quoteBorder: "#db2777", tableHeader: "#e9ddff", tableRow: "#faf7ff", divider: "#c7b6e8", shadow: "rgba(80, 36, 150, 0.12)")
+            case ("cobalt", false):
+                return Self(bodyBackground: "#eef5ff", contentBackground: "#ffffff", contentBorder: "#b5cdf4", text: "#172f55", heading: "#0a2450", muted: "#5d78a2", accent: "#1d4ed8", link: "#075985", codeBackground: "#edf4ff", codeText: "#173562", codeBorder: "#a9c4ed", quoteBackground: "#fff9df", quoteBorder: "#d97706", tableHeader: "#d9e8ff", tableRow: "#f6f9ff", divider: "#a8c2e9", shadow: "rgba(21, 58, 130, 0.12)")
+            case ("mint-paper", false):
+                return Self(bodyBackground: "#edfff8", contentBackground: "#fbfffd", contentBorder: "#a9ddcc", text: "#153d35", heading: "#0b2d26", muted: "#5c897d", accent: "#059669", link: "#0369a1", codeBackground: "#e9fbf4", codeText: "#194d41", codeBorder: "#9fd4c2", quoteBackground: "#e0f8ee", quoteBorder: "#0f766e", tableHeader: "#ccefe1", tableRow: "#f4fcf8", divider: "#94c9b8", shadow: "rgba(9, 93, 72, 0.10)")
             case ("high-contrast", false):
                 return Self(bodyBackground: "#ffffff", contentBackground: "#ffffff", contentBorder: "#000000", text: "#000000", heading: "#000000", muted: "#222222", accent: "#000000", link: "#0000ee", codeBackground: "#ffffff", codeText: "#000000", codeBorder: "#000000", quoteBackground: "#ffff00", quoteBorder: "#000000", tableHeader: "#e6e6e6", tableRow: "#ffffff", divider: "#000000", shadow: "transparent")
             case ("warm-sepia", false):
@@ -2175,7 +2200,7 @@ extension ContentView {
                 return Self(palette: palette, bodyPadding: "26px 38px", fontSize: "15px", lineHeight: "1.7", contentMaxWidth: "920px", bodyFontFamily: "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif", contentRadius: "12px", blockSpacing: "0.95em", headingSpacing: "1.5em", tableCellPadding: "0.64em 0.82em")
             case "article", "academic-paper", "warm-sepia", "focus-writing":
                 return Self(palette: palette, bodyPadding: "34px 48px", fontSize: "17px", lineHeight: "1.82", contentMaxWidth: "780px", bodyFontFamily: "Charter, \"Iowan Old Style\", \"Palatino Linotype\", serif", contentRadius: "12px", blockSpacing: "1.15em", headingSpacing: "1.85em", tableCellPadding: "0.72em 0.9em")
-            case "electric-pop", "aurora", "citrus", "plasma", "deep-ocean":
+            case "electric-pop", "aurora", "citrus", "plasma", "deep-ocean", "ember-glow", "forest-canopy", "ultraviolet", "cobalt", "mint-paper":
                 return Self(palette: palette, bodyPadding: "30px 42px", fontSize: "16px", lineHeight: "1.72", contentMaxWidth: "900px", bodyFontFamily: "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif", contentRadius: "16px", blockSpacing: "1em", headingSpacing: "1.55em", tableCellPadding: "0.68em 0.86em")
             default:
                 return Self(palette: palette, bodyPadding: "22px 30px", fontSize: "15px", lineHeight: "1.7", contentMaxWidth: "900px", bodyFontFamily: "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif", contentRadius: "14px", blockSpacing: "1em", headingSpacing: "1.5em", tableCellPadding: "0.64em 0.82em")
@@ -2207,6 +2232,16 @@ extension ContentView {
             headingCSS = "h1, h2 { padding-inline-start: 0; border-bottom: 0; } h1::before, h2::before { display: none; } h1 { border-bottom: 2px solid var(--md-accent-color); } h2 { border-bottom: 1px solid color-mix(in srgb, var(--md-link-color) 60%, transparent); } h1::after { content: \"\"; display: block; width: 4em; height: 0.22em; margin-top: 0.3em; background: linear-gradient(90deg, var(--md-accent-color), var(--md-link-color)); clip-path: polygon(0 0, 100% 0, 78% 100%, 0 100%); }"
         case "citrus":
             headingCSS = "h1, h2 { padding-inline-start: 0; border-bottom: 0; } h1::before, h2::before { display: none; } h1 { border-bottom: 3px solid var(--md-accent-color); } h2 { display: flex; align-items: baseline; gap: 0.45em; } h2::after { content: \"*\"; color: var(--md-quote-border); font-size: 0.7em; }"
+        case "ember-glow":
+            headingCSS = "h1, h2 { padding-inline-start: 0.7em; border-inline-start: 0.24em solid var(--md-accent-color); } h1::before, h2::before { display: none; } h1 { border-image: linear-gradient(var(--md-accent-color), var(--md-link-color)) 1; } h2 { border-inline-start-width: 0.14em; border-bottom: 1px solid color-mix(in srgb, var(--md-accent-color) 48%, transparent); }"
+        case "forest-canopy":
+            headingCSS = "h1, h2 { padding-inline-start: 0; border-bottom: 0; } h1::before, h2::before { display: none; } h1::after { content: \"\"; display: block; width: 3.2em; height: 0.18em; margin-top: 0.28em; background: repeating-linear-gradient(90deg, var(--md-accent-color) 0 0.55em, transparent 0.55em 0.82em); } h2 { border-bottom: 2px dotted var(--md-quote-border); }"
+        case "ultraviolet":
+            headingCSS = "h1, h2 { padding-inline-start: 0.5em; border-inline-start: 0.16em solid var(--md-accent-color); } h1::before, h2::before { display: none; } h1 { text-shadow: 0 0 16px color-mix(in srgb, var(--md-accent-color) 45%, transparent); } h2 { border-inline-start-color: var(--md-quote-border); font-style: italic; }"
+        case "cobalt":
+            headingCSS = "h1, h2 { padding-inline-start: 0; border-bottom: 0; } h1::before, h2::before { display: none; } h1 { border-top: 3px double var(--md-accent-color); padding-top: 0.3em; } h2 { border-bottom: 2px solid var(--md-link-color); }"
+        case "mint-paper":
+            headingCSS = "h1, h2 { padding-inline-start: 0.55em; border-inline-start: 0.18em solid var(--md-accent-color); } h1::before, h2::before { display: none; } h1 { border-bottom: 1px dashed var(--md-quote-border); } h2 { border-inline-start-style: dotted; color: var(--md-accent-color); }"
         default:
             headingCSS = ""
         }

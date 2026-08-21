@@ -2570,8 +2570,8 @@ struct WelcomeTourView: View {
                 "Workflow Refinements: Improves project-folder opening and stabilizes the Sparkle update dependency.",
                 "Performance Updates: Keeps live preview and exported Markdown styling aligned across supported appearances.",
                 "Usability Updates: Adds distinct Plasma and Deep Ocean palettes and strengthens High Contrast, Warm Sepia, Nordic Light, Article, Notebook…",
-                "iPhone TOC: Adds theme-specific heading accents, semantic color tokens, richer Markdown component styling, and live-preview/export CSS…",
-                "Workflow Refinements: Keeps legacy theme identifiers compatible while preventing visible theme palette collisions."
+                "Editor Improvements: Adds Ember Glow, Forest Canopy, Ultraviolet, Cobalt, and Mint Paper for a broader set of vivid, differentiated preview styles.",
+                "iPhone TOC: Adds theme-specific heading accents, semantic color tokens, richer Markdown component styling, and live-preview/export CSS…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

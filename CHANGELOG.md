@@ -15,6 +15,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Highlights
 
 - Adds distinct Plasma and Deep Ocean palettes and strengthens High Contrast, Warm Sepia, Nordic Light, Article, Notebook, Terminal Notes, and Developer Slate.
+- Adds Ember Glow, Forest Canopy, Ultraviolet, Cobalt, and Mint Paper for a broader set of vivid, differentiated preview styles.
 - Adds theme-specific heading accents, semantic color tokens, richer Markdown component styling, and live-preview/export CSS parity.
 - Keeps legacy theme identifiers compatible while preventing visible theme palette collisions.
 

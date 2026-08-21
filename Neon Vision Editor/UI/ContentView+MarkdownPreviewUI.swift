@@ -199,12 +199,17 @@ extension ContentView {
         case "developer-slate", "developer-spec", "api-reference": return Color(red: 0.33, green: 0.90, blue: 0.74)
         case "nordic-light", "docs", "minimal-reader": return Color(red: 0.06, green: 0.46, blue: 0.43)
         case "solarized", "blueprint", "notebook": return Color(red: 0.16, green: 0.63, blue: 0.60)
-        case "article", "academic-paper", "warm-sepia": return Color(red: 0.55, green: 0.26, blue: 0.35)
+        case "article", "academic-paper": return Color(red: 0.55, green: 0.26, blue: 0.35)
         case "electric-pop": return Color(red: 0.88, green: 0.09, blue: 0.55)
         case "aurora": return Color(red: 0.03, green: 0.50, blue: 0.40)
         case "citrus": return Color(red: 0.85, green: 0.47, blue: 0.02)
         case "plasma": return Color(red: 0.85, green: 0.08, blue: 0.47)
         case "deep-ocean": return Color(red: 0.03, green: 0.49, blue: 0.78)
+        case "ember-glow": return Color(red: 1.0, green: 0.44, blue: 0.26)
+        case "forest-canopy": return Color(red: 0.48, green: 0.93, blue: 0.62)
+        case "ultraviolet": return Color(red: 0.65, green: 0.55, blue: 0.98)
+        case "cobalt": return Color(red: 0.38, green: 0.65, blue: 0.98)
+        case "mint-paper": return Color(red: 0.20, green: 0.83, blue: 0.60)
         case "high-contrast": return Color.black
         case "warm-sepia": return Color(red: 0.66, green: 0.36, blue: 0.14)
         default: return Color.accentColor

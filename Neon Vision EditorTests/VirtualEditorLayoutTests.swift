@@ -27,6 +27,34 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(index.rowOrigin(forLogicalLine: 99), 198)
     }
 
+    func testScrollAnchorPolicyLoadsTheFinalDocumentLineAtTheBottom() {
+        XCTAssertEqual(
+            VirtualEditorScrollAnchorPolicy.anchorLine(
+                scrollY: 1_000,
+                lineHeight: 20,
+                estimatedRowsPerLogicalLine: 1.5,
+                prefetchLines: 20,
+                documentLineCount: 10_000,
+                isAtBottom: true
+            ),
+            9_999
+        )
+    }
+
+    func testScrollAnchorPolicyPrefetchesAboveTheVisibleViewport() {
+        XCTAssertEqual(
+            VirtualEditorScrollAnchorPolicy.anchorLine(
+                scrollY: 1_000,
+                lineHeight: 20,
+                estimatedRowsPerLogicalLine: 1.5,
+                prefetchLines: 20,
+                documentLineCount: 10_000,
+                isAtBottom: false
+            ),
+            13
+        )
+    }
+
     func testVisualRowEstimateSmoothingIsBoundedAndExplicit() {
         XCTAssertEqual(
             VirtualEditorVisualRowIndex.smoothedEstimate(previous: 1, observed: 3),

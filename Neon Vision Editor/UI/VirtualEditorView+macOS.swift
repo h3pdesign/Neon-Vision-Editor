@@ -123,6 +123,24 @@ struct VirtualEditorVisualRowIndex {
     }
 }
 
+enum VirtualEditorScrollAnchorPolicy {
+    static func anchorLine(
+        scrollY: CGFloat,
+        lineHeight: CGFloat,
+        estimatedRowsPerLogicalLine: CGFloat,
+        prefetchLines: Int,
+        documentLineCount: Int,
+        isAtBottom: Bool
+    ) -> Int {
+        if isAtBottom {
+            return max(0, documentLineCount - 1)
+        }
+
+        let rowHeight = max(1, lineHeight * max(1, estimatedRowsPerLogicalLine))
+        return max(0, Int(scrollY / rowHeight) - max(0, prefetchLines))
+    }
+}
+
 /// The macOS production editor surface. It intentionally does not use NSTextView
 /// or TextKit: only a bounded EditorDocument viewport is decoded and laid out.
 struct VirtualEditorView: NSViewRepresentable {
@@ -633,6 +651,10 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     var lastScrollY: CGFloat = -1
     var lastReloadAnchorLine = -1
     private var estimatedRowsPerLogicalLine: CGFloat = 1
+    private var configuredContentRevision: Int?
+    private var configuredExternalContentRevision: Int?
+    private let viewportMaximumByteCount = 256_000
+    private let editRefreshMaximumByteCount = 128_000
     private var lineHeight: CGFloat { max(1, (editorFont.ascender - editorFont.descender + editorFont.leading + 4) * lineHeightMultiplier) }
     private var editorFont: NSFont { resolvedEditorFont }
     private var gutterWidth: CGFloat { max(44, CGFloat(max(1, document?.lineCount ?? 1).description.count) * editorFontSize * 0.7 + 18) }
@@ -662,7 +684,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             return
         }
         let rows = visualRows()
-        let logicalLines = max(1, lineStarts.count - 1)
+        let logicalLines = max(1, Set(rows.map(\.logicalLine)).count)
         let observed = CGFloat(max(1, rows.count)) / CGFloat(logicalLines)
         if abs(observed - estimatedRowsPerLogicalLine) > 0.05 {
             estimatedRowsPerLogicalLine = VirtualEditorVisualRowIndex.smoothedEstimate(
@@ -842,7 +864,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let previousResourceID = self.resourceID
         let previousDocumentID = self.documentID
         let isNewDocument = previousResourceID != resourceID || previousDocumentID != documentID
-        let key = "\(resourceID)|\(contentRevision)|\(externalContentRevision)|\(document?.utf16Length ?? 0)|\(language)|\(fontSize)|\(fontName)|\(lineHeightMultiplier)|\(colorScheme)|\(syntaxThemeKey(for: colorScheme))|\(editorBaseThemeKey(for: colorScheme))|\(document?.isDirty ?? false)|\(translucentBackgroundEnabled)|\(showsLineNumbers)|\(highlightCurrentLine)|\(lineWrapEnabled)|\(showsInvisibleCharacters)|\(showsIndentationGuides)|\(showsScopeGuides)|\(highlightsScopeBackground)|\(highlightsMatchingBrackets)|\(autoIndentEnabled)|\(autoCloseBracketsEnabled)"
+        let key = "\(resourceID)|\(document?.utf16Length ?? 0)|\(language)|\(fontSize)|\(fontName)|\(lineHeightMultiplier)|\(colorScheme)|\(syntaxThemeKey(for: colorScheme))|\(editorBaseThemeKey(for: colorScheme))|\(document?.isDirty ?? false)|\(translucentBackgroundEnabled)|\(showsLineNumbers)|\(highlightCurrentLine)|\(lineWrapEnabled)|\(showsInvisibleCharacters)|\(showsIndentationGuides)|\(showsScopeGuides)|\(highlightsScopeBackground)|\(highlightsMatchingBrackets)|\(autoIndentEnabled)|\(autoCloseBracketsEnabled)"
+        let contentChanged = configuredContentRevision != contentRevision || configuredExternalContentRevision != externalContentRevision
         self.document = document
         self.documentID = documentID
         self.resourceID = resourceID
@@ -872,8 +895,21 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             pendingFontSizeDelta = 0
             layoutCache.removeAll()
         }
+        if key == lastConfigurationKey {
+            configuredContentRevision = contentRevision
+            configuredExternalContentRevision = externalContentRevision
+            guard contentChanged else { return }
+            reloadViewport(anchorLine: lineForAbsoluteOffset(absoluteCaret), maximumByteCount: editRefreshMaximumByteCount)
+            recalculateVisualMetrics()
+            setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
+            needsLayout = true
+            needsDisplay = true
+            return
+        }
         guard key != lastConfigurationKey else { return }
         lastConfigurationKey = key
+        configuredContentRevision = contentRevision
+        configuredExternalContentRevision = externalContentRevision
         viewport = nil
         viewportText = ""
         lineStarts = [0]
@@ -1463,7 +1499,6 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             absoluteCaret = location + value.utf16.count
             selection = NSRange(location: absoluteCaret, length: 0)
             selectionAnchor = nil
-            reloadViewport(anchorLine: lineForAbsoluteOffset(absoluteCaret))
             publishCaret()
             publishTextChange()
             return
@@ -1486,7 +1521,6 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         absoluteCaret = selection.location + value.utf16.count
         selection = NSRange(location: absoluteCaret, length: 0)
         selectionAnchor = nil
-        reloadViewport(anchorLine: viewportLineOrigin)
         _ = document
         publishCaret()
         publishTextChange()
@@ -1567,7 +1601,6 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         absoluteCaret = location + replacement.utf16.count
         selection = NSRange(location: absoluteCaret, length: 0)
         selectionAnchor = nil
-        reloadViewport(anchorLine: viewportLineOrigin)
         publishCaret()
         publishTextChange()
     }
@@ -1816,13 +1849,26 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     func reloadViewportIfNeeded(scrollY: CGFloat) {
-        let target = max(0, Int(scrollY / max(lineHeight, lineHeight * estimatedRowsPerLogicalLine)) - 20)
+        let visibleHeight = enclosingScrollView?.contentView.bounds.height ?? 0
+        let maximumY = max(0, logicalHeight - visibleHeight)
+        let isAtBottom = scrollY >= maximumY - max(1, lineHeight)
+        let target = VirtualEditorScrollAnchorPolicy.anchorLine(
+            scrollY: scrollY,
+            lineHeight: lineHeight,
+            estimatedRowsPerLogicalLine: estimatedRowsPerLogicalLine,
+            prefetchLines: 20,
+            documentLineCount: document?.lineCount ?? 1,
+            isAtBottom: isAtBottom
+        )
         guard target < viewportLineOrigin || target >= viewportLineOrigin + lineStarts.count - 20 else { return }
         reloadViewport(anchorLine: target)
     }
 
-    private func reloadViewport(anchorLine: Int) {
-        guard let document, let next = try? document.viewport(aroundLine: max(0, anchorLine), maximumByteCount: 256_000) else { return }
+    private func reloadViewport(anchorLine: Int, maximumByteCount: Int? = nil) {
+        guard let document, let next = try? document.viewport(
+            aroundLine: max(0, anchorLine),
+            maximumByteCount: maximumByteCount ?? viewportMaximumByteCount
+        ) else { return }
         if let documentID {
             EditorPerformanceMonitor.shared.markViewportLoaded(tabID: documentID)
         }

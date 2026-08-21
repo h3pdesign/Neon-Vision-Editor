@@ -45,6 +45,27 @@ final class FileBackedTextDocumentTests: XCTestCase {
         XCTAssertGreaterThan(window.lineRange.lowerBound, 0)
     }
 
+    func testTwoHundredKilobyteMarkdownSupportsEditsAcrossTheDocument() throws {
+        let line = "The editor must keep a large Markdown document responsive while the user edits it.\n"
+        let source = String(repeating: line, count: 3_000)
+        XCTAssertGreaterThan(source.utf8.count, 200_000)
+
+        let url = directory.appendingPathComponent("large-markdown.md")
+        try source.write(to: url, atomically: true, encoding: .utf8)
+        let document = try FileBackedTextDocument(url: url, knownUTF8Encoding: .utf8)
+        try document.prepareViewportIndex()
+
+        var viewport = try document.viewport(aroundLine: 0, maximumByteCount: 128_000)
+        try document.replace(in: viewport, utf16Range: NSRange(location: 0, length: 0), with: "# Edited at the beginning\n")
+
+        viewport = try document.viewport(aroundLine: document.lineCount / 2, maximumByteCount: 128_000)
+        try document.replace(in: viewport, utf16Range: NSRange(location: 0, length: 0), with: "edited ")
+
+        let finalViewport = try document.viewport(aroundLine: document.lineCount - 1, maximumByteCount: 128_000)
+        XCTAssertLessThanOrEqual(finalViewport.text.utf8.count, 128_000)
+        XCTAssertTrue(finalViewport.text.contains("The editor must keep"))
+    }
+
     func testViewportCarriesAbsoluteUTF16OffsetForVirtualRendererEdits() throws {
         let document = FileBackedTextDocument(content: "zero\n😀 one\ntwo\nthree\n")
 

@@ -4,6 +4,33 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.5.1] - 2026-08-21
+
+### Why Upgrade
+
+- Makes Markdown preview themes more vivid, differentiated, and reliable in both light and dark mode.
+- Improves project-folder opening and stabilizes the Sparkle update dependency.
+
+### Highlights
+
+- Adds distinct Plasma and Deep Ocean palettes and strengthens High Contrast, Warm Sepia, Nordic Light, Article, Notebook, Terminal Notes, and Developer Slate.
+- Adds theme-specific heading accents, semantic color tokens, richer Markdown component styling, and live-preview/export CSS parity.
+- Keeps legacy theme identifiers compatible while preventing visible theme palette collisions.
+
+### Fixes
+
+- Separates Neon Editorial and Nordic Light from default palette fallbacks in the affected appearance modes.
+- Adds regression coverage for theme uniqueness, vivid component styling, image captions, and export parity.
+- Pins Sparkle to a reproducible `2.9.5` package version to avoid missing package-product resolution.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.5.0] - 2026-08-20
 
 ### Why Upgrade

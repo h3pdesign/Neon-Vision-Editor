@@ -15,6 +15,88 @@ final class MarkdownSyntaxHighlightingTests: XCTestCase {
         )
     }
 
+    func testMarkdownPreviewSemanticPalettesProvideDistinctLightAndDarkSurfaces() {
+        let light = ContentView.MarkdownPreviewSemanticPalette.make(template: "neon-editorial", dark: false)
+        let dark = ContentView.MarkdownPreviewSemanticPalette.make(template: "neon-editorial", dark: true)
+
+        XCTAssertNotEqual(light.bodyBackground, dark.bodyBackground)
+        XCTAssertNotEqual(light.contentBackground, dark.contentBackground)
+        XCTAssertNotEqual(light.link, dark.link)
+        XCTAssertFalse(ContentView.markdownPreviewSemanticCSS(template: "developer-slate", dark: true).isEmpty)
+    }
+
+    func testMarkdownPreviewSemanticCSSDefinesCoreReadableComponents() {
+        let css = ContentView.markdownPreviewSemanticCSS(template: "solarized", dark: false)
+
+        XCTAssertTrue(css.contains("--md-heading-color"))
+        XCTAssertTrue(css.contains("--md-code-background"))
+        XCTAssertTrue(css.contains(".code-block-toolbar"))
+        XCTAssertTrue(css.contains("tbody tr:nth-child(even)"))
+    }
+
+    func testMarkdownPreviewThemeExtractsTypographyAndLayoutTokens() {
+        let theme = ContentView.MarkdownPreviewTheme.make(template: "developer-slate", dark: true)
+
+        XCTAssertEqual(theme.fontSize, "15px")
+        XCTAssertEqual(theme.lineHeight, "1.65")
+        XCTAssertEqual(theme.contentMaxWidth, "980px")
+        XCTAssertTrue(ContentView.markdownPreviewSemanticCSS(template: "developer-slate", dark: true).contains("--md-body-padding"))
+    }
+
+    func testMarkdownPreviewVividThemesAndComponentRulesAreDistinct() {
+        let vividIDs = ["electric-pop", "aurora", "citrus", "plasma", "deep-ocean"]
+        let palettes = vividIDs.map { ContentView.MarkdownPreviewSemanticPalette.make(template: $0, dark: true) }
+        XCTAssertEqual(Set(palettes.map(\.accent)).count, vividIDs.count)
+        XCTAssertEqual(Set(palettes.map(\.bodyBackground)).count, vividIDs.count)
+
+        let css = ContentView.markdownPreviewSemanticCSS(template: "electric-pop", dark: true)
+        for token in ["linear-gradient", ".content > p:first-of-type", "text-underline-offset", "checkbox", "position: sticky", ".markdown-image", "--md-table-cell-padding"] {
+            XCTAssertTrue(css.contains(token), "Vivid theme is missing \(token)")
+        }
+        XCTAssertTrue(ContentView.markdownPreviewSemanticCSS(template: "developer-slate", dark: true).contains(".content > p:first-of-type { margin-top"))
+        XCTAssertFalse(ContentView.markdownPreviewSemanticCSS(template: "developer-slate", dark: true).contains("font-size: 1.1em"))
+        XCTAssertTrue(ContentView.markdownPreviewSemanticCSS(template: "high-contrast", dark: true).contains("#000000"))
+        XCTAssertTrue(ContentView.markdownPreviewSemanticCSS(template: "warm-sepia", dark: false).contains("#f3e6d2"))
+        XCTAssertNotEqual(
+            ContentView.markdownPreviewSemanticCSS(template: "electric-pop", dark: true),
+            ContentView.markdownPreviewSemanticCSS(template: "developer-slate", dark: true)
+        )
+    }
+
+    func testVisibleMarkdownThemesHaveDistinctSemanticAccents() {
+        let visibleIDs = [
+            "default", "neon-editorial", "developer-slate", "nordic-light", "solarized",
+            "article", "notebook", "high-contrast", "terminal-notes", "warm-sepia",
+            "electric-pop", "aurora", "citrus", "plasma", "deep-ocean"
+        ]
+        let light = visibleIDs.map { ContentView.MarkdownPreviewSemanticPalette.make(template: $0, dark: false) }
+        let dark = visibleIDs.map { ContentView.MarkdownPreviewSemanticPalette.make(template: $0, dark: true) }
+
+        XCTAssertEqual(Set(light.map(\.accent)).count, visibleIDs.count, light.map(\.accent).description)
+        XCTAssertEqual(Set(dark.map(\.accent)).count, visibleIDs.count, dark.map(\.accent).description)
+        XCTAssertNotEqual(ContentView.MarkdownPreviewSemanticPalette.make(template: "article", dark: false).accent, ContentView.MarkdownPreviewSemanticPalette.make(template: "default", dark: false).accent)
+        XCTAssertNotEqual(ContentView.MarkdownPreviewSemanticPalette.make(template: "notebook", dark: true).accent, ContentView.MarkdownPreviewSemanticPalette.make(template: "solarized", dark: true).accent)
+        XCTAssertNotEqual(ContentView.MarkdownPreviewSemanticPalette.make(template: "terminal-notes", dark: true).bodyBackground, ContentView.MarkdownPreviewSemanticPalette.make(template: "developer-slate", dark: true).bodyBackground)
+    }
+
+    func testMarkdownPreviewImageCaptionsUseRoundedContainers() {
+        let html = ContentView.inlineMarkdownToHTML("![A diagram](diagram.png)")
+        XCTAssertTrue(html.contains("<figure class=\"markdown-image\">"))
+        XCTAssertTrue(html.contains("<figcaption>A diagram</figcaption>"))
+    }
+
+    func testMarkdownPreviewLiveAndExportContractsShareThemeCSS() {
+        let sharedCSS = ContentView.markdownPreviewSemanticCSS(template: "neon-editorial", dark: false)
+        let liveHTML = "<style>\(sharedCSS)</style><main class=\"content\"></main>"
+        let exportHTML = "<style>\(sharedCSS)</style><main class=\"content pdf-export\"></main>"
+        let tokens = ["--md-accent-color", "--md-code-background", "--md-quote-border", "--md-table-header-background"]
+
+        XCTAssertEqual(liveHTML.replacingOccurrences(of: "<main class=\"content\"></main>", with: ""),
+                       exportHTML.replacingOccurrences(of: "<main class=\"content pdf-export\"></main>", with: ""))
+        XCTAssertTrue(tokens.allSatisfy(liveHTML.contains), "Live preview is missing semantic CSS tokens")
+        XCTAssertTrue(tokens.allSatisfy(exportHTML.contains), "Export preview is missing semantic CSS tokens")
+    }
+
     func testMarkdownPatternsMatchClaudeStyleDocumentSections() {
         let sample = """
         # Claude Export

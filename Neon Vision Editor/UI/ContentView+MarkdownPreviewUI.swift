@@ -173,10 +173,15 @@ extension ContentView {
                 Button {
                     markdownPreviewTemplateRaw = option.id
                 } label: {
-                    if markdownPreviewTemplateRaw == option.id {
-                        Label(NSLocalizedString(option.title, comment: ""), systemImage: "checkmark")
-                    } else {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(markdownPreviewThemeSwatchColor(for: option.id))
+                            .frame(width: 10, height: 10)
                         Text(NSLocalizedString(option.title, comment: ""))
+                        Spacer(minLength: 8)
+                        if markdownPreviewTemplateRaw == option.id {
+                            Image(systemName: "checkmark")
+                        }
                     }
                 }
             }
@@ -186,6 +191,24 @@ extension ContentView {
         .menuStyle(.borderlessButton)
         .help(NSLocalizedString("Markdown Preview Template", comment: ""))
         .accessibilityLabel(NSLocalizedString("Markdown Preview Template", comment: ""))
+    }
+
+    private func markdownPreviewThemeSwatchColor(for template: String) -> Color {
+        switch template {
+        case "neon-editorial", "neon-paper": return Color(red: 0.38, green: 0.85, blue: 1.0)
+        case "developer-slate", "developer-spec", "api-reference": return Color(red: 0.33, green: 0.90, blue: 0.74)
+        case "nordic-light", "docs", "minimal-reader": return Color(red: 0.06, green: 0.46, blue: 0.43)
+        case "solarized", "blueprint", "notebook": return Color(red: 0.16, green: 0.63, blue: 0.60)
+        case "article", "academic-paper", "warm-sepia": return Color(red: 0.55, green: 0.26, blue: 0.35)
+        case "electric-pop": return Color(red: 0.88, green: 0.09, blue: 0.55)
+        case "aurora": return Color(red: 0.03, green: 0.50, blue: 0.40)
+        case "citrus": return Color(red: 0.85, green: 0.47, blue: 0.02)
+        case "plasma": return Color(red: 0.85, green: 0.08, blue: 0.47)
+        case "deep-ocean": return Color(red: 0.03, green: 0.49, blue: 0.78)
+        case "high-contrast": return Color.black
+        case "warm-sepia": return Color(red: 0.66, green: 0.36, blue: 0.14)
+        default: return Color.accentColor
+        }
     }
 #endif
 

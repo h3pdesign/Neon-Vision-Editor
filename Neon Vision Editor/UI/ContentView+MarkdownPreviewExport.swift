@@ -195,28 +195,20 @@ extension ContentView {
 
     static let markdownPreviewTemplateOptions: [MarkdownPreviewTemplateOption] = [
         MarkdownPreviewTemplateOption(id: "default", title: "Default"),
-        MarkdownPreviewTemplateOption(id: "docs", title: "Docs"),
+        MarkdownPreviewTemplateOption(id: "neon-editorial", title: "Neon Editorial"),
+        MarkdownPreviewTemplateOption(id: "developer-slate", title: "Developer Slate"),
+        MarkdownPreviewTemplateOption(id: "nordic-light", title: "Nordic Light"),
+        MarkdownPreviewTemplateOption(id: "solarized", title: "Solarized"),
         MarkdownPreviewTemplateOption(id: "article", title: "Article"),
-        MarkdownPreviewTemplateOption(id: "compact", title: "Compact"),
         MarkdownPreviewTemplateOption(id: "notebook", title: "Notebook"),
-        MarkdownPreviewTemplateOption(id: "blueprint", title: "Blueprint"),
         MarkdownPreviewTemplateOption(id: "high-contrast", title: "High Contrast"),
-        MarkdownPreviewTemplateOption(id: "github-docs", title: "GitHub Docs"),
-        MarkdownPreviewTemplateOption(id: "academic-paper", title: "Academic Paper"),
         MarkdownPreviewTemplateOption(id: "terminal-notes", title: "Terminal Notes"),
-        MarkdownPreviewTemplateOption(id: "magazine", title: "Magazine"),
-        MarkdownPreviewTemplateOption(id: "minimal-reader", title: "Minimal Reader"),
-        MarkdownPreviewTemplateOption(id: "presentation", title: "Presentation"),
-        MarkdownPreviewTemplateOption(id: "night-contrast", title: "Night Contrast"),
         MarkdownPreviewTemplateOption(id: "warm-sepia", title: "Warm Sepia"),
-        MarkdownPreviewTemplateOption(id: "dense-compact", title: "Dense Compact"),
-        MarkdownPreviewTemplateOption(id: "developer-spec", title: "Developer Spec"),
-        MarkdownPreviewTemplateOption(id: "api-reference", title: "API Reference"),
-        MarkdownPreviewTemplateOption(id: "changelog", title: "Changelog"),
-        MarkdownPreviewTemplateOption(id: "focus-writing", title: "Focus Writing"),
-        MarkdownPreviewTemplateOption(id: "lab-notes", title: "Lab Notes"),
-        MarkdownPreviewTemplateOption(id: "editorial-review", title: "Editorial Review"),
-        MarkdownPreviewTemplateOption(id: "neon-paper", title: "Neon Paper")
+        MarkdownPreviewTemplateOption(id: "electric-pop", title: "Electric Pop"),
+        MarkdownPreviewTemplateOption(id: "aurora", title: "Aurora"),
+        MarkdownPreviewTemplateOption(id: "citrus", title: "Citrus"),
+        MarkdownPreviewTemplateOption(id: "plasma", title: "Plasma"),
+        MarkdownPreviewTemplateOption(id: "deep-ocean", title: "Deep Ocean")
     ]
 
     var markdownPDFExportMode: MarkdownPDFExportMode {
@@ -1835,7 +1827,8 @@ extension ContentView {
                 let label = parts[0].isEmpty ? "Remote image" : "Remote image: \(parts[0])"
                 return "<a class=\"remote-image-placeholder\" href=\"\(parts[1])\">\(label)</a>"
             }
-            return "<img src=\"\(parts[1])\" alt=\"\(parts[0])\"/>"
+            let caption = parts[0].isEmpty ? "" : "<figcaption>\(parts[0])</figcaption>"
+            return "<figure class=\"markdown-image\"><img src=\"\(parts[1])\" alt=\"\(parts[0])\"/>\(caption)</figure>"
         }
 
         html = replacingRegex(in: html, pattern: "\\[([^\\]]+)\\]\\(([^\\)\\s]+)\\)") { match in
@@ -2068,6 +2061,217 @@ extension ContentView {
     }
 
     // MARK: - Preview CSS
+
+    struct MarkdownPreviewSemanticPalette: Equatable, Sendable {
+        let bodyBackground: String
+        let contentBackground: String
+        let contentBorder: String
+        let text: String
+        let heading: String
+        let muted: String
+        let accent: String
+        let link: String
+        let codeBackground: String
+        let codeText: String
+        let codeBorder: String
+        let quoteBackground: String
+        let quoteBorder: String
+        let tableHeader: String
+        let tableRow: String
+        let divider: String
+        let shadow: String
+
+        static func make(template: String, dark: Bool) -> Self {
+            switch (template, dark) {
+            case ("neon-editorial", true):
+                return Self(bodyBackground: "#16091d", contentBackground: "#24102f", contentBorder: "#703b84", text: "#fff0ff", heading: "#ffffff", muted: "#d3a8dc", accent: "#ff6bd6", link: "#78f0ff", codeBackground: "#190b22", codeText: "#ffeaff", codeBorder: "#8b4da1", quoteBackground: "#35143f", quoteBorder: "#ff9f43", tableHeader: "#492052", tableRow: "#2e1739", divider: "#824894", shadow: "rgba(24, 3, 32, 0.50)")
+            case ("default", true), ("neon-paper", true):
+                return Self(bodyBackground: "#090b14", contentBackground: "#101426", contentBorder: "#26365f", text: "#e9edff", heading: "#ffffff", muted: "#9ca9cf", accent: "#61d9ff", link: "#7dd3fc", codeBackground: "#0a1020", codeText: "#e6f3ff", codeBorder: "#294b73", quoteBackground: "#111d36", quoteBorder: "#ff4fd8", tableHeader: "#172642", tableRow: "#111a2d", divider: "#2d4774", shadow: "rgba(2, 6, 23, 0.48)")
+            case ("developer-slate", true), ("developer-spec", true), ("api-reference", true):
+                return Self(bodyBackground: "#0b1117", contentBackground: "#111a22", contentBorder: "#2b414f", text: "#d8e6eb", heading: "#f4fbff", muted: "#8da5ad", accent: "#55e6bd", link: "#67e8f9", codeBackground: "#091017", codeText: "#d9f7ee", codeBorder: "#2e5c5b", quoteBackground: "#10241f", quoteBorder: "#55e6bd", tableHeader: "#19302e", tableRow: "#13211f", divider: "#315251", shadow: "rgba(0, 0, 0, 0.38)")
+            case ("solarized", true), ("blueprint", true):
+                return Self(bodyBackground: "#002b36", contentBackground: "#073642", contentBorder: "#1f5962", text: "#eee8d5", heading: "#fdf6e3", muted: "#93a1a1", accent: "#2aa198", link: "#268bd2", codeBackground: "#002b36", codeText: "#eee8d5", codeBorder: "#1f5962", quoteBackground: "#073642", quoteBorder: "#b58900", tableHeader: "#0b4652", tableRow: "#0a3e49", divider: "#28616a", shadow: "rgba(0, 20, 24, 0.36)")
+            case ("terminal-notes", true):
+                return Self(bodyBackground: "#020403", contentBackground: "#07100a", contentBorder: "#1c5b32", text: "#d8ffe4", heading: "#effff3", muted: "#78b88b", accent: "#39ff88", link: "#6ee7ff", codeBackground: "#010201", codeText: "#baffce", codeBorder: "#1f713d", quoteBackground: "#0b1c11", quoteBorder: "#39ff88", tableHeader: "#10351d", tableRow: "#0a2112", divider: "#257844", shadow: "rgba(0, 0, 0, 0.58)")
+            case ("notebook", true):
+                return Self(bodyBackground: "#17141e", contentBackground: "#211c2a", contentBorder: "#584770", text: "#f2ebff", heading: "#fff8e7", muted: "#b7a7ce", accent: "#f5c451", link: "#8bd5ff", codeBackground: "#181522", codeText: "#eee6ff", codeBorder: "#67527d", quoteBackground: "#2a2237", quoteBorder: "#ff8c69", tableHeader: "#382b49", tableRow: "#282038", divider: "#6b557f", shadow: "rgba(16, 8, 26, 0.44)")
+            case ("article", true):
+                return Self(bodyBackground: "#111418", contentBackground: "#1b2026", contentBorder: "#3f4b58", text: "#e9edf2", heading: "#fff8f0", muted: "#a6b0bb", accent: "#ff8a65", link: "#7dd3fc", codeBackground: "#12171c", codeText: "#f0f6fa", codeBorder: "#4c5966", quoteBackground: "#252029", quoteBorder: "#ff8a65", tableHeader: "#30313b", tableRow: "#232933", divider: "#536170", shadow: "rgba(0, 0, 0, 0.36)")
+            case ("nordic-light", true):
+                return Self(bodyBackground: "#0a141c", contentBackground: "#10222d", contentBorder: "#31566a", text: "#e6f6ff", heading: "#f3fbff", muted: "#91b4c5", accent: "#78d4e8", link: "#9cc8ff", codeBackground: "#0b1b25", codeText: "#dff5ff", codeBorder: "#3d6b7f", quoteBackground: "#14303a", quoteBorder: "#b5e48c", tableHeader: "#1b3b47", tableRow: "#142d38", divider: "#3b697b", shadow: "rgba(0, 12, 22, 0.42)")
+            case ("electric-pop", true):
+                return Self(bodyBackground: "#10051f", contentBackground: "#1a0a2e", contentBorder: "#56227d", text: "#f7edff", heading: "#ffffff", muted: "#c9a9df", accent: "#ff4fd8", link: "#71f6ff", codeBackground: "#120621", codeText: "#f4e7ff", codeBorder: "#7137a3", quoteBackground: "#26103d", quoteBorder: "#ffb347", tableHeader: "#321351", tableRow: "#211037", divider: "#6c2e92", shadow: "rgba(22, 3, 39, 0.52)")
+            case ("aurora", true):
+                return Self(bodyBackground: "#06151a", contentBackground: "#0b2428", contentBorder: "#1d5a5b", text: "#e8fff8", heading: "#f3fffc", muted: "#91c5bd", accent: "#62f6c7", link: "#70d7ff", codeBackground: "#071b20", codeText: "#d9fff2", codeBorder: "#28706d", quoteBackground: "#103335", quoteBorder: "#ff6b9e", tableHeader: "#164243", tableRow: "#102e32", divider: "#2b7771", shadow: "rgba(0, 20, 24, 0.44)")
+            case ("citrus", true):
+                return Self(bodyBackground: "#151008", contentBackground: "#241b0a", contentBorder: "#6c4e16", text: "#fff7df", heading: "#fffbea", muted: "#d5b978", accent: "#ffd166", link: "#5eead4", codeBackground: "#1b1408", codeText: "#fff1bd", codeBorder: "#84611b", quoteBackground: "#35200b", quoteBorder: "#ff6b35", tableHeader: "#4b2d0b", tableRow: "#2c1e0a", divider: "#8b651d", shadow: "rgba(30, 15, 0, 0.46)")
+            case ("plasma", true):
+                return Self(bodyBackground: "#180515", contentBackground: "#270a25", contentBorder: "#7e1f69", text: "#fff0fb", heading: "#ffffff", muted: "#d9a6ca", accent: "#ff4d9d", link: "#ffb86b", codeBackground: "#1d071b", codeText: "#ffe6f6", codeBorder: "#9b3283", quoteBackground: "#3a0c2f", quoteBorder: "#a78bfa", tableHeader: "#501244", tableRow: "#32102b", divider: "#8c2a78", shadow: "rgba(48, 3, 39, 0.52)")
+            case ("deep-ocean", true):
+                return Self(bodyBackground: "#03101f", contentBackground: "#071e35", contentBorder: "#155486", text: "#e6f7ff", heading: "#f5fcff", muted: "#8db6d2", accent: "#38bdf8", link: "#a5f3fc", codeBackground: "#04172a", codeText: "#dbf4ff", codeBorder: "#1f679a", quoteBackground: "#0a2c48", quoteBorder: "#fbbf24", tableHeader: "#0d3b5f", tableRow: "#092b47", divider: "#21628e", shadow: "rgba(0, 18, 38, 0.52)")
+            case ("high-contrast", true):
+                return Self(bodyBackground: "#000000", contentBackground: "#050505", contentBorder: "#ffffff", text: "#ffffff", heading: "#ffffff", muted: "#e6e6e6", accent: "#ffff00", link: "#00ffff", codeBackground: "#000000", codeText: "#ffffff", codeBorder: "#ffffff", quoteBackground: "#111111", quoteBorder: "#ffff00", tableHeader: "#202020", tableRow: "#101010", divider: "#ffffff", shadow: "transparent")
+            case ("warm-sepia", true):
+                return Self(bodyBackground: "#211710", contentBackground: "#2d2118", contentBorder: "#76543b", text: "#f9ead6", heading: "#fff4e5", muted: "#c9aa8b", accent: "#e7a45b", link: "#8fd3ff", codeBackground: "#241911", codeText: "#f9e1c2", codeBorder: "#805d42", quoteBackground: "#3a281b", quoteBorder: "#f0b35c", tableHeader: "#4a3020", tableRow: "#332319", divider: "#815d42", shadow: "rgba(18, 9, 3, 0.42)")
+            case ("nordic-light", false), ("docs", false), ("minimal-reader", false):
+                return Self(bodyBackground: "#eef3f7", contentBackground: "#ffffff", contentBorder: "#d5e0e8", text: "#263746", heading: "#172b3a", muted: "#637789", accent: "#0f766e", link: "#1769aa", codeBackground: "#edf3f5", codeText: "#24343d", codeBorder: "#c9d8de", quoteBackground: "#eef8f6", quoteBorder: "#0f766e", tableHeader: "#e4f0f1", tableRow: "#f6fafb", divider: "#c8d6dc", shadow: "rgba(30, 58, 73, 0.10)")
+            case ("developer-slate", false):
+                return Self(bodyBackground: "#edf1f5", contentBackground: "#fbfcfd", contentBorder: "#c8d2dc", text: "#273746", heading: "#172433", muted: "#647789", accent: "#475569", link: "#075985", codeBackground: "#e8eef3", codeText: "#263b4a", codeBorder: "#bccbd7", quoteBackground: "#e9f2f8", quoteBorder: "#2563a8", tableHeader: "#dce6ee", tableRow: "#f5f8fa", divider: "#b8c7d3", shadow: "rgba(30, 52, 70, 0.10)")
+            case ("solarized", false):
+                return Self(bodyBackground: "#fdf6e3", contentBackground: "#fffdf5", contentBorder: "#e5dcc2", text: "#586e75", heading: "#073642", muted: "#839496", accent: "#2aa198", link: "#268bd2", codeBackground: "#eee8d5", codeText: "#586e75", codeBorder: "#d8cfb5", quoteBackground: "#f3eedb", quoteBorder: "#b58900", tableHeader: "#e8e0c8", tableRow: "#faf6e8", divider: "#d6ccb0", shadow: "rgba(88, 110, 117, 0.12)")
+            case ("terminal-notes", false):
+                return Self(bodyBackground: "#f1f8f2", contentBackground: "#fbfffc", contentBorder: "#a9d2b3", text: "#16351f", heading: "#082611", muted: "#54745d", accent: "#15803d", link: "#0369a1", codeBackground: "#edf8ef", codeText: "#194c29", codeBorder: "#a8cdb0", quoteBackground: "#e7f5e9", quoteBorder: "#15803d", tableHeader: "#d5eed9", tableRow: "#f6fcf7", divider: "#9ac5a3", shadow: "rgba(22, 72, 34, 0.10)")
+            case ("notebook", false):
+                return Self(bodyBackground: "#f4efe2", contentBackground: "#fffdf5", contentBorder: "#d9c89d", text: "#35304b", heading: "#28233f", muted: "#786f89", accent: "#9b5de5", link: "#2563a8", codeBackground: "#f0e8d8", codeText: "#443657", codeBorder: "#d5c09b", quoteBackground: "#fff0df", quoteBorder: "#f77f00", tableHeader: "#eee0c2", tableRow: "#fffaf0", divider: "#d2bc8b", shadow: "rgba(89, 69, 35, 0.10)")
+            case ("article", false):
+                return Self(bodyBackground: "#f5f7fa", contentBackground: "#ffffff", contentBorder: "#d9e1e8", text: "#263746", heading: "#172b3a", muted: "#667889", accent: "#e45756", link: "#1769aa", codeBackground: "#f0f4f7", codeText: "#293b49", codeBorder: "#cbd8e1", quoteBackground: "#fff1ef", quoteBorder: "#e45756", tableHeader: "#e9eef3", tableRow: "#f8fafc", divider: "#cfdae3", shadow: "rgba(31, 51, 69, 0.09)")
+            case ("electric-pop", false):
+                return Self(bodyBackground: "#fff1fb", contentBackground: "#ffffff", contentBorder: "#f0b6df", text: "#35122f", heading: "#260d27", muted: "#87557c", accent: "#df168d", link: "#006f9f", codeBackground: "#fff0fa", codeText: "#4a1742", codeBorder: "#e7a5d3", quoteBackground: "#fff4df", quoteBorder: "#ed7b18", tableHeader: "#ffe1f3", tableRow: "#fff8fc", divider: "#e8afd5", shadow: "rgba(119, 24, 101, 0.12)")
+            case ("aurora", false):
+                return Self(bodyBackground: "#effff9", contentBackground: "#ffffff", contentBorder: "#b8e7d9", text: "#153b3a", heading: "#073c3c", muted: "#5b8580", accent: "#087f67", link: "#0876a8", codeBackground: "#edfff8", codeText: "#17433c", codeBorder: "#a6dccb", quoteBackground: "#fff1f6", quoteBorder: "#d92f6e", tableHeader: "#d9f7ec", tableRow: "#f5fffb", divider: "#abd9cb", shadow: "rgba(8, 87, 72, 0.11)")
+            case ("citrus", false):
+                return Self(bodyBackground: "#fff9e8", contentBackground: "#fffef8", contentBorder: "#f0d58a", text: "#49320d", heading: "#3a2507", muted: "#8e6f31", accent: "#d97706", link: "#0f766e", codeBackground: "#fff5d6", codeText: "#543500", codeBorder: "#e8c56c", quoteBackground: "#fff0df", quoteBorder: "#ea580c", tableHeader: "#ffe3a3", tableRow: "#fffaf0", divider: "#e8cb7e", shadow: "rgba(124, 79, 0, 0.12)")
+            case ("plasma", false):
+                return Self(bodyBackground: "#fff0f8", contentBackground: "#ffffff", contentBorder: "#f2afd2", text: "#421331", heading: "#2d0924", muted: "#925b7d", accent: "#d91578", link: "#b45309", codeBackground: "#ffedf7", codeText: "#4a1638", codeBorder: "#e6a1c7", quoteBackground: "#f3eeff", quoteBorder: "#7c3aed", tableHeader: "#ffd9ed", tableRow: "#fff7fb", divider: "#e6acd0", shadow: "rgba(125, 25, 91, 0.12)")
+            case ("deep-ocean", false):
+                return Self(bodyBackground: "#eef9ff", contentBackground: "#ffffff", contentBorder: "#acd5ed", text: "#12344a", heading: "#062b48", muted: "#5b7e93", accent: "#087ea4", link: "#075985", codeBackground: "#eaf7ff", codeText: "#123a52", codeBorder: "#a8cee4", quoteBackground: "#fff7df", quoteBorder: "#b7791f", tableHeader: "#d8f0fb", tableRow: "#f5fbff", divider: "#a8cee4", shadow: "rgba(8, 74, 112, 0.11)")
+            case ("high-contrast", false):
+                return Self(bodyBackground: "#ffffff", contentBackground: "#ffffff", contentBorder: "#000000", text: "#000000", heading: "#000000", muted: "#222222", accent: "#000000", link: "#0000ee", codeBackground: "#ffffff", codeText: "#000000", codeBorder: "#000000", quoteBackground: "#ffff00", quoteBorder: "#000000", tableHeader: "#e6e6e6", tableRow: "#ffffff", divider: "#000000", shadow: "transparent")
+            case ("warm-sepia", false):
+                return Self(bodyBackground: "#f3e6d2", contentBackground: "#fffaf0", contentBorder: "#d8b990", text: "#4b3625", heading: "#3b2415", muted: "#80664d", accent: "#a85d24", link: "#1d628c", codeBackground: "#f5e7d1", codeText: "#523a26", codeBorder: "#d5b486", quoteBackground: "#f8ecd9", quoteBorder: "#b7791f", tableHeader: "#eed8b8", tableRow: "#fff7e9", divider: "#d4b183", shadow: "rgba(92, 55, 22, 0.12)")
+            case ("neon-editorial", false):
+                return Self(bodyBackground: "#fff3fb", contentBackground: "#ffffff", contentBorder: "#efb9dc", text: "#32152f", heading: "#240d2b", muted: "#895b83", accent: "#c026d3", link: "#0369a1", codeBackground: "#fff0fa", codeText: "#421a3e", codeBorder: "#e6a5d1", quoteBackground: "#fff2f7", quoteBorder: "#f43f5e", tableHeader: "#ffe0f2", tableRow: "#fff8fc", divider: "#e5afd2", shadow: "rgba(112, 24, 95, 0.12)")
+            default:
+                if dark {
+                    return Self(bodyBackground: "#111827", contentBackground: "#0f172a", contentBorder: "#293548", text: "#e5e7eb", heading: "#f8fafc", muted: "#9ca3af", accent: "#8b5cf6", link: "#93c5fd", codeBackground: "#0b1220", codeText: "#e5e7eb", codeBorder: "#334155", quoteBackground: "#111827", quoteBorder: "#8b5cf6", tableHeader: "#172033", tableRow: "#131c2b", divider: "#334155", shadow: "rgba(0, 0, 0, 0.32)")
+                }
+                return Self(bodyBackground: "#f7f9fb", contentBackground: "#ffffff", contentBorder: "#dfe6ed", text: "#263342", heading: "#142131", muted: "#667585", accent: "#2563eb", link: "#1d4ed8", codeBackground: "#f1f5f9", codeText: "#263342", codeBorder: "#d5dee8", quoteBackground: "#f3f7ff", quoteBorder: "#2563eb", tableHeader: "#e8eff8", tableRow: "#f8fafc", divider: "#d5dee8", shadow: "rgba(15, 23, 42, 0.08)")
+            }
+        }
+    }
+
+    struct MarkdownPreviewTheme: Equatable, Sendable {
+        let palette: MarkdownPreviewSemanticPalette
+        let bodyPadding: String
+        let fontSize: String
+        let lineHeight: String
+        let contentMaxWidth: String
+        let bodyFontFamily: String
+        let contentRadius: String
+        let blockSpacing: String
+        let headingSpacing: String
+        let tableCellPadding: String
+
+        static func make(template: String, dark: Bool) -> Self {
+            let palette = MarkdownPreviewSemanticPalette.make(template: template, dark: dark)
+            switch template {
+            case "neon-editorial", "magazine", "editorial-review":
+                return Self(palette: palette, bodyPadding: "34px 52px", fontSize: "17px", lineHeight: "1.8", contentMaxWidth: "820px", bodyFontFamily: "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif", contentRadius: "18px", blockSpacing: "1.1em", headingSpacing: "1.7em", tableCellPadding: "0.72em 0.9em")
+            case "developer-slate", "developer-spec", "api-reference", "terminal-notes":
+                return Self(palette: palette, bodyPadding: "22px 30px", fontSize: "15px", lineHeight: "1.65", contentMaxWidth: "980px", bodyFontFamily: "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif", contentRadius: "10px", blockSpacing: "0.85em", headingSpacing: "1.35em", tableCellPadding: "0.58em 0.72em")
+            case "nordic-light", "docs", "minimal-reader":
+                return Self(palette: palette, bodyPadding: "28px 44px", fontSize: "16px", lineHeight: "1.75", contentMaxWidth: "880px", bodyFontFamily: "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif", contentRadius: "14px", blockSpacing: "1em", headingSpacing: "1.55em", tableCellPadding: "0.68em 0.82em")
+            case "solarized", "blueprint", "notebook":
+                return Self(palette: palette, bodyPadding: "26px 38px", fontSize: "15px", lineHeight: "1.7", contentMaxWidth: "920px", bodyFontFamily: "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif", contentRadius: "12px", blockSpacing: "0.95em", headingSpacing: "1.5em", tableCellPadding: "0.64em 0.82em")
+            case "article", "academic-paper", "warm-sepia", "focus-writing":
+                return Self(palette: palette, bodyPadding: "34px 48px", fontSize: "17px", lineHeight: "1.82", contentMaxWidth: "780px", bodyFontFamily: "Charter, \"Iowan Old Style\", \"Palatino Linotype\", serif", contentRadius: "12px", blockSpacing: "1.15em", headingSpacing: "1.85em", tableCellPadding: "0.72em 0.9em")
+            case "electric-pop", "aurora", "citrus", "plasma", "deep-ocean":
+                return Self(palette: palette, bodyPadding: "30px 42px", fontSize: "16px", lineHeight: "1.72", contentMaxWidth: "900px", bodyFontFamily: "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif", contentRadius: "16px", blockSpacing: "1em", headingSpacing: "1.55em", tableCellPadding: "0.68em 0.86em")
+            default:
+                return Self(palette: palette, bodyPadding: "22px 30px", fontSize: "15px", lineHeight: "1.7", contentMaxWidth: "900px", bodyFontFamily: "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\", sans-serif", contentRadius: "14px", blockSpacing: "1em", headingSpacing: "1.5em", tableCellPadding: "0.64em 0.82em")
+            }
+        }
+    }
+
+    static func markdownPreviewSemanticCSS(template: String, dark: Bool) -> String {
+        let theme = MarkdownPreviewTheme.make(template: template, dark: dark)
+        let palette = theme.palette
+        let editorialCSS = ["neon-editorial", "article", "magazine", "academic-paper", "focus-writing", "editorial-review"].contains(template)
+            ? ".content > p:first-of-type { font-size: 1.1em; letter-spacing: 0.005em; }"
+            : ""
+        let headingCSS: String
+        switch template {
+        case "developer-slate", "terminal-notes", "developer-spec", "api-reference":
+            headingCSS = "h1, h2 { border-inline-start: 3px solid var(--md-accent-color); padding-inline-start: 0.7em; } h1::before, h2::before { display: none; } h1 { font-family: \"SF Mono\", Menlo, monospace; letter-spacing: 0.02em; } h2 { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.96em; }"
+        case "article", "academic-paper", "warm-sepia", "focus-writing":
+            headingCSS = "h1, h2 { padding-inline-start: 0; } h1::before, h2::before { display: none; } h1 { border-bottom: 4px double var(--md-accent-color); text-align: center; letter-spacing: -0.03em; } h2 { border-bottom: 1px solid var(--md-accent-color); font-style: italic; }"
+        case "high-contrast":
+            headingCSS = "h1, h2 { padding-inline-start: 0.3em; border-inline-start: 0.38em solid var(--md-accent-color); border-bottom: 3px solid var(--md-accent-color); } h1::before, h2::before { display: none; } h1 { text-transform: uppercase; letter-spacing: 0.045em; }"
+        case "solarized", "notebook", "blueprint":
+            headingCSS = "h1, h2 { padding-inline-start: 0; border-bottom: 2px dashed var(--md-quote-border); } h1::before, h2::before { display: none; } h1 { font-family: Georgia, serif; } h2 { color: var(--md-accent-color); }"
+        case "nordic-light", "docs", "minimal-reader":
+            headingCSS = "h1, h2 { padding-inline-start: 0; border-bottom: 0; } h1::before, h2::before { display: none; } h1::after, h2::after { content: \"\"; display: block; width: 2.8em; height: 0.18em; margin-top: 0.35em; border-radius: 99px; background: var(--md-accent-color); }"
+        case "electric-pop", "plasma":
+            headingCSS = "h1, h2 { padding-inline-start: 0; border-bottom: 0; } h1::before, h2::before { display: none; } h1 { text-shadow: 0 0 20px color-mix(in srgb, var(--md-accent-color) 42%, transparent); } h1::after { content: \"\"; display: block; height: 0.16em; margin-top: 0.3em; background: linear-gradient(90deg, var(--md-accent-color), var(--md-link-color), transparent); border-radius: 99px; } h2 { border-inline-start: 0.22em solid var(--md-quote-border); padding-inline-start: 0.55em; }"
+        case "aurora", "deep-ocean":
+            headingCSS = "h1, h2 { padding-inline-start: 0; border-bottom: 0; } h1::before, h2::before { display: none; } h1 { border-bottom: 2px solid var(--md-accent-color); } h2 { border-bottom: 1px solid color-mix(in srgb, var(--md-link-color) 60%, transparent); } h1::after { content: \"\"; display: block; width: 4em; height: 0.22em; margin-top: 0.3em; background: linear-gradient(90deg, var(--md-accent-color), var(--md-link-color)); clip-path: polygon(0 0, 100% 0, 78% 100%, 0 100%); }"
+        case "citrus":
+            headingCSS = "h1, h2 { padding-inline-start: 0; border-bottom: 0; } h1::before, h2::before { display: none; } h1 { border-bottom: 3px solid var(--md-accent-color); } h2 { display: flex; align-items: baseline; gap: 0.45em; } h2::after { content: \"*\"; color: var(--md-quote-border); font-size: 0.7em; }"
+        default:
+            headingCSS = ""
+        }
+        return """
+        :root {
+          --md-body-background: \(palette.bodyBackground);
+          --md-content-background: \(palette.contentBackground);
+          --md-content-border: 1px solid \(palette.contentBorder);
+          --md-text-color: \(palette.text);
+          --md-heading-color: \(palette.heading);
+          --md-muted-color: \(palette.muted);
+          --md-accent-color: \(palette.accent);
+          --md-link-color: \(palette.link);
+          --md-code-background: \(palette.codeBackground);
+          --md-code-text: \(palette.codeText);
+          --md-code-border: \(palette.codeBorder);
+          --md-quote-background: \(palette.quoteBackground);
+          --md-quote-border: \(palette.quoteBorder);
+          --md-table-header-background: \(palette.tableHeader);
+          --md-table-row-background: \(palette.tableRow);
+          --md-hr-color: \(palette.divider);
+          --md-shadow-color: \(palette.shadow);
+          --md-body-padding: \(theme.bodyPadding);
+          --md-font-size: \(theme.fontSize);
+          --md-line-height: \(theme.lineHeight);
+          --md-content-max-width: \(theme.contentMaxWidth);
+          --md-body-font-family: \(theme.bodyFontFamily);
+          --md-content-radius: \(theme.contentRadius);
+          --md-block-spacing: \(theme.blockSpacing);
+          --md-heading-spacing: \(theme.headingSpacing);
+          --md-table-cell-padding: \(theme.tableCellPadding);
+        }
+        html, body { font-family: var(--md-body-font-family); font-size: var(--md-font-size); line-height: var(--md-line-height); }
+        body { background: var(--md-body-background); color: var(--md-text-color); }
+        .content { max-width: var(--md-content-max-width); padding: var(--md-body-padding); border-radius: var(--md-content-radius); background: var(--md-content-background); color: var(--md-text-color); }
+        .content > p, .content > ul, .content > ol, .content > blockquote, .content > .table-scroll, .content > .code-block, .content > .markdown-image { margin-block: var(--md-block-spacing); }
+        h1, h2, h3, h4, h5, h6 { color: var(--md-heading-color); }
+        h1, h2 { position: relative; margin-top: var(--md-heading-spacing); padding-bottom: 0.35em; }
+        a { color: var(--md-link-color); text-decoration-line: underline; text-decoration-thickness: 0.09em; text-decoration-color: color-mix(in srgb, var(--md-link-color) 72%, transparent); text-underline-offset: 0.18em; transition: color 160ms ease, text-decoration-color 160ms ease, text-underline-offset 160ms ease; }
+        a:hover, a:focus-visible { color: var(--md-accent-color); text-decoration-color: var(--md-accent-color); text-underline-offset: 0.28em; }
+        code:not(pre code) { display: inline-block; color: var(--md-code-text); background: color-mix(in srgb, var(--md-accent-color) 10%, var(--md-code-background)); border: 1px solid color-mix(in srgb, var(--md-accent-color) 34%, var(--md-code-border)); border-radius: 0.42em; padding: 0.08em 0.38em; font-size: 0.9em; box-shadow: 0 1px 0 color-mix(in srgb, var(--md-accent-color) 24%, transparent); }
+        blockquote { position: relative; box-shadow: inset 4px 0 0 var(--md-quote-border); border-radius: 0 var(--md-content-radius) var(--md-content-radius) 0; background: var(--md-quote-background); }
+        blockquote::before { content: "“"; position: absolute; inset-inline-end: 0.55em; inset-block-start: -0.16em; color: var(--md-quote-border); opacity: 0.5; font-size: 3em; line-height: 1; font-family: Georgia, serif; }
+        blockquote cite, blockquote .quote-meta { display: block; margin-top: 0.7em; color: var(--md-muted-color); font-size: 0.82em; font-style: normal; letter-spacing: 0.025em; }
+        .code-block { overflow: hidden; box-shadow: 0 12px 26px var(--md-shadow-color); border-color: var(--md-code-border); background: var(--md-code-background); }
+        .code-block-toolbar { color: var(--md-accent-color); border-bottom: 1px solid color-mix(in srgb, var(--md-code-border) 82%, transparent); background: color-mix(in srgb, var(--md-accent-color) 10%, var(--md-code-background)); }
+        .code-block-language-label { letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.78em; }
+        .code-block-copy { color: var(--md-accent-color); border-color: color-mix(in srgb, var(--md-accent-color) 48%, var(--md-code-border)); background: color-mix(in srgb, var(--md-accent-color) 10%, transparent); }
+        .code-block pre, .code-block pre code { color: var(--md-code-text); }
+        .table-scroll { border: 1px solid var(--md-content-border); border-radius: var(--md-content-radius); overflow: auto; background: var(--md-content-background); }
+        table { border-collapse: separate; border-spacing: 0; }
+        th, td { padding: var(--md-table-cell-padding); }
+        th { position: sticky; top: 0; z-index: 1; color: var(--md-heading-color); background: var(--md-table-header-background); box-shadow: 0 1px 0 var(--md-accent-color); letter-spacing: 0.02em; }
+        tbody tr:nth-child(even) { background: var(--md-table-row-background); }
+        tbody tr:hover { background: color-mix(in srgb, var(--md-accent-color) 9%, var(--md-table-row-background)); }
+        input[type="checkbox"] { accent-color: var(--md-accent-color); width: 1em; height: 1em; vertical-align: -0.12em; }
+        .markdown-image { margin-inline: 0; padding: 0.65em; border: 1px solid var(--md-content-border); border-radius: var(--md-content-radius); background: color-mix(in srgb, var(--md-accent-color) 5%, var(--md-content-background)); box-shadow: 0 10px 24px var(--md-shadow-color); }
+        .markdown-image img { display: block; width: 100%; border-radius: calc(var(--md-content-radius) * 0.72); }
+        .markdown-image figcaption { margin-top: 0.62em; color: var(--md-muted-color); font-size: 0.82em; text-align: center; }
+        .content > p:first-of-type { margin-top: var(--md-block-spacing); }
+        \(editorialCSS)
+        \(headingCSS)
+        hr { border-color: var(--md-hr-color); }
+        """
+    }
 
     func markdownPreviewCSS(
         template: String,
@@ -3039,6 +3243,7 @@ extension ContentView {
           margin: 1.1em 0;
         }
         \(templateAccentCSS)
+        \(Self.markdownPreviewSemanticCSS(template: template, dark: preferDarkMode))
         body.pdf-export {
           background: #ffffff !important;
           color: #111827 !important;

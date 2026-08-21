@@ -4213,6 +4213,7 @@ extension Notification.Name {
     static let toggleProjectStructureSidebarRequested = Notification.Name("toggleProjectStructureSidebarRequested")
     static let showAIChatRequested = Notification.Name("showAIChatRequested")
     static let openProjectFolderRequested = Notification.Name("openProjectFolderRequested")
+    static let openProjectFolderURLRequested = Notification.Name("openProjectFolderURLRequested")
     static let showAPISettingsRequested = Notification.Name("showAPISettingsRequested")
     static let selectAIModelRequested = Notification.Name("selectAIModelRequested")
     static let showQuickSwitcherRequested = Notification.Name("showQuickSwitcherRequested")

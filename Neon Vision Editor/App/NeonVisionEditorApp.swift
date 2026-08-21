@@ -87,23 +87,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     weak var appUpdateManager: AppUpdateManager?
     private var pendingOpenURLs: [URL] = []
+    private var pendingProjectFolderURLs: [URL] = []
 
     func application(_ application: NSApplication, open urls: [URL]) {
         Task { @MainActor in
-            for url in urls {
-                if ShareImportHandoff.isShareImportURL(url) {
-                    NotificationCenter.default.post(name: .sharedImportURLRequested, object: url)
+            handleExternalOpenURLs(urls)
+        }
+    }
+
+    func handleExternalOpenURLs(_ urls: [URL]) {
+        for url in urls {
+            if ShareImportHandoff.isShareImportURL(url) {
+                NotificationCenter.default.post(name: .sharedImportURLRequested, object: url)
+                continue
+            }
+            let importURLs = ShareImportHandoff.importedFileURLs(from: url)
+            if !importURLs.isEmpty {
+                SharedImportStore.remember(importURLs)
+                guard UserDefaults.standard.object(forKey: "SettingsShareImportsAutoOpen") as? Bool ?? true else {
                     continue
                 }
-                let importURLs = ShareImportHandoff.importedFileURLs(from: url)
-                if !importURLs.isEmpty {
-                    SharedImportStore.remember(importURLs)
-                    guard UserDefaults.standard.object(forKey: "SettingsShareImportsAutoOpen") as? Bool ?? true else {
-                        continue
-                    }
+            }
+            let fileURLs = importURLs.isEmpty ? [url] : importURLs
+            var projectFolderURL: URL?
+            for fileURL in fileURLs {
+                if Self.isProjectFolderURL(fileURL) {
+                    // A single launch event may contain a folder and files. The folder is
+                    // the project context, so accepting another one would immediately
+                    // replace it; retain the first one deterministically.
+                    projectFolderURL = projectFolderURL ?? fileURL
+                    continue
                 }
-                let fileURLs = importURLs.isEmpty ? [url] : importURLs
-                for fileURL in fileURLs {
                 if let existing = WindowViewModelRegistry.shared.viewModel(containing: fileURL) {
                     _ = existing.viewModel.focusTabIfOpen(for: fileURL)
                     if let window = NSApp.window(withWindowNumber: existing.windowNumber) {
@@ -120,13 +134,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 } else {
                     self.pendingOpenURLs.append(fileURL)
                 }
-                }
+            }
+            if let projectFolderURL {
+                self.openProjectFolder(url: projectFolderURL)
             }
         }
     }
 
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
-        return NSApp.windows.isEmpty && pendingOpenURLs.isEmpty
+        return NSApp.windows.isEmpty && pendingOpenURLs.isEmpty && pendingProjectFolderURLs.isEmpty
     }
 
     func applicationShouldRestoreState(_ application: NSApplication) -> Bool {
@@ -155,7 +171,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func flushPendingURLs(into viewModel: EditorViewModel) {
-        guard !pendingOpenURLs.isEmpty else { return }
         let urls = pendingOpenURLs
         pendingOpenURLs.removeAll()
         let didOpenFile = urls.reduce(false) { didOpen, url in
@@ -165,6 +180,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if didOpenFile {
             bringEditorWindowToFront(for: viewModel)
         }
+
+        let folderURLs = pendingProjectFolderURLs
+        pendingProjectFolderURLs.removeAll()
+        for folderURL in folderURLs {
+            postProjectFolderOpen(folderURL, targeting: viewModel)
+        }
+    }
+
+    nonisolated static func isProjectFolderURL(_ url: URL) -> Bool {
+        (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+    }
+
+    private func openProjectFolder(url: URL) {
+        guard let target = WindowViewModelRegistry.shared.activeViewModel() ?? viewModel else {
+            pendingProjectFolderURLs.append(url)
+            return
+        }
+        postProjectFolderOpen(url, targeting: target)
+    }
+
+    private func postProjectFolderOpen(_ folderURL: URL, targeting viewModel: EditorViewModel) {
+        var userInfo: [AnyHashable: Any] = [:]
+        if let windowNumber = WindowViewModelRegistry.shared.windowNumber(for: viewModel) {
+            userInfo[EditorCommandUserInfo.windowNumber] = windowNumber
+        }
+        NotificationCenter.default.post(
+            name: .openProjectFolderURLRequested,
+            object: folderURL,
+            userInfo: userInfo.isEmpty ? nil : userInfo
+        )
+        bringEditorWindowToFront(for: viewModel)
     }
 
     @MainActor

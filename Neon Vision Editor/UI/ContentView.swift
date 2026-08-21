@@ -2276,6 +2276,14 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 openProjectFolder()
             }
+#if os(macOS)
+            .onReceive(NotificationCenter.default.publisher(for: .openProjectFolderURLRequested)) { notif in
+                guard matchesCurrentWindow(notif),
+                      let folderURL = notif.object as? URL,
+                      AppDelegate.isProjectFolderURL(folderURL) else { return }
+                setProjectFolder(folderURL)
+            }
+#endif
             .onReceive(NotificationCenter.default.publisher(for: .showAPISettingsRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 openAPISettings()

@@ -98,6 +98,12 @@ final class EditorPerformanceMonitor {
         signposter.emitEvent("preview")
     }
 
+    func measureVirtualEditorLayout<T>(_ work: () -> T) -> T {
+        let state = signposter.beginInterval("virtual_editor_layout")
+        defer { signposter.endInterval("virtual_editor_layout", state) }
+        return work()
+    }
+
     func markTabSwitchFirstDraw(tabID: UUID) {
         guard let startedAt = tabSwitchStartUptimeByTabID.removeValue(forKey: tabID) else { return }
         let elapsed = Self.elapsedMilliseconds(since: startedAt)

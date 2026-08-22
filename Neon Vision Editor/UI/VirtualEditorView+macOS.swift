@@ -683,7 +683,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             if !lineWrapEnabled { contentWidth = unwrappedContentWidth() }
             return
         }
-        let rows = visualRows()
+        let rows = EditorPerformanceMonitor.shared.measureVirtualEditorLayout {
+            visualRows()
+        }
         let logicalLines = max(1, Set(rows.map(\.logicalLine)).count)
         let observed = CGFloat(max(1, rows.count)) / CGFloat(logicalLines)
         if abs(observed - estimatedRowsPerLogicalLine) > 0.05 {

@@ -18,6 +18,23 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertGreaterThan(width, 500)
     }
 
+    func testVisualFragmentLayoutPerformanceBaseline() {
+        let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        let attributed = NSAttributedString(
+            string: String(repeating: "let value = 42 // benchmark\n", count: 2_000),
+            attributes: [.font: font]
+        )
+
+        measure(metrics: [XCTClockMetric(), XCTCPUMetric()]) {
+            _ = VirtualEditorVisualLayout.fragments(
+                for: attributed,
+                lineStartUTF16: 0,
+                width: 640,
+                wraps: true
+            )
+        }
+    }
+
     func testVisualRowIndexMapsLogicalLinesToStableEstimatedRows() {
         let index = VirtualEditorVisualRowIndex(logicalLineCount: 100, estimatedRowsPerLogicalLine: 2)
 

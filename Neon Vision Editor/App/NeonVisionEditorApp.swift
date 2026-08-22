@@ -868,7 +868,11 @@ struct NeonVisionEditorApp: App {
         .defaultSize(width: 860, height: 520)
         .handlesExternalEvents(matching: [])
 
-        MenuBarExtra("Neon Vision Editor", systemImage: menuBarDocumentStatus.symbol, isInserted: $showMenuBarIconMac) {
+        MenuBarExtra(
+            "Neon Vision Editor",
+            systemImage: menuBarDocumentStatus.symbol,
+            isInserted: $showMenuBarIconMac
+        ) {
             Label("Neon Vision Editor", systemImage: "doc.text")
                 .font(.headline)
 

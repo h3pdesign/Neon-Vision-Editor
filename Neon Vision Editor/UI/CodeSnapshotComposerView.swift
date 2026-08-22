@@ -252,6 +252,7 @@ struct CodeSnapshotStyle: Equatable, Hashable {
     var frameStyle: CodeSnapshotFrameStyle = .macWindow
     var sizePreset: CodeSnapshotSizePreset = .fit
     var showLineNumbers: Bool = true
+    var lineWrap: Bool = true
     var showTrafficLights: Bool = true
     var showTitle: Bool = true
     var fontSize: CGFloat = 15
@@ -287,7 +288,11 @@ enum CodeSnapshotSizing {
             let width = min(max(720, CGFloat(longestLine) * characterWidth + lineNumberWidth + (style.padding * 2) + 150), 1800)
             let headerHeight: CGFloat = style.frameStyle == .macWindow ? 54 : 0
             let lineHeight = max(18, style.fontSize * 1.55)
-            let height = min(max(420, CGFloat(max(1, lines.count)) * lineHeight + headerHeight + (style.padding * 2) + 112), 3200)
+            let wrapWidth = max(1, Int((width - lineNumberWidth - (style.padding * 2) - 150) / characterWidth))
+            let renderedLineCount = style.lineWrap
+                ? lines.reduce(0) { $0 + max(1, ($1.count + wrapWidth - 1) / wrapWidth) }
+                : lines.count
+            let height = min(max(420, CGFloat(max(1, renderedLineCount)) * lineHeight + headerHeight + (style.padding * 2) + 112), 3200)
             return CGSize(width: width.rounded(.up), height: height.rounded(.up))
         }
     }
@@ -495,7 +500,7 @@ private struct CodeSnapshotCardView: View {
                             }
                             Text(line)
                                 .font(.system(size: codeFontSize, weight: .regular, design: .monospaced))
-                                .lineLimit(1)
+                                .lineLimit(style.lineWrap ? nil : 1)
                                 .minimumScaleFactor(0.5)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -543,6 +548,9 @@ struct CodeSnapshotComposerView: View {
     @State private var shareURL: URL?
     @State private var showExporter = false
     @State private var didCopySnapshot = false
+#if !os(macOS)
+    @State private var showsMobilePreview = true
+#endif
 
     private var surfaceBackground: Color {
         currentEditorTheme(colorScheme: colorScheme).background
@@ -860,10 +868,9 @@ struct CodeSnapshotComposerView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     snapshotControls(useCompactLayout: true)
-                    fittedSnapshotPreview
-                        .frame(minHeight: 320)
-                        .padding(14)
-                        .background(.black.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    if showsMobilePreview {
+                        mobileSnapshotPreview
+                    }
                     snapshotActionBar(compact: true)
                 }
                 .padding(16)
@@ -874,8 +881,30 @@ struct CodeSnapshotComposerView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
                 }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showsMobilePreview.toggle()
+                        }
+                    } label: {
+                        Label(showsMobilePreview ? "Hide Preview" : "Preview", systemImage: showsMobilePreview ? "eye.slash" : "eye")
+                    }
+                }
             }
         }
+    }
+
+    private var mobileSnapshotPreview: some View {
+        fittedSnapshotPreview
+            .aspectRatio(previewAspectRatio, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .padding(12)
+            .background(surfaceBackground.opacity(0.72), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(.primary.opacity(0.08))
+            }
+            .animation(.easeInOut(duration: 0.2), value: previewAspectRatio)
     }
 #endif
 
@@ -921,7 +950,7 @@ struct CodeSnapshotComposerView: View {
             }
 #endif
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .top)
         .padding(.bottom, 12)
     }
 
@@ -930,8 +959,7 @@ struct CodeSnapshotComposerView: View {
             Label("Snapshot style", systemImage: "slider.horizontal.3")
                 .font(.headline.weight(.semibold))
 
-            VStack(spacing: 10) {
-                HStack(spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 10) {
                     compactSnapshotMenu("Theme") {
                         Picker("Theme", selection: $style.theme) {
                             ForEach(CodeSnapshotTheme.allCases) { theme in
@@ -946,9 +974,6 @@ struct CodeSnapshotComposerView: View {
                             }
                         }
                     }
-                }
-
-                HStack(spacing: 12) {
                     compactSnapshotMenu("Frame") {
                         Picker("Frame", selection: $style.frameStyle) {
                             ForEach(CodeSnapshotFrameStyle.allCases) { frame in
@@ -963,19 +988,25 @@ struct CodeSnapshotComposerView: View {
                             }
                         }
                     }
-                }
             }
 
-            HStack(spacing: 16) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 10) {
                 Toggle("Line Numbers", isOn: $style.showLineNumbers)
-                    .font(.subheadline.weight(.medium))
-
-                compactSnapshotSlider("Padding", value: $style.padding, range: 16...56, step: 1, unit: "pt")
+                Toggle("Line Wrap", isOn: $style.lineWrap)
+                Toggle("Traffic Lights", isOn: $style.showTrafficLights)
+                    .disabled(style.frameStyle != .macWindow)
+                Toggle("Title", isOn: $style.showTitle)
+                    .disabled(style.frameStyle != .macWindow)
             }
+            .font(.subheadline.weight(.medium))
+
+            compactSnapshotSlider("Font Size", value: $style.fontSize, range: 10...24, step: 1, unit: "pt")
+            compactSnapshotSlider("Corners", value: $style.cornerRadius, range: 0...32, step: 1, unit: "pt")
+            compactSnapshotSlider("Padding", value: $style.padding, range: 16...56, step: 1, unit: "pt")
 
             if style.sizePreset == .custom {
-                compactSnapshotSlider("Width", value: $style.customCardWidth, range: 200...2200, step: 20, unit: "px")
-                compactSnapshotSlider("Height", value: $style.customCardHeight, range: 560...1800, step: 20, unit: "px")
+                compactSnapshotSlider("Width", value: $style.customCardWidth, range: 480...2400, step: 20, unit: "px")
+                compactSnapshotSlider("Height", value: $style.customCardHeight, range: 360...3200, step: 20, unit: "px")
             }
         }
         .padding(14)
@@ -1147,6 +1178,10 @@ struct CodeSnapshotComposerView: View {
 
     private var outputDimensions: CGSize {
         CodeSnapshotSizing.dimensions(payload: renderPayload, style: style)
+    }
+
+    private var previewAspectRatio: CGFloat {
+        max(0.25, min(4, outputDimensions.width / max(1, outputDimensions.height)))
     }
 
     private var dimensionLabel: String {

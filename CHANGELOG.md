@@ -4,6 +4,33 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.5.2] - 2026-08-22
+
+### Why Upgrade
+
+- Keeps Markdown preview body text at the same effective base size as the editor while font zoom changes.
+- Adds measurable large-document performance coverage before further virtual-renderer changes.
+- Improves editor rendering efficiency by caching resolved syntax colors for each configured theme.
+
+### Highlights
+
+- Adds 100,000-line benchmarks for typing, scrolling, selection, and viewport reload latency.
+- Adds Time Profiler and Animation Hitches capture support with readable baseline trace bundles.
+- Adds visual regression coverage for light and dark translucent and opaque editor surfaces.
+
+### Fixes
+
+- Removes the macOS preview's hidden 0.96 font-size reduction so preview text no longer drifts smaller than the editor.
+- Removes an unreachable duplicate Warm Sepia toolbar theme mapping that produced a compiler warning.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.5.1] - 2026-08-21
 
 ### Why Upgrade

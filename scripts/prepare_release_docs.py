@@ -577,6 +577,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v1.5.2": ("Editor und Vorschau bleiben synchron", "Gleicht die Schriftgröße der Markdown-Vorschau an den Editor an und misst die Leistung großer Dokumente.", ["Editor", "Vorschau", "Leistung"]),
         "v1.5.1": ("Lebendigere Markdown-Themes", "Verfeinert die Farbpaletten der Vorschau, verbessert das Öffnen von Projektordnern und stabilisiert Sparkle-Updates.", ["Markdown", "Themes", "Updates"]),
         "v1.3.6": ("Quick Look und Einstellungen werden stabiler", "Verfeinert Quick Look und die Größenanpassung des macOS-Einstellungsfensters für einen ruhigeren Arbeitsablauf.", ["Quick Look", "Einstellungen", "macOS"]),
         "v1.4.0": ("Toolbar und Quick Look bleiben lesbar", "Stellt die Kurzbezeichnungen der Toolbar wieder her und bündelt Quick Look in einem eigenständigen, überprüfbaren Build-Schema.", ["Symbolleiste", "Quick Look", "macOS"]),
@@ -589,6 +590,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v1.5.2": ("Editor og forhåndsvisning følger hinanden", "Tilpasser Markdown-forhåndsvisningens skriftstørrelse til editoren og måler ydeevnen i store dokumenter.", ["Editor", "Forhåndsvisning", "Ydeevne"]),
         "v1.5.1": ("Mere levende Markdown-temaer", "Forfiner forhåndsvisningens farvepaletter, forbedrer åbning af projektmapper og stabiliserer Sparkle-opdateringer.", ["Markdown", "Temaer", "Opdateringer"]),
         "v1.3.6": ("Quick Look og indstillinger bliver mere stabile", "Forfiner Quick Look og størrelsestilpasningen af macOS-indstillingsvinduet for et roligere arbejdsforløb.", ["Quick Look", "Indstillinger", "macOS"]),
         "v1.4.0": ("Værktøjslinje og Quick Look forbliver læselige", "Gendanner værktøjslinjens korte etiketter og samler Quick Look i et selvstændigt, verificerbart byggeskema.", ["Værktøjslinje", "Quick Look", "macOS"]),
@@ -601,6 +603,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v1.5.2": ("Éditeur et aperçu restent synchronisés", "Aligne la taille du texte de l’aperçu Markdown sur celle de l’éditeur et mesure les performances des grands documents.", ["Éditeur", "Aperçu", "Performances"]),
         "v1.5.1": ("Des thèmes Markdown plus vivants", "Affine les palettes de l’aperçu, améliore l’ouverture des dossiers de projet et stabilise les mises à jour Sparkle.", ["Markdown", "Thèmes", "Mises à jour"]),
         "v1.3.6": ("Quick Look et les réglages gagnent en stabilité", "Affine Quick Look et l’adaptation de taille de la fenêtre Réglages sur macOS pour un flux de travail plus calme.", ["Quick Look", "Réglages", "macOS"]),
         "v1.4.0": ("Barre d’outils et Quick Look restent lisibles", "Restaure les libellés courts de la barre d’outils et regroupe Quick Look dans un schéma de build autonome et vérifiable.", ["Barre d’outils", "Quick Look", "macOS"]),
@@ -613,6 +616,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v1.5.2": ("Editor y vista previa sincronizados", "Alinea el tamaño del texto de la vista previa Markdown con el editor y mide el rendimiento de documentos grandes.", ["Editor", "Vista previa", "Rendimiento"]),
         "v1.5.1": ("Temas Markdown más vivos", "Perfecciona las paletas de color de la vista previa, mejora la apertura de carpetas de proyecto y estabiliza las actualizaciones de Sparkle.", ["Markdown", "Temas", "Actualizaciones"]),
         "v1.3.6": ("Quick Look y Ajustes ganan estabilidad", "Perfecciona Quick Look y el ajuste de tamaño de la ventana Ajustes de macOS para un flujo de trabajo más tranquilo.", ["Quick Look", "Ajustes", "macOS"]),
         "v1.4.0": ("La barra y Quick Look siguen siendo legibles", "Restaura las etiquetas abreviadas de la barra y reúne Quick Look en un esquema de compilación autónomo y verificable.", ["Barra", "Quick Look", "macOS"]),
@@ -625,6 +629,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v1.5.2": ("エディタとプレビューを同期", "Markdown プレビューの文字サイズをエディタに合わせ、大きなドキュメントのパフォーマンスを測定します。", ["エディタ", "プレビュー", "パフォーマンス"]),
         "v1.5.1": ("Markdown テーマをより鮮やかに", "プレビューのカラーパレットを改善し、プロジェクトフォルダの直接オープンと Sparkle の更新を安定させます。", ["Markdown", "テーマ", "アップデート"]),
         "v1.3.6": ("Quick Look と設定がさらに安定", "Quick Look と macOS 設定ウインドウのサイズ調整を改善し、より落ち着いた作業環境にします。", ["Quick Look", "設定", "macOS"]),
         "v1.4.0": ("ツールバーと Quick Look の可読性を維持", "ツールバーの短いラベルを復元し、Quick Look を独立した検証可能なビルドスキームにまとめます。", ["ツールバー", "Quick Look", "macOS"]),
@@ -637,6 +642,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v1.5.2": ("编辑器与预览保持同步", "让 Markdown 预览文字大小与编辑器一致，并测量大型文档的性能。", ["编辑器", "预览", "性能"]),
         "v1.5.1": ("更鲜明的 Markdown 主题", "改进预览配色，优化直接打开项目文件夹，并提高 Sparkle 更新的稳定性。", ["Markdown", "主题", "更新"]),
         "v1.3.6": ("Quick Look 与设置更加稳定", "优化 Quick Look 和 macOS 设置窗口的尺寸调整，让工作流程更加稳定。", ["Quick Look", "设置", "macOS"]),
         "v1.4.0": ("工具栏与 Quick Look 保持清晰", "恢复工具栏的简短标签，并将 Quick Look 整合到独立且可验证的构建方案中。", ["工具栏", "Quick Look", "macOS"]),

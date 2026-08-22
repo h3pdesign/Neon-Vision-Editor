@@ -114,18 +114,7 @@ final class WindowTranslucencyTests: XCTestCase {
         XCTAssertFalse(scrollView.contentView.drawsBackground)
     }
 
-    func testVirtualEditorCanvasUsesWindowBackgroundWhenTranslucencyIsDisabled() {
-        let defaults = UserDefaults.standard
-        let originalMode = defaults.object(forKey: "SettingsMacTranslucencyMode")
-        defaults.set("balanced", forKey: "SettingsMacTranslucencyMode")
-        defer {
-            if let originalMode {
-                defaults.set(originalMode, forKey: "SettingsMacTranslucencyMode")
-            } else {
-                defaults.removeObject(forKey: "SettingsMacTranslucencyMode")
-            }
-        }
-
+    func testVirtualEditorCanvasUsesEditorThemeWhenTranslucencyIsDisabled() {
         let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 1, height: 1))
         let bitmap = NSBitmapImageRep(
             bitmapDataPlanes: nil,
@@ -147,13 +136,7 @@ final class WindowTranslucencyTests: XCTestCase {
         NSGraphicsContext.restoreGraphicsState()
 
         let actual = try! XCTUnwrap(bitmap.colorAt(x: 0, y: 0)?.usingColorSpace(.deviceRGB))
-        let expected = try! XCTUnwrap(
-            ContentView.MacEditorSurfacePolicy.windowBackground(
-                translucent: false,
-                modeRaw: "balanced",
-                isDarkMode: false
-            ).usingColorSpace(.deviceRGB)
-        )
+        let expected = try! XCTUnwrap(NSColor(currentEditorTheme(colorScheme: .light).background).usingColorSpace(.deviceRGB))
         let bitmapComponentTolerance = 1.0 / 255.0
         XCTAssertEqual(actual.redComponent, expected.redComponent, accuracy: bitmapComponentTolerance)
         XCTAssertEqual(actual.greenComponent, expected.greenComponent, accuracy: bitmapComponentTolerance)
@@ -167,6 +150,142 @@ final class WindowTranslucencyTests: XCTestCase {
 
         XCTAssertEqual(NSColor(translucent).alphaComponent, 0, accuracy: 0.001)
         XCTAssertEqual(NSColor(opaque), NSColor(.red))
+    }
+
+    func testInterPaneBackgroundFollowsTranslucencyAndOpaqueEditorCanvas() {
+        let translucent = ContentView.MacEditorSurfacePolicy.interPaneBackground(
+            translucent: true,
+            opaqueEditorCanvas: true,
+            editor: .red,
+            solid: .blue
+        )
+        let opaqueEditor = ContentView.MacEditorSurfacePolicy.interPaneBackground(
+            translucent: false,
+            opaqueEditorCanvas: true,
+            editor: .red,
+            solid: .blue
+        )
+        let opaqueWindow = ContentView.MacEditorSurfacePolicy.interPaneBackground(
+            translucent: false,
+            opaqueEditorCanvas: false,
+            editor: .red,
+            solid: .blue
+        )
+
+        XCTAssertEqual(NSColor(translucent).alphaComponent, 0, accuracy: 0.001)
+        XCTAssertEqual(NSColor(opaqueEditor), NSColor(.red))
+        XCTAssertEqual(NSColor(opaqueWindow), NSColor(.blue))
+    }
+
+    func testEditorSurfaceVisualMatrixMatchesAppearanceAndOpacityModes() throws {
+        let lightWindow = ContentView.MacEditorSurfacePolicy.windowBackground(
+            translucent: false,
+            modeRaw: "balanced",
+            isDarkMode: false
+        )
+        let darkWindow = ContentView.MacEditorSurfacePolicy.windowBackground(
+            translucent: false,
+            modeRaw: "balanced",
+            isDarkMode: true
+        )
+        let lightEditor = NSColor(currentEditorTheme(colorScheme: .light).background)
+        let darkEditor = NSColor(currentEditorTheme(colorScheme: .dark).background)
+
+        let cases: [(String, Color, NSColor)] = [
+            (
+                "light opaque window",
+                ContentView.MacEditorSurfacePolicy.interPaneBackground(
+                    translucent: false,
+                    opaqueEditorCanvas: false,
+                    editor: Color(lightEditor),
+                    solid: Color(lightWindow)
+                ),
+                lightWindow
+            ),
+            (
+                "dark opaque window",
+                ContentView.MacEditorSurfacePolicy.interPaneBackground(
+                    translucent: false,
+                    opaqueEditorCanvas: false,
+                    editor: Color(darkEditor),
+                    solid: Color(darkWindow)
+                ),
+                darkWindow
+            ),
+            (
+                "light opaque editor",
+                ContentView.MacEditorSurfacePolicy.interPaneBackground(
+                    translucent: false,
+                    opaqueEditorCanvas: true,
+                    editor: Color(lightEditor),
+                    solid: Color(lightWindow)
+                ),
+                lightEditor
+            ),
+            (
+                "dark opaque editor",
+                ContentView.MacEditorSurfacePolicy.interPaneBackground(
+                    translucent: false,
+                    opaqueEditorCanvas: true,
+                    editor: Color(darkEditor),
+                    solid: Color(darkWindow)
+                ),
+                darkEditor
+            )
+        ]
+
+        for (name, color, expected) in cases {
+            let actual = try XCTUnwrap(renderedPixel(color: NSColor(color)))
+            assertColor(actual, matches: expected, message: name)
+        }
+
+        for isDarkMode in [false, true] {
+            let translucent = ContentView.MacEditorSurfacePolicy.interPaneBackground(
+                translucent: true,
+                opaqueEditorCanvas: true,
+                editor: isDarkMode ? Color(darkEditor) : Color(lightEditor),
+                solid: Color(
+                    ContentView.MacEditorSurfacePolicy.windowBackground(
+                        translucent: false,
+                        modeRaw: "balanced",
+                        isDarkMode: isDarkMode
+                    )
+                )
+            )
+            let actual = try XCTUnwrap(renderedPixel(color: NSColor(translucent)))
+            XCTAssertEqual(actual.alphaComponent, 0, accuracy: 1.0 / 255.0)
+        }
+    }
+
+    private func renderedPixel(color: NSColor) -> NSColor? {
+        let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: 1,
+            pixelsHigh: 1,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        )!
+        let context = NSGraphicsContext(bitmapImageRep: bitmap)!
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        color.setFill()
+        NSRect(x: 0, y: 0, width: 1, height: 1).fill()
+        NSGraphicsContext.restoreGraphicsState()
+        return bitmap.colorAt(x: 0, y: 0)?.usingColorSpace(.deviceRGB)
+    }
+
+    private func assertColor(_ actual: NSColor, matches expected: NSColor, message: String) {
+        let expectedRGB = expected.usingColorSpace(.deviceRGB) ?? expected
+        let tolerance = 1.0 / 255.0
+        XCTAssertEqual(actual.redComponent, expectedRGB.redComponent, accuracy: tolerance, message)
+        XCTAssertEqual(actual.greenComponent, expectedRGB.greenComponent, accuracy: tolerance, message)
+        XCTAssertEqual(actual.blueComponent, expectedRGB.blueComponent, accuracy: tolerance, message)
+        XCTAssertEqual(actual.alphaComponent, expectedRGB.alphaComponent, accuracy: tolerance, message)
     }
 }
 #endif

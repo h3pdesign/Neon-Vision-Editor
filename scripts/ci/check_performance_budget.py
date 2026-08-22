@@ -34,7 +34,7 @@ def main() -> None:
     except (OSError, json.JSONDecodeError) as error:
         fail(f"cannot read baseline: {error}")
 
-    if baseline.get("schemaVersion") != 2:
+    if baseline.get("schemaVersion") != 3:
         fail("unsupported baseline schema")
 
     fixture = baseline["fixture"]
@@ -62,11 +62,36 @@ def main() -> None:
     require_literal(persistence, r"maxPersistedDraftUTF16Length: Int \{ ([\d_]+) \}", limits["draftTabUTF16Length"], "draft tab length limit")
     require_literal(persistence, r"maxPersistedDraftTotalUTF16Length: Int \{ ([\d_]+) \}", limits["draftTotalUTF16Length"], "draft total length limit")
 
+    interaction_benchmarks = baseline["interactionBenchmarks"]
+    if interaction_benchmarks["largeFileLines"] < 100_000:
+        fail("interaction benchmarks must use at least 100000 lines")
+    if interaction_benchmarks["iterations"] < 5:
+        fail("interaction benchmarks must run at least five measured iterations")
+    benchmark_tests = ROOT / "Neon Vision EditorTests" / "VirtualEditorPerformanceTests.swift"
+    benchmark_source = benchmark_tests.read_text(encoding="utf-8")
+    required_interactions = {
+        "testLargeDocumentTypingLatencyBenchmark",
+        "testLargeDocumentScrollingLatencyBenchmark",
+        "testLargeDocumentSelectionLatencyBenchmark",
+        "testLargeDocumentViewportReloadLatencyBenchmark",
+    }
+    if set(interaction_benchmarks["tests"]) != required_interactions:
+        fail("interaction benchmark manifest must cover typing, scrolling, selection, and viewport reload")
+    for test_name in required_interactions:
+        if f"func {test_name}(" not in benchmark_source:
+            fail(f"missing interaction benchmark {test_name}")
+
     policy = baseline["capturePolicy"]
     if set(policy["platforms"]) != {"macos", "iphone", "ipad"}:
         fail("capture policy must cover macOS, iPhone, and iPad")
     if policy["runsPerPlatform"] != 3 or policy["timeRegressionPercent"] != 20:
         fail("capture policy drifted from the documented protocol")
+    if set(policy.get("instruments", [])) != {"Allocations", "Time Profiler", "Animation Hitches"}:
+        fail("capture policy must include allocation, CPU, and animation-hitch evidence")
+    capture_runner = (ROOT / "scripts" / "capture_performance_profile.sh").read_text(encoding="utf-8")
+    for instrument_id in ("allocations", "time-profiler", "animation-hitches"):
+        if instrument_id not in capture_runner:
+            fail(f"capture runner does not support {instrument_id}")
 
     print("[performance-budget] OK")
 

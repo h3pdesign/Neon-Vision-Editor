@@ -584,7 +584,7 @@ extension ContentView {
             translucentBackgroundEnabled: translucentBackgroundEnabled,
             runtimeFontSize: runtimeFontSize
         ))
-        \(markdownPreviewRuntimePreviewScaleCSS())
+        \(markdownPreviewRuntimePreviewScaleCSS(runtimeFontSize: runtimeFontSize))
         </style>
         </head>
         <body class="\(template)">
@@ -842,7 +842,8 @@ extension ContentView {
         CGFloat(min(28, max(10, editorFontSize)))
     }
 
-    func markdownPreviewRuntimePreviewScaleCSS() -> String {
+    func markdownPreviewRuntimePreviewScaleCSS(runtimeFontSize: CGFloat? = nil) -> String {
+        let resolvedRuntimeFontSize = runtimeFontSize.map { "\(Int($0.rounded()))px" } ?? "1em"
         let previewLayoutCSS = """
         * {
           box-sizing: border-box;
@@ -919,7 +920,7 @@ extension ContentView {
           -webkit-text-size-adjust: 100%;
         }
         body {
-          font-size: 1em !important;
+          font-size: \(resolvedRuntimeFontSize) !important;
         }
         @media (max-width: 480px) {
           html, body {
@@ -947,7 +948,7 @@ extension ContentView {
         return """
         \(previewLayoutCSS)
         body {
-          font-size: 0.96em;
+          font-size: \(resolvedRuntimeFontSize) !important;
         }
         """
 #endif

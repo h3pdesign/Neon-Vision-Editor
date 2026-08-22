@@ -366,7 +366,6 @@ extension ContentView {
         case "plasma": return Color(red: 0.85, green: 0.08, blue: 0.47)
         case "deep-ocean": return Color(red: 0.03, green: 0.49, blue: 0.78)
         case "high-contrast": return Color.black
-        case "warm-sepia": return Color(red: 0.66, green: 0.36, blue: 0.14)
         default: return Color.accentColor
         }
     }

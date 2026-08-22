@@ -170,6 +170,17 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertFalse(css.contains("max(19px, 1.18em)"))
     }
 
+    func testLivePreviewScalePreservesRuntimeFontSize() {
+        let contentView = ContentView()
+        let css = contentView.markdownPreviewRuntimePreviewScaleCSS(runtimeFontSize: 18)
+
+        #if os(iOS)
+        XCTAssertTrue(css.contains("font-size: 18px !important;"))
+        #else
+        XCTAssertTrue(css.contains("font-size: calc(18px * 0.96);"))
+        #endif
+    }
+
     func testDistinctMarkdownPreviewThemesIncludeTheirLayoutTreatment() {
         let contentView = ContentView()
 

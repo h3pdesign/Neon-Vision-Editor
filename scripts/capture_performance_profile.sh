@@ -8,7 +8,7 @@ usage() {
   cat <<'EOF'
 Usage: scripts/capture_performance_profile.sh <macos|iphone|ipad> [output-directory]
 
-Creates deterministic workload fixtures, records a 30-second Allocations trace,
+Creates deterministic workload fixtures, records a 30-second Instruments trace,
 and writes a capture record beside it. Run each platform three times and retain
 the raw .trace files as the authoritative Instruments artifacts.
 
@@ -17,6 +17,8 @@ Environment:
   NVE_PERFORMANCE_DEVICE_ID    Simulator UDID (required for iPhone/iPad)
   NVE_PERFORMANCE_BUNDLE_ID    App bundle identifier (default h3p.Neon-Vision-Editor)
   NVE_PERFORMANCE_DURATION     Trace duration in seconds (default 30)
+  NVE_PERFORMANCE_INSTRUMENT   allocations, time-profiler, or animation-hitches
+                               (default allocations)
   NVE_BENCHMARK_CARD_COUNT, NVE_BENCHMARK_PDF_CARD_COUNT, NVE_BENCHMARK_OPEN
 EOF
 }
@@ -27,12 +29,34 @@ case "$platform" in macos|iphone|ipad) ;; *) usage >&2; exit 2 ;; esac
 
 duration="${NVE_PERFORMANCE_DURATION:-30}"
 bundle_id="${NVE_PERFORMANCE_BUNDLE_ID:-h3p.Neon-Vision-Editor}"
+instrument_id="${NVE_PERFORMANCE_INSTRUMENT:-allocations}"
+case "$instrument_id" in
+  allocations)
+    instrument_name="Allocations"
+    trace_slug="allocations"
+    ;;
+  time-profiler)
+    instrument_name="Time Profiler"
+    trace_slug="time-profiler"
+    ;;
+  animation-hitches|core-animation)
+    # Current Instruments exposes Core Animation commit/render timing through
+    # the Animation Hitches template rather than a standalone template.
+    instrument_name="Animation Hitches"
+    trace_slug="animation-hitches"
+    ;;
+  *)
+    echo "Unsupported NVE_PERFORMANCE_INSTRUMENT: $instrument_id" >&2
+    usage >&2
+    exit 2
+    ;;
+esac
 mkdir -p "$output_dir"
 
 NVE_BENCHMARK_OPEN=0 scripts/benchmark_large_file.sh 100000 > "$output_dir/fixture.log"
 fixture_root="${TMPDIR:-/tmp}/nve_large_file_benchmark"
 markdown_file="$fixture_root/large-100000.md"
-trace="$output_dir/${platform}-allocations.trace"
+trace="$output_dir/${platform}-${trace_slug}.trace"
 capture_json="$output_dir/capture.json"
 
 tool_version="$(xcrun xctrace version 2>/dev/null || xcrun xctrace --version 2>/dev/null || echo unavailable)"
@@ -54,7 +78,7 @@ PY
 }
 
 write_capture_manifest() {
-  python3 - "$capture_json" "$platform" "$duration" "$bundle_id" "$tool_version" "$os_version" "$machine" "$1" "$record_status" <<'PY'
+  python3 - "$capture_json" "$platform" "$duration" "$bundle_id" "$tool_version" "$os_version" "$machine" "$instrument_name" "$1" "$record_status" <<'PY'
 import json
 import pathlib
 import sys
@@ -70,9 +94,9 @@ path.write_text(json.dumps({
     "xctraceVersion": sys.argv[5],
     "hostOS": sys.argv[6],
     "hostArchitecture": sys.argv[7],
-    "instrument": "Allocations",
-    "captureStatus": sys.argv[8],
-    "xctraceExitStatus": int(sys.argv[9]),
+    "instrument": sys.argv[8],
+    "captureStatus": sys.argv[9],
+    "xctraceExitStatus": int(sys.argv[10]),
     "traceExport": "raw-trace-retained-xcode27-workaround",
     "fixture": {
         "largeFileLines": 100000,
@@ -113,7 +137,7 @@ if [[ "$platform" == "macos" ]]; then
     done
   fi
   [[ -n "$pid" ]] || { echo "Could not find the launched app process." >&2; exit 1; }
-  run_isolated xcrun xctrace record --instrument Allocations --attach "$pid" --time-limit "${duration}s" --output "$trace" --no-prompt || record_status=$?
+  run_isolated xcrun xctrace record --template "$instrument_name" --attach "$pid" --time-limit "${duration}s" --output "$trace" --no-prompt || record_status=$?
 else
   device_id="${NVE_PERFORMANCE_DEVICE_ID:-}"
   [[ -n "$device_id" ]] || { echo "NVE_PERFORMANCE_DEVICE_ID is required for simulator capture." >&2; exit 2; }
@@ -125,7 +149,7 @@ else
     sleep 1
   done
   [[ -n "$pid" ]] || { echo "Could not find the launched simulator app process." >&2; exit 1; }
-  run_isolated xcrun xctrace record --instrument Allocations --device "$device_id" --attach "$pid" --time-limit "${duration}s" --output "$trace" --no-prompt || record_status=$?
+  run_isolated xcrun xctrace record --template "$instrument_name" --device "$device_id" --attach "$pid" --time-limit "${duration}s" --output "$trace" --no-prompt || record_status=$?
 fi
 
 if [[ ! -d "$trace" ]]; then

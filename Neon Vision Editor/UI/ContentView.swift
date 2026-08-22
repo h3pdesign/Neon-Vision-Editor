@@ -1091,6 +1091,18 @@ struct ContentView: View {
             translucent ? .clear : solid
         }
 
+        static func interPaneBackground(
+            translucent: Bool,
+            opaqueEditorCanvas: Bool,
+            editor: Color,
+            solid: Color
+        ) -> Color {
+            if translucent {
+                return .clear
+            }
+            return opaqueEditorCanvas ? editor : solid
+        }
+
         static func windowBackground(translucent: Bool, modeRaw: String, isDarkMode: Bool) -> NSColor {
             let whiteLevel: CGFloat
             let translucentAlpha: CGFloat
@@ -1154,10 +1166,14 @@ struct ContentView: View {
     }
 
     private var macInterPaneBackgroundStyle: AnyShapeStyle {
-        if enableTranslucentWindow {
-            return macUnifiedTranslucentMaterialStyle
-        }
-        return AnyShapeStyle(macSolidSurfaceColor)
+        AnyShapeStyle(
+            MacEditorSurfacePolicy.interPaneBackground(
+                translucent: enableTranslucentWindow,
+                opaqueEditorCanvas: opaqueEditorSurfaceMac,
+                editor: macOpaqueEditorCanvasColor,
+                solid: macSolidSurfaceColor
+            )
+        )
     }
 #elseif os(iOS) || os(visionOS)
     var primaryGlassMaterial: Material { colorScheme == .dark ? .regularMaterial : .ultraThinMaterial }

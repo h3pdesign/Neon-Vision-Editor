@@ -98,8 +98,15 @@ enum VirtualEditorVisualLayout {
 }
 
 enum VirtualEditorWheelZoom {
-    static func fontSizeDelta(scrollingDeltaY: CGFloat, fallbackDeltaY: CGFloat) -> CGFloat {
+    static func fontSizeDelta(
+        scrollingDeltaY: CGFloat,
+        fallbackDeltaY: CGFloat,
+        hasPreciseScrollingDeltas: Bool = true
+    ) -> CGFloat {
         let rawDelta = abs(scrollingDeltaY) > 0.001 ? scrollingDeltaY : fallbackDeltaY
+        if !hasPreciseScrollingDeltas, abs(rawDelta) > 0.001 {
+            return rawDelta.sign == .minus ? -1 : 1
+        }
         return rawDelta * 0.2
     }
 }
@@ -436,7 +443,8 @@ final class VirtualEditorScrollView: NSScrollView {
 
         let delta = VirtualEditorWheelZoom.fontSizeDelta(
             scrollingDeltaY: event.scrollingDeltaY,
-            fallbackDeltaY: event.deltaY
+            fallbackDeltaY: event.deltaY,
+            hasPreciseScrollingDeltas: event.hasPreciseScrollingDeltas
         )
         guard abs(delta) >= 0.01 else { return }
         canvas.adjustFontSize(by: delta)
@@ -604,6 +612,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var resourceID = ""
     private var language = "plain"
     private var scheme: ColorScheme = .light
+    private var resolvedEditorTheme = currentEditorTheme(colorScheme: .light)
+    private var resolvedSyntaxColors = SyntaxColors.from(theme: currentEditorTheme(colorScheme: .light))
     private var editorFontSize: CGFloat = 14
     private var editorFontName = ""
     private var lineHeightMultiplier: CGFloat = 1
@@ -873,6 +883,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         self.resourceID = resourceID
         self.language = language
         self.scheme = colorScheme
+        self.resolvedEditorTheme = currentEditorTheme(colorScheme: colorScheme)
+        self.resolvedSyntaxColors = SyntaxColors.from(theme: resolvedEditorTheme)
         self.editorFontName = fontName
         resolvedEditorFont = fontName.isEmpty
             ? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
@@ -941,8 +953,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         if let documentID {
             EditorPerformanceMonitor.shared.markTabSwitchFirstDraw(tabID: documentID)
         }
+        let context = NSGraphicsContext.current?.cgContext
+        context?.saveGState()
+        context?.clip(to: dirtyRect)
+        defer { context?.restoreGState() }
         if !translucentBackgroundEnabled {
-            NSColor(currentEditorTheme(colorScheme: scheme).background).setFill()
+            NSColor(resolvedEditorTheme.background).setFill()
             dirtyRect.fill()
         }
         guard !lineStarts.isEmpty else { return }
@@ -964,7 +980,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                     )
                 ), withAttributes: [
                     .font: editorFont,
-                    .foregroundColor: NSColor(currentEditorTheme(colorScheme: scheme).text).withAlphaComponent(0.58)
+                    .foregroundColor: NSColor(resolvedEditorTheme.text).withAlphaComponent(0.58)
                 ])
             }
             context.textPosition = CGPoint(x: gutterWidth + Geometry.gutterTextInset, y: row.baseline)
@@ -982,9 +998,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         guard start >= 0, start <= viewportText.utf16.count else { return }
         let attributes: [NSAttributedString.Key: Any] = [
             .font: editorFont,
-            .foregroundColor: NSColor(currentEditorTheme(colorScheme: scheme).text),
+            .foregroundColor: NSColor(resolvedEditorTheme.text),
             .underlineStyle: NSUnderlineStyle.single.rawValue,
-            .underlineColor: NSColor(currentEditorTheme(colorScheme: scheme).cursor)
+            .underlineColor: NSColor(resolvedEditorTheme.cursor)
         ]
         let line = CTLineCreateWithAttributedString(NSAttributedString(string: markedText, attributes: attributes))
         let point = caretPoint(localLocation: start)
@@ -1118,13 +1134,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private func attributedLine(_ line: String, absoluteStart: Int, dark: Bool) -> NSAttributedString {
         let base = NSMutableAttributedString(string: line, attributes: [
             .font: editorFont,
-            .foregroundColor: NSColor(currentEditorTheme(colorScheme: scheme).text)
+            .foregroundColor: NSColor(resolvedEditorTheme.text)
         ])
         let range = NSRange(location: 0, length: (line as NSString).length)
         guard range.length > 0 else { return base }
-        let theme = currentEditorTheme(colorScheme: scheme)
-        let colors = SyntaxColors.from(theme: theme)
-        for (pattern, color) in getSyntaxPatterns(for: language, colors: colors) {
+        for (pattern, color) in getSyntaxPatterns(for: language, colors: resolvedSyntaxColors) {
             guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
             for match in regex.matches(in: line, range: range) {
                 base.addAttribute(.foregroundColor, value: NSColor(color), range: match.range)
@@ -1235,7 +1249,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         guard highlightCurrentLine else { return }
         let local = absoluteCaret - viewportLineOriginStartUTF16
         guard let row = visualRow(containing: local, in: rows) else { return }
-        NSColor(currentEditorTheme(colorScheme: scheme).selection)
+        NSColor(resolvedEditorTheme.selection)
             .withAlphaComponent(0.12)
             .setFill()
         NSRect(x: gutterWidth, y: row.baseline - lineHeight + 2, width: max(0, bounds.width - gutterWidth), height: lineHeight).fill()
@@ -1245,7 +1259,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         guard selection.length > 0 else { return }
         let selectedStart = selection.location - viewportLineOriginStartUTF16
         let selectedEnd = NSMaxRange(selection) - viewportLineOriginStartUTF16
-        NSColor(currentEditorTheme(colorScheme: scheme).selection)
+        NSColor(resolvedEditorTheme.selection)
             .withAlphaComponent(0.32)
             .setFill()
         for row in rows {
@@ -1277,7 +1291,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             row.coreTextStringIndex(forViewportOffset: local),
             nil
         ))
-        NSColor(currentEditorTheme(colorScheme: scheme).cursor).setFill()
+        NSColor(resolvedEditorTheme.cursor).setFill()
         NSRect(x: gutterWidth + Geometry.gutterTextInset + x, y: row.baseline - lineHeight + 2, width: 1.5, height: lineHeight).fill()
     }
 

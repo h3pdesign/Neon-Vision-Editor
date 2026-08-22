@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "fixture": {
     "markdownCards": 500,
     "pdfCards": 500,
@@ -14,9 +14,20 @@
     "draftTabUTF16Length": 1000000,
     "draftTotalUTF16Length": 4000000
   },
+  "interactionBenchmarks": {
+    "largeFileLines": 100000,
+    "iterations": 5,
+    "tests": [
+      "testLargeDocumentTypingLatencyBenchmark",
+      "testLargeDocumentScrollingLatencyBenchmark",
+      "testLargeDocumentSelectionLatencyBenchmark",
+      "testLargeDocumentViewportReloadLatencyBenchmark"
+    ]
+  },
   "capturePolicy": {
     "runsPerPlatform": 3,
     "timeRegressionPercent": 20,
-    "platforms": ["macos", "iphone", "ipad"]
+    "platforms": ["macos", "iphone", "ipad"],
+    "instruments": ["Allocations", "Time Profiler", "Animation Hitches"]
   }
 }

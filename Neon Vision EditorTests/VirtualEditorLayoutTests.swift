@@ -10,6 +10,33 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(VirtualEditorWheelZoom.fontSizeDelta(scrollingDeltaY: 0, fallbackDeltaY: 5), 1)
     }
 
+    func testImpreciseMouseWheelUsesDiscreteFontSteps() {
+        XCTAssertEqual(
+            VirtualEditorWheelZoom.fontSizeDelta(
+                scrollingDeltaY: 0,
+                fallbackDeltaY: 1,
+                hasPreciseScrollingDeltas: false
+            ),
+            1
+        )
+        XCTAssertEqual(
+            VirtualEditorWheelZoom.fontSizeDelta(
+                scrollingDeltaY: 0,
+                fallbackDeltaY: -1,
+                hasPreciseScrollingDeltas: false
+            ),
+            -1
+        )
+        XCTAssertEqual(
+            VirtualEditorWheelZoom.fontSizeDelta(
+                scrollingDeltaY: 0.2,
+                fallbackDeltaY: 0,
+                hasPreciseScrollingDeltas: false
+            ),
+            1
+        )
+    }
+
     func testUnwrappedContentWidthIncludesLongestRenderedLine() {
         let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
         let line = CTLineCreateWithAttributedString(NSAttributedString(string: String(repeating: "W", count: 80), attributes: [.font: font]))

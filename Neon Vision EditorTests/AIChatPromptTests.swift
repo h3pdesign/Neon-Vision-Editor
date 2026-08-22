@@ -45,6 +45,26 @@ final class AIChatPromptTests: XCTestCase {
         XCTAssertTrue(prompt.contains("enable Selection or Current File"))
     }
 
+    func testOnDevicePromptBoundsCombinedEditorContext() {
+        let prompt = AIChatConversation.requestPrompt(
+            userPrompt: "Summarize the document",
+            context: AIChatContext(
+                selection: String(repeating: "selection\n", count: 1_000),
+                documentName: "Large.md",
+                documentLanguage: "markdown",
+                documentText: String(repeating: "document\n", count: 10_000),
+                projectStructure: String(repeating: "path/to/file\n", count: 1_000)
+            ),
+            history: [
+                .init(role: .user, content: String(repeating: "history\n", count: 1_000))
+            ],
+            contextCharacterBudget: 5_000
+        )
+
+        XCTAssertLessThanOrEqual(prompt.count, 12_000)
+        XCTAssertTrue(prompt.contains("USER:\nSummarize the document"))
+    }
+
     func testQuickActionsAreLanguageAwareAndAdvisory() {
         XCTAssertTrue(AIChatQuickAction.tests.prompt.contains("appropriate testing framework"))
         XCTAssertTrue(AIChatQuickAction.explain.prompt.contains("## Key responsibilities"))

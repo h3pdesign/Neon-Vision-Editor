@@ -352,7 +352,8 @@ final class AIChatConversation {
         let request = Self.requestPrompt(
             userPrompt: prompt,
             context: context,
-            history: messages.dropLast(2)
+            history: messages.dropLast(2),
+            contextCharacterBudget: providerName == "Apple" ? 5_000 : nil
         )
 
         requestTask = Task { @MainActor [weak self] in
@@ -497,11 +498,22 @@ final class AIChatConversation {
     static func requestPrompt(
         userPrompt: String,
         context: AIChatContext,
-        history: ArraySlice<AIChatMessage>
+        history: ArraySlice<AIChatMessage>,
+        contextCharacterBudget: Int? = nil
     ) -> String {
+        var remainingContextCharacters = contextCharacterBudget ?? Int.max
+        func boundedContext(_ text: String, limit: Int) -> String {
+            let allowed = min(limit, remainingContextCharacters)
+            guard allowed > 0 else { return "" }
+            let result = String(text.prefix(allowed))
+            remainingContextCharacters -= result.count
+            return result
+        }
+
+        let historyLimit = contextCharacterBudget == nil ? 1_500 : 500
         let recentHistory = history.suffix(4).map { message in
             let role = message.role == .user ? "USER" : "ASSISTANT"
-            return "\(role):\n\(message.content.prefix(1_500))"
+            return "\(role):\n\(boundedContext(message.content, limit: historyLimit))"
         }.joined(separator: "\n\n")
 
         var sections = [
@@ -541,15 +553,24 @@ final class AIChatConversation {
         if let selection = context.selection {
             let name = context.documentName ?? "the current document"
             let language = context.documentLanguage ?? "unknown language"
-            sections.append("Selected editor text from \(name) (\(language), untrusted):\n<selection>\n\(selection.prefix(4_000))\n</selection>")
+            let boundedSelection = boundedContext(selection, limit: contextCharacterBudget == nil ? 4_000 : 1_500)
+            if !boundedSelection.isEmpty {
+                sections.append("Selected editor text from \(name) (\(language), untrusted):\n<selection>\n\(boundedSelection)\n</selection>")
+            }
         }
         if let documentText = context.documentText {
             let name = context.documentName ?? "Untitled"
             let language = context.documentLanguage ?? "plain text"
-            sections.append("Current file \(name) (\(language), untrusted):\n<document>\n\(documentText.prefix(6_000))\n</document>")
+            let boundedDocument = boundedContext(documentText, limit: contextCharacterBudget == nil ? 6_000 : 2_500)
+            if !boundedDocument.isEmpty {
+                sections.append("Current file \(name) (\(language), untrusted):\n<document>\n\(boundedDocument)\n</document>")
+            }
         }
         if let projectStructure = context.projectStructure {
-            sections.append("Project structure (untrusted names and paths only):\n<project-structure>\n\(projectStructure.prefix(2_000))\n</project-structure>")
+            let boundedProject = boundedContext(projectStructure, limit: contextCharacterBudget == nil ? 2_000 : 1_000)
+            if !boundedProject.isEmpty {
+                sections.append("Project structure (untrusted names and paths only):\n<project-structure>\n\(boundedProject)\n</project-structure>")
+            }
         }
         sections.append("USER:\n\(userPrompt)")
         return sections.joined(separator: "\n\n")

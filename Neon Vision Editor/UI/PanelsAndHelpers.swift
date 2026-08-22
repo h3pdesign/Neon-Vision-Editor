@@ -2563,15 +2563,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.5.1",
-            subtitle: "Release highlights for v1.5.1.",
+            title: "What’s New in v1.5.2",
+            subtitle: "Release highlights for v1.5.2.",
             bullets: [
-                "Editor Improvements: Makes Markdown preview themes more vivid, differentiated, and reliable in both light and dark mode.",
-                "Workflow Refinements: Improves project-folder opening and stabilizes the Sparkle update dependency.",
-                "Performance Updates: Keeps live preview and exported Markdown styling aligned across supported appearances.",
-                "Usability Updates: Adds distinct Plasma and Deep Ocean palettes and strengthens High Contrast, Warm Sepia, Nordic Light, Article, Notebook…",
-                "Editor Improvements: Adds Ember Glow, Forest Canopy, Ultraviolet, Cobalt, and Mint Paper for a broader set of vivid, differentiated preview styles.",
-                "iPhone TOC: Adds theme-specific heading accents, semantic color tokens, richer Markdown component styling, and live-preview/export CSS…"
+                "Editor Improvements: Keeps Markdown preview body text at the same effective base size as the editor while font zoom changes.",
+                "Editor Performance: Adds measurable large-document performance coverage before further virtual-renderer changes.",
+                "Performance Updates: Improves editor rendering efficiency by caching resolved syntax colors for each configured theme.",
+                "Usability Updates: Adds 100,000-line benchmarks for typing, scrolling, selection, and viewport reload latency.",
+                "Editor Improvements: Adds Time Profiler and Animation Hitches capture support with readable baseline trace bundles.",
+                "Workflow Refinements: Adds visual regression coverage for light and dark translucent and opaque editor surfaces."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

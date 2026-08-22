@@ -550,6 +550,7 @@ struct CodeSnapshotComposerView: View {
     @State private var didCopySnapshot = false
 #if !os(macOS)
     @State private var showsMobilePreview = true
+    @State private var mobilePreviewScale: CGFloat = 1
 #endif
 
     private var surfaceBackground: Color {
@@ -865,31 +866,109 @@ struct CodeSnapshotComposerView: View {
 #if !os(macOS)
     private var touchSnapshotStudio: some View {
         NavigationStack {
+            mobileSnapshotContent
+                .navigationTitle("Code Snapshot")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { dismiss() }
+                    }
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showsMobilePreview.toggle()
+                            }
+                        } label: {
+                            Label(showsMobilePreview ? "Hide Preview" : "Preview", systemImage: showsMobilePreview ? "eye.slash" : "eye")
+                        }
+                    }
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var mobileSnapshotContent: some View {
+        if horizontalSizeClass == .regular {
+            iPadSnapshotStudio
+        } else {
             ScrollView {
                 VStack(spacing: 16) {
-                    snapshotControls(useCompactLayout: true)
                     if showsMobilePreview {
                         mobileSnapshotPreview
+                        mobilePreviewZoomControl
                     }
+                    snapshotControls(useCompactLayout: true)
                     snapshotActionBar(compact: true)
                 }
                 .padding(16)
             }
-            .navigationTitle("Code Snapshot")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+        }
+    }
+
+    private var iPadSnapshotStudio: some View {
+        HStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("Style your snapshot")
+                        .font(.title3.weight(.bold))
+                    Text(dimensionLabel)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    snapshotControls(useCompactLayout: true)
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showsMobilePreview.toggle()
+                .padding(20)
+            }
+            .frame(width: 340)
+            .background(settingsSurfaceStyle)
+
+            Divider()
+
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    Text("Code Snapshot")
+                        .font(.headline.weight(.semibold))
+                    Text(dimensionLabel)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if let shareURL {
+                        ShareLink(item: shareURL) {
+                            Image(systemName: "square.and.arrow.up")
                         }
-                    } label: {
-                        Label(showsMobilePreview ? "Hide Preview" : "Preview", systemImage: showsMobilePreview ? "eye.slash" : "eye")
+                        .buttonStyle(.bordered)
                     }
+                    Button(action: copySnapshotToClipboard) {
+                        Label(didCopySnapshot ? "Copied" : "Copy", systemImage: didCopySnapshot ? "checkmark" : "doc.on.doc")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(style.theme.accent)
+                    .disabled(renderedPNGData == nil)
+                    Button("Save") { showExporter = true }
+                        .buttonStyle(.bordered)
+                        .disabled(renderedPNGData == nil)
                 }
+                .padding(.horizontal, 18)
+                .frame(height: 54)
+
+                Divider()
+
+                if showsMobilePreview {
+                    ScrollView([.horizontal, .vertical], showsIndicators: true) {
+                        VStack(spacing: 12) {
+                            mobileSnapshotPreview
+                                .frame(maxWidth: 760)
+                            mobilePreviewZoomControl
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(24)
+                    }
+                } else {
+                    ContentUnavailableView("Preview Hidden", systemImage: "eye.slash", description: Text("Use Preview in the toolbar to show the rendered snapshot."))
+                }
+
+                Divider()
+                snapshotActionBar(compact: false)
+                    .padding(16)
             }
         }
     }
@@ -898,6 +977,7 @@ struct CodeSnapshotComposerView: View {
         fittedSnapshotPreview
             .aspectRatio(previewAspectRatio, contentMode: .fit)
             .frame(maxWidth: .infinity)
+            .scaleEffect(mobilePreviewScale)
             .padding(12)
             .background(surfaceBackground.opacity(0.72), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay {
@@ -905,6 +985,67 @@ struct CodeSnapshotComposerView: View {
                     .strokeBorder(.primary.opacity(0.08))
             }
             .animation(.easeInOut(duration: 0.2), value: previewAspectRatio)
+    }
+
+    private var mobilePreviewZoomControl: some View {
+        HStack(spacing: 16) {
+            Button {
+                mobilePreviewScale = max(0.75, mobilePreviewScale - 0.25)
+            } label: {
+                Image(systemName: "minus.magnifyingglass")
+            }
+            .buttonStyle(.bordered)
+            .disabled(mobilePreviewScale <= 0.75)
+
+            Text("\(Int(mobilePreviewScale * 100))%")
+                .font(.caption.monospacedDigit())
+                .frame(minWidth: 48)
+
+            Button {
+                mobilePreviewScale = min(1.5, mobilePreviewScale + 0.25)
+            } label: {
+                Image(systemName: "plus.magnifyingglass")
+            }
+            .buttonStyle(.bordered)
+            .disabled(mobilePreviewScale >= 1.5)
+
+            Button("Fit") { mobilePreviewScale = 1 }
+                .buttonStyle(.bordered)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Preview zoom")
+    }
+
+    private var mobileThemeGallery: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Theme")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(CodeSnapshotTheme.allCases) { theme in
+                        Button {
+                            style.theme = theme
+                        } label: {
+                            VStack(spacing: 6) {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(LinearGradient(colors: [theme.surface, theme.accent], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                    .frame(width: 76, height: 42)
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            .stroke(style.theme == theme ? theme.accent : .clear, lineWidth: 3)
+                                    }
+                                Text(theme.title)
+                                    .font(.caption2.weight(.medium))
+                                    .lineLimit(1)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Theme \(theme.title)")
+                    }
+                }
+            }
+        }
     }
 #endif
 
@@ -958,6 +1099,10 @@ struct CodeSnapshotComposerView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Snapshot style", systemImage: "slider.horizontal.3")
                 .font(.headline.weight(.semibold))
+
+#if !os(macOS)
+            mobileThemeGallery
+#endif
 
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 10) {
                     compactSnapshotMenu("Theme") {

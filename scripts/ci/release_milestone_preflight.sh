@@ -34,9 +34,9 @@ if [[ "${MILESTONE_STATE}" != "closed" ]]; then
 fi
 
 OPEN_ISSUES_JSON="$(gh issue list --state open --milestone "${MILESTONE_TITLE}" --limit 200 --json number,title,url)"
-OPEN_COUNT="$(printf '%s' "${OPEN_ISSUES_JSON}" | jq 'length')"
+OPEN_COUNT="$(printf '%s' "${OPEN_ISSUES_JSON}" | python3 -c 'import json, sys; print(len(json.load(sys.stdin)))')"
 if [[ "${OPEN_COUNT}" != "0" ]]; then
   echo "Milestone ${MILESTONE_TITLE} still has ${OPEN_COUNT} open issue(s):" >&2
-  printf '%s' "${OPEN_ISSUES_JSON}" | jq -r '.[] | "- #\(.number): \(.title) (\(.url))"' >&2
+  printf '%s' "${OPEN_ISSUES_JSON}" | python3 -c 'import json, sys; print("\\n".join(f"- #{issue[\"number\"]}: {issue[\"title\"]} ({issue[\"url\"]})" for issue in json.load(sys.stdin)))' >&2
   exit 1
 fi

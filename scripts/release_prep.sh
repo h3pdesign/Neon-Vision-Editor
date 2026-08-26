@@ -221,6 +221,8 @@ if [[ "$DO_PUSH" -eq 1 ]]; then
     exit 1
   fi
   git switch -c "${RELEASE_BRANCH}"
+  RELEASE_BRANCH_CREATED=1
+  trap 'status=$?; if [[ "$status" -ne 0 && "$RELEASE_BRANCH_CREATED" -eq 1 ]]; then git switch develop >/dev/null 2>&1 || true; git branch -D "$RELEASE_BRANCH" >/dev/null 2>&1 || true; fi; exit "$status"' EXIT
 fi
 
 if git rev-parse "$TAG" >/dev/null 2>&1; then

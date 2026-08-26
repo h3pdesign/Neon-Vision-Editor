@@ -1,5 +1,7 @@
 name: Pre-release CI
 
+# CodeQL default setup supplies the required scan for PRs targeting either
+# protected branch alongside these repository-specific release checks.
 on:
   pull_request:
     branches: ["main", "develop"]

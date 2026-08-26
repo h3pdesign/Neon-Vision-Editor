@@ -2603,7 +2603,17 @@ struct ContentView: View {
     }
 
     private var rootViewWithStateObservers: some View {
-        applyUpdateVisibilityObservers(to: basePlatformRootView)
+        applyPresentationStateObservers(
+            to: applySessionStateObservers(
+                to: applyEditorSettingObservers(
+                    to: applyUpdateVisibilityObservers(to: basePlatformRootView)
+                )
+            )
+        )
+    }
+
+    private func applyEditorSettingObservers<Content: View>(to view: Content) -> some View {
+        view
             .onAppear {
                 handleSettingsAndEditorDefaultsOnAppear()
             }
@@ -2637,6 +2647,10 @@ struct ContentView: View {
             .onChange(of: viewModel.isLineWrapEnabled) { _, _ in
                 scheduleHighlightRefresh()
             }
+    }
+
+    private func applySessionStateObservers<Content: View>(to view: Content) -> some View {
+        view
             .onChange(of: windowSessionObservationSnapshot) { _, _ in
                 scheduleSessionPersistence()
                 scheduleUnsavedDraftSnapshotPersistence()
@@ -2670,6 +2684,10 @@ struct ContentView: View {
             .onChange(of: viewModel.showSidebar) { _, _ in
                 persistSessionIfReady()
             }
+    }
+
+    private func applyPresentationStateObservers<Content: View>(to view: Content) -> some View {
+        view
             .onChange(of: showProjectStructureSidebar) { _, isPresented in
                 persistSessionIfReady()
                 if !isPresented {

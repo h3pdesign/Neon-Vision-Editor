@@ -4,6 +4,36 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.5.3] - 2026-08-26
+
+### Why Upgrade
+
+- Makes large-file editing and scrolling more responsive across macOS, iOS, and iPadOS.
+- Reduces unnecessary editor, project, preview, and session-state refreshes during routine interaction.
+- Adds a distraction-free focus mode while improving editor selection, project-row clarity, and accessibility context.
+
+### Highlights
+
+- Caches macOS viewport render snapshots and incrementally prepares syntax-highlighted lines outside the draw path.
+- Adds revision-aware iOS line metadata, no-wrap width caching, and bounded formatting for large documents.
+- Adds focused SwiftUI observation snapshots, preview reload measurements, and CI-exported performance results.
+- Adds Focus Mode to hide secondary editor chrome without changing the open document or workspace state.
+
+### Fixes
+
+- Prevents the editor canvas from taking focus merely because it moved into a window.
+- Improves editor accessibility with document, line, column, selection, and read-only context.
+- Splits the root observer composition so supported public Xcode releases can type-check it reliably.
+- Makes release appcast publication track its pull request by number and delays release-branch creation until metadata validation succeeds.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.5.2] - 2026-08-22
 
 ### Why Upgrade

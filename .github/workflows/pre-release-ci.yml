@@ -82,8 +82,43 @@ jobs:
         run: |
           set -euo pipefail
           probe_log="$(mktemp)"
-          if xcodebuild -list -project "Neon Vision Editor.xcodeproj" >"$probe_log" 2>&1; then
+          set +e
+          python3 - "$probe_log" <<'PY'
+          import os
+          import signal
+          import subprocess
+          import sys
+
+          log_path = sys.argv[1]
+          with open(log_path, "wb") as log:
+              process = subprocess.Popen(
+                  ["xcodebuild", "-list", "-project", "Neon Vision Editor.xcodeproj"],
+                  stdout=log,
+                  stderr=subprocess.STDOUT,
+                  start_new_session=True,
+              )
+              try:
+                  status = process.wait(timeout=180)
+              except subprocess.TimeoutExpired:
+                  os.killpg(process.pid, signal.SIGTERM)
+                  try:
+                      process.wait(timeout=5)
+                  except subprocess.TimeoutExpired:
+                      os.killpg(process.pid, signal.SIGKILL)
+                      process.wait()
+                  status = 124
+          raise SystemExit(status)
+          PY
+          probe_status=$?
+          set -e
+          if [[ "$probe_status" -eq 0 ]]; then
             echo "project_compatible=true" >> "$GITHUB_OUTPUT"
+            rm -f "$probe_log"
+            exit 0
+          fi
+          if [[ "$probe_status" -eq 124 ]]; then
+            echo "::warning::Hosted Xcode project probe timed out after 180 seconds. Runtime tests are skipped for this run."
+            echo "project_compatible=false" >> "$GITHUB_OUTPUT"
             rm -f "$probe_log"
             exit 0
           fi

@@ -703,6 +703,7 @@ jobs:
           git config commit.gpgsign true
 
           appcast_commit=""
+          appcast_pr_number=""
           appcast_branch="automation/appcast-${TAG_NAME#v}"
           for attempt in 1 2 3; do
             git fetch origin main
@@ -725,9 +726,10 @@ jobs:
                   --title "chore: publish Sparkle appcast for ${TAG_NAME}" \
                   --body "Automated signed Sparkle appcast publication for ${TAG_NAME}."
               fi
-              gh pr merge "${appcast_branch}" --repo "${GITHUB_REPOSITORY}" --auto --squash --delete-branch
+              appcast_pr_number="$(gh pr view "${appcast_branch}" --repo "${GITHUB_REPOSITORY}" --json number --jq '.number')"
+              gh pr merge "${appcast_pr_number}" --repo "${GITHUB_REPOSITORY}" --auto --squash
               for _ in {1..120}; do
-                merge_state="$(gh pr view "${appcast_branch}" --repo "${GITHUB_REPOSITORY}" --json state,mergeCommit --jq '[.state, (.mergeCommit.oid // "")] | join("|")' || true)"
+                merge_state="$(gh pr view "${appcast_pr_number}" --repo "${GITHUB_REPOSITORY}" --json state,mergeCommit --jq '[.state, (.mergeCommit.oid // "")] | join("|")' || true)"
                 if [[ "${merge_state%%|*}" == "MERGED" && -n "${merge_state#*|}" ]]; then
                   appcast_commit="${merge_state#*|}"
                   break
@@ -738,6 +740,7 @@ jobs:
                 echo "Appcast PR did not merge into main after publication." >&2
                 exit 1
               fi
+              git push origin --delete "${appcast_branch}" || true
               break
             fi
             if [[ "$attempt" -eq 3 ]]; then

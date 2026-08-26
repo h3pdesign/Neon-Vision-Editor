@@ -220,9 +220,6 @@ if [[ "$DO_PUSH" -eq 1 ]]; then
     echo "Release branch ${RELEASE_BRANCH} already exists. Refusing to overwrite it." >&2
     exit 1
   fi
-  git switch -c "${RELEASE_BRANCH}"
-  RELEASE_BRANCH_CREATED=1
-  trap 'status=$?; if [[ "$status" -ne 0 && "$RELEASE_BRANCH_CREATED" -eq 1 ]]; then git switch develop >/dev/null 2>&1 || true; git branch -D "$RELEASE_BRANCH" >/dev/null 2>&1 || true; fi; exit "$status"' EXIT
 fi
 
 if git rev-parse "$TAG" >/dev/null 2>&1; then
@@ -307,6 +304,14 @@ fi
 
 scripts/ci/validate_release_metadata.sh "$TAG"
 
+if [[ "$DO_PUSH" -eq 1 ]]; then
+  # Keep validation failures on develop. Create the release branch only after
+  # all generated metadata has passed its gates.
+  git switch -c "${RELEASE_BRANCH}"
+  RELEASE_BRANCH_CREATED=1
+  trap 'status=$?; if [[ "$status" -ne 0 && "$RELEASE_BRANCH_CREATED" -eq 1 ]]; then git switch develop >/dev/null 2>&1 || true; git branch -D "$RELEASE_BRANCH" >/dev/null 2>&1 || true; fi; exit "$status"' EXIT
+fi
+
 git add README.md ARCHITECTURE.md CHANGELOG.md site/index.html site/changelog.html site/de/index.html site/da/index.html site/fr/index.html \
   site/es/index.html site/ja/index.html site/zh-Hans/index.html "Neon Vision Editor/UI/PanelsAndHelpers.swift" "$PBXPROJ_FILE" \
   docs/images/neon-vision-release-history-0.1-to-0.5.svg \
@@ -321,6 +326,8 @@ else
 fi
 
 if [[ "$DO_PUSH" -eq 1 ]]; then
+  RELEASE_BRANCH_CREATED=0
+  trap - EXIT
   BRANCH="$(git branch --show-current)"
   if [[ "$BRANCH" != "release/${TAG#v}" ]]; then
     echo "Release preparation expected branch release/${TAG#v} (current: ${BRANCH})." >&2

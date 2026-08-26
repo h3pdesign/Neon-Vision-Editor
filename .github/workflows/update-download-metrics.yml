@@ -7,10 +7,14 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    concurrency:
+      group: daily-metrics
+      cancel-in-progress: false
 
     steps:
       - name: Checkout repository
@@ -21,6 +25,13 @@ jobs:
           # token to bypass PR and CodeQL requirements. This existing repository
           # token belongs to the signed metrics automation identity instead.
           token: ${{ secrets.METRIC_TOKEN }}
+
+      - name: Prepare metrics branch
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git fetch origin automation/daily-metrics || true
+          git checkout -B automation/daily-metrics origin/main
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -64,8 +75,12 @@ jobs:
           git config user.signingkey "$SIGNING_PUB_KEY_PATH"
           git config commit.gpgsign true
 
-      - name: Commit and push if changed
+      - name: Commit and update metrics pull request
+        env:
+          GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
+          METRICS_BRANCH: automation/daily-metrics
         run: |
+          set -euo pipefail
           if git diff --quiet; then
             echo "No metrics changes."
             exit 0
@@ -73,4 +88,21 @@ jobs:
 
           git add README.md docs/images/release-download-trend*.svg
           git commit -S -m "docs: refresh download metrics chart"
-          git push
+          git push --force-with-lease origin "HEAD:${METRICS_BRANCH}"
+
+          if gh pr view "${METRICS_BRANCH}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Updated existing metrics pull request."
+          else
+            gh pr create \
+              --repo "${GITHUB_REPOSITORY}" \
+              --base main \
+              --head "${METRICS_BRANCH}" \
+              --title "docs: refresh daily download metrics" \
+              --body "Automated refresh of README download and traffic metrics."
+          fi
+
+          gh pr merge "${METRICS_BRANCH}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --auto \
+            --squash \
+            --delete-branch || echo "Auto-merge is unavailable; leaving the metrics pull request open."

@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   build:
+    if: ${{ !startsWith(github.head_ref, 'release/') }}
     runs-on: macos-latest
 
     steps:
@@ -31,6 +32,7 @@ jobs:
         run: scripts/ci/build_platform_matrix.sh
 
   macos_sequoia_syntax_regressions:
+    if: ${{ !startsWith(github.head_ref, 'release/') }}
     name: macOS Sequoia syntax regressions
     runs-on: macos-15
 

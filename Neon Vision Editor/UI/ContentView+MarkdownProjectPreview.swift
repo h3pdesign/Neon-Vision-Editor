@@ -40,7 +40,8 @@ extension ContentView {
         isMarkdownProjectPreviewPresented &&
         projectRootFolderURL != nil &&
         !isSafeModeActive &&
-        !brainDumpLayoutEnabled
+        !brainDumpLayoutEnabled &&
+        !focusModeEnabled
     }
 
     var hasMarkdownOrPDFProjectPreviewFiles: Bool {

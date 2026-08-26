@@ -4,6 +4,32 @@ import XCTest
 
 @MainActor
 final class VirtualEditorLayoutTests: XCTestCase {
+    func testAccessibilityContextIncludesDocumentPositionEditabilityAndSelection() {
+        let context = VirtualEditorAccessibilityContext(
+            documentName: "Notes.md",
+            line: 12,
+            column: 7,
+            isReadOnly: true,
+            selectionLength: 4
+        )
+
+        XCTAssertEqual(context.label, "Notes.md, editor")
+        XCTAssertEqual(context.help, "Line 12, column 7, read only, 4 characters selected.")
+    }
+
+    func testPreviewReloadMetricsExposeCoalescing() {
+        let monitor = EditorPerformanceMonitor.shared
+        monitor.resetPreviewReloadMetrics()
+        monitor.markPreviewReloadScheduled(coalesced: false)
+        monitor.markPreviewReloadScheduled(coalesced: true)
+        monitor.markPreviewReloadExecuted()
+
+        XCTAssertEqual(
+            monitor.previewReloadSnapshot(),
+            EditorPerformanceMonitor.PreviewReloadSnapshot(requested: 2, coalesced: 1, executed: 1)
+        )
+    }
+
     func testShiftWheelZoomConvertsBothScrollDirectionsToFontDeltas() {
         XCTAssertEqual(VirtualEditorWheelZoom.fontSizeDelta(scrollingDeltaY: 5, fallbackDeltaY: 0), 1)
         XCTAssertEqual(VirtualEditorWheelZoom.fontSizeDelta(scrollingDeltaY: -5, fallbackDeltaY: 0), -1)

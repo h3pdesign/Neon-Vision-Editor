@@ -4260,6 +4260,7 @@ extension Notification.Name {
     static let structureTextAsJSONRequested = Notification.Name("structureTextAsJSONRequested")
     static let showIntegratedTerminalRequested = Notification.Name("showIntegratedTerminalRequested")
     static let toggleCodeMinimapRequested = Notification.Name("toggleCodeMinimapRequested")
+    static let toggleFocusModeRequested = Notification.Name("toggleFocusModeRequested")
     static let editorViewportDidChange = Notification.Name("editorViewportDidChange")
     static let requestEditorViewport = Notification.Name("requestEditorViewport")
     static let virtualEditorTextDidChange = Notification.Name("virtualEditorTextDidChange")

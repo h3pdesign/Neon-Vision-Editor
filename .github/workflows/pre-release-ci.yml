@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   preflight:
+    if: ${{ !startsWith(github.head_ref, 'release/') }}
     timeout-minutes: 45
     concurrency:
       group: pre-release-${{ github.workflow }}-${{ github.ref }}

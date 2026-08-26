@@ -397,7 +397,7 @@ struct ContentView: View {
     }
 
     var effectiveShowCodeMinimap: Bool {
-        showCodeMinimap && !isSafeModeActive
+        showCodeMinimap && !isSafeModeActive && !focusModeEnabled
     }
 
     enum EditorPerformanceThresholds {
@@ -778,6 +778,7 @@ struct ContentView: View {
     @State var settingsSheetDetent: PresentationDetent = .large
     @SceneStorage("ProjectSidebarWidth") var projectSidebarWidth: Double = 450
     @SceneStorage("ProjectSidebarMode") var utilitySidebarModeRaw: String = UtilitySidebarMode.project.rawValue
+    @SceneStorage("EditorFocusModeEnabled") var focusModeEnabled: Bool = false
     @State var projectSidebarResizeStartWidth: CGFloat? = nil
 #if os(macOS)
     @SceneStorage("TOCSidebarWidth") var tocSidebarWidth: Double = 250
@@ -1283,8 +1284,8 @@ struct ContentView: View {
         guard let target = notif.userInfo?[EditorCommandUserInfo.windowNumber] as? Int else {
             return true
         }
-        guard let hostWindowNumber else { return false }
-        return target == hostWindowNumber
+        guard let windowNumber = commandRoutingObservationSnapshot.windowNumber else { return false }
+        return target == windowNumber
     }
 
     private func updateWindowRegistration(_ window: NSWindow?) {
@@ -2152,6 +2153,10 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 toggleSidebarFromToolbar()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .toggleFocusModeRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                focusModeEnabled.toggle()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .toggleBrainDumpModeRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 viewModel.isBrainDumpMode.toggle()
@@ -2441,7 +2446,7 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResizeNotification)) { notification in
             persistWindowFrame(for: notification)
         }
-        .onChange(of: viewModel.tabsObservationToken) { _, _ in
+        .onChange(of: tabChromeObservationSnapshot) { _, _ in
             if activeSplitSecondaryTabID == nil {
                 splitSecondaryTabID = nil
             }
@@ -2632,7 +2637,7 @@ struct ContentView: View {
             .onChange(of: viewModel.isLineWrapEnabled) { _, _ in
                 scheduleHighlightRefresh()
             }
-            .onChange(of: viewModel.tabPersistenceObservationToken) { _, _ in
+            .onChange(of: windowSessionObservationSnapshot) { _, _ in
                 scheduleSessionPersistence()
                 scheduleUnsavedDraftSnapshotPersistence()
                 synchronizePDFNoteAttachment()
@@ -2640,6 +2645,9 @@ struct ContentView: View {
             .onChange(of: viewModel.selectedTabID) { previousTabID, selectedTabID in
                 guard previousTabID != selectedTabID else { return }
                 previousSelectedTabID = previousTabID
+                if activeSplitSecondaryTabID == nil {
+                    splitSecondaryTabID = nil
+                }
                 synchronizePDFNoteContext()
                 if let automaticPreviewMode = automaticPreviewModeForCurrentDocument {
                     previewMode = automaticPreviewMode
@@ -2679,6 +2687,13 @@ struct ContentView: View {
             }
             .onChange(of: previewMode) { _, _ in
                 persistSessionIfReady()
+            }
+            .onChange(of: focusModeEnabled) { _, enabled in
+                if enabled {
+                    cancelMarkdownProjectPreviewRefresh()
+                } else {
+                    refreshMarkdownProjectPreview()
+                }
             }
     }
 
@@ -3751,10 +3766,10 @@ struct ContentView: View {
 
     var shouldUseSplitView: Bool {
 #if os(macOS)
-        return viewModel.showSidebar && !brainDumpLayoutEnabled
+        return viewModel.showSidebar && !brainDumpLayoutEnabled && !focusModeEnabled
 #else
         // Keep iPhone layout single-column to avoid horizontal clipping.
-        return viewModel.showSidebar && !brainDumpLayoutEnabled && horizontalSizeClass == .regular
+        return viewModel.showSidebar && !brainDumpLayoutEnabled && !focusModeEnabled && horizontalSizeClass == .regular
 #endif
     }
 
@@ -3779,7 +3794,7 @@ struct ContentView: View {
     // Sidebar shows a lightweight table of contents (TOC) derived from the current document.
     @ViewBuilder
     var sidebarView: some View {
-        if viewModel.showSidebar && !brainDumpLayoutEnabled {
+        if viewModel.showSidebar && !brainDumpLayoutEnabled && !focusModeEnabled {
             SidebarView(
                 content: sidebarTOCContent,
                 language: currentLanguage,
@@ -4288,6 +4303,7 @@ struct ContentView: View {
             document: tab?.document,
             documentID: tabID,
             documentResourceID: documentResourceID(for: tabID),
+            documentDisplayName: tab?.name ?? "Untitled",
             contentRevision: tab?.contentRevision ?? 0,
             externalContentRevision: tab?.externalContentRevision ?? 0,
             storedCaretLocation: storedCaretLocation(for: tabID),
@@ -4876,14 +4892,14 @@ struct ContentView: View {
 #endif
 
         let content = HStack(spacing: 0) {
-            if showProjectStructureSidebar && projectNavigatorPlacement == .leading && !brainDumpLayoutEnabled {
+            if showProjectStructureSidebar && projectNavigatorPlacement == .leading && !brainDumpLayoutEnabled && !focusModeEnabled {
                 projectStructureSidebarPanel
                 projectSidebarResizeHandle
             }
 
             editorAndPreview
 
-            if showProjectStructureSidebar && projectNavigatorPlacement == .trailing && !brainDumpLayoutEnabled {
+            if showProjectStructureSidebar && projectNavigatorPlacement == .trailing && !brainDumpLayoutEnabled && !focusModeEnabled {
                 projectSidebarResizeHandle
                 projectStructureSidebarPanel
             }
@@ -4946,7 +4962,7 @@ struct ContentView: View {
                 presentMarkdownProjectPreviewIfAvailable()
             }
         }
-        .onChange(of: viewModel.tabContentObservationToken) { _, _ in
+        .onChange(of: editorObservationSnapshot) { _, _ in
             refreshSecondaryContentViewsIfNeeded()
             if let tabID = viewModel.selectedTabID {
                 EditorPerformanceMonitor.shared.markTOCUpdated(tabID: tabID)
@@ -4960,26 +4976,18 @@ struct ContentView: View {
         .onChange(of: viewModel.selectedTab?.fileURL) { _, _ in
             openAutomaticPreviewIfNeeded()
         }
-        .onChange(of: projectRootFolderURL) { _, _ in
+        .onChange(of: projectNavigationObservationSnapshot) { _, snapshot in
             refreshMarkdownProjectPreview()
-            if shouldAutomaticallyPresentMarkdownProjectPreview {
+            if snapshot.indexReady, shouldAutomaticallyPresentMarkdownProjectPreview {
                 presentMarkdownProjectPreviewIfAvailable()
             }
         }
-        .onChange(of: projectFileIndexHasCompleted) { _, isReady in
-            if isReady, shouldAutomaticallyPresentMarkdownProjectPreview {
-                presentMarkdownProjectPreviewIfAvailable()
-            }
-        }
-            .onChange(of: markdownProjectPreviewEnabled) { _, _ in
-            if !markdownProjectPreviewEnabled {
+        .onChange(of: previewObservationSnapshot) { _, snapshot in
+            if !snapshot.projectEnabled {
                 isMarkdownProjectPreviewPresented = false
             }
-                refreshMarkdownProjectPreview()
-            }
-            .onChange(of: markdownProjectPreviewContentFilterRaw) { _, _ in
-                refreshMarkdownProjectPreview()
-            }
+            refreshMarkdownProjectPreview()
+        }
         .onChange(of: delimitedViewMode) { _, newValue in
             handleDelimitedViewModeChange(newValue)
         }
@@ -5133,7 +5141,7 @@ struct ContentView: View {
             macToolbarBackgroundStyle,
             for: ToolbarPlacement.windowToolbar
         )
-        .modifier(MacToolbarVisibilityModifier())
+        .modifier(MacToolbarVisibilityModifier(hidden: focusModeEnabled))
         .tint(NeonUIStyle.accentBlue)
 #else
         .toolbarBackground(

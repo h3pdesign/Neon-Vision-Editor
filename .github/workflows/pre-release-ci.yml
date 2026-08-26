@@ -152,6 +152,35 @@ jobs:
             -only-testing:"Neon Vision EditorTests/ReleaseRuntimePolicyTests" \
             test
 
+      - name: Record virtual editor performance trends
+        if: ${{ steps.project_probe.outputs.project_compatible == 'true' }}
+        env:
+          DERIVED_DATA: ${{ runner.temp }}/DerivedData
+          RESULT_BUNDLE: ${{ runner.temp }}/VirtualEditorPerformance.xcresult
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project "Neon Vision Editor.xcodeproj" \
+            -scheme "Neon Vision Editor" \
+            -destination "platform=macOS" \
+            -derivedDataPath "$DERIVED_DATA" \
+            -resultBundlePath "$RESULT_BUNDLE" \
+            MACOSX_DEPLOYMENT_TARGET=15.5 \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -only-testing:"Neon Vision EditorTests/VirtualEditorPerformanceTests" \
+            test
+
+      - name: Upload virtual editor performance results
+        if: ${{ always() && steps.project_probe.outputs.project_compatible == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: virtual-editor-performance-${{ github.run_id }}
+          path: ${{ runner.temp }}/VirtualEditorPerformance.xcresult
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Verify icon payload in built app
         if: ${{ steps.project_probe.outputs.project_compatible == 'true' }}
         env:

@@ -374,53 +374,6 @@ private struct DetachedWindowContentView: View {
     }
 }
 
-private struct FocusModeContentView: View {
-    @State private var viewModel = EditorViewModel()
-    @ObservedObject var supportPurchaseManager: SupportPurchaseManager
-    @ObservedObject var appUpdateManager: AppUpdateManager
-    @Binding var showGrokError: Bool
-    @Binding var grokErrorMessage: String
-
-    var body: some View {
-        FocusModeView(viewModel: viewModel)
-            .environmentObject(supportPurchaseManager)
-            .environmentObject(appUpdateManager)
-            .environment(\.showGrokError, $showGrokError)
-            .environment(\.grokErrorMessage, $grokErrorMessage)
-            .frame(minWidth: 500, minHeight: 300)
-    }
-}
-
-private struct FocusModeView: View {
-    @State var viewModel: EditorViewModel
-    @AppStorage("SettingsEditorFontSize") private var editorFontSize: Double = 14
-    @AppStorage("SettingsEditorFontName") private var editorFontName: String = ""
-    @AppStorage("SettingsShowLineNumbers") private var showLineNumbers: Bool = true
-    @AppStorage("SettingsLineWrapEnabled") private var settingsLineWrapEnabled: Bool = true
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Focus Mode")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if let tab = viewModel.selectedTab {
-                    Text(tab.name)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(.ultraThinMaterial)
-
-            ContentView(startupBehavior: .forceBlankDocument)
-                .environment(viewModel)
-                .toolbar(.hidden)
-        }
-    }
-}
 #endif
 
 // MARK: - App Entry Point
@@ -815,25 +768,6 @@ struct NeonVisionEditorApp: App {
         .defaultSize(width: 1400, height: 900)
         .handlesExternalEvents(matching: [])
 
-        WindowGroup("Focus Mode", id: "focus-mode") {
-            FocusModeContentView(
-                supportPurchaseManager: supportPurchaseManager,
-                appUpdateManager: appUpdateManager,
-                showGrokError: $showGrokError,
-                grokErrorMessage: $grokErrorMessage
-            )
-            .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
-            .onAppear { scheduleMacWindowChromePolicy() }
-            .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
-            .onAppear { applyRuntimeLanguageOverride() }
-            .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
-            .environment(\.locale, preferredLocale)
-            .tint(.blue)
-            .preferredColorScheme(preferredAppearance)
-        }
-        .defaultSize(width: 900, height: 600)
-        .handlesExternalEvents(matching: [])
-
         Settings {
             ConfiguredSettingsView(
                 supportsOpenInTabs: false,
@@ -993,7 +927,6 @@ struct NeonVisionEditorApp: App {
                 openNewWindow: {
                     openWindow(value: MacEditorWindowSessionStore.shared.createWindowID())
                 },
-                openFocusModeWindow: { openWindow(id: "focus-mode") },
                 openAIDiagnosticsWindow: { openWindow(id: "ai-logs") },
                 postWindowCommand: { name, object in
                     postWindowCommand(name, object: object)

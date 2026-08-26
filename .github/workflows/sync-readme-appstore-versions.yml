@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   sync:
@@ -31,6 +32,19 @@ jobs:
           # Keep signed documentation sync commits attributable to the
           # repository automation identity that may bypass protected main.
           token: ${{ secrets.METRIC_TOKEN }}
+
+      - name: Prepare automation branch
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag="${RELEASE_TAG:-manual}"
+          tag="${tag#v}"
+          branch="automation/appstore-version-${tag}"
+          git fetch origin main
+          git fetch origin "${branch}" || true
+          git checkout -B "${branch}" origin/main
+          echo "SYNC_BRANCH=${branch}" >> "$GITHUB_ENV"
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -85,7 +99,9 @@ jobs:
           git config user.signingkey "$SIGNING_PUB_KEY_PATH"
           git config commit.gpgsign true
 
-      - name: Commit and push if changed
+      - name: Commit and update pull request if changed
+        env:
+          GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -97,19 +113,11 @@ jobs:
           git add README.md site/index.html
           git commit -S -m "docs: sync App Store versions"
 
-          branch="${GITHUB_REF_NAME:-main}"
-          for attempt in 1 2 3; do
-            git fetch origin "$branch"
-            git rebase "origin/$branch"
-            if git push origin "HEAD:$branch"; then
-              exit 0
-            fi
-
-            if [ "$attempt" -eq 3 ]; then
-              echo "README version sync could not push after $attempt attempts."
-              exit 1
-            fi
-
-            # A concurrent release or documentation update moved main after rebase.
-            sleep "$attempt"
-          done
+          git push --force-with-lease origin "HEAD:${SYNC_BRANCH}"
+          if ! gh pr view "${SYNC_BRANCH}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh pr create --repo "${GITHUB_REPOSITORY}" --base main --head "${SYNC_BRANCH}" \
+              --title "docs: sync App Store versions" \
+              --body "Automated App Store version synchronization after release."
+          fi
+          gh pr merge "${SYNC_BRANCH}" --repo "${GITHUB_REPOSITORY}" --auto --squash --delete-branch || \
+            echo "Auto-merge is unavailable; leaving the App Store synchronization PR open."

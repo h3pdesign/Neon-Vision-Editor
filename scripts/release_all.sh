@@ -26,13 +26,13 @@ Examples:
   scripts/release_all.sh v0.8.9 notarized --retag
 
 What it does:
-  1) Synchronize local main with origin/main before release checks and again before preparation
-     so separately generated download-metrics commits are included
+  1) Synchronize local develop with origin/develop before release checks; release preparation
+     creates release/<version> and opens a PR into main
   2) Run release preflight checks (docs + build + icon payload + tests)
   3) Prepare README/CHANGELOG docs
   4) Commit docs changes
-  5) Push the signed release-preparation commit to origin/main
-  6) Trigger the primary GitHub-hosted release workflow, which creates the tag only after its gates pass
+  5) Push the signed release-preparation commit to release/<version> and merge its PR into main
+  6) Trigger the primary GitHub-hosted release workflow from the merged main commit
   7) Optionally use an explicit fallback workflow for an existing tag and approve its
      protected release environment when the current user is an authorized reviewer
   8) Wait for notarized workflow and verify uploaded release asset payload
@@ -183,6 +183,30 @@ sync_main_with_origin() {
   echo "  local main:  ${local_main_sha}" >&2
   echo "  origin/main: ${origin_main_sha}" >&2
   exit 1
+}
+
+sync_develop_with_origin() {
+  local current_branch local_sha origin_sha
+  current_branch="$(git branch --show-current)"
+  if [[ "$current_branch" != "develop" ]]; then
+    echo "Release preparation must run from develop (current: ${current_branch})." >&2
+    exit 1
+  fi
+
+  echo "Synchronizing develop with origin/develop before release checks..."
+  retry_cmd git fetch origin develop >/dev/null
+  local_sha="$(git rev-parse HEAD)"
+  origin_sha="$(git rev-parse origin/develop)"
+  if [[ "$local_sha" == "$origin_sha" ]]; then
+    echo "Local develop is aligned with origin/develop."
+  elif git merge-base --is-ancestor HEAD origin/develop; then
+    git merge --ff-only origin/develop
+  elif git merge-base --is-ancestor origin/develop HEAD; then
+    echo "Local develop already contains origin/develop; continuing."
+  else
+    echo "Local develop and origin/develop both moved. Rebase before release preparation." >&2
+    exit 1
+  fi
 }
 
 is_allowed_release_dirty_path() {
@@ -639,7 +663,7 @@ if [[ "$REQUIRES_CLEAN_TREE" -eq 1 && "$AUTOSTASH" -eq 0 && -n "$(git status --p
 fi
 
 if step_enabled prep; then
-  sync_main_with_origin "release checks"
+  sync_develop_with_origin
 fi
 print_release_state_summary "before docs/preflight"
 
@@ -699,8 +723,7 @@ assert_remote_tag_matches_head() {
 }
 
 if step_enabled prep; then
-  sync_main_with_origin "release prep commit and tag (including external download-metrics commits)"
-  print_release_state_summary "before release prep/tag"
+  print_release_state_summary "before release branch preparation"
 
   if git rev-parse "$TAG" >/dev/null 2>&1; then
     if [[ "$RETAG" -eq 1 ]]; then
@@ -712,7 +735,6 @@ if step_enabled prep; then
       assert_remote_tag_matches_head "$TAG"
       echo "Tag ${TAG} already exists. Skipping release prep. Use --retag to recreate it."
       if [[ "$(git branch --show-current)" == "main" ]]; then
-        git push origin main
         git push origin "$TAG"
       fi
     fi
@@ -726,7 +748,25 @@ if step_enabled prep; then
     fi
     prep_cmd+=(--push)
     "${prep_cmd[@]}"
-    echo "Release-preparation commit push completed."
+    RELEASE_BRANCH="release/${TAG#v}"
+    echo "Release-preparation branch pushed; waiting for ${RELEASE_BRANCH} to merge into main..."
+    merged=0
+    for _ in {1..120}; do
+      pr_state="$(gh_retry gh pr view "${RELEASE_BRANCH}" --json state,mergeCommit --jq '[.state, (.mergeCommit.oid // "")] | join("|")' || true)"
+      if [[ "${pr_state%%|*}" == "MERGED" ]]; then
+        merged=1
+        break
+      fi
+      sleep 15
+    done
+    if [[ "$merged" -ne 1 ]]; then
+      echo "Release PR ${RELEASE_BRANCH} did not merge into main; release workflow was not dispatched." >&2
+      exit 1
+    fi
+    git switch main
+    retry_cmd git fetch origin main >/dev/null
+    git merge --ff-only origin/main
+    echo "Release PR merged; main is ready for ${TAG}."
   fi
 fi
 

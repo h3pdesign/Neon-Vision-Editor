@@ -47,6 +47,7 @@ permissions:
   contents: write
   actions: write
   issues: write
+  pull-requests: write
 
 jobs:
   release:
@@ -646,7 +647,7 @@ jobs:
         id: publish_appcast
         env:
           APPCAST_PATH: ${{ runner.temp }}/appcast.xml
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
           METRICS_SIGNING_SSH_KEY: ${{ secrets.METRICS_SIGNING_SSH_KEY }}
           METRICS_SIGNING_NAME: ${{ secrets.METRICS_SIGNING_NAME }}
           METRICS_SIGNING_EMAIL: ${{ secrets.METRICS_SIGNING_EMAIL }}
@@ -702,9 +703,11 @@ jobs:
           git config commit.gpgsign true
 
           appcast_commit=""
+          appcast_branch="automation/appcast-${TAG_NAME#v}"
           for attempt in 1 2 3; do
             git fetch origin main
-            git checkout -B appcast-publish origin/main
+            git fetch origin "${appcast_branch}" || true
+            git checkout -B "${appcast_branch}" origin/main
             cp "$APPCAST_PATH" appcast.xml
             mkdir -p site
             cp "$APPCAST_PATH" site/appcast.xml
@@ -716,8 +719,25 @@ jobs:
 
             git add appcast.xml site/appcast.xml
             git commit -S -m "chore: publish Sparkle appcast for ${TAG_NAME}"
-            if git push origin HEAD:main; then
-              appcast_commit="$(git rev-parse HEAD)"
+            if git push --force-with-lease origin "HEAD:${appcast_branch}"; then
+              if ! gh pr view "${appcast_branch}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+                gh pr create --repo "${GITHUB_REPOSITORY}" --base main --head "${appcast_branch}" \
+                  --title "chore: publish Sparkle appcast for ${TAG_NAME}" \
+                  --body "Automated signed Sparkle appcast publication for ${TAG_NAME}."
+              fi
+              gh pr merge "${appcast_branch}" --repo "${GITHUB_REPOSITORY}" --auto --squash --delete-branch
+              for _ in {1..120}; do
+                merge_state="$(gh pr view "${appcast_branch}" --repo "${GITHUB_REPOSITORY}" --json state,mergeCommit --jq '[.state, (.mergeCommit.oid // "")] | join("|")' || true)"
+                if [[ "${merge_state%%|*}" == "MERGED" && -n "${merge_state#*|}" ]]; then
+                  appcast_commit="${merge_state#*|}"
+                  break
+                fi
+                sleep 15
+              done
+              if [[ -z "$appcast_commit" ]]; then
+                echo "Appcast PR did not merge into main after publication." >&2
+                exit 1
+              fi
               break
             fi
             if [[ "$attempt" -eq 3 ]]; then

@@ -17,11 +17,11 @@ Examples:
 Notes:
   - Runs scripts/prepare_release_docs.py
   - Auto-syncs MARKETING_VERSION in Xcode project to the release tag version
-  - With --push, refreshes origin/main and preserves allowed release-doc changes
+  - With --push, refreshes origin/develop, creates release/<version>, and opens a PR into main
   - Commits README.md, ARCHITECTURE.md, CHANGELOG.md, and Welcome Tour release page updates
   - With --next, chooses the next stable tag; patch releases are capped at .9
   - Does not create a tag: the canonical GitHub-hosted workflow tags only after its gates pass
-  - With --push, pushes only the prepared commit to origin/main
+  - With --push, pushes only the prepared release branch and requests squash auto-merge
 EOF
 }
 
@@ -138,44 +138,44 @@ retry_cmd() {
   done
 }
 
-sync_main_before_push() {
-  local current_branch local_main_sha origin_main_sha
+sync_develop_before_push() {
+  local current_branch local_develop_sha origin_develop_sha
 
   current_branch="$(git branch --show-current)"
-  if [[ "$current_branch" != "main" ]]; then
-    echo "--push is only supported from main (current: ${current_branch})." >&2
+  if [[ "$current_branch" != "develop" ]]; then
+    echo "--push is only supported from develop (current: ${current_branch})." >&2
     exit 1
   fi
 
-  echo "Synchronizing main with origin/main before release prep..."
-  retry_cmd git fetch --tags origin main
-  local_main_sha="$(git rev-parse HEAD)"
-  origin_main_sha="$(git rev-parse origin/main)"
+  echo "Synchronizing develop with origin/develop before release prep..."
+  retry_cmd git fetch --tags origin develop
+  local_develop_sha="$(git rev-parse HEAD)"
+  origin_develop_sha="$(git rev-parse origin/develop)"
 
-  if [[ "$local_main_sha" == "$origin_main_sha" ]]; then
-    echo "Local main is aligned with origin/main."
+  if [[ "$local_develop_sha" == "$origin_develop_sha" ]]; then
+    echo "Local develop is aligned with origin/develop."
     return 0
   fi
 
-  if git merge-base --is-ancestor HEAD origin/main; then
+  if git merge-base --is-ancestor HEAD origin/develop; then
     if [[ -n "$(git status --porcelain)" ]]; then
-      echo "Local main is behind origin/main. Fast-forwarding while preserving release metadata changes..."
-      git rebase --autostash origin/main
+      echo "Local develop is behind origin/develop. Fast-forwarding while preserving release metadata changes..."
+      git rebase --autostash origin/develop
     else
-      git merge --ff-only origin/main
+      git merge --ff-only origin/develop
     fi
     return 0
   fi
 
-  if git merge-base --is-ancestor origin/main HEAD; then
-    echo "Local main already contains origin/main; continuing."
+  if git merge-base --is-ancestor origin/develop HEAD; then
+    echo "Local develop already contains origin/develop; continuing."
     return 0
   fi
 
-  echo "Local main and origin/main both moved. Refusing to create an implicit release merge." >&2
-  echo "Rebase the local commits onto origin/main, then rerun release prep." >&2
-  echo "  local main:  ${local_main_sha}" >&2
-  echo "  origin/main: ${origin_main_sha}" >&2
+  echo "Local develop and origin/develop both moved. Refusing to create an implicit release merge." >&2
+  echo "Rebase the local commits onto origin/develop, then rerun release prep." >&2
+  echo "  local develop:  ${local_develop_sha}" >&2
+  echo "  origin/develop: ${origin_develop_sha}" >&2
   exit 1
 }
 
@@ -214,7 +214,13 @@ if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --
 fi
 
 if [[ "$DO_PUSH" -eq 1 ]]; then
-  sync_main_before_push
+  sync_develop_before_push
+  RELEASE_BRANCH="release/${TAG#v}"
+  if git show-ref --verify --quiet "refs/heads/${RELEASE_BRANCH}" || git ls-remote --exit-code --heads origin "${RELEASE_BRANCH}" >/dev/null 2>&1; then
+    echo "Release branch ${RELEASE_BRANCH} already exists. Refusing to overwrite it." >&2
+    exit 1
+  fi
+  git switch -c "${RELEASE_BRANCH}"
 fi
 
 if git rev-parse "$TAG" >/dev/null 2>&1; then
@@ -314,14 +320,25 @@ fi
 
 if [[ "$DO_PUSH" -eq 1 ]]; then
   BRANCH="$(git branch --show-current)"
-  if [[ "$BRANCH" != "main" ]]; then
-    echo "--push is only supported from main (current: ${BRANCH})." >&2
+  if [[ "$BRANCH" != "release/${TAG#v}" ]]; then
+    echo "Release preparation expected branch release/${TAG#v} (current: ${BRANCH})." >&2
     exit 1
   fi
-  git push origin main
-  echo "Pushed prepared release commit to main."
+  git push -u origin "${BRANCH}"
+  if gh pr view "${BRANCH}" --repo "${GH_REPO:-$(gh repo view --json nameWithOwner --jq '.nameWithOwner')}" >/dev/null 2>&1; then
+    echo "Updated existing release pull request."
+  else
+    gh pr create \
+      --base main \
+      --head "${BRANCH}" \
+      --title "chore(release): prepare ${TAG}" \
+      --body "Release preparation for ${TAG}."
+  fi
+  gh pr merge "${BRANCH}" --auto --squash --delete-branch || \
+    echo "Auto-merge is unavailable; leaving the release pull request open."
 else
   echo "Next steps:"
-  echo "  git push origin main"
+  echo "  git switch develop"
+  echo "  scripts/release_prep.sh ${TAG} --push"
 fi
-echo "Then dispatch .github/workflows/release-github-only.yml with tag=${TAG} and ref=main."
+echo "After the release PR merges, dispatch .github/workflows/release-github-only.yml with tag=${TAG} and ref=main."

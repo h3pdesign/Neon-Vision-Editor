@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: post-release-documentation-${{ github.event.release.tag_name || inputs.tag }}
@@ -32,6 +33,19 @@ jobs:
           ref: main
           fetch-depth: 0
           token: ${{ secrets.METRIC_TOKEN }}
+
+      - name: Prepare automation branch
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag="${RELEASE_TAG:-manual}"
+          tag="${tag#v}"
+          branch="automation/post-release-docs-${tag}"
+          git fetch origin main
+          git fetch origin "${branch}" || true
+          git checkout -B "${branch}" origin/main
+          echo "DOCS_BRANCH=${branch}" >> "$GITHUB_ENV"
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -143,6 +157,7 @@ jobs:
         if: steps.release.outputs.skip != 'true' && steps.changes.outputs.changed == 'true'
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          METRIC_TOKEN: ${{ secrets.METRIC_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -163,16 +178,13 @@ jobs:
 
           git add -- "${paths[@]}"
           git commit -S -m "docs: self-heal ${RELEASE_TAG} documentation"
+          git push --force-with-lease origin "HEAD:${DOCS_BRANCH}"
 
-          for attempt in 1 2 3; do
-            git fetch origin main
-            git rebase origin/main
-            if git push origin HEAD:main; then
-              exit 0
-            fi
-            if [[ "$attempt" -eq 3 ]]; then
-              echo "Documentation repair could not push after ${attempt} attempts." >&2
-              exit 1
-            fi
-            sleep "$attempt"
-          done
+          export GH_TOKEN="${METRIC_TOKEN:-}"
+          if ! gh pr view "${DOCS_BRANCH}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh pr create --repo "${GITHUB_REPOSITORY}" --base main --head "${DOCS_BRANCH}" \
+              --title "docs: self-heal ${RELEASE_TAG} documentation" \
+              --body "Automated post-release documentation reconciliation."
+          fi
+          gh pr merge "${DOCS_BRANCH}" --repo "${GITHUB_REPOSITORY}" --auto --squash --delete-branch || \
+            echo "Auto-merge is unavailable; leaving the documentation PR open."

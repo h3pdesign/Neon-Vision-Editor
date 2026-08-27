@@ -13,7 +13,6 @@ struct NeonVisionMacAppCommands: Commands {
     let activeEditorViewModel: () -> EditorViewModel
     let hasActiveEditorWindow: () -> Bool
     let openNewWindow: () -> Void
-    let openFocusModeWindow: () -> Void
     let openAIDiagnosticsWindow: () -> Void
     let postWindowCommand: (_ name: Notification.Name, _ object: Any?) -> Void
     let isUpdaterEnabled: Bool
@@ -131,7 +130,7 @@ struct NeonVisionMacAppCommands: Commands {
             .keyboardShortcut("n", modifiers: .command)
 
             Button("Focus Mode") {
-                openFocusModeWindow()
+                post(.toggleFocusModeRequested)
             }
             .keyboardShortcut("n", modifiers: [.command, .shift])
 

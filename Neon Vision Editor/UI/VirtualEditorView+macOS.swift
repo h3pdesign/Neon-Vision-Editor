@@ -9,6 +9,44 @@ struct VirtualEditorVisualFragment {
     let line: CTLine
 }
 
+struct VirtualEditorViewportLine: Sendable {
+    let localLine: Int
+    let startUTF16: Int
+    let text: String
+}
+
+nonisolated private struct VirtualEditorSyntaxSpan: Sendable {
+    let range: NSRange
+    let color: Color
+}
+
+nonisolated private struct VirtualEditorSyntaxLineCacheKey: Hashable, Sendable {
+    let language: String
+    let theme: String
+    let text: String
+}
+
+private enum VirtualEditorSyntaxLineCache {
+    nonisolated private static let maximumEntryCount = 2_048
+    nonisolated private static let maximumCachedLineLength = 8_192
+    nonisolated static let storage = NVELock<[VirtualEditorSyntaxLineCacheKey: [VirtualEditorSyntaxSpan]]>([:])
+
+    nonisolated static func spans(for key: VirtualEditorSyntaxLineCacheKey) -> [VirtualEditorSyntaxSpan]? {
+        guard key.text.utf16.count <= maximumCachedLineLength else { return nil }
+        return storage.withLock { $0[key] }
+    }
+
+    nonisolated static func store(_ spans: [VirtualEditorSyntaxSpan], for key: VirtualEditorSyntaxLineCacheKey) {
+        guard key.text.utf16.count <= maximumCachedLineLength else { return }
+        storage.withLock { cache in
+            if cache[key] == nil, cache.count >= maximumEntryCount, let evictionKey = cache.keys.first {
+                cache.removeValue(forKey: evictionKey)
+            }
+            cache[key] = spans
+        }
+    }
+}
+
 struct VirtualEditorVisualFragmentCache {
     private struct Entry {
         let width: CGFloat
@@ -154,6 +192,7 @@ struct VirtualEditorView: NSViewRepresentable {
     let document: (any EditorDocument)?
     let documentID: UUID?
     let documentResourceID: String
+    let documentDisplayName: String
     let contentRevision: Int
     let externalContentRevision: Int
     let storedCaretLocation: Int?
@@ -193,6 +232,7 @@ struct VirtualEditorView: NSViewRepresentable {
             document: document,
             documentID: documentID,
             resourceID: documentResourceID,
+            displayName: documentDisplayName,
             contentRevision: contentRevision,
             externalContentRevision: externalContentRevision,
             caret: storedCaretLocation,
@@ -225,6 +265,7 @@ struct VirtualEditorView: NSViewRepresentable {
             document: document,
             documentID: documentID,
             resourceID: documentResourceID,
+            displayName: documentDisplayName,
             contentRevision: contentRevision,
             externalContentRevision: externalContentRevision,
             caret: storedCaretLocation,
@@ -451,7 +492,8 @@ final class VirtualEditorScrollView: NSScrollView {
     }
 
     func configure(
-        document: (any EditorDocument)?, documentID: UUID?, resourceID: String, contentRevision: Int, externalContentRevision: Int,
+        document: (any EditorDocument)?, documentID: UUID?, resourceID: String, displayName: String,
+        contentRevision: Int, externalContentRevision: Int,
         caret: Int?, language: String, colorScheme: ColorScheme, fontSize: CGFloat,
         fontName: String, lineHeightMultiplier: CGFloat,
         isReadOnly: Bool, translucentBackgroundEnabled: Bool, showsLineNumbers: Bool, highlightCurrentLine: Bool,
@@ -465,7 +507,8 @@ final class VirtualEditorScrollView: NSScrollView {
         hasHorizontalScroller = !lineWrapEnabled
         MacOverlayScrollerPolicy.configure(self, clearBackground: true)
         canvas.configure(
-            document: document, documentID: documentID, resourceID: resourceID, contentRevision: contentRevision, externalContentRevision: externalContentRevision,
+            document: document, documentID: documentID, resourceID: resourceID, displayName: displayName,
+            contentRevision: contentRevision, externalContentRevision: externalContentRevision,
             caret: caret, language: language, colorScheme: colorScheme,
             fontSize: fontSize, fontName: fontName, lineHeightMultiplier: lineHeightMultiplier,
             isReadOnly: isReadOnly,
@@ -600,6 +643,24 @@ final class VirtualEditorScrollView: NSScrollView {
     }
 }
 
+struct VirtualEditorAccessibilityContext: Equatable {
+    let documentName: String
+    let line: Int
+    let column: Int
+    let isReadOnly: Bool
+    let selectionLength: Int
+
+    var label: String { "\(documentName), editor" }
+
+    var help: String {
+        let editability = isReadOnly ? "read only" : "editable"
+        let selectionStatus = selectionLength > 0
+            ? "\(selectionLength) characters selected"
+            : "no selection"
+        return "Line \(line), column \(column), \(editability), \(selectionStatus)."
+    }
+}
+
 @MainActor
 final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private enum Geometry {
@@ -636,6 +697,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var viewport: EditorDocumentViewport?
     private var viewportText = ""
     private var lineStarts: [Int] = [0]
+    private var viewportLines: [VirtualEditorViewportLine] = []
     var viewportLineOrigin = 0
     private var absoluteCaret = 0
     private var selection = NSRange(location: 0, length: 0)
@@ -646,14 +708,20 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var pendingDragPublication: DispatchWorkItem?
     private let documentUndoManager = UndoManager()
     private var lastConfigurationKey = ""
+    private var documentDisplayName = "Untitled"
     private var layoutCache: [Int: CTLine] = [:]
     private var attributedLineCache: [Int: NSAttributedString] = [:]
     private var visualFragmentCache = VirtualEditorVisualFragmentCache()
+    private var visualRowsSnapshot: (key: String, rows: [VisualRow])?
+    private var syntaxSpansByLine: [Int: [VirtualEditorSyntaxSpan]] = [:]
+    private var syntaxHighlightTask: Task<Void, Never>?
+    private var syntaxHighlightGeneration = 0
     private var visibleColors: [NSRange: NSColor] = [:]
     private var viewportSize: CGSize = .zero {
         didSet {
             guard viewportSize != oldValue else { return }
             visualFragmentCache.removeAll(keepingCapacity: true)
+            visualRowsSnapshot = nil
             invalidateIntrinsicContentSize()
             needsDisplay = true
         }
@@ -696,7 +764,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let rows = EditorPerformanceMonitor.shared.measureVirtualEditorLayout {
             visualRows()
         }
-        let logicalLines = max(1, Set(rows.map(\.logicalLine)).count)
+        var logicalLines = 0
+        var previousLogicalLine: Int?
+        for row in rows where row.logicalLine != previousLogicalLine {
+            logicalLines += 1
+            previousLogicalLine = row.logicalLine
+        }
+        logicalLines = max(1, logicalLines)
         let observed = CGFloat(max(1, rows.count)) / CGFloat(logicalLines)
         if abs(observed - estimatedRowsPerLogicalLine) > 0.05 {
             estimatedRowsPerLogicalLine = VirtualEditorVisualRowIndex.smoothedEstimate(
@@ -713,8 +787,22 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     override var undoManager: UndoManager? { documentUndoManager }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func accessibilityRole() -> NSAccessibility.Role? { .textArea }
-    override func accessibilityLabel() -> String? { "Editor" }
+    override func accessibilityLabel() -> String? { accessibilityContext.label }
     override func accessibilityValue() -> Any? { viewportText }
+    override func accessibilityHelp() -> String? { accessibilityContext.help }
+
+    private var accessibilityContext: VirtualEditorAccessibilityContext {
+        let localCaret = max(0, min(viewportText.utf16.count, absoluteCaret - viewportLineOriginStartUTF16))
+        let localLine = newlineCount(inUTF16PrefixOf: viewportText, length: localCaret)
+        let lineStart = lineStarts[min(localLine, max(0, lineStarts.count - 1))]
+        return VirtualEditorAccessibilityContext(
+            documentName: documentDisplayName,
+            line: viewportLineOrigin + localLine + 1,
+            column: localCaret - lineStart + 1,
+            isReadOnly: isReadOnly,
+            selectionLength: selection.length
+        )
+    }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -726,7 +814,10 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    deinit { NotificationCenter.default.removeObserver(self) }
+    deinit {
+        syntaxHighlightTask?.cancel()
+        NotificationCenter.default.removeObserver(self)
+    }
 
     @objc private func moveToLine(_ notification: Notification) {
         guard matchesDocument(notification), let line = notification.object as? Int else { return }
@@ -864,7 +955,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     func configure(
-        document: (any EditorDocument)?, documentID: UUID?, resourceID: String, contentRevision: Int, externalContentRevision: Int,
+        document: (any EditorDocument)?, documentID: UUID?, resourceID: String, displayName: String,
+        contentRevision: Int, externalContentRevision: Int,
         caret: Int?, language: String, colorScheme: ColorScheme, fontSize: CGFloat,
         fontName: String, lineHeightMultiplier: CGFloat,
         isReadOnly: Bool, translucentBackgroundEnabled: Bool, showsLineNumbers: Bool, highlightCurrentLine: Bool,
@@ -881,6 +973,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         self.document = document
         self.documentID = documentID
         self.resourceID = resourceID
+        self.documentDisplayName = displayName
         self.language = language
         self.scheme = colorScheme
         self.resolvedEditorTheme = currentEditorTheme(colorScheme: colorScheme)
@@ -930,6 +1023,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         layoutCache.removeAll()
         attributedLineCache.removeAll()
         visualFragmentCache.removeAll()
+        visualRowsSnapshot = nil
+        syntaxSpansByLine.removeAll(keepingCapacity: true)
         if isNewDocument {
             absoluteCaret = min(max(0, caret ?? 0), document?.utf16Length ?? 0)
             selection = NSRange(location: absoluteCaret, length: 0)
@@ -946,8 +1041,6 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
         needsDisplay = true
     }
-
-    override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); window?.makeFirstResponder(self) }
 
     override func draw(_ dirtyRect: NSRect) {
         if let documentID {
@@ -1093,34 +1186,40 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         // metrics have been recalculated. The viewport is the current editor
         // allocation and is therefore the authoritative wrapping width.
         let availableWidth = max(1, viewportSize.width - gutterWidth - 16)
+        let snapshotKey = [
+            lastConfigurationKey,
+            String(configuredContentRevision ?? 0),
+            String(configuredExternalContentRevision ?? 0),
+            String(viewportLineOrigin),
+            String(Int((availableWidth * 2).rounded())),
+            String(Int((bounds.maxY * 2).rounded())),
+            String(Int((lineHeight * 100).rounded()))
+        ].joined(separator: "|")
+        if let visualRowsSnapshot, visualRowsSnapshot.key == snapshotKey {
+            return visualRowsSnapshot.rows
+        }
         var rows: [VisualRow] = []
         var baseline = VirtualEditorVisualLayout.baseline(
             rowOrigin: visualRowIndex.rowOrigin(forLogicalLine: viewportLineOrigin),
             lineHeight: lineHeight,
             fontAscender: editorFont.ascender
         )
-        for localLine in lineStarts.indices {
+        for viewportLine in viewportLines {
             let estimatedBaseline = baseline
             let viewportMaxY = bounds.maxY + lineHeight * 2
             if estimatedBaseline > viewportMaxY {
                 break
             }
-            let start = lineStarts[localLine]
-            let end = localLine + 1 < lineStarts.count ? lineStarts[localLine + 1] : viewportText.utf16.count
-            let text = (viewportText as NSString)
-                .substring(with: NSRange(location: start, length: max(0, end - start)))
-                .trimmingCharacters(in: .newlines)
             let fragments = cachedVisualFragments(
-                for: text,
-                localLine: localLine,
-                absoluteStart: start,
-                width: availableWidth,
-                dark: scheme == .dark
+                for: viewportLine.text,
+                localLine: viewportLine.localLine,
+                absoluteStart: viewportLine.startUTF16,
+                width: availableWidth
             )
             for (index, fragment) in fragments.enumerated() {
                 rows.append(VisualRow(
-                    logicalLine: viewportLineOrigin + localLine,
-                    localStart: start,
+                    logicalLine: viewportLineOrigin + viewportLine.localLine,
+                    localStart: viewportLine.startUTF16,
                     fragment: fragment,
                     baseline: baseline,
                     isFirstFragment: index == 0
@@ -1128,35 +1227,30 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 baseline += lineHeight
             }
         }
+        visualRowsSnapshot = (snapshotKey, rows)
         return rows
     }
 
-    private func attributedLine(_ line: String, absoluteStart: Int, dark: Bool) -> NSAttributedString {
+    private func attributedLine(_ line: String, localLine: Int) -> NSAttributedString {
         let base = NSMutableAttributedString(string: line, attributes: [
             .font: editorFont,
             .foregroundColor: NSColor(resolvedEditorTheme.text)
         ])
-        let range = NSRange(location: 0, length: (line as NSString).length)
-        guard range.length > 0 else { return base }
-        for (pattern, color) in getSyntaxPatterns(for: language, colors: resolvedSyntaxColors) {
-            guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
-            for match in regex.matches(in: line, range: range) {
-                base.addAttribute(.foregroundColor, value: NSColor(color), range: match.range)
-            }
+        let utf16Length = (line as NSString).length
+        for span in syntaxSpansByLine[localLine] ?? [] where isSyntaxHighlightRangeValid(span.range, utf16Length: utf16Length) {
+            base.addAttribute(.foregroundColor, value: NSColor(span.color), range: span.range)
         }
         return base
     }
 
     private func cachedAttributedLine(
         _ line: String,
-        localLine: Int,
-        absoluteStart: Int,
-        dark: Bool
+        localLine: Int
     ) -> NSAttributedString {
         if let cached = attributedLineCache[localLine] {
             return cached
         }
-        let created = attributedLine(line, absoluteStart: absoluteStart, dark: dark)
+        let created = attributedLine(line, localLine: localLine)
         attributedLineCache[localLine] = created
         return created
     }
@@ -1165,15 +1259,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         for line: String,
         localLine: Int,
         absoluteStart: Int,
-        width: CGFloat,
-        dark: Bool
+        width: CGFloat
     ) -> [VirtualEditorVisualFragment] {
         visualFragmentCache.fragments(
             for: cachedAttributedLine(
                 line,
-                localLine: localLine,
-                absoluteStart: absoluteStart,
-                dark: dark
+                localLine: localLine
             ),
             localLine: localLine,
             lineStartUTF16: absoluteStart,
@@ -1896,6 +1987,20 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         visualFragmentCache.removeAll(keepingCapacity: true)
         var offset = 0
         for scalar in viewportText.utf16 { offset += 1; if scalar == 10 { lineStarts.append(offset) } }
+        let nsViewportText = viewportText as NSString
+        viewportLines = lineStarts.indices.map { localLine in
+            let start = lineStarts[localLine]
+            let end = localLine + 1 < lineStarts.count ? lineStarts[localLine + 1] : nsViewportText.length
+            return VirtualEditorViewportLine(
+                localLine: localLine,
+                startUTF16: start,
+                text: nsViewportText
+                    .substring(with: NSRange(location: start, length: max(0, end - start)))
+                    .trimmingCharacters(in: .newlines)
+            )
+        }
+        scheduleSyntaxHighlighting()
+        visualRowsSnapshot = nil
         contentWidth = lineWrapEnabled ? max(viewportSize.width, 1) : unwrappedContentWidth()
         layoutCache.removeAll(keepingCapacity: true)
         needsDisplay = true
@@ -1904,16 +2009,70 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private func unwrappedContentWidth() -> CGFloat {
         guard !viewportText.isEmpty else { return max(viewportSize.width, 1) }
         var maximum: CGFloat = 0
-        for localLine in lineStarts.indices {
-            let start = lineStarts[localLine]
-            let end = localLine + 1 < lineStarts.count ? lineStarts[localLine + 1] : viewportText.utf16.count
-            let text = (viewportText as NSString)
-                .substring(with: NSRange(location: start, length: max(0, end - start)))
-                .trimmingCharacters(in: .newlines)
-            let line = CTLineCreateWithAttributedString(attributedLine(text, absoluteStart: start, dark: scheme == .dark))
+        for viewportLine in viewportLines {
+            let line = CTLineCreateWithAttributedString(attributedLine(
+                viewportLine.text,
+                localLine: viewportLine.localLine
+            ))
             maximum = max(maximum, CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil)))
         }
         return max(viewportSize.width, gutterWidth + 16 + maximum)
+    }
+
+    private func scheduleSyntaxHighlighting() {
+        syntaxHighlightTask?.cancel()
+        syntaxHighlightGeneration &+= 1
+        let generation = syntaxHighlightGeneration
+        let lines = viewportLines
+        let syntaxLanguage = language
+        let syntaxTheme = syntaxThemeKey(for: scheme)
+        let patterns = getSyntaxPatterns(for: syntaxLanguage, colors: resolvedSyntaxColors)
+        syntaxHighlightTask = Task { [weak self] in
+            let worker = Task.detached(priority: .userInitiated) {
+                var result: [Int: [VirtualEditorSyntaxSpan]] = [:]
+                result.reserveCapacity(lines.count)
+                for line in lines {
+                    guard !Task.isCancelled else { return result }
+                    let cacheKey = VirtualEditorSyntaxLineCacheKey(
+                        language: syntaxLanguage,
+                        theme: syntaxTheme,
+                        text: line.text
+                    )
+                    if let cachedSpans = VirtualEditorSyntaxLineCache.spans(for: cacheKey) {
+                        if !cachedSpans.isEmpty { result[line.localLine] = cachedSpans }
+                        continue
+                    }
+                    let range = NSRange(location: 0, length: (line.text as NSString).length)
+                    guard range.length > 0 else {
+                        VirtualEditorSyntaxLineCache.store([], for: cacheKey)
+                        continue
+                    }
+                    var lineSpans: [VirtualEditorSyntaxSpan] = []
+                    for (pattern, color) in patterns {
+                        guard !Task.isCancelled else { return result }
+                        guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                        lineSpans.append(contentsOf: regex.matches(in: line.text, range: range).map {
+                            VirtualEditorSyntaxSpan(range: $0.range, color: color)
+                        })
+                    }
+                    VirtualEditorSyntaxLineCache.store(lineSpans, for: cacheKey)
+                    if !lineSpans.isEmpty { result[line.localLine] = lineSpans }
+                }
+                return result
+            }
+            let spans = await withTaskCancellationHandler {
+                await worker.value
+            } onCancel: {
+                worker.cancel()
+            }
+            guard let self, !Task.isCancelled, generation == self.syntaxHighlightGeneration else { return }
+            self.syntaxSpansByLine = spans
+            self.attributedLineCache.removeAll(keepingCapacity: true)
+            self.visualFragmentCache.removeAll(keepingCapacity: true)
+            self.visualRowsSnapshot = nil
+            self.layoutCache.removeAll(keepingCapacity: true)
+            self.needsDisplay = true
+        }
     }
 
     private func caretPoint(localLocation: Int) -> CGPoint {

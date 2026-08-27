@@ -912,14 +912,14 @@ extension ContentView {
         }
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.10))
+                .fill(isSelected ? Color.accentColor.opacity(0.24) : Color.secondary.opacity(0.07))
         )
         .overlay(alignment: isDropTarget && !tabDropInsertionBefore ? .trailing : .leading) {
 #if os(macOS)
             if isSelected || wasPreviouslySelected || isDropTarget {
                 Capsule()
                     .fill(isDropTarget || isSelected ? Color.accentColor : Color.yellow)
-                    .frame(width: 3)
+                    .frame(width: isSelected ? 4 : 3)
                     .padding(.vertical, 3)
                     .accessibilityHidden(true)
             }
@@ -1038,7 +1038,7 @@ extension ContentView {
 
 #if os(macOS)
     private var usesProjectSidebarTabTransition: Bool {
-        showProjectStructureSidebar && projectNavigatorPlacement == .trailing && !brainDumpLayoutEnabled
+        showProjectStructureSidebar && projectNavigatorPlacement == .trailing && !brainDumpLayoutEnabled && !focusModeEnabled
     }
 
     private var usesTrailingTabTransition: Bool {

@@ -326,7 +326,7 @@ extension ContentView {
         case "cmd:join_lines":
             joinSelectedLines()
         case "cmd:focus_mode":
-            openFocusModeWindow()
+            focusModeEnabled.toggle()
         case "cmd:folder_compare":
             showFolderCompare = true
         case "cmd:toggle_git_changes":
@@ -1028,12 +1028,6 @@ extension ContentView {
         let source = currentContentBinding.wrappedValue
         let lines = source.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }
         currentContentBinding.wrappedValue = lines.joined(separator: "\n")
-    }
-
-    func openFocusModeWindow() {
-#if os(macOS)
-        openWindow(id: "focus-mode")
-#endif
     }
 
     func scheduleWordCountRefresh(for text: String) {

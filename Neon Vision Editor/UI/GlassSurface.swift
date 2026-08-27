@@ -12,10 +12,14 @@ enum GlassShapeKind {
 
 #if os(macOS)
 struct MacToolbarVisibilityModifier: ViewModifier {
+    var hidden: Bool = false
+
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(macOS 15.0, *) {
-            content.toolbarBackgroundVisibility(.visible, for: .windowToolbar)
+            content
+                .toolbar(hidden ? .hidden : .automatic, for: .windowToolbar)
+                .toolbarBackgroundVisibility(hidden ? .hidden : .visible, for: .windowToolbar)
         } else {
             content
         }

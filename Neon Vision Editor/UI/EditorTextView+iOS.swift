@@ -11,7 +11,75 @@ nonisolated func iPadShiftScrollFontSizeDelta(contentOffsetDeltaY: CGFloat) -> C
     -contentOffsetDeltaY * 0.04
 }
 
+enum EditorLineStartIndex {
+    static func offsets(in text: String) -> [Int] {
+        var starts = [0]
+        starts.reserveCapacity(max(32, text.utf16.count / 24))
+        var offset = 0
+        for codeUnit in text.utf16 {
+            offset += 1
+            if codeUnit == 10 { starts.append(offset) }
+        }
+        return starts
+    }
+
+    static func applying(replacementRange: NSRange, replacement: String, to lineStarts: [Int]) -> [Int] {
+        guard !lineStarts.isEmpty else { return offsets(in: replacement) }
+        let replacedEnd = NSMaxRange(replacementRange)
+        let delta = replacement.utf16.count - replacementRange.length
+        var updated = lineStarts
+        let firstAffected = firstIndex(in: updated, greaterThan: replacementRange.location)
+        let firstUnaffected = firstIndex(in: updated, greaterThan: replacedEnd)
+        if firstAffected < firstUnaffected {
+            updated.removeSubrange(firstAffected..<firstUnaffected)
+        }
+        for index in firstAffected..<updated.count {
+            updated[index] += delta
+        }
+        var insertedStarts: [Int] = []
+        var replacementOffset = 0
+        for codeUnit in replacement.utf16 {
+            replacementOffset += 1
+            if codeUnit == 10 {
+                insertedStarts.append(replacementRange.location + replacementOffset)
+            }
+        }
+        updated.insert(contentsOf: insertedStarts, at: firstAffected)
+        return updated
+    }
+
+    private static func firstIndex(in values: [Int], greaterThan target: Int) -> Int {
+        var lower = 0
+        var upper = values.count
+        while lower < upper {
+            let midpoint = (lower + upper) / 2
+            if values[midpoint] <= target { lower = midpoint + 1 } else { upper = midpoint }
+        }
+        return lower
+    }
+}
+
+enum EditorLargeTextFormatting {
+    static func updateRange(visibleRange: NSRange, textLength: Int, padding: Int = 8_000) -> NSRange {
+        guard textLength > 0 else { return NSRange(location: 0, length: 0) }
+        let safeLocation = min(max(0, visibleRange.location), textLength)
+        let safeEnd = min(max(safeLocation, NSMaxRange(visibleRange)), textLength)
+        let start = max(0, safeLocation - padding)
+        let end = min(textLength, safeEnd + padding)
+        return NSRange(location: start, length: end - start)
+    }
+}
+
 final class EditorInputTextView: UITextView {
+    private struct NoWrapWidthCache {
+        let revision: Int
+        let visibleWidth: CGFloat
+        let tabWidth: Int
+        let fontName: String
+        let fontSize: CGFloat
+        let width: CGFloat
+    }
+
     private let vimModeDefaultsKey = "EditorVimModeEnabled"
     private let vimInterceptionDefaultsKey = "EditorVimInterceptionEnabled"
     private let bracketTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
@@ -19,11 +87,68 @@ final class EditorInputTextView: UITextView {
     private var pendingDeleteCurrentLineCommand = false
     private var preferredShouldWrapText: Bool = true
     private var preferredTextContainerWidth: CGFloat = 0
+    private var textMetricsRevision = 0
+    private var noWrapWidthCache: NoWrapWidthCache?
+    private var lineStartCache: (revision: Int, offsets: [Int])?
     private var activeShiftPressIdentifiers: Set<ObjectIdentifier> = []
     var isHardwareKeyboardShiftPressed: Bool {
         !activeShiftPressIdentifiers.isEmpty
     }
     var markdownFormattingEnabled: Bool = false
+
+    func invalidateTextMetrics() {
+        textMetricsRevision &+= 1
+        noWrapWidthCache = nil
+        lineStartCache = nil
+    }
+
+    func applyTextMetricsMutation(range: NSRange, replacement: String) {
+        let cachedOffsets = lineStartCache.flatMap { cache in
+            cache.revision == textMetricsRevision ? cache.offsets : nil
+        }
+        textMetricsRevision &+= 1
+        noWrapWidthCache = nil
+        lineStartCache = cachedOffsets.map {
+            (
+                revision: textMetricsRevision,
+                offsets: EditorLineStartIndex.applying(
+                    replacementRange: range,
+                    replacement: replacement,
+                    to: $0
+                )
+            )
+        }
+    }
+
+    func cachedLineStartOffsets() -> [Int] {
+        if let lineStartCache, lineStartCache.revision == textMetricsRevision {
+            return lineStartCache.offsets
+        }
+        let offsets = EditorLineStartIndex.offsets(in: text ?? "")
+        lineStartCache = (textMetricsRevision, offsets)
+        return offsets
+    }
+
+    func cachedNoWrapWidth(visibleWidth: CGFloat, tabWidth: Int, font: UIFont, compute: () -> CGFloat) -> CGFloat {
+        if let cache = noWrapWidthCache,
+           cache.revision == textMetricsRevision,
+           abs(cache.visibleWidth - visibleWidth) < 0.5,
+           cache.tabWidth == tabWidth,
+           cache.fontName == font.fontName,
+           abs(cache.fontSize - font.pointSize) < 0.01 {
+            return cache.width
+        }
+        let width = compute()
+        noWrapWidthCache = NoWrapWidthCache(
+            revision: textMetricsRevision,
+            visibleWidth: visibleWidth,
+            tabWidth: tabWidth,
+            fontName: font.fontName,
+            fontSize: font.pointSize,
+            width: width
+        )
+        return width
+    }
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         for press in presses where press.key?.modifierFlags.contains(.shift) == true {
@@ -833,19 +958,7 @@ extension EditorInputTextView {
     }
 
     private func lineStartLocations() -> [Int] {
-        let nsText = vimText()
-        var starts: [Int] = [0]
-        var location = 0
-        while location < nsText.length {
-            let lineRange = nsText.lineRange(for: NSRange(location: location, length: 0))
-            let nextLocation = NSMaxRange(lineRange)
-            if nextLocation >= nsText.length {
-                break
-            }
-            starts.append(nextLocation)
-            location = nextLocation
-        }
-        return starts
+        cachedLineStartOffsets()
     }
 
     private func wordCharacterSetContains(_ scalar: UnicodeScalar) -> Bool {
@@ -1309,7 +1422,7 @@ final class LineNumberedTextViewContainer: UIView {
             cachedFontPointSize = numberFont.pointSize
             needsDisplayRefresh = true
         }
-        let lineStarts = lineStartOffsets(for: text)
+        let lineStarts = EditorLineStartIndex.offsets(in: text)
         if lineStarts != cachedLineStarts {
             cachedLineStarts = lineStarts
             lineNumberView.lineStarts = lineStarts
@@ -1341,18 +1454,33 @@ final class LineNumberedTextViewContainer: UIView {
         updateLineNumbers(for: text, fontSize: fontSize)
     }
 
-    private func lineStartOffsets(for text: String) -> [Int] {
-        var starts: [Int] = [0]
-        let utf16 = text.utf16
-        starts.reserveCapacity(max(32, utf16.count / 24))
-        var idx = 0
-        for codeUnit in utf16 {
-            idx += 1
-            if codeUnit == 10 { // '\n'
-                starts.append(idx)
-            }
+    func updateLineNumbers(
+        afterReplacing range: NSRange,
+        with replacement: String,
+        resultingText: String,
+        fontSize: CGFloat
+    ) {
+        cachedLineStarts = EditorLineStartIndex.applying(
+            replacementRange: range,
+            replacement: replacement,
+            to: cachedLineStarts
+        )
+        lineNumberView.lineStarts = cachedLineStarts
+        cachedTextLength = resultingText.utf16.count
+        let numberFont = UIFont.monospacedDigitSystemFont(ofSize: max(11, fontSize - 1), weight: .regular)
+        if abs(cachedFontPointSize - numberFont.pointSize) > 0.01 {
+            lineNumberView.font = numberFont
+            cachedFontPointSize = numberFont.pointSize
         }
-        return starts
+        let digits = max(2, String(max(1, cachedLineStarts.count)).count)
+        let glyphWidth = NSString(string: "8").size(withAttributes: [.font: numberFont]).width
+        let targetWidth = ceil((glyphWidth * CGFloat(digits)) + 14)
+        if abs(cachedLineNumberWidth - targetWidth) > 0.5 {
+            cachedLineNumberWidth = targetWidth
+            lineNumberWidthConstraint?.constant = targetWidth
+            setNeedsLayout()
+        }
+        lineNumberView.setNeedsDisplay()
     }
 }
 
@@ -1536,27 +1664,30 @@ struct CustomTextEditor: UIViewRepresentable {
         let text = textView.text ?? ""
         let minimumScrollableWidth = noWrapMinimumScrollableWidth(visibleWidth: visibleWidth)
         guard !text.isEmpty else { return minimumScrollableWidth }
-        let nsText = text as NSString
-        let sampleLimit = min(nsText.length, 120_000)
-        var maxColumns = 0
-        var currentColumns = 0
         let tabWidth = max(1, indentWidth)
-        for index in 0..<sampleLimit {
-            let unit = nsText.character(at: index)
-            if unit == 10 || unit == 13 {
-                maxColumns = max(maxColumns, currentColumns)
-                currentColumns = 0
-            } else if unit == 9 {
-                currentColumns += tabWidth
-            } else {
-                currentColumns += 1
-            }
-        }
-        maxColumns = max(maxColumns, currentColumns)
         let font = textView.font ?? resolvedUIFont()
-        let columnWidth = NSString(string: "W").size(withAttributes: [.font: font]).width
-        let measuredWidth = ceil(CGFloat(maxColumns) * max(1, columnWidth)) + textView.textContainerInset.left + textView.textContainerInset.right + 32
-        return max(minimumScrollableWidth, min(measuredWidth, 20_000))
+        guard let editorTextView = textView as? EditorInputTextView else { return minimumScrollableWidth }
+        return editorTextView.cachedNoWrapWidth(visibleWidth: visibleWidth, tabWidth: tabWidth, font: font) {
+            let nsText = text as NSString
+            let sampleLimit = min(nsText.length, 120_000)
+            var maxColumns = 0
+            var currentColumns = 0
+            for index in 0..<sampleLimit {
+                let unit = nsText.character(at: index)
+                if unit == 10 || unit == 13 {
+                    maxColumns = max(maxColumns, currentColumns)
+                    currentColumns = 0
+                } else if unit == 9 {
+                    currentColumns += tabWidth
+                } else {
+                    currentColumns += 1
+                }
+            }
+            maxColumns = max(maxColumns, currentColumns)
+            let columnWidth = NSString(string: "W").size(withAttributes: [.font: font]).width
+            let measuredWidth = ceil(CGFloat(maxColumns) * max(1, columnWidth)) + textView.textContainerInset.left + textView.textContainerInset.right + 32
+            return max(minimumScrollableWidth, min(measuredWidth, 20_000))
+        }
     }
 
     private func noWrapMinimumScrollableWidth(visibleWidth: CGFloat) -> CGFloat {
@@ -1596,6 +1727,7 @@ struct CustomTextEditor: UIViewRepresentable {
         } else {
             textView.text = text
         }
+        textView.invalidateTextMetrics()
         if text.count <= 200_000 {
             textView.textStorage.beginEditing()
             textView.textStorage.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: textView.textStorage.length))
@@ -1709,6 +1841,7 @@ struct CustomTextEditor: UIViewRepresentable {
                     )
                     if !didInstallLargeText {
                         textView.text = text
+                        textView.invalidateTextMetrics()
                         let length = (textView.text as NSString).length
                         if didSwitchDocumentResource {
                             textView.selectedRange = NSRange(location: 0, length: 0)
@@ -1736,14 +1869,31 @@ struct CustomTextEditor: UIViewRepresentable {
            context.coordinator.lastLineHeight != lineHeightMultiple
             || context.coordinator.lastLetterSpacing != letterSpacing {
             let len = textView.textStorage.length
-            if len > 0 && len <= 200_000 {
+            if len > 0 {
+                let formattingRange: NSRange
+                if len <= 200_000 {
+                    formattingRange = NSRange(location: 0, length: len)
+                } else {
+                    let visibleGlyphs = textView.layoutManager.glyphRange(
+                        forBoundingRect: textView.bounds.insetBy(dx: 0, dy: -textView.bounds.height),
+                        in: textView.textContainer
+                    )
+                    let visibleCharacters = textView.layoutManager.characterRange(
+                        forGlyphRange: visibleGlyphs,
+                        actualGlyphRange: nil
+                    )
+                    formattingRange = EditorLargeTextFormatting.updateRange(
+                        visibleRange: visibleCharacters,
+                        textLength: len
+                    )
+                }
                 let undoWasEnabled = textView.undoManager?.isUndoRegistrationEnabled ?? false
                 if undoWasEnabled {
                     textView.undoManager?.disableUndoRegistration()
                 }
                 textView.textStorage.beginEditing()
-                textView.textStorage.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: len))
-                textView.textStorage.addAttribute(.kern, value: letterSpacing, range: NSRange(location: 0, length: len))
+                textView.textStorage.addAttribute(.paragraphStyle, value: paragraphStyle, range: formattingRange)
+                textView.textStorage.addAttribute(.kern, value: letterSpacing, range: formattingRange)
                 textView.textStorage.endEditing()
                 if undoWasEnabled {
                     textView.undoManager?.enableUndoRegistration()
@@ -1845,6 +1995,11 @@ struct CustomTextEditor: UIViewRepresentable {
         private var lastMinimapViewportTop: Double = -1
         private var lastMinimapViewportHeight: Double = -1
         private var pendingDeferredMinimapViewportPost = false
+        private var pendingMinimapViewportTopFraction: Double?
+        private var pendingMinimapViewportReconciliation: DispatchWorkItem?
+        private var minimapViewportReconciliationGeneration = 0
+        private var remainingMinimapViewportReconciliationPasses = 0
+        private var isReconcilingMinimapViewport = false
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
         private var lastCaretStatusLocation: Int = -1
@@ -2023,6 +2178,7 @@ struct CustomTextEditor: UIViewRepresentable {
             let installDocumentResourceID = parent.documentResourceID
             textView.isEditable = false
             textView.text = ""
+            textView.invalidateTextMetrics()
 
             let nsTarget = target as NSString
 
@@ -2039,6 +2195,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 let remaining = targetLength - location
                 guard remaining > 0 else {
                     self.isInstallingLargeText = false
+                    textView.invalidateTextMetrics()
                     textView.isEditable = !parent.isReadOnly
                     if let restoredCaretLocation {
                         let range = NSRange(
@@ -2272,16 +2429,69 @@ struct CustomTextEditor: UIViewRepresentable {
                   let topFraction = notification.userInfo?[EditorCommandUserInfo.viewportTopFraction] as? Double else { return }
 
             textView.layoutIfNeeded()
+            beginMinimapViewportReconciliation(topFraction: topFraction, textView: textView)
+            reconcileMinimapViewportIfNeeded(textView: textView)
+            postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
+        }
+
+        private func beginMinimapViewportReconciliation(topFraction: Double, textView: UITextView) {
+            pendingMinimapViewportTopFraction = min(max(0, topFraction), 1)
+            remainingMinimapViewportReconciliationPasses = 8
+            minimapViewportReconciliationGeneration &+= 1
+            pendingMinimapViewportReconciliation?.cancel()
+            scheduleMinimapViewportReconciliation(
+                for: textView,
+                generation: minimapViewportReconciliationGeneration
+            )
+        }
+
+        private func reconcileMinimapViewportIfNeeded(textView: UITextView) {
+            guard !isReconcilingMinimapViewport,
+                  let requestedTopFraction = pendingMinimapViewportTopFraction else { return }
             let inset = textView.adjustedContentInset
-            let clampedY = CGFloat(codeMinimapContentOffset(
-                topFraction: topFraction,
+            guard let reconciledY = codeMinimapReconciledContentOffset(
+                requestedTopFraction: requestedTopFraction,
+                currentOffsetY: Double(textView.contentOffset.y),
                 boundsHeight: Double(textView.bounds.height),
                 contentHeight: Double(textView.contentSize.height),
                 adjustedTopInset: Double(inset.top),
                 adjustedBottomInset: Double(inset.bottom)
-            ))
-            textView.setContentOffset(CGPoint(x: textView.contentOffset.x, y: clampedY), animated: false)
-            postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
+            ) else { return }
+            isReconcilingMinimapViewport = true
+            textView.setContentOffset(
+                CGPoint(x: textView.contentOffset.x, y: CGFloat(reconciledY)),
+                animated: false
+            )
+            isReconcilingMinimapViewport = false
+        }
+
+        private func scheduleMinimapViewportReconciliation(for textView: UITextView, generation: Int) {
+            let workItem = DispatchWorkItem { [weak self, weak textView] in
+                guard let self,
+                      let textView,
+                      generation == self.minimapViewportReconciliationGeneration,
+                      self.pendingMinimapViewportTopFraction != nil else { return }
+                textView.layoutIfNeeded()
+                self.reconcileMinimapViewportIfNeeded(textView: textView)
+                self.postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
+                self.remainingMinimapViewportReconciliationPasses -= 1
+                if self.remainingMinimapViewportReconciliationPasses > 0 {
+                    self.scheduleMinimapViewportReconciliation(for: textView, generation: generation)
+                } else {
+                    self.pendingMinimapViewportTopFraction = nil
+                    self.pendingMinimapViewportReconciliation = nil
+                }
+            }
+            pendingMinimapViewportReconciliation = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.025, execute: workItem)
+        }
+
+        private func cancelMinimapViewportReconciliation() {
+            pendingMinimapViewportReconciliation?.cancel()
+            pendingMinimapViewportReconciliation = nil
+            pendingMinimapViewportTopFraction = nil
+            remainingMinimapViewportReconciliationPasses = 0
+            minimapViewportReconciliationGeneration &+= 1
         }
 
         @objc private func requestEditorViewport(_ notification: Notification) {
@@ -2765,6 +2975,7 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             guard !isApplyingHighlight else { return }
+            let lineNumberMutation = pendingTextMutation
             let didApplyIncrementalMutation = applyPendingTextMutationIfPossible()
             if !didApplyIncrementalMutation {
                 syncBindingText(textView.text)
@@ -2773,9 +2984,26 @@ struct CustomTextEditor: UIViewRepresentable {
                editorTextView.rendersInvisibleCharacters || editorTextView.rendersIndentationGuides {
                 editorTextView.invisibleCharactersOverlayView?.requestRedraw(immediate: !isPhoneActivelyEditing)
             }
+            if let editorTextView = textView as? EditorInputTextView {
+                if let lineNumberMutation {
+                    editorTextView.applyTextMetricsMutation(
+                        range: lineNumberMutation.range,
+                        replacement: lineNumberMutation.replacement
+                    )
+                } else {
+                    editorTextView.invalidateTextMetrics()
+                }
+            }
             if shouldRenderLineNumbers() {
                 if UIDevice.current.userInterfaceIdiom == .phone, textView.isFirstResponder {
                     container?.lineNumberView.setNeedsDisplay()
+                } else if didApplyIncrementalMutation, let lineNumberMutation {
+                    container?.updateLineNumbers(
+                        afterReplacing: lineNumberMutation.range,
+                        with: lineNumberMutation.replacement,
+                        resultingText: textView.text,
+                        fontSize: parent.fontSize
+                    )
                 } else {
                     container?.updateLineNumbersAfterInteractiveEdit(for: textView.text, fontSize: parent.fontSize)
                 }
@@ -3060,6 +3288,12 @@ struct CustomTextEditor: UIViewRepresentable {
             guard let textView else { return }
             if consumeIPadShiftScroll(in: scrollView, textView: textView) {
                 return
+            }
+            let panState = scrollView.panGestureRecognizer.state
+            if panState == .began || panState == .changed {
+                cancelMinimapViewportReconciliation()
+            } else {
+                reconcileMinimapViewportIfNeeded(textView: textView)
             }
             syncLineNumberScroll()
             postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView)

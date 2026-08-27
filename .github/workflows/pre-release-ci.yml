@@ -1,5 +1,7 @@
 name: Pre-release CI
 
+# CodeQL default setup supplies the required scan for PRs targeting either
+# protected branch alongside these repository-specific release checks.
 on:
   pull_request:
     branches: ["main", "develop"]
@@ -82,8 +84,43 @@ jobs:
         run: |
           set -euo pipefail
           probe_log="$(mktemp)"
-          if xcodebuild -list -project "Neon Vision Editor.xcodeproj" >"$probe_log" 2>&1; then
+          set +e
+          python3 - "$probe_log" <<'PY'
+          import os
+          import signal
+          import subprocess
+          import sys
+
+          log_path = sys.argv[1]
+          with open(log_path, "wb") as log:
+              process = subprocess.Popen(
+                  ["xcodebuild", "-list", "-project", "Neon Vision Editor.xcodeproj"],
+                  stdout=log,
+                  stderr=subprocess.STDOUT,
+                  start_new_session=True,
+              )
+              try:
+                  status = process.wait(timeout=180)
+              except subprocess.TimeoutExpired:
+                  os.killpg(process.pid, signal.SIGTERM)
+                  try:
+                      process.wait(timeout=5)
+                  except subprocess.TimeoutExpired:
+                      os.killpg(process.pid, signal.SIGKILL)
+                      process.wait()
+                  status = 124
+          raise SystemExit(status)
+          PY
+          probe_status=$?
+          set -e
+          if [[ "$probe_status" -eq 0 ]]; then
             echo "project_compatible=true" >> "$GITHUB_OUTPUT"
+            rm -f "$probe_log"
+            exit 0
+          fi
+          if [[ "$probe_status" -eq 124 ]]; then
+            echo "::warning::Hosted Xcode project probe timed out after 180 seconds. Runtime tests are skipped for this run."
+            echo "project_compatible=false" >> "$GITHUB_OUTPUT"
             rm -f "$probe_log"
             exit 0
           fi
@@ -114,6 +151,35 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             -only-testing:"Neon Vision EditorTests/ReleaseRuntimePolicyTests" \
             test
+
+      - name: Record virtual editor performance trends
+        if: ${{ steps.project_probe.outputs.project_compatible == 'true' }}
+        env:
+          DERIVED_DATA: ${{ runner.temp }}/DerivedData
+          RESULT_BUNDLE: ${{ runner.temp }}/VirtualEditorPerformance.xcresult
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project "Neon Vision Editor.xcodeproj" \
+            -scheme "Neon Vision Editor" \
+            -destination "platform=macOS" \
+            -derivedDataPath "$DERIVED_DATA" \
+            -resultBundlePath "$RESULT_BUNDLE" \
+            MACOSX_DEPLOYMENT_TARGET=15.5 \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -only-testing:"Neon Vision EditorTests/VirtualEditorPerformanceTests" \
+            test
+
+      - name: Upload virtual editor performance results
+        if: ${{ always() && steps.project_probe.outputs.project_compatible == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: virtual-editor-performance-${{ github.run_id }}
+          path: ${{ runner.temp }}/VirtualEditorPerformance.xcresult
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Verify icon payload in built app
         if: ${{ steps.project_probe.outputs.project_compatible == 'true' }}

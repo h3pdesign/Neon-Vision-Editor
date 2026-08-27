@@ -90,6 +90,7 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
         private static let scrollMessageName = "nvePreviewScroll"
 
         func scheduleReloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?) {
+            EditorPerformanceMonitor.shared.markPreviewReloadScheduled(coalesced: pendingReload != nil)
             pendingReload?.cancel()
             reloadGeneration &+= 1
             let generation = reloadGeneration
@@ -107,6 +108,7 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
             webView.evaluateJavaScript(capture) { [weak self, weak webView] value, _ in
                 guard let self, let webView, self.reloadGeneration == generation else { return }
                 let ratio = value as? Double ?? 0
+                EditorPerformanceMonitor.shared.markPreviewReloadExecuted()
                 webView.loadHTMLString(html, baseURL: baseURL)
                 let clamped = min(1.0, max(0.0, ratio))
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self, weak webView] in
@@ -226,6 +228,7 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
         private static let scrollMessageName = "nvePreviewScroll"
 
         func scheduleReloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?) {
+            EditorPerformanceMonitor.shared.markPreviewReloadScheduled(coalesced: pendingReload != nil)
             pendingReload?.cancel()
             reloadGeneration &+= 1
             let generation = reloadGeneration
@@ -243,6 +246,7 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
             webView.evaluateJavaScript(capture) { [weak self, weak webView] value, _ in
                 guard let self, let webView, self.reloadGeneration == generation else { return }
                 let ratio = value as? Double ?? 0
+                EditorPerformanceMonitor.shared.markPreviewReloadExecuted()
                 webView.loadHTMLString(html, baseURL: baseURL)
                 let clamped = min(1.0, max(0.0, ratio))
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self, weak webView] in

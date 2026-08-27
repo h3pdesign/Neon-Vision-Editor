@@ -7,6 +7,11 @@ import OSLog
 // MARK: - Types
 
 final class EditorPerformanceMonitor {
+    struct PreviewReloadSnapshot: Equatable {
+        let requested: Int
+        let coalesced: Int
+        let executed: Int
+    }
     struct FileOpenEvent: Codable, Identifiable {
         let id: UUID
         let timestamp: Date
@@ -31,6 +36,9 @@ final class EditorPerformanceMonitor {
     private var fileOpenStartUptimeByTabID: [UUID: TimeInterval] = [:]
     private var minimapViewportStartUptimeByTabID: [UUID: TimeInterval] = [:]
     private var tabSwitchStartUptimeByTabID: [UUID: TimeInterval] = [:]
+    private var previewReloadRequestedCount = 0
+    private var previewReloadCoalescedCount = 0
+    private var previewReloadExecutedCount = 0
     private(set) var lastMinimapViewportLatencyMilliseconds: Int?
     private(set) var lastTabSwitchLatencyMilliseconds: Int?
     private let defaults = UserDefaults.standard
@@ -96,6 +104,38 @@ final class EditorPerformanceMonitor {
 
     func markPreviewUpdated(tabID: UUID) {
         signposter.emitEvent("preview")
+    }
+
+    func markPreviewReloadScheduled(coalesced: Bool) {
+        previewReloadRequestedCount &+= 1
+        if coalesced {
+            previewReloadCoalescedCount &+= 1
+        }
+    }
+
+    func markPreviewReloadExecuted() {
+        previewReloadExecutedCount &+= 1
+#if DEBUG
+        if previewReloadExecutedCount.isMultiple(of: 10) {
+            logger.debug(
+                "perf.preview_reload requested=\(self.previewReloadRequestedCount, privacy: .public) coalesced=\(self.previewReloadCoalescedCount, privacy: .public) executed=\(self.previewReloadExecutedCount, privacy: .public)"
+            )
+        }
+#endif
+    }
+
+    func previewReloadSnapshot() -> PreviewReloadSnapshot {
+        PreviewReloadSnapshot(
+            requested: previewReloadRequestedCount,
+            coalesced: previewReloadCoalescedCount,
+            executed: previewReloadExecutedCount
+        )
+    }
+
+    func resetPreviewReloadMetrics() {
+        previewReloadRequestedCount = 0
+        previewReloadCoalescedCount = 0
+        previewReloadExecutedCount = 0
     }
 
     func measureVirtualEditorLayout<T>(_ work: () -> T) -> T {

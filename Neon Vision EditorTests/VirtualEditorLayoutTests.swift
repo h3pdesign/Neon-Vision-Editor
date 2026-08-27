@@ -138,6 +138,98 @@ final class VirtualEditorLayoutTests: XCTestCase {
         )
     }
 
+    func testWrappedRowEstimateExpandsScrollExtentInOnePass() {
+        XCTAssertEqual(
+            VirtualEditorVisualRowIndex.scrollExtentEstimate(previous: 1, observed: 2.75),
+            2.75,
+            accuracy: 0.001
+        )
+    }
+
+    func testWrappedRowEstimateShrinksGraduallyWithoutUndercountingObservation() {
+        XCTAssertEqual(
+            VirtualEditorVisualRowIndex.scrollExtentEstimate(previous: 3, observed: 1.5),
+            2.625,
+            accuracy: 0.001
+        )
+        XCTAssertGreaterThanOrEqual(
+            VirtualEditorVisualRowIndex.scrollExtentEstimate(previous: 3, observed: 1.5),
+            1.5
+        )
+    }
+
+    func testCompleteWrappedRowMeasurementResizesExactlyAfterSidebarTransition() {
+        XCTAssertEqual(
+            VirtualEditorVisualRowIndex.scrollExtentEstimate(
+                previous: 3,
+                observed: 1.5,
+                measurementIsComplete: true
+            ),
+            1.5,
+            accuracy: 0.001
+        )
+    }
+
+    func testWrappedDocumentScrollExtentIncludesFinalLineAcrossSidebarWidths() {
+        let logicalLine = String(repeating: "wrapped markdown content ", count: 10)
+        let content = Array(repeating: logicalLine, count: 361).joined(separator: "\n")
+        let document = FileBackedTextDocument(content: content)
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 440, height: 700))
+        let documentID = UUID()
+
+        func configure(width: CGFloat) {
+            _ = canvas.setViewportSize(CGSize(width: width, height: 700))
+            canvas.configure(
+                document: document,
+                documentID: documentID,
+                resourceID: "wrapped-sidebar-regression",
+                displayName: "Architecture.md",
+                contentRevision: 0,
+                externalContentRevision: 0,
+                caret: 0,
+                language: "markdown",
+                colorScheme: .light,
+                fontSize: 14,
+                fontName: "",
+                lineHeightMultiplier: 1,
+                isReadOnly: false,
+                translucentBackgroundEnabled: false,
+                showsLineNumbers: true,
+                highlightCurrentLine: false,
+                lineWrapEnabled: true,
+                showsInvisibleCharacters: false,
+                showsIndentationGuides: false,
+                showsScopeGuides: false,
+                highlightsScopeBackground: false,
+                highlightsMatchingBrackets: false,
+                autoIndentEnabled: true,
+                autoCloseBracketsEnabled: false,
+                onFontSizeChange: nil,
+                onTextMutation: nil
+            )
+            canvas.recalculateVisualMetrics()
+        }
+
+        func expectedHeight(width: CGFloat) -> CGFloat {
+            let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+            let gutterWidth = max(44, CGFloat(document.lineCount.description.count) * 14 * 0.7 + 18)
+            let fragments = VirtualEditorVisualLayout.fragments(
+                for: NSAttributedString(string: logicalLine, attributes: [.font: font]),
+                lineStartUTF16: 0,
+                width: max(1, width - gutterWidth - 16),
+                wraps: true
+            )
+            let lineHeight = font.ascender - font.descender + font.leading + 4
+            return CGFloat(document.lineCount * fragments.count) * lineHeight + 16
+        }
+
+        configure(width: 440)
+        XCTAssertEqual(canvas.logicalHeight, expectedHeight(width: 440), accuracy: 0.001)
+
+        configure(width: 760)
+        XCTAssertEqual(canvas.logicalHeight, expectedHeight(width: 760), accuracy: 0.001)
+    }
+
     func testWrappedFragmentsRemainContiguousForAbsoluteSelectionGeometry() {
         let text = "wide text that must wrap across visual rows"
         let fragments = VirtualEditorVisualLayout.fragments(

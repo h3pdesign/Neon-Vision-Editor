@@ -750,9 +750,34 @@ if step_enabled prep; then
     "${prep_cmd[@]}"
     RELEASE_BRANCH="release/${TAG#v}"
     echo "Release-preparation branch pushed; waiting for ${RELEASE_BRANCH} to merge into main..."
+    release_pr_number="$(
+      gh_retry gh pr list \
+        --repo "${REPO_SLUG}" \
+        --state all \
+        --base main \
+        --head "${RELEASE_BRANCH}" \
+        --limit 20 \
+        --json number \
+        --jq 'max_by(.number).number // empty'
+    )"
+    if [[ -z "${release_pr_number}" ]]; then
+      echo "Could not resolve the newly created release PR for ${RELEASE_BRANCH}." >&2
+      exit 1
+    fi
+    release_head_sha="$(
+      gh_retry gh pr view "${release_pr_number}" \
+        --repo "${REPO_SLUG}" \
+        --json headRefOid \
+        --jq '.headRefOid'
+    )"
     merged=0
     for _ in {1..120}; do
-      pr_state="$(gh_retry gh pr view "${RELEASE_BRANCH}" --json state,mergeCommit --jq '[.state, (.mergeCommit.oid // "")] | join("|")' || true)"
+      pr_state="$(
+        gh_retry gh pr view "${release_pr_number}" \
+          --repo "${REPO_SLUG}" \
+          --json state,mergeCommit \
+          --jq '[.state, (.mergeCommit.oid // "")] | join("|")' || true
+      )"
       if [[ "${pr_state%%|*}" == "MERGED" ]]; then
         merged=1
         break
@@ -766,6 +791,11 @@ if step_enabled prep; then
     git switch main
     retry_cmd git fetch origin main >/dev/null
     git merge --ff-only origin/main
+    if ! git merge-base --is-ancestor "${release_head_sha}" origin/main; then
+      echo "Release PR #${release_pr_number} is marked merged, but origin/main does not contain ${release_head_sha}." >&2
+      echo "Release workflow was not dispatched." >&2
+      exit 1
+    fi
     echo "Release PR merged; main is ready for ${TAG}."
   fi
 fi

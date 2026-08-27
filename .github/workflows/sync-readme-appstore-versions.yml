@@ -101,7 +101,7 @@ jobs:
 
       - name: Commit and update pull request if changed
         env:
-          GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -114,12 +114,21 @@ jobs:
           git commit -S -m "docs: sync App Store versions"
 
           git push --force-with-lease origin "HEAD:${SYNC_BRANCH}"
-          if ! gh pr view "${SYNC_BRANCH}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+          sync_sha="$(git rev-parse HEAD)"
+          sync_pr="$(gh pr list --repo "${GITHUB_REPOSITORY}" --state open --base main --head "${SYNC_BRANCH}" \
+            --json number,headRefOid --jq ".[] | select(.headRefOid == \"${sync_sha}\") | .number" | head -n1)"
+          if [[ -z "${sync_pr}" ]]; then
             gh pr create --repo "${GITHUB_REPOSITORY}" --base main --head "${SYNC_BRANCH}" \
               --title "docs: sync App Store versions" \
               --body "Automated App Store version synchronization after release."
+            sync_pr="$(gh pr list --repo "${GITHUB_REPOSITORY}" --state open --base main --head "${SYNC_BRANCH}" \
+              --json number,headRefOid --jq ".[] | select(.headRefOid == \"${sync_sha}\") | .number" | head -n1)"
           fi
-          if ! gh pr merge "${SYNC_BRANCH}" --repo "${GITHUB_REPOSITORY}" --merge --delete-branch; then
-            gh pr merge "${SYNC_BRANCH}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
+          if [[ -z "${sync_pr}" ]]; then
+            echo "Could not resolve the open App Store synchronization PR for ${sync_sha}." >&2
+            exit 1
+          fi
+          if ! gh pr merge "${sync_pr}" --repo "${GITHUB_REPOSITORY}" --merge --delete-branch; then
+            gh pr merge "${sync_pr}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
               echo "Auto-merge is unavailable; leaving the App Store synchronization PR open."
           fi

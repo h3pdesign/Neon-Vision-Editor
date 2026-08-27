@@ -157,7 +157,7 @@ jobs:
         if: steps.release.outputs.skip != 'true' && steps.changes.outputs.changed == 'true'
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
-          METRIC_TOKEN: ${{ secrets.METRIC_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -180,13 +180,21 @@ jobs:
           git commit -S -m "docs: self-heal ${RELEASE_TAG} documentation"
           git push --force-with-lease origin "HEAD:${DOCS_BRANCH}"
 
-          export GH_TOKEN="${METRIC_TOKEN:-}"
-          if ! gh pr view "${DOCS_BRANCH}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+          docs_sha="$(git rev-parse HEAD)"
+          docs_pr="$(gh pr list --repo "${GITHUB_REPOSITORY}" --state open --base main --head "${DOCS_BRANCH}" \
+            --json number,headRefOid --jq ".[] | select(.headRefOid == \"${docs_sha}\") | .number" | head -n1)"
+          if [[ -z "${docs_pr}" ]]; then
             gh pr create --repo "${GITHUB_REPOSITORY}" --base main --head "${DOCS_BRANCH}" \
               --title "docs: self-heal ${RELEASE_TAG} documentation" \
               --body "Automated post-release documentation reconciliation."
+            docs_pr="$(gh pr list --repo "${GITHUB_REPOSITORY}" --state open --base main --head "${DOCS_BRANCH}" \
+              --json number,headRefOid --jq ".[] | select(.headRefOid == \"${docs_sha}\") | .number" | head -n1)"
           fi
-          if ! gh pr merge "${DOCS_BRANCH}" --repo "${GITHUB_REPOSITORY}" --merge --delete-branch; then
-            gh pr merge "${DOCS_BRANCH}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
+          if [[ -z "${docs_pr}" ]]; then
+            echo "Could not resolve the open documentation PR for ${docs_sha}." >&2
+            exit 1
+          fi
+          if ! gh pr merge "${docs_pr}" --repo "${GITHUB_REPOSITORY}" --merge --delete-branch; then
+            gh pr merge "${docs_pr}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
               echo "Auto-merge is unavailable; leaving the documentation PR open."
           fi

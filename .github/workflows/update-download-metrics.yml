@@ -83,6 +83,12 @@ jobs:
           set -euo pipefail
           if git diff --quiet; then
             echo "No metrics changes."
+            metrics_pr="$(gh pr list --repo "${GITHUB_REPOSITORY}" --state open --head "${METRICS_BRANCH}" --json number --jq '.[0].number // empty')"
+            if [ -n "${metrics_pr}" ]; then
+              gh pr close "${metrics_pr}" --repo "${GITHUB_REPOSITORY}" --delete-branch
+            elif git ls-remote --exit-code --heads origin "${METRICS_BRANCH}" >/dev/null 2>&1; then
+              git push origin --delete "${METRICS_BRANCH}"
+            fi
             exit 0
           fi
 
@@ -104,5 +110,5 @@ jobs:
           gh pr merge "${METRICS_BRANCH}" \
             --repo "${GITHUB_REPOSITORY}" \
             --auto \
-            --squash \
+            --merge \
             --delete-branch || echo "Auto-merge is unavailable; leaving the metrics pull request open."

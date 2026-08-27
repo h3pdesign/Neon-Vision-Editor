@@ -727,7 +727,7 @@ jobs:
                   --body "Automated signed Sparkle appcast publication for ${TAG_NAME}."
               fi
               appcast_pr_number="$(gh pr view "${appcast_branch}" --repo "${GITHUB_REPOSITORY}" --json number --jq '.number')"
-              gh pr merge "${appcast_pr_number}" --repo "${GITHUB_REPOSITORY}" --auto --squash
+              gh pr merge "${appcast_pr_number}" --repo "${GITHUB_REPOSITORY}" --auto --merge
               for _ in {1..120}; do
                 merge_state="$(gh pr view "${appcast_pr_number}" --repo "${GITHUB_REPOSITORY}" --json state,mergeCommit --jq '[.state, (.mergeCommit.oid // "")] | join("|")' || true)"
                 if [[ "${merge_state%%|*}" == "MERGED" && -n "${merge_state#*|}" ]]; then

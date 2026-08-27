@@ -903,4 +903,4 @@ jobs:
           gh_retry gh release delete-asset "$TAG_NAME" "Neon.Vision.Editor.app.zip" -y || true
           gh_retry gh release delete-asset "$TAG_NAME" "Neon.Vision.Editor.app.dmg" -y || true
           gh_retry gh release delete-asset "$TAG_NAME" "SHA256SUMS.txt" -y || true
-          gh_retry gh release edit "$TAG_NAME" --draft true || true
+          gh_retry gh release edit "$TAG_NAME" --draft=true || true

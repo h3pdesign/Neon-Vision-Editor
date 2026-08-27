@@ -59,7 +59,7 @@
          </AdditionalOption>
       </AdditionalOptions>
       <StoreKitConfigurationFileReference
-         identifier = "../../../Neon Vision Editor/SupportOptional.storekit">
+         identifier = "../../Neon Vision Editor/SupportOptional.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction

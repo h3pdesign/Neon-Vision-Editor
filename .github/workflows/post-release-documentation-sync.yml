@@ -186,5 +186,7 @@ jobs:
               --title "docs: self-heal ${RELEASE_TAG} documentation" \
               --body "Automated post-release documentation reconciliation."
           fi
-          gh pr merge "${DOCS_BRANCH}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
-            echo "Auto-merge is unavailable; leaving the documentation PR open."
+          if ! gh pr merge "${DOCS_BRANCH}" --repo "${GITHUB_REPOSITORY}" --merge --delete-branch; then
+            gh pr merge "${DOCS_BRANCH}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
+              echo "Auto-merge is unavailable; leaving the documentation PR open."
+          fi

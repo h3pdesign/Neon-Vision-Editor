@@ -118,7 +118,17 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.5.3</h2><span class="date">26 August 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.5.4</h2><span class="date">27 August 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Measures a bounded, distributed sample of wrapped rows when calculating the virtual canvas scroll extent.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Uses exact row accounting for fully loaded documents and immediate expansion when wrapping increases.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents the macOS editor from stopping before the document&#x27;s final lines when the project sidebar or preview narrows the source pane.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Recalculates cached row geometry after sidebar width transitions without reintroducing unbounded layout work.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.5.3</h2><span class="date">26 August 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Caches macOS viewport render snapshots and incrementally prepares syntax-highlighted lines outside the draw path.</p></div>
           <div class="item"><span class="badge new">New</span><p>Adds revision-aware iOS line metadata, no-wrap width caching, and bounded formatting for large documents.</p></div>

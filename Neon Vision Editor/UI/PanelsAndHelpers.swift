@@ -2563,15 +2563,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.5.3",
-            subtitle: "Release highlights for v1.5.3.",
+            title: "What’s New in v1.5.4",
+            subtitle: "Release highlights for v1.5.4.",
             bullets: [
-                "Editor Performance: Makes large-file editing and scrolling more responsive across macOS, iOS, and iPadOS.",
-                "Workflow Refinements: Reduces unnecessary editor, project, preview, and session-state refreshes during routine interaction.",
-                "Accessible Controls: Adds a distraction-free focus mode while improving editor selection, project-row clarity, and accessibility context.",
-                "Usability Updates: Caches macOS viewport render snapshots and incrementally prepares syntax-highlighted lines outside the draw path.",
-                "Editor Improvements: Adds revision-aware iOS line metadata, no-wrap width caching, and bounded formatting for large documents.",
-                "Editor Performance: Adds focused SwiftUI observation snapshots, preview reload measurements, and CI-exported performance results."
+                "Editor Improvements: Restores access to every wrapped source row in the macOS editor after project-sidebar or preview width changes.",
+                "Workflow Refinements: Keeps the final document lines reachable at both narrow and wide editor widths.",
+                "Editor Performance: Preserves responsive virtual-editor layout without performing unbounded full-document measurement.",
+                "Usability Updates: Measures a bounded, distributed sample of wrapped rows when calculating the virtual canvas scroll extent.",
+                "Editor Improvements: Uses exact row accounting for fully loaded documents and immediate expansion when wrapping increases.",
+                "Workflow Refinements: Prevents the macOS editor from stopping before the document's final lines when the project sidebar or preview narrows the…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

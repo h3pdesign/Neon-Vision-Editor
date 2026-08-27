@@ -1333,6 +1333,8 @@ struct NeonSettingsView: View {
 #elseif os(iOS)
             if newValue == "toolbar" || newValue == "templates" || newValue == "more" {
                 settingsActiveTab = "tools"
+            } else if newValue == "support" {
+                refreshSupportStoreStateIfNeeded()
             }
             #else
             if newValue == "ai" {

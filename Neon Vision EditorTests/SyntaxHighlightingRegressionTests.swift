@@ -680,6 +680,34 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertEqual(top.heightFraction, bottom.heightFraction, accuracy: 0.0001)
     }
 
+    func testCodeMinimapReconcilesBottomAfterLazyContentHeightExpansion() {
+        let initialBottomOffset = codeMinimapContentOffset(
+            topFraction: 1,
+            boundsHeight: 500,
+            contentHeight: 2_000,
+            adjustedTopInset: 20,
+            adjustedBottomInset: 34
+        )
+        let reconciledOffset = codeMinimapReconciledContentOffset(
+            requestedTopFraction: 1,
+            currentOffsetY: initialBottomOffset,
+            boundsHeight: 500,
+            contentHeight: 2_600,
+            adjustedTopInset: 20,
+            adjustedBottomInset: 34
+        )
+
+        XCTAssertEqual(reconciledOffset ?? -1, 2_134, accuracy: 0.0001)
+        XCTAssertNil(codeMinimapReconciledContentOffset(
+            requestedTopFraction: 1,
+            currentOffsetY: reconciledOffset ?? -1,
+            boundsHeight: 500,
+            contentHeight: 2_600,
+            adjustedTopInset: 20,
+            adjustedBottomInset: 34
+        ))
+    }
+
     private func matchesAnyPattern(in text: String, from map: [String: Color], expected pattern: String) -> Bool {
         guard let color = map[pattern],
               let regex = try? NSRegularExpression(pattern: pattern) else { return false }

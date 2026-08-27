@@ -21,7 +21,7 @@ Notes:
   - Commits README.md, ARCHITECTURE.md, CHANGELOG.md, and Welcome Tour release page updates
   - With --next, chooses the next stable tag; patch releases are capped at .9
   - Does not create a tag: the canonical GitHub-hosted workflow tags only after its gates pass
-  - With --push, pushes only the prepared release branch and requests squash auto-merge
+  - With --push, pushes only the prepared release branch and requests merge auto-merge
 EOF
 }
 
@@ -343,7 +343,9 @@ if [[ "$DO_PUSH" -eq 1 ]]; then
       --title "chore(release): prepare ${TAG}" \
       --body "Release preparation for ${TAG}."
   fi
-  gh pr merge "${BRANCH}" --auto --squash --delete-branch || \
+  # Preserve the develop ancestry so main can merge back into develop without
+  # replaying or duplicating the release commits.
+  gh pr merge "${BRANCH}" --auto --merge --delete-branch || \
     echo "Auto-merge is unavailable; leaving the release pull request open."
 else
   echo "Next steps:"

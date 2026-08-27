@@ -21,6 +21,7 @@ final class SupportPurchaseManager: ObservableObject {
     private var transactionUpdatesTask: Task<Void, Never>?
     private var lastStoreStateRefreshAt: Date?
     private let storeStateFreshnessInterval: TimeInterval = 300
+    private let productLookupAttempts = 3
 
     init() {
         transactionUpdatesTask = observeTransactionUpdates()
@@ -66,10 +67,11 @@ final class SupportPurchaseManager: ObservableObject {
 
     // Refreshes StoreKit capability and product metadata.
     func refreshStoreState() async {
+        guard !isLoadingProducts else { return }
         lastStoreStateRefreshAt = Date()
         isLoadingProducts = true
         await refreshBypassEligibility()
-        await refreshProducts(showStatusOnFailure: false)
+        await loadSupportProduct(showStatusOnFailure: false)
     }
 
     // Refreshes only when the cached StoreKit state is stale or unavailable.
@@ -84,44 +86,61 @@ final class SupportPurchaseManager: ObservableObject {
 
     // Loads support product metadata from App Store.
     func refreshProducts(showStatusOnFailure: Bool = true) async {
-        guard canUseInAppPurchases else {
-            supportProduct = nil
-            isLoadingProducts = false
-            if showStatusOnFailure {
-                statusMessage = NSLocalizedString("App Store pricing is currently unavailable.", comment: "")
-            }
-            return
-        }
+        guard !isLoadingProducts else { return }
         isLoadingProducts = true
+        await loadSupportProduct(showStatusOnFailure: showStatusOnFailure)
+    }
+
+    private func loadSupportProduct(showStatusOnFailure: Bool) async {
         defer { isLoadingProducts = false }
-        do {
-            let products = try await Product.products(for: [Self.supportProductID])
-            supportProduct = products.first
-            if supportProduct != nil {
-                lastSuccessfulPriceRefreshAt = Date()
-                statusMessage = nil
+
+        // Product metadata can be available even when purchases are disabled by
+        // Screen Time or account restrictions. Do not gate the lookup on
+        // AppStore.canMakePayments, and do not discard a previously validated
+        // product while StoreKit is recovering from a transient response.
+        var lastLookupError: Error?
+        for attempt in 0..<productLookupAttempts {
+            if Task.isCancelled { return }
+            if attempt > 0 {
+                try? await Task.sleep(nanoseconds: UInt64(attempt) * 250_000_000)
             }
-            if supportProduct == nil, showStatusOnFailure {
-                let format = NSLocalizedString(
-                    "App Store did not return product %@. Check App Store Connect and TestFlight availability.",
-                    comment: ""
-                )
-                statusMessage = String(format: format, Self.supportProductID)
+
+            do {
+                let products = try await Product.products(for: [Self.supportProductID])
+                if let product = products.first(where: { $0.id == Self.supportProductID }) {
+                    supportProduct = product
+                    lastSuccessfulPriceRefreshAt = Date()
+                    statusMessage = nil
+                    return
+                }
+            } catch {
+                lastLookupError = error
+                continue
             }
-        } catch {
-            if showStatusOnFailure {
-                let format = NSLocalizedString("Failed to load App Store products: %@", comment: "")
-                statusMessage = String(format: format, error.localizedDescription)
-            }
+        }
+
+        // A missing response is not a reason to erase a price that was already
+        // validated in this session. It may be a temporary App Store/sandbox
+        // propagation failure; a later refresh can replace the cached value.
+        if supportProduct == nil, showStatusOnFailure, let lastLookupError {
+            let format = NSLocalizedString("Failed to load App Store products: %@", comment: "")
+            statusMessage = String(format: format, lastLookupError.localizedDescription)
+        } else if supportProduct == nil, showStatusOnFailure {
+            let format = NSLocalizedString(
+                "App Store did not return product %@. Check App Store Connect and TestFlight availability.",
+                comment: ""
+            )
+            statusMessage = String(format: format, Self.supportProductID)
         }
     }
 
     // Refreshes in-app purchase availability and product pricing for settings UI.
     func refreshPrice() async {
+        guard !isLoadingProducts else { return }
         statusMessage = nil
         isLoadingProducts = true
         await refreshBypassEligibility()
-        await refreshProducts(showStatusOnFailure: true)
+        await loadSupportProduct(showStatusOnFailure: true)
     }
 
     // Starts purchase flow for the optional support product.

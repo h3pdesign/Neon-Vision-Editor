@@ -128,6 +128,26 @@ nonisolated func codeMinimapContentOffset(
     return min(max(contentTop - adjustedTopInset, minimumOffset), maximumOffset)
 }
 
+nonisolated func codeMinimapReconciledContentOffset(
+    requestedTopFraction: Double,
+    currentOffsetY: Double,
+    boundsHeight: Double,
+    contentHeight: Double,
+    adjustedTopInset: Double,
+    adjustedBottomInset: Double,
+    tolerance: Double = 0.5
+) -> Double? {
+    let expectedOffset = codeMinimapContentOffset(
+        topFraction: requestedTopFraction,
+        boundsHeight: boundsHeight,
+        contentHeight: contentHeight,
+        adjustedTopInset: adjustedTopInset,
+        adjustedBottomInset: adjustedBottomInset
+    )
+    guard abs(expectedOffset - currentOffsetY) > tolerance else { return nil }
+    return expectedOffset
+}
+
 nonisolated func codeMinimapScrollOffset(
     topFraction: Double?,
     contentHeight: Double,

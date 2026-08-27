@@ -345,8 +345,10 @@ if [[ "$DO_PUSH" -eq 1 ]]; then
   fi
   # Preserve the develop ancestry so main can merge back into develop without
   # replaying or duplicating the release commits.
-  gh pr merge "${BRANCH}" --auto --merge --delete-branch || \
-    echo "Auto-merge is unavailable; leaving the release pull request open."
+  if ! gh pr merge "${BRANCH}" --merge --delete-branch; then
+    gh pr merge "${BRANCH}" --auto --merge --delete-branch || \
+      echo "Auto-merge is unavailable; leaving the release pull request open."
+  fi
 else
   echo "Next steps:"
   echo "  git switch develop"

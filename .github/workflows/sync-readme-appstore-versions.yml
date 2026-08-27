@@ -119,5 +119,7 @@ jobs:
               --title "docs: sync App Store versions" \
               --body "Automated App Store version synchronization after release."
           fi
-          gh pr merge "${SYNC_BRANCH}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
-            echo "Auto-merge is unavailable; leaving the App Store synchronization PR open."
+          if ! gh pr merge "${SYNC_BRANCH}" --repo "${GITHUB_REPOSITORY}" --merge --delete-branch; then
+            gh pr merge "${SYNC_BRANCH}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
+              echo "Auto-merge is unavailable; leaving the App Store synchronization PR open."
+          fi

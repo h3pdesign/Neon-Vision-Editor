@@ -77,7 +77,7 @@ jobs:
 
       - name: Commit and update metrics pull request
         env:
-          GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           METRICS_BRANCH: automation/daily-metrics
         run: |
           set -euo pipefail
@@ -107,8 +107,13 @@ jobs:
               --body "Automated refresh of README download and traffic metrics."
           fi
 
-          gh pr merge "${METRICS_BRANCH}" \
+          if ! gh pr merge "${METRICS_BRANCH}" \
             --repo "${GITHUB_REPOSITORY}" \
-            --auto \
             --merge \
-            --delete-branch || echo "Auto-merge is unavailable; leaving the metrics pull request open."
+            --delete-branch; then
+            gh pr merge "${METRICS_BRANCH}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --auto \
+              --merge \
+              --delete-branch || echo "Auto-merge is unavailable; leaving the metrics pull request open."
+          fi

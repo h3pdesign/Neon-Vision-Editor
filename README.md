@@ -52,12 +52,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.5.2**
+> Latest release: **v1.5.3**
 > Next release target: **v1.5.4**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.5.3** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-08-27** for latest release **v1.5.2**
+> Last updated (README): **2026-08-26** for latest release **v1.5.3**
 
 ## What's New in v1.5.2 and v1.5.3
 
@@ -804,7 +804,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.5.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.5.1) | **A more deliberate workflow** — Makes Markdown preview themes more vivid, differentiated, and reliable in both light and dark mode. | Separates Neon Editorial and Nordic Light from default palette fallbacks in the affected appearance modes. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.5.2**
+- Latest release: **v1.5.3**
 - Compare recent changes: [v1.5.2...v1.5.3](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.5.2...v1.5.3)
 
 ## Known Limitations

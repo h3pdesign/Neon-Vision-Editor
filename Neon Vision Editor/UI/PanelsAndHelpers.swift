@@ -3556,6 +3556,7 @@ struct WelcomeTourView: View {
     private var shouldDisableSupportPurchaseButton: Bool {
 #if os(iOS) || os(visionOS)
         supportPurchaseManager.isPurchasing
+        || supportPurchaseManager.isLoadingProducts
 #else
         supportPurchaseManager.isPurchasing
         || supportPurchaseManager.isLoadingProducts

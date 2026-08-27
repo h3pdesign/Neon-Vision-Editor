@@ -1995,6 +1995,11 @@ struct CustomTextEditor: UIViewRepresentable {
         private var lastMinimapViewportTop: Double = -1
         private var lastMinimapViewportHeight: Double = -1
         private var pendingDeferredMinimapViewportPost = false
+        private var pendingMinimapViewportTopFraction: Double?
+        private var pendingMinimapViewportReconciliation: DispatchWorkItem?
+        private var minimapViewportReconciliationGeneration = 0
+        private var remainingMinimapViewportReconciliationPasses = 0
+        private var isReconcilingMinimapViewport = false
         private var isApplyingHighlight = false
         private var highlightGeneration: Int = 0
         private var lastCaretStatusLocation: Int = -1
@@ -2424,16 +2429,69 @@ struct CustomTextEditor: UIViewRepresentable {
                   let topFraction = notification.userInfo?[EditorCommandUserInfo.viewportTopFraction] as? Double else { return }
 
             textView.layoutIfNeeded()
+            beginMinimapViewportReconciliation(topFraction: topFraction, textView: textView)
+            reconcileMinimapViewportIfNeeded(textView: textView)
+            postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
+        }
+
+        private func beginMinimapViewportReconciliation(topFraction: Double, textView: UITextView) {
+            pendingMinimapViewportTopFraction = min(max(0, topFraction), 1)
+            remainingMinimapViewportReconciliationPasses = 8
+            minimapViewportReconciliationGeneration &+= 1
+            pendingMinimapViewportReconciliation?.cancel()
+            scheduleMinimapViewportReconciliation(
+                for: textView,
+                generation: minimapViewportReconciliationGeneration
+            )
+        }
+
+        private func reconcileMinimapViewportIfNeeded(textView: UITextView) {
+            guard !isReconcilingMinimapViewport,
+                  let requestedTopFraction = pendingMinimapViewportTopFraction else { return }
             let inset = textView.adjustedContentInset
-            let clampedY = CGFloat(codeMinimapContentOffset(
-                topFraction: topFraction,
+            guard let reconciledY = codeMinimapReconciledContentOffset(
+                requestedTopFraction: requestedTopFraction,
+                currentOffsetY: Double(textView.contentOffset.y),
                 boundsHeight: Double(textView.bounds.height),
                 contentHeight: Double(textView.contentSize.height),
                 adjustedTopInset: Double(inset.top),
                 adjustedBottomInset: Double(inset.bottom)
-            ))
-            textView.setContentOffset(CGPoint(x: textView.contentOffset.x, y: clampedY), animated: false)
-            postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
+            ) else { return }
+            isReconcilingMinimapViewport = true
+            textView.setContentOffset(
+                CGPoint(x: textView.contentOffset.x, y: CGFloat(reconciledY)),
+                animated: false
+            )
+            isReconcilingMinimapViewport = false
+        }
+
+        private func scheduleMinimapViewportReconciliation(for textView: UITextView, generation: Int) {
+            let workItem = DispatchWorkItem { [weak self, weak textView] in
+                guard let self,
+                      let textView,
+                      generation == self.minimapViewportReconciliationGeneration,
+                      self.pendingMinimapViewportTopFraction != nil else { return }
+                textView.layoutIfNeeded()
+                self.reconcileMinimapViewportIfNeeded(textView: textView)
+                self.postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
+                self.remainingMinimapViewportReconciliationPasses -= 1
+                if self.remainingMinimapViewportReconciliationPasses > 0 {
+                    self.scheduleMinimapViewportReconciliation(for: textView, generation: generation)
+                } else {
+                    self.pendingMinimapViewportTopFraction = nil
+                    self.pendingMinimapViewportReconciliation = nil
+                }
+            }
+            pendingMinimapViewportReconciliation = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.025, execute: workItem)
+        }
+
+        private func cancelMinimapViewportReconciliation() {
+            pendingMinimapViewportReconciliation?.cancel()
+            pendingMinimapViewportReconciliation = nil
+            pendingMinimapViewportTopFraction = nil
+            remainingMinimapViewportReconciliationPasses = 0
+            minimapViewportReconciliationGeneration &+= 1
         }
 
         @objc private func requestEditorViewport(_ notification: Notification) {
@@ -3230,6 +3288,12 @@ struct CustomTextEditor: UIViewRepresentable {
             guard let textView else { return }
             if consumeIPadShiftScroll(in: scrollView, textView: textView) {
                 return
+            }
+            let panState = scrollView.panGestureRecognizer.state
+            if panState == .began || panState == .changed {
+                cancelMinimapViewportReconciliation()
+            } else {
+                reconcileMinimapViewportIfNeeded(textView: textView)
             }
             syncLineNumberScroll()
             postMinimapViewportIfNeeded(textView: textView, scrollView: scrollView)

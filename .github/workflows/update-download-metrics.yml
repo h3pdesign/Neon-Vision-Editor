@@ -77,7 +77,7 @@ jobs:
 
       - name: Commit and update metrics pull request
         env:
-          GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           METRICS_BRANCH: automation/daily-metrics
         run: |
           set -euo pipefail

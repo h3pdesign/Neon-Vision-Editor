@@ -166,6 +166,22 @@ struct VirtualEditorVisualRowIndex {
     static func smoothedEstimate(previous: CGFloat, observed: CGFloat) -> CGFloat {
         min(4, max(1, previous * 0.75 + observed * 0.25))
     }
+
+    /// Growing the scroll extent must happen in one pass. A smoothed increase
+    /// can leave wrapped rows beyond AppKit's reachable document height until
+    /// another unrelated resize occurs. Shrinking remains gradual so ordinary
+    /// viewport samples do not make the scrollbar jump inward.
+    static func scrollExtentEstimate(
+        previous: CGFloat,
+        observed: CGFloat,
+        measurementIsComplete: Bool = false
+    ) -> CGFloat {
+        guard observed.isFinite else { return max(1, previous) }
+        let safeObserved = max(1, observed)
+        if measurementIsComplete { return safeObserved }
+        guard safeObserved < previous else { return safeObserved }
+        return max(safeObserved, previous * 0.75 + safeObserved * 0.25)
+    }
 }
 
 enum VirtualEditorScrollAnchorPolicy {
@@ -733,6 +749,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var configuredExternalContentRevision: Int?
     private let viewportMaximumByteCount = 256_000
     private let editRefreshMaximumByteCount = 128_000
+    private let visualMetricSampleLineLimit = 512
     private var lineHeight: CGFloat { max(1, (editorFont.ascender - editorFont.descender + editorFont.leading + 4) * lineHeightMultiplier) }
     private var editorFont: NSFont { resolvedEditorFont }
     private var gutterWidth: CGFloat { max(44, CGFloat(max(1, document?.lineCount ?? 1).description.count) * editorFontSize * 0.7 + 18) }
@@ -761,25 +778,47 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             if !lineWrapEnabled { contentWidth = unwrappedContentWidth() }
             return
         }
-        let rows = EditorPerformanceMonitor.shared.measureVirtualEditorLayout {
-            visualRows()
+        let measurement = EditorPerformanceMonitor.shared.measureVirtualEditorLayout {
+            measuredRowsPerLogicalLine()
         }
-        var logicalLines = 0
-        var previousLogicalLine: Int?
-        for row in rows where row.logicalLine != previousLogicalLine {
-            logicalLines += 1
-            previousLogicalLine = row.logicalLine
-        }
-        logicalLines = max(1, logicalLines)
-        let observed = CGFloat(max(1, rows.count)) / CGFloat(logicalLines)
+        let observed = measurement.rowsPerLogicalLine
         if abs(observed - estimatedRowsPerLogicalLine) > 0.05 {
-            estimatedRowsPerLogicalLine = VirtualEditorVisualRowIndex.smoothedEstimate(
+            estimatedRowsPerLogicalLine = VirtualEditorVisualRowIndex.scrollExtentEstimate(
                 previous: estimatedRowsPerLogicalLine,
-                observed: observed
+                observed: observed,
+                measurementIsComplete: measurement.isComplete
             )
+            visualRowsSnapshot = nil
         }
         contentWidth = max(viewportSize.width, 1)
         invalidateIntrinsicContentSize()
+    }
+
+    private func measuredRowsPerLogicalLine() -> (rowsPerLogicalLine: CGFloat, isComplete: Bool) {
+        guard !viewportLines.isEmpty else { return (1, true) }
+        let availableWidth = max(1, viewportSize.width - gutterWidth - 16)
+        let step = max(1, Int(ceil(Double(viewportLines.count) / Double(visualMetricSampleLineLimit))))
+        var sampledLineCount = 0
+        var measuredRowCount = 0
+        var index = 0
+        while index < viewportLines.count, sampledLineCount < visualMetricSampleLineLimit {
+            let viewportLine = viewportLines[index]
+            measuredRowCount += cachedVisualFragments(
+                for: viewportLine.text,
+                localLine: viewportLine.localLine,
+                absoluteStart: viewportLine.startUTF16,
+                width: availableWidth
+            ).count
+            sampledLineCount += 1
+            index += step
+        }
+        let coversWholeDocument = viewport?.lineRange.lowerBound == 0
+            && (viewport?.lineRange.upperBound ?? -1) >= max(0, (document?.lineCount ?? 1) - 1)
+        let isComplete = coversWholeDocument && sampledLineCount == viewportLines.count
+        return (
+            CGFloat(max(1, measuredRowCount)) / CGFloat(max(1, sampledLineCount)),
+            isComplete
+        )
     }
 
     override var isFlipped: Bool { true }

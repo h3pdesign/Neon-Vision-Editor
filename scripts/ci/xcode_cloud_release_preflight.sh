@@ -27,6 +27,8 @@ fail() {
   exit 1
 }
 
+scripts/ci/storekit_configuration_audit.sh
+
 # Select a full Xcode installation even when the host's xcode-select currently
 # points at CommandLineTools. The shared selector prefers the newest stable
 # Xcode 17+ installation and rejects beta Xcode unless explicitly allowed for

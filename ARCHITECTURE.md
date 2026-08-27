@@ -1,11 +1,20 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-08-22 (v1.5.2 release-aligned architecture)
+Last updated: 2026-08-26 (v1.5.3 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v1.5.3 (2026-08-26)
+
+- Caches macOS viewport render snapshots and incrementally prepares syntax-highlighted lines outside the draw path.
+- Adds revision-aware iOS line metadata, no-wrap width caching, and bounded formatting for large documents.
+- Adds focused SwiftUI observation snapshots, preview reload measurements, and CI-exported performance results.
+- Adds Focus Mode to hide secondary editor chrome without changing the open document or workspace state.
+- Prevents the editor canvas from taking focus merely because it moved into a window.
+- Improves editor accessibility with document, line, column, selection, and read-only context.
 
 ### v1.5.2 (2026-08-22)
 
@@ -14,15 +23,6 @@ Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and vision
 - Adds visual regression coverage for light and dark translucent and opaque editor surfaces.
 - Removes the macOS preview's hidden 0.96 font-size reduction so preview text no longer drifts smaller than the editor.
 - Removes an unreachable duplicate Warm Sepia toolbar theme mapping that produced a compiler warning.
-
-### v1.5.1 (2026-08-21)
-
-- Adds distinct Plasma and Deep Ocean palettes and strengthens High Contrast, Warm Sepia, Nordic Light, Article, Notebook, Terminal Notes, and Developer Slate.
-- Adds Ember Glow, Forest Canopy, Ultraviolet, Cobalt, and Mint Paper for a broader set of vivid, differentiated preview styles.
-- Adds theme-specific heading accents, semantic color tokens, richer Markdown component styling, and live-preview/export CSS parity.
-- Keeps legacy theme identifiers compatible while preventing visible theme palette collisions.
-- Separates Neon Editorial and Nordic Light from default palette fallbacks in the affected appearance modes.
-- Adds regression coverage for theme uniqueness, vivid component styling, image captions, and export parity.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

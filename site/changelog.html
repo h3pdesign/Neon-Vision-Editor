@@ -118,7 +118,21 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.5.2</h2><span class="date">22 August 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.5.3</h2><span class="date">26 August 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Caches macOS viewport render snapshots and incrementally prepares syntax-highlighted lines outside the draw path.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds revision-aware iOS line metadata, no-wrap width caching, and bounded formatting for large documents.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds focused SwiftUI observation snapshots, preview reload measurements, and CI-exported performance results.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds Focus Mode to hide secondary editor chrome without changing the open document or workspace state.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents the editor canvas from taking focus merely because it moved into a window.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Improves editor accessibility with document, line, column, selection, and read-only context.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Splits the root observer composition so supported public Xcode releases can type-check it reliably.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Makes release appcast publication track its pull request by number and delays release-branch creation until metadata validation succeeds.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.5.2</h2><span class="date">22 August 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Adds 100,000-line benchmarks for typing, scrolling, selection, and viewport reload latency.</p></div>
           <div class="item"><span class="badge new">New</span><p>Adds Time Profiler and Animation Hitches capture support with readable baseline trace bundles.</p></div>

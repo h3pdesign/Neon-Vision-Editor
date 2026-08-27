@@ -96,7 +96,10 @@ jobs:
           git commit -S -m "docs: refresh download metrics chart"
           git push --force-with-lease origin "HEAD:${METRICS_BRANCH}"
 
-          if gh pr view "${METRICS_BRANCH}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+          metrics_sha="$(git rev-parse HEAD)"
+          metrics_pr="$(gh pr list --repo "${GITHUB_REPOSITORY}" --state open --base main --head "${METRICS_BRANCH}" \
+            --json number,headRefOid --jq ".[] | select(.headRefOid == \"${metrics_sha}\") | .number" | head -n1)"
+          if [[ -n "${metrics_pr}" ]]; then
             echo "Updated existing metrics pull request."
           else
             gh pr create \
@@ -105,13 +108,19 @@ jobs:
               --head "${METRICS_BRANCH}" \
               --title "docs: refresh daily download metrics" \
               --body "Automated refresh of README download and traffic metrics."
+            metrics_pr="$(gh pr list --repo "${GITHUB_REPOSITORY}" --state open --base main --head "${METRICS_BRANCH}" \
+              --json number,headRefOid --jq ".[] | select(.headRefOid == \"${metrics_sha}\") | .number" | head -n1)"
           fi
 
-          if ! gh pr merge "${METRICS_BRANCH}" \
+          if [[ -z "${metrics_pr}" ]]; then
+            echo "Could not resolve the open metrics PR for ${metrics_sha}." >&2
+            exit 1
+          fi
+          if ! gh pr merge "${metrics_pr}" \
             --repo "${GITHUB_REPOSITORY}" \
             --merge \
             --delete-branch; then
-            gh pr merge "${METRICS_BRANCH}" \
+            gh pr merge "${metrics_pr}" \
               --repo "${GITHUB_REPOSITORY}" \
               --auto \
               --merge \

@@ -334,19 +334,46 @@ if [[ "$DO_PUSH" -eq 1 ]]; then
     exit 1
   fi
   git push -u origin "${BRANCH}"
-  if gh pr view "${BRANCH}" --repo "${GH_REPO:-$(gh repo view --json nameWithOwner --jq '.nameWithOwner')}" >/dev/null 2>&1; then
+  REPO_SLUG="${GH_REPO:-$(gh repo view --json nameWithOwner --jq '.nameWithOwner')}"
+  BRANCH_SHA="$(git rev-parse HEAD)"
+  PR_NUMBER="$(
+    gh pr list \
+      --repo "${REPO_SLUG}" \
+      --state open \
+      --base main \
+      --head "${BRANCH}" \
+      --json number,headRefOid \
+      --jq ".[] | select(.headRefOid == \"${BRANCH_SHA}\") | .number" \
+      | head -n1
+  )"
+  if [[ -n "${PR_NUMBER}" ]]; then
     echo "Updated existing release pull request."
   else
     gh pr create \
+      --repo "${REPO_SLUG}" \
       --base main \
       --head "${BRANCH}" \
       --title "chore(release): prepare ${TAG}" \
       --body "Release preparation for ${TAG}."
+    PR_NUMBER="$(
+      gh pr list \
+        --repo "${REPO_SLUG}" \
+        --state open \
+        --base main \
+        --head "${BRANCH}" \
+        --json number,headRefOid \
+        --jq ".[] | select(.headRefOid == \"${BRANCH_SHA}\") | .number" \
+        | head -n1
+    )"
+  fi
+  if [[ -z "${PR_NUMBER}" ]]; then
+    echo "Could not resolve the open release pull request for ${BRANCH_SHA}." >&2
+    exit 1
   fi
   # Preserve the develop ancestry so main can merge back into develop without
   # replaying or duplicating the release commits.
-  if ! gh pr merge "${BRANCH}" --merge --delete-branch; then
-    gh pr merge "${BRANCH}" --auto --merge --delete-branch || \
+  if ! gh pr merge "${PR_NUMBER}" --repo "${REPO_SLUG}" --merge --delete-branch; then
+    gh pr merge "${PR_NUMBER}" --repo "${REPO_SLUG}" --auto --merge --delete-branch || \
       echo "Auto-merge is unavailable; leaving the release pull request open."
   fi
 else

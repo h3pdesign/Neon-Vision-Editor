@@ -94,7 +94,12 @@ def main() -> None:
         fail("invalid iPhone preview clamp: .content max-width must use 100%, not 100vw")
     if "max(19px, 1.18em)" in source or "112%" in source or "108%" in source:
         fail("invalid runtime font scaling: Markdown preview must stay anchored to the editor font size")
-    if "-webkit-text-size-adjust: 100%" not in source or "font-size: 1em !important" not in source:
+    exact_runtime_size_contract = 'let resolvedRuntimeFontSize = runtimeFontSize.map { "\\(Int($0.rounded()))px" } ?? "1em"'
+    if (
+        "-webkit-text-size-adjust: 100%" not in source
+        or exact_runtime_size_contract not in source
+        or "font-size: \\(resolvedRuntimeFontSize) !important" not in source
+    ):
         fail("missing editor-size parity guardrail for iOS Markdown preview runtime CSS")
 
     fixture = CLIPPING_FIXTURE.read_text(encoding="utf-8")

@@ -34,8 +34,8 @@ trap cleanup EXIT
 
 (
   cd "$TMP_WORKTREE"
-  scripts/ci/release_preflight.sh "$TAG"
   scripts/release_prep.sh "$TAG"
+  scripts/ci/release_preflight.sh "$TAG"
 )
 
 echo "Dry-run finished. Release content for ${TAG} validated in temporary worktree."

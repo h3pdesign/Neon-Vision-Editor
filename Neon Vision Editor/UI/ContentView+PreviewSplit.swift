@@ -160,7 +160,8 @@ extension ContentView {
         showMarkdownPreviewPane &&
         isMarkdownPreviewDocument &&
         !isSafeModeActive &&
-        !brainDumpLayoutEnabled
+        !brainDumpLayoutEnabled &&
+        !focusModeEnabled
     }
 
     var isWebPreviewSplitVisible: Bool {
@@ -168,7 +169,8 @@ extension ContentView {
         showWebPreviewPane &&
         (isSVGDocument || isHTMLPreviewDocument) &&
         !isSafeModeActive &&
-        !brainDumpLayoutEnabled
+        !brainDumpLayoutEnabled &&
+        !focusModeEnabled
     }
 
     var isImagePreviewSplitVisible: Bool {
@@ -176,7 +178,8 @@ extension ContentView {
         previewMode == .image &&
         isPNGPreviewDocument &&
         !isSafeModeActive &&
-        !brainDumpLayoutEnabled
+        !brainDumpLayoutEnabled &&
+        !focusModeEnabled
     }
 
     var isPDFPreviewSplitVisible: Bool {
@@ -184,7 +187,8 @@ extension ContentView {
         previewMode == .pdf &&
         isPDFPreviewDocument &&
         !isSafeModeActive &&
-        !brainDumpLayoutEnabled
+        !brainDumpLayoutEnabled &&
+        !focusModeEnabled
     }
 
 #if os(iOS) || os(visionOS)

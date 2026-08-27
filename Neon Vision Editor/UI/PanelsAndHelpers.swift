@@ -2563,15 +2563,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.5.2",
-            subtitle: "Release highlights for v1.5.2.",
+            title: "What’s New in v1.5.3",
+            subtitle: "Release highlights for v1.5.3.",
             bullets: [
-                "Editor Improvements: Keeps Markdown preview body text at the same effective base size as the editor while font zoom changes.",
-                "Editor Performance: Adds measurable large-document performance coverage before further virtual-renderer changes.",
-                "Performance Updates: Improves editor rendering efficiency by caching resolved syntax colors for each configured theme.",
-                "Usability Updates: Adds 100,000-line benchmarks for typing, scrolling, selection, and viewport reload latency.",
-                "Editor Improvements: Adds Time Profiler and Animation Hitches capture support with readable baseline trace bundles.",
-                "Workflow Refinements: Adds visual regression coverage for light and dark translucent and opaque editor surfaces."
+                "Editor Performance: Makes large-file editing and scrolling more responsive across macOS, iOS, and iPadOS.",
+                "Workflow Refinements: Reduces unnecessary editor, project, preview, and session-state refreshes during routine interaction.",
+                "Accessible Controls: Adds a distraction-free focus mode while improving editor selection, project-row clarity, and accessibility context.",
+                "Usability Updates: Caches macOS viewport render snapshots and incrementally prepares syntax-highlighted lines outside the draw path.",
+                "Editor Improvements: Adds revision-aware iOS line metadata, no-wrap width caching, and bounded formatting for large documents.",
+                "Editor Performance: Adds focused SwiftUI observation snapshots, preview reload measurements, and CI-exported performance results."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4260,6 +4260,7 @@ extension Notification.Name {
     static let structureTextAsJSONRequested = Notification.Name("structureTextAsJSONRequested")
     static let showIntegratedTerminalRequested = Notification.Name("showIntegratedTerminalRequested")
     static let toggleCodeMinimapRequested = Notification.Name("toggleCodeMinimapRequested")
+    static let toggleFocusModeRequested = Notification.Name("toggleFocusModeRequested")
     static let editorViewportDidChange = Notification.Name("editorViewportDidChange")
     static let requestEditorViewport = Notification.Name("requestEditorViewport")
     static let virtualEditorTextDidChange = Notification.Name("virtualEditorTextDidChange")

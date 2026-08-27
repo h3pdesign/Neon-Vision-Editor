@@ -156,13 +156,29 @@ struct SidebarView: View {
         .padding(.horizontal, tocRowHorizontalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(colorScheme == .dark ? 0.26 : 0.20) : sidebarRowFill)
+            RoundedRectangle(cornerRadius: tocRowCornerRadius, style: .continuous)
+                .fill(tocRowBackground(isSelected: isSelected))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: tocRowCornerRadius, style: .continuous)
                 .stroke(isSelected ? Color.accentColor.opacity(0.62) : Color.clear, lineWidth: 1)
         )
+    }
+
+    private func tocRowBackground(isSelected: Bool) -> Color {
+#if os(macOS)
+        isSelected ? Color.accentColor.opacity(colorScheme == .dark ? 0.22 : 0.16) : Color.clear
+#else
+        isSelected ? Color.accentColor.opacity(colorScheme == .dark ? 0.26 : 0.20) : sidebarRowFill
+#endif
+    }
+
+    private var tocRowCornerRadius: CGFloat {
+#if os(macOS)
+        6
+#else
+        12
+#endif
     }
 
     @ViewBuilder
@@ -275,7 +291,7 @@ struct SidebarView: View {
 #if os(iOS)
         isCompactTOCWidth ? 2.5 : 6
 #else
-        8
+        4
 #endif
     }
 
@@ -2029,6 +2045,7 @@ struct ProjectStructureSidebarView: View {
                             .symbolRenderingMode(.hierarchical)
                         Text(node.url.lastPathComponent)
                             .lineLimit(1)
+                            .font(.system(size: CGFloat(sidebarFontSize), weight: isSelected ? .semibold : .regular))
                         Spacer()
                     }
                     .font(rowFont)
@@ -2041,7 +2058,7 @@ struct ProjectStructureSidebarView: View {
                         if isSelected {
                             Capsule(style: .continuous)
                                 .fill(Color.accentColor)
-                                .frame(width: 3)
+                                .frame(width: 4)
                                 .padding(.vertical, 5)
                         } else if let gitStatus {
                             Capsule(style: .continuous)
@@ -2265,8 +2282,16 @@ struct ProjectStructureSidebarView: View {
     }
 
     private func rowChrome(isSelected: Bool, isHovered: Bool) -> some View {
-        RoundedRectangle(cornerRadius: isCompactDensity ? 10 : 12, style: .continuous)
+        RoundedRectangle(cornerRadius: projectRowCornerRadius, style: .continuous)
             .fill(rowFill(isSelected: isSelected, isHovered: isHovered))
+    }
+
+    private var projectRowCornerRadius: CGFloat {
+#if os(macOS)
+        isCompactDensity ? 5 : 6
+#else
+        isCompactDensity ? 10 : 12
+#endif
     }
 
     private func rowFill(isSelected: Bool, isHovered: Bool) -> Color {
@@ -2311,7 +2336,11 @@ struct ProjectStructureSidebarView: View {
         if isHovered {
             return Color.accentColor
         }
+#if os(macOS)
+        return Color.secondary
+#else
         return translucentBackgroundEnabled ? Color.accentColor.opacity(0.92) : Color.accentColor.opacity(0.96)
+#endif
     }
 
     private func gitStatusColor(_ status: GitFileStatus) -> Color {

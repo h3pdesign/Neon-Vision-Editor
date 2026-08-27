@@ -647,7 +647,7 @@ jobs:
         id: publish_appcast
         env:
           APPCAST_PATH: ${{ runner.temp }}/appcast.xml
-          GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           METRICS_SIGNING_SSH_KEY: ${{ secrets.METRICS_SIGNING_SSH_KEY }}
           METRICS_SIGNING_NAME: ${{ secrets.METRICS_SIGNING_NAME }}
           METRICS_SIGNING_EMAIL: ${{ secrets.METRICS_SIGNING_EMAIL }}
@@ -721,12 +721,36 @@ jobs:
             git add appcast.xml site/appcast.xml
             git commit -S -m "chore: publish Sparkle appcast for ${TAG_NAME}"
             if git push --force-with-lease origin "HEAD:${appcast_branch}"; then
-              if ! gh pr view "${appcast_branch}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+              appcast_branch_sha="$(git rev-parse HEAD)"
+              appcast_pr_number="$(
+                gh pr list \
+                  --repo "${GITHUB_REPOSITORY}" \
+                  --state open \
+                  --base main \
+                  --head "${appcast_branch}" \
+                  --json number,headRefOid \
+                  --jq ".[] | select(.headRefOid == \"${appcast_branch_sha}\") | .number" \
+                  | head -n1
+              )"
+              if [[ -z "${appcast_pr_number}" ]]; then
                 gh pr create --repo "${GITHUB_REPOSITORY}" --base main --head "${appcast_branch}" \
                   --title "chore: publish Sparkle appcast for ${TAG_NAME}" \
                   --body "Automated signed Sparkle appcast publication for ${TAG_NAME}."
+                appcast_pr_number="$(
+                  gh pr list \
+                    --repo "${GITHUB_REPOSITORY}" \
+                    --state open \
+                    --base main \
+                    --head "${appcast_branch}" \
+                    --json number,headRefOid \
+                    --jq ".[] | select(.headRefOid == \"${appcast_branch_sha}\") | .number" \
+                    | head -n1
+                )"
               fi
-              appcast_pr_number="$(gh pr view "${appcast_branch}" --repo "${GITHUB_REPOSITORY}" --json number --jq '.number')"
+              if [[ -z "${appcast_pr_number}" ]]; then
+                echo "Could not resolve the open appcast PR for ${appcast_branch_sha}." >&2
+                exit 1
+              fi
               if ! gh pr merge "${appcast_pr_number}" --repo "${GITHUB_REPOSITORY}" --merge; then
                 gh pr merge "${appcast_pr_number}" --repo "${GITHUB_REPOSITORY}" --auto --merge
               fi

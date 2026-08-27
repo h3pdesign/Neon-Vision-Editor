@@ -57,7 +57,7 @@
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.5.3** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-08-26** for latest release **v1.5.3**
+> Last updated (README): **2026-08-27** for latest release **v1.5.3**
 
 ## What's New in v1.5.2 and v1.5.3
 
@@ -225,7 +225,7 @@ The direct GitHub release is currently ahead of the App Store version. The App S
 | **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.5.3** | Current direct download |
 | **Store** | iOS / iPadOS / macOS / visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v0.7.8** | Current public App Store listing |
 | **Store Review** | macOS | Corrected App Store update | App Store Connect review | **v1.2.6** | Resubmitted after review fixes |
-| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v1.5.2** | Early access builds for feedback; availability may vary by review state |
+| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v1.5.3** | Early access builds for feedback; availability may vary by review state |
 
 ## Install
 

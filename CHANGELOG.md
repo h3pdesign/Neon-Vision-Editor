@@ -4,6 +4,32 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.5.4] - 2026-08-27
+
+### Why Upgrade
+
+- Restores access to every wrapped source row in the macOS editor after project-sidebar or preview width changes.
+- Keeps the final document lines reachable at both narrow and wide editor widths.
+- Preserves responsive virtual-editor layout without performing unbounded full-document measurement.
+
+### Highlights
+
+- Measures a bounded, distributed sample of wrapped rows when calculating the virtual canvas scroll extent.
+- Uses exact row accounting for fully loaded documents and immediate expansion when wrapping increases.
+
+### Fixes
+
+- Prevents the macOS editor from stopping before the document's final lines when the project sidebar or preview narrows the source pane.
+- Recalculates cached row geometry after sidebar width transitions without reintroducing unbounded layout work.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.5.3] - 2026-08-26
 
 ### Why Upgrade

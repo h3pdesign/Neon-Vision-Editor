@@ -1,11 +1,18 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-08-26 (v1.5.3 release-aligned architecture)
+Last updated: 2026-08-27 (v1.5.4 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v1.5.4 (2026-08-27)
+
+- Measures a bounded, distributed sample of wrapped rows when calculating the virtual canvas scroll extent.
+- Uses exact row accounting for fully loaded documents and immediate expansion when wrapping increases.
+- Prevents the macOS editor from stopping before the document's final lines when the project sidebar or preview narrows the source pane.
+- Recalculates cached row geometry after sidebar width transitions without reintroducing unbounded layout work.
 
 ### v1.5.3 (2026-08-26)
 
@@ -15,14 +22,6 @@ Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and vision
 - Adds Focus Mode to hide secondary editor chrome without changing the open document or workspace state.
 - Prevents the editor canvas from taking focus merely because it moved into a window.
 - Improves editor accessibility with document, line, column, selection, and read-only context.
-
-### v1.5.2 (2026-08-22)
-
-- Adds 100,000-line benchmarks for typing, scrolling, selection, and viewport reload latency.
-- Adds Time Profiler and Animation Hitches capture support with readable baseline trace bundles.
-- Adds visual regression coverage for light and dark translucent and opaque editor surfaces.
-- Removes the macOS preview's hidden 0.96 font-size reduction so preview text no longer drifts smaller than the editor.
-- Removes an unreachable duplicate Warm Sepia toolbar theme mapping that produced a compiler warning.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

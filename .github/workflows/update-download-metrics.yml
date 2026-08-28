@@ -116,13 +116,8 @@ jobs:
             echo "Could not resolve the open metrics PR for ${metrics_sha}." >&2
             exit 1
           fi
-          if ! gh pr merge "${metrics_pr}" \
+          gh pr merge "${metrics_pr}" \
             --repo "${GITHUB_REPOSITORY}" \
+            --auto \
             --merge \
-            --delete-branch; then
-            gh pr merge "${metrics_pr}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --auto \
-              --merge \
-              --delete-branch || echo "Auto-merge is unavailable; leaving the metrics pull request open."
-          fi
+            --delete-branch || echo "Auto-merge is unavailable; leaving the metrics pull request open."

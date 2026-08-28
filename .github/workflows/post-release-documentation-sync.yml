@@ -194,7 +194,5 @@ jobs:
             echo "Could not resolve the open documentation PR for ${docs_sha}." >&2
             exit 1
           fi
-          if ! gh pr merge "${docs_pr}" --repo "${GITHUB_REPOSITORY}" --merge --delete-branch; then
-            gh pr merge "${docs_pr}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
-              echo "Auto-merge is unavailable; leaving the documentation PR open."
-          fi
+          gh pr merge "${docs_pr}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
+            echo "Auto-merge is unavailable; leaving the documentation PR open."

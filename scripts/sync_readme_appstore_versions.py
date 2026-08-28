@@ -94,10 +94,11 @@ def sync_readme_versions(readme: str, latest_tag: str, public_store_tag: str, to
     store_is_current = public_store_tag == latest_tag
 
     availability_note = (
-        "The direct GitHub release and public App Store listing are currently aligned."
+        "The iOS/iPadOS App Store listing is currently aligned with the direct GitHub release. "
+        "The macOS App Store update is currently in Apple review."
         if store_is_current
         else (
-            "The direct GitHub release is currently ahead of the App Store version. "
+            "The direct GitHub release is currently ahead of the iOS/iPadOS App Store version. "
             "The App Store version may temporarily lag while updates are in Apple review."
         )
     )
@@ -121,7 +122,7 @@ def sync_readme_versions(readme: str, latest_tag: str, public_store_tag: str, to
         "last updated status",
     )
     readme = replace_required(
-        r"^The direct GitHub release(?: and public App Store listing are currently aligned\.| is currently ahead of the App Store version\. The App Store version may temporarily lag while updates are in Apple review\.)$",
+        r"^(?:The direct GitHub release and public App Store listing are currently aligned\.|The iOS/iPadOS App Store listing is currently aligned with the direct GitHub release\. The macOS App Store update is currently in Apple review\.|The direct GitHub release is currently ahead of the iOS/iPadOS App Store version\. The App Store version may temporarily lag while updates are in Apple review\.)$",
         availability_note,
         readme,
         "download availability note",
@@ -132,11 +133,17 @@ def sync_readme_versions(readme: str, latest_tag: str, public_store_tag: str, to
         readme,
         "GitHub release table row",
     )
-    readme = replace_if_present(
-        r"^(\| \*\*Store Review\*\* \| iOS / iPadOS \| [^|]+ \| App Store Connect review \| )\*\*[^*]+\*\*( \| ).*$",
-        rf"\1**{latest_tag}**\2{'Already public on App Store' if store_is_current else 'In Apple review'} |",
+    readme = replace_required(
+        r"^(\| \*\*Store\*\* \| iOS / iPadOS \| [^|]+ \| \[Neon Vision Editor on the App Store\]\(https://apps\.apple\.com/de/app/neon-vision-editor/id6758950965\) \| )\*\*[^*]+\*\*( \| ).*$",
+        rf"\1**{public_store_tag}**\2Current public App Store listing |",
         readme,
-        "iOS App Store review row",
+        "iOS App Store table row",
+    )
+    readme = replace_required(
+        r"^(\| \*\*Store Review\*\* \| macOS \| [^|]+ \| App Store Connect review \| )\*\*[^*]+\*\*( \| ).*$",
+        rf"\1**{latest_tag}**\2In Apple review |",
+        readme,
+        "macOS App Store review row",
     )
     readme = replace_required(
         r"^(\| \*\*Beta\*\* \| iOS / iPadOS / macOS \| [^|]+ \| \[TestFlight Invite\]\(https://testflight\.apple\.com/join/YWB2fGAP\) \| )\*\*[^*]+\*\*( \| ).*$",

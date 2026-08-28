@@ -57,7 +57,7 @@
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.5.4** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-08-27** for latest release **v1.5.4**
+> Last updated (README): **2026-08-28** for latest release **v1.5.4**
 
 ## What's New in v1.5.3 and v1.5.4
 

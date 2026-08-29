@@ -4,6 +4,35 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.5.6] - 2026-08-29
+
+### Why Upgrade
+
+- Makes the iPhone and iPad editor toolbar more compact and language-aware without hiding full menu names or accessibility context.
+- Restores predictable Markdown list continuation and native text-selection commands across mobile and macOS editors.
+- Keeps collapsed and expanded Markdown formatting controls readable without wasting editor space or covering actions.
+
+### Highlights
+
+- Uses icon-only mobile toolbar presets and language-specific symbols or initials for the current document language.
+- Adds a horizontally scrollable mobile Markdown formatting row while keeping the collapsed control in a compact opaque pill over a transparent surrounding area.
+- Treats explicit language choices as tab-level overrides so automatic detection does not immediately replace the user's selection.
+
+### Fixes
+
+- Makes Settings and Help toolbar visibility follow their configured switches in standard, all-actions, and custom presets.
+- Increments ordered Markdown markers such as `1.` to `2.` and `9)` to `10)` when continuing lists, including in the macOS virtual editor.
+- Restores the system edit menu for caret-only interactions so Select and Select All remain available while preserving snapshot actions for selected ranges.
+- Prevents editor characters from bleeding through the collapsed Markdown formatting pill and keeps the expanded action row reachable by horizontal scrolling.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.5.5] - 2026-08-29
 
 ### Why Upgrade

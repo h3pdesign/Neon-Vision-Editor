@@ -4764,8 +4764,11 @@ struct ContentView: View {
                 }
 #endif
 
-                    if shouldShowMarkdownFormattingControls
-                        && (!shouldOverlayMarkdownFormattingControls || shouldPlaceMarkdownFormattingBelowTabs) {
+                    if MarkdownFormattingChromePolicy.shouldRenderInEditorStack(
+                        shouldShow: shouldShowMarkdownFormattingControls,
+                        overlaysEditor: shouldOverlayMarkdownFormattingControls,
+                        reservesChromeRow: shouldPlaceMarkdownFormattingBelowTabs
+                    ) {
                         HStack(spacing: 0) {
                             Spacer(minLength: 0)
                             markdownFormattingControlBar

@@ -577,6 +577,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v1.5.6": ("Kompaktere, verlässlichere Editorwerkzeuge", "Macht mobile Symbolleisten übersichtlicher, setzt Markdown-Nummerierungen korrekt fort und schützt die eingeklappte Formatierungspille vor durchscheinendem Text.", ["Symbolleiste", "Markdown", "Auswahl"]),
         "v1.5.5": ("Präzise Bearbeitung mit Apple Pencil", "Zeigt auf dem iPad beim Schweben die Caret-Position, ermöglicht die direkte Bereichsauswahl mit dem Pencil und korrigiert die macOS-Editorzeichnung.", ["Editor", "Apple Pencil", "iPad"]),
         "v1.5.4": ("Alle Editorzeilen bleiben erreichbar", "Stellt sicher, dass umbrochene Zeilen nach Änderungen an Seitenleiste oder Vorschau bis zum Dokumentende erreichbar bleiben.", ["Editor", "Zeilenumbruch", "macOS"]),
         "v1.5.3": ("Große Dokumente reagieren schneller", "Beschleunigt Bearbeitung und Scrollen, reduziert unnötige Aktualisierungen und ergänzt einen ablenkungsfreien Fokusmodus.", ["Editor", "Leistung", "Fokusmodus"]),
@@ -593,6 +594,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v1.5.6": ("Mere kompakte og pålidelige editorværktøjer", "Gør mobile værktøjslinjer tydeligere, fortsætter Markdown-nummerering korrekt og beskytter den sammenklappede formateringsknap mod gennemskinnende tekst.", ["Værktøjslinje", "Markdown", "Markering"]),
         "v1.5.5": ("Præcis redigering med Apple Pencil", "Viser markørens placering ved svævning på iPad, vælger tekstområder direkte med Pencil og retter tegningen i macOS-editoren.", ["Editor", "Apple Pencil", "iPad"]),
         "v1.5.4": ("Alle editorlinjer forbliver tilgængelige", "Sikrer, at ombrudte linjer kan nås helt til dokumentets slutning efter ændringer i sidepanel eller forhåndsvisning.", ["Editor", "Linjeombrydning", "macOS"]),
         "v1.5.3": ("Store dokumenter reagerer hurtigere", "Gør redigering og rulning hurtigere, reducerer unødvendige opdateringer og tilføjer en fokustilstand uden forstyrrelser.", ["Editor", "Ydeevne", "Fokustilstand"]),
@@ -609,6 +611,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v1.5.6": ("Des outils d’édition plus compacts et fiables", "Clarifie les barres d’outils mobiles, poursuit correctement la numérotation Markdown et empêche le texte de traverser la pastille de formatage repliée.", ["Barre d’outils", "Markdown", "Sélection"]),
         "v1.5.5": ("Édition précise avec Apple Pencil", "Affiche la position du curseur au survol sur iPad, sélectionne directement des plages avec le Pencil et corrige le rendu de l’éditeur macOS.", ["Éditeur", "Apple Pencil", "iPad"]),
         "v1.5.4": ("Toutes les lignes restent accessibles", "Garantit l’accès aux lignes renvoyées à la ligne jusqu’à la fin du document après un changement de barre latérale ou d’aperçu.", ["Éditeur", "Retour à la ligne", "macOS"]),
         "v1.5.3": ("Les grands documents répondent plus vite", "Accélère l’édition et le défilement, réduit les actualisations inutiles et ajoute un mode concentration sans distraction.", ["Éditeur", "Performances", "Concentration"]),
@@ -625,6 +628,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v1.5.6": ("Herramientas de edición más compactas y fiables", "Aclara las barras móviles, continúa correctamente la numeración Markdown e impide que el texto atraviese la píldora de formato contraída.", ["Barra", "Markdown", "Selección"]),
         "v1.5.5": ("Edición precisa con Apple Pencil", "Muestra la posición del cursor al pasar el Pencil en iPad, permite seleccionar rangos directamente y corrige el dibujo del editor de macOS.", ["Editor", "Apple Pencil", "iPad"]),
         "v1.5.4": ("Todas las líneas siguen accesibles", "Garantiza el acceso a las líneas ajustadas hasta el final del documento tras cambiar la barra lateral o la vista previa.", ["Editor", "Ajuste de línea", "macOS"]),
         "v1.5.3": ("Los documentos grandes responden más rápido", "Acelera la edición y el desplazamiento, reduce actualizaciones innecesarias y añade un modo de concentración sin distracciones.", ["Editor", "Rendimiento", "Concentración"]),
@@ -641,6 +645,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v1.5.6": ("よりコンパクトで確実な編集ツール", "モバイルのツールバーを整理し、Markdown の番号付きリストを正しく継続し、折りたたんだ書式ピルへの文字の透過を防ぎます。", ["ツールバー", "Markdown", "選択"]),
         "v1.5.5": ("Apple Pencil で正確に編集", "iPad でホバー時にキャレット位置を表示し、Pencil で範囲を直接選択できるようにして、macOS エディタの描画も修正します。", ["エディタ", "Apple Pencil", "iPad"]),
         "v1.5.4": ("すべての行に最後までアクセス", "サイドバーやプレビューの変更後も、折り返された行を文書の末尾まで確実に表示できるようにします。", ["エディタ", "行の折り返し", "macOS"]),
         "v1.5.3": ("大きな書類をさらに高速に操作", "編集とスクロールを高速化し、不要な更新を減らして、集中できるフォーカスモードを追加します。", ["エディタ", "パフォーマンス", "フォーカス"]),
@@ -657,6 +662,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v1.5.6": ("更紧凑、更可靠的编辑工具", "简化移动工具栏，正确续排 Markdown 编号列表，并防止编辑器文字透过折叠的格式工具胶囊。", ["工具栏", "Markdown", "选择"]),
         "v1.5.5": ("使用 Apple Pencil 精确编辑", "在 iPad 悬停时预览插入点，使用 Pencil 直接选择文本范围，并修复 macOS 编辑器绘制问题。", ["编辑器", "Apple Pencil", "iPad"]),
         "v1.5.4": ("所有编辑器行均可访问", "在切换侧边栏或预览后，确保自动换行内容一直可以滚动到文档末尾。", ["编辑器", "自动换行", "macOS"]),
         "v1.5.3": ("大型文档响应更快", "加快编辑和滚动，减少不必要的刷新，并加入无干扰的专注模式。", ["编辑器", "性能", "专注模式"]),

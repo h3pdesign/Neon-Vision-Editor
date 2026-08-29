@@ -19,6 +19,39 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertEqual(ToolbarActionSelection.visibleLimit(requestedCount: 7, fallback: TestAction.allCases.count), 7)
     }
 
+    func testLanguageGlyphUsesRecognizableSymbolsForCommonFormats() {
+        XCTAssertEqual(
+            ToolbarLanguageGlyph.resolve(language: "swift", displayName: "Swift"),
+            .systemImage("swift")
+        )
+        XCTAssertEqual(
+            ToolbarLanguageGlyph.resolve(language: "markdown", displayName: "Markdown"),
+            .initial("M")
+        )
+        XCTAssertEqual(
+            ToolbarLanguageGlyph.resolve(language: "json", displayName: "JSON"),
+            .systemImage("curlybraces")
+        )
+    }
+
+    func testLanguageGlyphFallsBackToUppercaseDisplayNameInitial() {
+        XCTAssertEqual(
+            ToolbarLanguageGlyph.resolve(language: "python", displayName: "Python"),
+            .initial("P")
+        )
+        XCTAssertEqual(
+            ToolbarLanguageGlyph.resolve(language: " objective-c ", displayName: "Objective-C"),
+            .initial("O")
+        )
+    }
+
+    func testLanguageGlyphUsesFileSymbolForMissingDisplayName() {
+        XCTAssertEqual(
+            ToolbarLanguageGlyph.resolve(language: "unknown", displayName: "  "),
+            .systemImage("doc")
+        )
+    }
+
     func testCustomVisibleActionsRespectSelectedCountAndToolbarOrder() {
         let visible = ToolbarActionSelection.visibleActions(
             enabledActions: TestAction.allCases,
@@ -160,6 +193,30 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertFalse(ToolbarActionSelection.honorsSectionVisibility(preset: .standard))
         XCTAssertFalse(ToolbarActionSelection.honorsSectionVisibility(preset: .all))
         XCTAssertTrue(ToolbarActionSelection.honorsSectionVisibility(preset: .custom))
+    }
+
+    func testSettingsAndHelpAlwaysHonorTheirVisibilitySettings() {
+        XCTAssertFalse(
+            ToolbarActionSelection.shouldIncludeConfiguredAction(
+                actionID: "settings",
+                isConfiguredVisible: false,
+                preset: .standard
+            )
+        )
+        XCTAssertFalse(
+            ToolbarActionSelection.shouldIncludeConfiguredAction(
+                actionID: "help",
+                isConfiguredVisible: false,
+                preset: .all
+            )
+        )
+        XCTAssertTrue(
+            ToolbarActionSelection.shouldIncludeConfiguredAction(
+                actionID: "openFile",
+                isConfiguredVisible: false,
+                preset: .standard
+            )
+        )
     }
 
     func testPresetFilteringControlsPrimaryAndOverflowActions() {

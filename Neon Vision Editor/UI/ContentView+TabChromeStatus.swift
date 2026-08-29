@@ -152,9 +152,9 @@ extension ContentView {
         // both use the same glass capsule, tint, padding, and accessibility
         // treatment instead of exposing the unwrapped toolbar directly.
         iPhoneMarkdownFormattingChrome
-            // Keep the glass surface sized to its controls. A full-width
-            // proposal makes the fallback material look like an opaque bar.
-            .fixedSize(horizontal: true, vertical: false)
+            // Collapsed chrome stays compact. Expanded chrome accepts the
+            // available width so its action row can scroll horizontally.
+            .fixedSize(horizontal: markdownFormattingToolbarCollapsed, vertical: false)
             .frame(maxWidth: .infinity, alignment: .trailing)
             .tint(iOSToolbarForegroundColor)
     }

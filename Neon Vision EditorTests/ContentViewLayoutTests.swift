@@ -92,4 +92,56 @@ final class ContentViewLayoutTests: XCTestCase {
             )
         )
     }
+
+    func testCollapsedPhoneFormattingChromeOverlaysEditorWithoutReservingARow() {
+        XCTAssertFalse(
+            MarkdownFormattingChromePolicy.shouldReserveMobileFormattingRow(
+                isPhone: true,
+                shouldShow: true,
+                isCollapsed: true
+            )
+        )
+        XCTAssertTrue(
+            MarkdownFormattingChromePolicy.shouldReserveMobileFormattingRow(
+                isPhone: true,
+                shouldShow: true,
+                isCollapsed: false
+            )
+        )
+        XCTAssertFalse(
+            MarkdownFormattingChromePolicy.shouldReserveMobileFormattingRow(
+                isPhone: false,
+                shouldShow: true,
+                isCollapsed: false
+            )
+        )
+        XCTAssertFalse(
+            MarkdownFormattingChromePolicy.shouldRenderInEditorStack(
+                shouldShow: true,
+                overlaysEditor: true,
+                reservesChromeRow: true
+            )
+        )
+    }
+
+    func testCollapsedFormattingControlUsesOpaqueSurfaceWhileExpandedControlMayUseGlass() {
+        XCTAssertFalse(
+            MarkdownFormattingChromePolicy.usesTranslucentControlSurface(
+                isCollapsed: true,
+                liquidGlassEnabled: true
+            )
+        )
+        XCTAssertTrue(
+            MarkdownFormattingChromePolicy.usesTranslucentControlSurface(
+                isCollapsed: false,
+                liquidGlassEnabled: true
+            )
+        )
+        XCTAssertFalse(
+            MarkdownFormattingChromePolicy.usesTranslucentControlSurface(
+                isCollapsed: false,
+                liquidGlassEnabled: false
+            )
+        )
+    }
 }

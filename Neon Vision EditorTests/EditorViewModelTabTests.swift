@@ -4,6 +4,16 @@ import XCTest
 
 @MainActor
 final class EditorViewModelTabTests: XCTestCase {
+    func testManualLanguageSelectionLocksCurrentTab() throws {
+        let viewModel = EditorViewModel()
+        let tab = try XCTUnwrap(viewModel.selectedTab)
+
+        viewModel.updateTabLanguage(tabID: tab.id, language: "python")
+
+        XCTAssertEqual(viewModel.selectedTab?.language, "python")
+        XCTAssertTrue(try XCTUnwrap(viewModel.selectedTab).languageLocked)
+    }
+
     func testDraftSnapshotPreservesLineEndingAndDecodesOlderSnapshots() throws {
         let snapshot = ContentView.SavedDraftTabSnapshot(
             name: "Windows.txt",

@@ -78,6 +78,15 @@ struct ToolbarActionSelection {
         preset == .custom
     }
 
+    static func shouldIncludeConfiguredAction(
+        actionID: String,
+        isConfiguredVisible: Bool,
+        preset: ToolbarPreset
+    ) -> Bool {
+        let alwaysHonorsVisibility = actionID == "settings" || actionID == "help"
+        return !(honorsSectionVisibility(preset: preset) || alwaysHonorsVisibility) || isConfiguredVisible
+    }
+
     static func toggledSelectionRawValue(
         toggledID: String,
         currentRawValue: String,
@@ -93,6 +102,38 @@ struct ToolbarActionSelection {
         return orderedIDs
             .filter { selected.contains($0) }
             .joined(separator: ",")
+    }
+}
+
+enum ToolbarLanguageGlyph: Equatable {
+    case systemImage(String)
+    case initial(String)
+
+    static func resolve(language: String, displayName: String) -> ToolbarLanguageGlyph {
+        switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "swift":
+            return .systemImage("swift")
+        case "markdown":
+            return .initial("M")
+        case "rst", "typst", "tex":
+            return .systemImage("doc.richtext")
+        case "plain", "standard", "log", "crashlog":
+            return .systemImage("doc.plaintext")
+        case "html", "xml":
+            return .systemImage("chevron.left.forwardslash.chevron.right")
+        case "json", "graphql":
+            return .systemImage("curlybraces")
+        case "bash", "zsh", "fish", "powershell":
+            return .systemImage("terminal")
+        case "css":
+            return .systemImage("paintbrush")
+        default:
+            let initial = displayName
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .first
+                .map { String($0).uppercased() }
+            return initial.map(ToolbarLanguageGlyph.initial) ?? .systemImage("doc")
+        }
     }
 }
 
@@ -526,13 +567,8 @@ extension ContentView {
             .fixedSize(horizontal: true, vertical: false)
             .frame(minWidth: 64, alignment: .center)
 #else
-            HStack(spacing: 4) {
-                Image(systemName: currentToolbarPreset.icon)
-                Text(currentToolbarPreset.compactTitle)
-                    .lineLimit(1)
-            }
+            Image(systemName: currentToolbarPreset.icon)
                 .foregroundStyle(currentToolbarPreset.tint)
-                .fixedSize()
 #endif
         }
         .help("Choose Toolbar Preset")
@@ -631,18 +667,6 @@ extension ContentView {
         return true
     }
 
-    private var iPhoneToolbarWidth: CGFloat {
-        max(liveContainerWidth, 320)
-    }
-
-    private var iPhoneLanguagePickerWidth: CGFloat {
-        switch iPhoneToolbarWidth {
-        case 430...: return 108
-        case 395...: return 100
-        default: return 94
-        }
-    }
-
     private enum IOSPrimaryToolbarAction: String, CaseIterable, Hashable {
         case openFile
         case undo
@@ -692,7 +716,16 @@ extension ContentView {
         var actions: [IOSPrimaryToolbarAction] = []
         if !honorsSectionVisibility || toolbarShowOpenFileIOS { actions.append(.openFile) }
         if !honorsSectionVisibility || toolbarShowUndoIOS { actions.append(.undo) }
-        actions.append(contentsOf: [.settings, .help])
+        if ToolbarActionSelection.shouldIncludeConfiguredAction(
+            actionID: IOSPrimaryToolbarAction.settings.rawValue,
+            isConfiguredVisible: toolbarShowSettingsIOS,
+            preset: preset
+        ) { actions.append(.settings) }
+        if ToolbarActionSelection.shouldIncludeConfiguredAction(
+            actionID: IOSPrimaryToolbarAction.help.rawValue,
+            isConfiguredVisible: toolbarShowHelpIOS,
+            preset: preset
+        ) { actions.append(.help) }
         if !honorsSectionVisibility || toolbarShowEditorUtilityIOS {
             actions.append(contentsOf: [.clearEditor, .insertTemplate])
         }
@@ -931,9 +964,12 @@ extension ContentView {
 
     private var enabledIPadActionPriority: [IPadToolbarAction] {
         let preset = effectiveIOSToolbarPreset
-        let honorsSectionVisibility = ToolbarActionSelection.honorsSectionVisibility(preset: preset)
         return iPadActionPriority.filter {
-            (!honorsSectionVisibility || toolbarActionIsEnabled($0)) && ToolbarActionSelection.isAllowedByPreset(
+            ToolbarActionSelection.shouldIncludeConfiguredAction(
+                actionID: $0.rawValue,
+                isConfiguredVisible: toolbarActionIsEnabled($0),
+                preset: preset
+            ) && ToolbarActionSelection.isAllowedByPreset(
                 actionID: $0.rawValue,
                 preset: preset,
                 customIDsRawValue: toolbarCustomFiveIDsIOS,
@@ -954,6 +990,10 @@ extension ContentView {
             return toolbarShowEditorUtilityIOS
         case .fontDecrease, .fontIncrease, .markdownPreview, .markdownProjectPreview, .markdownPreviewExport, .markdownPreviewStyle, .codeMinimap, .indentationGuides, .lineWrap, .translucentWindow:
             return toolbarShowAppearanceIOS
+        case .settings:
+            return toolbarShowSettingsIOS
+        case .help:
+            return toolbarShowHelpIOS
         default:
             return true
         }
@@ -1071,6 +1111,21 @@ extension ContentView {
     }
 
     @ViewBuilder
+    private var languagePickerGlyph: some View {
+        let language = currentLanguagePickerBinding.wrappedValue
+        switch ToolbarLanguageGlyph.resolve(
+            language: language,
+            displayName: languageLabel(for: language)
+        ) {
+        case .systemImage(let name):
+            Image(systemName: name)
+        case .initial(let initial):
+            Text(initial)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+        }
+    }
+
+    @ViewBuilder
     private var languagePickerControl: some View {
         Menu {
             let selectedLanguage = currentLanguagePickerBinding.wrappedValue
@@ -1092,10 +1147,7 @@ extension ContentView {
                 }
             }
         } label: {
-            Text(toolbarLanguageLabel(for: currentLanguagePickerBinding.wrappedValue))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .fixedSize(horizontal: true, vertical: false)
+            languagePickerGlyph
 #if os(visionOS)
                 .foregroundStyle(Color.white.opacity(0.96))
                 .padding(.horizontal, 12)
@@ -1107,19 +1159,12 @@ extension ContentView {
                 )
                 .frame(width: 74)
 #elseif os(iOS)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(iOSToolbarTintColor.opacity(0.35), lineWidth: 1)
-                )
-                .frame(minWidth: isIPadToolbarLayout ? 120 : iPhoneLanguagePickerWidth)
+                .frame(width: 24, height: 24)
 #endif
         }
         .labelsHidden()
 #if os(iOS)
-        .frame(minWidth: isIPadToolbarLayout ? 132 : iPhoneLanguagePickerWidth)
+        .frame(minWidth: 44, minHeight: 44)
 #endif
         .help("Language")
         .accessibilityLabel("Language picker")

@@ -83,6 +83,29 @@ enum MarkdownFormattingChromePolicy {
             && !isLoadingContent
             && !(findPresented && findOccupiesEditorChrome)
     }
+
+    nonisolated static func shouldReserveMobileFormattingRow(
+        isPhone: Bool,
+        shouldShow: Bool,
+        isCollapsed: Bool
+    ) -> Bool {
+        isPhone && shouldShow && !isCollapsed
+    }
+
+    nonisolated static func shouldRenderInEditorStack(
+        shouldShow: Bool,
+        overlaysEditor: Bool,
+        reservesChromeRow: Bool
+    ) -> Bool {
+        shouldShow && !overlaysEditor && !reservesChromeRow
+    }
+
+    nonisolated static func usesTranslucentControlSurface(
+        isCollapsed: Bool,
+        liquidGlassEnabled: Bool
+    ) -> Bool {
+        liquidGlassEnabled && !isCollapsed
+    }
 }
 
 extension ContentView {
@@ -125,9 +148,14 @@ extension ContentView {
 
     var iPhoneMarkdownFormattingChrome: some View {
         GlassSurface(
-            enabled: shouldUseLiquidGlass,
+            enabled: MarkdownFormattingChromePolicy.usesTranslucentControlSurface(
+                isCollapsed: markdownFormattingToolbarCollapsed,
+                liquidGlassEnabled: shouldUseLiquidGlass
+            ),
             material: primaryGlassMaterial,
-            fallbackColor: toolbarFallbackColor,
+            fallbackColor: markdownFormattingToolbarCollapsed
+                ? Color(uiColor: .secondarySystemBackground)
+                : toolbarFallbackColor,
             shape: .capsule,
             chromeStyle: .single
         ) {
@@ -153,10 +181,11 @@ extension ContentView {
 
     var shouldPlaceMarkdownFormattingBelowTabs: Bool {
 #if os(iOS)
-        // Both iPhone and iPad overlay the capsule on the editor. Placing it
-        // inside the top safe-area host reserves an opaque-looking row and
-        // prevents the document from remaining visible underneath.
-        return false
+        MarkdownFormattingChromePolicy.shouldReserveMobileFormattingRow(
+            isPhone: UIDevice.current.userInterfaceIdiom == .phone,
+            shouldShow: shouldShowMarkdownFormattingControls,
+            isCollapsed: markdownFormattingToolbarCollapsed
+        )
         #elseif os(visionOS)
         return shouldShowMarkdownFormattingControls
         #else
@@ -179,8 +208,7 @@ extension ContentView {
            shouldEmbedMarkdownFormattingInMobileStatusRow {
             EmptyView()
         } else {
-            // iPad uses the same glass capsule as iPhone even though its
-            // control is positioned by the editor overlay.
+            // iPad uses the same control treatment as iPhone.
             iPhoneMarkdownFormattingChrome
         }
 #else
@@ -224,6 +252,16 @@ extension ContentView {
     }
 
     private var markdownFormattingCapsule: some View {
+#if os(iOS) || os(visionOS)
+        ScrollView(.horizontal, showsIndicators: false) {
+            markdownFormattingCapsuleContent
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .defaultScrollAnchor(.leading)
+        .accessibilityHint("Scroll horizontally for additional Markdown formatting controls.")
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+#else
         ViewThatFits(in: .horizontal) {
             markdownFormattingCapsuleContent
                 .fixedSize(horizontal: true, vertical: false)
@@ -231,11 +269,12 @@ extension ContentView {
             ScrollView(.horizontal, showsIndicators: false) {
                 markdownFormattingCapsuleContent
             }
-            .defaultScrollAnchor(.trailing)
+            .defaultScrollAnchor(.leading)
             .accessibilityHint("Scroll horizontally for additional Markdown formatting controls.")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
+#endif
     }
 
     private var markdownFormattingCapsuleContent: some View {

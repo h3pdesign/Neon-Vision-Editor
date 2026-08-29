@@ -92,6 +92,12 @@ enum EditorLineStartIndex {
     }
 }
 
+enum EditorEditMenuPolicy {
+    static func shouldUseDefaultMenu(for range: NSRange) -> Bool {
+        range.length == 0
+    }
+}
+
 enum EditorLargeTextFormatting {
     static func updateRange(visibleRange: NSRange, textLength: Int, padding: Int = 8_000) -> NSRange {
         guard textLength > 0 else { return NSRange(location: 0, length: 0) }
@@ -3346,7 +3352,7 @@ struct CustomTextEditor: UIViewRepresentable {
             editMenuForTextIn range: NSRange,
             suggestedActions: [UIMenuElement]
         ) -> UIMenu? {
-            guard range.length > 0 else { return UIMenu(children: suggestedActions) }
+            guard !EditorEditMenuPolicy.shouldUseDefaultMenu(for: range) else { return nil }
             let snapshotAction = UIAction(
                 title: "Create Code Snapshot",
                 image: UIImage(systemName: "camera.viewfinder")

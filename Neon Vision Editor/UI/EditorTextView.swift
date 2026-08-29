@@ -180,7 +180,14 @@ func continuedMarkdownListPrefix(for linePrefix: String, normalizedIndent: Strin
     guard !trailingContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
     let marker = nsLine.substring(with: match.range(at: 2))
     let spacer = nsLine.substring(with: match.range(at: 3))
-    return normalizedIndent + marker + spacer
+    let continuedMarker: String
+    if let delimiter = marker.last, delimiter == "." || delimiter == ")",
+       let value = Int(marker.dropLast()), value < Int.max {
+        continuedMarker = "\(value + 1)\(delimiter)"
+    } else {
+        continuedMarker = marker
+    }
+    return normalizedIndent + continuedMarker + spacer
 }
 
 func autoIndentReturnContext(

@@ -832,145 +832,160 @@ extension ContentView {
         return true
     }
 
-    func findNext() {
-#if os(macOS)
-        guard !findQuery.isEmpty, let tab = viewModel.selectedTab else { return }
-        guard !requiresMaterializedEditorTransform() else { return }
-        findStatusMessage = ""
-        let source = tab.document.string()
-        let ns = source as NSString
-        let selectionBelongsToTab = currentSelectionSnapshotTabID == tab.id
-        let start = selectionBelongsToTab
-            ? min(max(0, currentSelectionSnapshotRange?.upperBound ?? 0), ns.length)
-            : 0
-        let forwardRange = NSRange(location: start, length: max(0, ns.length - start))
-        let wrapRange = NSRange(location: 0, length: max(0, start))
-
-        if findUsesRegex {
-            guard let regex = try? NSRegularExpression(pattern: findQuery, options: findCaseSensitive ? [] : [.caseInsensitive]) else {
-                findStatusMessage = "Invalid regex pattern"
-                NSSound.beep()
-                return
-            }
-            let forwardMatch = regex.firstMatch(in: source, options: [], range: forwardRange)
-            let wrapMatch = regex.firstMatch(in: source, options: [], range: wrapRange)
-            if let match = forwardMatch ?? wrapMatch {
-                postEditorRangeSelection(match.range, focusEditor: true, documentID: tab.id)
-            } else {
-                findStatusMessage = "No matches found"
-                NSSound.beep()
-            }
-        } else {
-            let opts: NSString.CompareOptions = findCaseSensitive ? [] : [.caseInsensitive]
-            if let range = ns.range(of: findQuery, options: opts, range: forwardRange).toOptional() ?? ns.range(of: findQuery, options: opts, range: wrapRange).toOptional() {
-                postEditorRangeSelection(range, focusEditor: true, documentID: tab.id)
-            } else {
-                findStatusMessage = "No matches found"
-                NSSound.beep()
-            }
-        }
-#else
-        guard !findQuery.isEmpty else { return }
-        findStatusMessage = ""
-        let source = currentContentBinding.wrappedValue
-        let fingerprint = "\(findQuery)|\(findUsesRegex)|\(findCaseSensitive)"
-        if fingerprint != iOSLastFindFingerprint {
-            iOSLastFindFingerprint = fingerprint
-            iOSFindCursorLocation = 0
-        }
-
-        guard let next = ReleaseRuntimePolicy.nextFindMatch(
-            in: source,
-            query: findQuery,
-            useRegex: findUsesRegex,
-            caseSensitive: findCaseSensitive,
-            cursorLocation: iOSFindCursorLocation
-        ) else {
-            if findUsesRegex, (try? NSRegularExpression(pattern: findQuery, options: findCaseSensitive ? [] : [.caseInsensitive])) == nil {
-                findStatusMessage = "Invalid regex pattern"
-                return
-            }
-            findStatusMessage = "No matches found"
-            return
-        }
-
-        iOSFindCursorLocation = next.nextCursorLocation
-        postEditorRangeSelection(next.range, focusEditor: true)
-#endif
+    func findNext(focusEditor: Bool = true) {
+        moveFindSelection(by: 1, focusEditor: focusEditor)
     }
 
-    func jumpToCurrentFindMatch() {
-        if findMatchCount == 0 {
+    func findPrevious(focusEditor: Bool = true) {
+        moveFindSelection(by: -1, focusEditor: focusEditor)
+    }
+
+    private func moveFindSelection(by delta: Int, focusEditor: Bool) {
+        guard let index = ReleaseRuntimePolicy.movedFindMatchIndex(
+            currentIndex: findSession.selectedIndex,
+            matchCount: findSession.ranges.count,
+            delta: delta
+        ) else {
             refreshFindPreview()
             return
         }
-        previewFindMatchSelection(forceFromStart: false, shouldFocusEditor: true)
+        selectFindMatch(at: index, focusEditor: focusEditor)
+    }
+
+    func jumpToCurrentFindMatch() {
+        guard let index = findSession.selectedIndex else {
+            refreshFindPreview()
+            return
+        }
+        selectFindMatch(at: index, focusEditor: true)
     }
 
     func refreshFindPreview() {
-        refreshFindMatchCount()
-        guard !findQuery.isEmpty else { return }
-        guard findMatchCount > 0 else { return }
-        previewFindMatchSelection(forceFromStart: true, shouldFocusEditor: false)
-    }
+        findRefreshTask?.cancel()
+        findRefreshGeneration &+= 1
+        let generation = findRefreshGeneration
 
-    func refreshFindMatchCount() {
-        guard !findQuery.isEmpty else {
+        guard !findQuery.isEmpty, let tab = viewModel.selectedTab else {
             findMatchCount = 0
             findStatusMessage = ""
-#if !os(macOS)
-            iOSFindCursorLocation = 0
-            iOSLastFindFingerprint = ""
-#endif
+            findSession = EditorFindSessionState(presentationRevision: findSession.presentationRevision &+ 1)
+            postEditorFindHighlights()
             return
         }
-
-#if os(macOS)
-        guard !requiresMaterializedEditorTransform() else {
-            findMatchCount = 0
-            return
-        }
-#endif
-
-        let source = currentContentBinding.wrappedValue
-        if findUsesRegex,
-           (try? NSRegularExpression(pattern: findQuery, options: findCaseSensitive ? [] : [.caseInsensitive])) == nil {
-            findMatchCount = 0
-            findStatusMessage = "Invalid regex pattern"
-            return
-        }
-
-        let count = countFindMatches(in: source)
-        findMatchCount = count
-        if count == 0 {
-            findStatusMessage = "No matches found"
-        } else if findStatusMessage == "No matches found" || findStatusMessage == "Invalid regex pattern" {
-            findStatusMessage = ""
-        }
-    }
-
-    private func previewFindMatchSelection(forceFromStart: Bool, shouldFocusEditor: Bool) {
-        guard !findQuery.isEmpty else { return }
 #if os(macOS)
         guard !requiresMaterializedEditorTransform() else { return }
 #endif
-        let source = viewModel.selectedTab?.document.string() ?? currentContentBinding.wrappedValue
-        guard let range = firstFindPreviewRange(in: source, forceFromStart: forceFromStart) else { return }
+        let source = tab.document.string()
+        let documentID = tab.id
+        let sourceRevision = tab.contentRevision
+        let query = findQuery
+        let useRegex = findUsesRegex
+        let caseSensitive = findCaseSensitive
+        let wholeWord = findWholeWord && !findUsesRegex
+        let fingerprint = "\(query)|\(useRegex)|\(caseSensitive)|\(wholeWord)"
+        let caretLocation = currentSelectionSnapshotTabID == documentID
+            ? currentSelectionSnapshotRange?.location ?? 0
+            : 0
+        let priorSession = findSession
+        findSession.isSearching = true
 
-#if os(macOS)
-        postEditorRangeSelection(range, focusEditor: shouldFocusEditor)
-#else
-        iOSFindCursorLocation = range.upperBound
-        iOSLastFindFingerprint = "\(findQuery)|\(findUsesRegex)|\(findCaseSensitive)"
-        postEditorRangeSelection(range, focusEditor: shouldFocusEditor)
-#endif
+        findRefreshTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(90))
+            guard !Task.isCancelled else { return }
+            let result = await Task.detached(priority: .userInitiated) {
+                ReleaseRuntimePolicy.findMatches(
+                    in: source,
+                    query: query,
+                    useRegex: useRegex,
+                    caseSensitive: caseSensitive,
+                    wholeWord: wholeWord
+                )
+            }.value
+            guard !Task.isCancelled,
+                  generation == findRefreshGeneration,
+                  viewModel.selectedTab?.id == documentID,
+                  viewModel.selectedTab?.contentRevision == sourceRevision else { return }
+
+            let selectedIndex: Int?
+            if priorSession.documentID == documentID,
+               priorSession.fingerprint == fingerprint,
+               let selectedRange = priorSession.selectedRange,
+               let preservedIndex = result.ranges.firstIndex(of: selectedRange) {
+                selectedIndex = preservedIndex
+            } else {
+                selectedIndex = ReleaseRuntimePolicy.initialFindMatchIndex(
+                    in: result.ranges,
+                    caretLocation: caretLocation
+                )
+            }
+            findSession = EditorFindSessionState(
+                ranges: result.ranges,
+                selectedIndex: selectedIndex,
+                documentID: documentID,
+                fingerprint: fingerprint,
+                sourceRevision: sourceRevision,
+                isSearching: false,
+                errorMessage: result.errorMessage,
+                presentationRevision: priorSession.presentationRevision &+ 1
+            )
+            findMatchCount = result.ranges.count
+            findStatusMessage = result.errorMessage ?? (result.ranges.isEmpty ? "No matches found" : "")
+            postEditorFindHighlights()
+            if let selectedIndex {
+                selectFindMatch(at: selectedIndex, focusEditor: false)
+            }
+        }
     }
 
-    private func postEditorRangeSelection(_ range: NSRange, focusEditor: Bool, documentID: UUID? = nil) {
+    func refreshFindMatchCount() {
+        refreshFindPreview()
+    }
+
+    private func selectFindMatch(at index: Int, focusEditor: Bool) {
+        guard findSession.ranges.indices.contains(index) else { return }
+        findSession.selectedIndex = index
+        findSession.presentationRevision &+= 1
+        postEditorFindHighlights()
+        postEditorRangeSelection(
+            findSession.ranges[index],
+            focusEditor: focusEditor,
+            documentID: findSession.documentID,
+            centerSelection: true
+        )
+    }
+
+    func closeFindReplace() {
+        showFindReplace = false
+        findRefreshTask?.cancel()
+        findSession = EditorFindSessionState(presentationRevision: findSession.presentationRevision &+ 1)
+        findMatchCount = 0
+        postEditorFindHighlights()
+    }
+
+    func postEditorFindHighlights() {
+        var userInfo: [String: Any] = [
+            EditorCommandUserInfo.findMatchRanges: findSession.ranges.map { NSValue(range: $0) }
+        ]
+        if let documentID = findSession.documentID {
+            userInfo[EditorCommandUserInfo.documentID] = documentID.uuidString
+        }
+        if let selectedRange = findSession.selectedRange {
+            userInfo[EditorCommandUserInfo.selectedFindMatchRange] = NSValue(range: selectedRange)
+        }
+        NotificationCenter.default.post(name: .updateEditorFindHighlights, object: nil, userInfo: userInfo)
+    }
+
+    private func postEditorRangeSelection(
+        _ range: NSRange,
+        focusEditor: Bool,
+        documentID: UUID? = nil,
+        centerSelection: Bool = false
+    ) {
         let userInfo: [String: Any] = [
             EditorCommandUserInfo.rangeLocation: range.location,
             EditorCommandUserInfo.rangeLength: range.length,
             EditorCommandUserInfo.focusEditor: focusEditor,
+            EditorCommandUserInfo.centerSelection: centerSelection,
             EditorCommandUserInfo.documentID: (documentID ?? viewModel.selectedTab?.id)?.uuidString as Any
         ]
         DispatchQueue.main.async {
@@ -978,113 +993,27 @@ extension ContentView {
         }
     }
 
-    private func firstFindPreviewRange(in source: String, forceFromStart: Bool) -> NSRange? {
-        let nsSource = source as NSString
-        guard nsSource.length > 0 else { return nil }
-
-#if os(macOS)
-        if !forceFromStart,
-           let selected = currentSelectionSnapshotRange {
-            if selected.length > 0,
-               selected.length <= nsSource.length,
-               selected.location >= 0,
-               selected.location + selected.length <= nsSource.length,
-               selectedRangeMatchesFindQuery(selected, in: source) {
-                return selected
-            }
-        }
-#endif
-
-        if findUsesRegex {
-            guard let regex = try? NSRegularExpression(pattern: findQuery, options: findCaseSensitive ? [] : [.caseInsensitive]) else {
-                return nil
-            }
-            return regex.firstMatch(in: source, options: [], range: NSRange(location: 0, length: nsSource.length))?.range
-        }
-
-        let options: NSString.CompareOptions = findCaseSensitive ? [] : [.caseInsensitive]
-        return nsSource.range(of: findQuery, options: options, range: NSRange(location: 0, length: nsSource.length)).toOptional()
-    }
-
-    private func selectedRangeMatchesFindQuery(_ range: NSRange, in source: String) -> Bool {
-        guard range.length > 0 else { return false }
-        let nsSource = source as NSString
-        guard range.location >= 0, range.location + range.length <= nsSource.length else { return false }
-        let selectedText = nsSource.substring(with: range)
-
-        if findUsesRegex {
-            guard let regex = try? NSRegularExpression(pattern: findQuery, options: findCaseSensitive ? [] : [.caseInsensitive]) else {
-                return false
-            }
-            let fullRange = NSRange(location: 0, length: (selectedText as NSString).length)
-            guard let match = regex.firstMatch(in: selectedText, options: [], range: fullRange) else {
-                return false
-            }
-            return match.range.location == 0 && match.range.length == fullRange.length
-        }
-
-        if findCaseSensitive {
-            return selectedText == findQuery
-        }
-        return selectedText.compare(findQuery, options: [.caseInsensitive]) == .orderedSame
-    }
-
-    private func countFindMatches(in source: String) -> Int {
-        let nsSource = source as NSString
-        guard nsSource.length > 0 else { return 0 }
-
-        if findUsesRegex {
-            guard let regex = try? NSRegularExpression(pattern: findQuery, options: findCaseSensitive ? [] : [.caseInsensitive]) else {
-                return 0
-            }
-            return regex.numberOfMatches(in: source, options: [], range: NSRange(location: 0, length: nsSource.length))
-        }
-
-        let options: NSString.CompareOptions = findCaseSensitive ? [] : [.caseInsensitive]
-        var count = 0
-        var searchRange = NSRange(location: 0, length: nsSource.length)
-        while searchRange.length > 0 {
-            let found = nsSource.range(of: findQuery, options: options, range: searchRange)
-            guard let safeRange = found.toOptional() else { break }
-            count += 1
-            let nextLocation = safeRange.location + max(safeRange.length, 1)
-            if nextLocation >= nsSource.length { break }
-            searchRange = NSRange(location: nextLocation, length: nsSource.length - nextLocation)
-        }
-        return count
-    }
-
     // MARK: - Replace and Editor View Lookup
 
     func replaceSelection() {
-#if os(macOS)
         guard let tab = viewModel.selectedTab,
-              let sel = currentSelectionSnapshotRange,
-              sel.length > 0,
-              NSMaxRange(sel) <= tab.document.utf16Length else { return }
+              tab.id == findSession.documentID,
+              let range = findSession.selectedRange,
+              NSMaxRange(range) <= tab.document.utf16Length else { return }
+#if os(macOS)
         guard !requiresMaterializedEditorTransform() else { return }
-        let selectedText = (tab.document.string() as NSString).substring(with: sel)
-        if findUsesRegex {
-            guard let regex = try? NSRegularExpression(pattern: findQuery, options: findCaseSensitive ? [] : [.caseInsensitive]) else {
-                findStatusMessage = "Invalid regex pattern"
-                NSSound.beep()
-                return
-            }
-            let fullSelected = NSRange(location: 0, length: (selectedText as NSString).length)
-            let replacement = regex.stringByReplacingMatches(in: selectedText, options: [], range: fullSelected, withTemplate: replaceQuery)
-            postEditorReplacement(replacement, range: sel, documentID: tab.id)
-        } else {
-            postEditorReplacement(replaceQuery, range: sel, documentID: tab.id)
-        }
-#else
-        // iOS fallback: replace all exact text when regex is off.
-        guard !findQuery.isEmpty else { return }
-        if findUsesRegex {
-            findStatusMessage = "Regex replace selection is currently available on macOS editor."
-            return
-        }
-        currentContentBinding.wrappedValue = currentContentBinding.wrappedValue.replacingOccurrences(of: findQuery, with: replaceQuery)
 #endif
+        guard let replacement = ReleaseRuntimePolicy.replacementForFindMatch(
+            in: tab.document.string(),
+            range: range,
+            query: findQuery,
+            replacement: replaceQuery,
+            useRegex: findUsesRegex,
+            caseSensitive: findCaseSensitive,
+            wholeWord: findWholeWord && !findUsesRegex
+        ) else { return }
+        postEditorReplacement(replacement, range: range, documentID: tab.id)
+        DispatchQueue.main.async { refreshFindPreview() }
     }
 
     func replaceAll() {
@@ -1105,45 +1034,41 @@ extension ContentView {
     }
 
     private func makeReplaceAllPreview(in source: String) -> FindReplaceAllPreview? {
-        if findUsesRegex {
-            guard let regex = try? NSRegularExpression(pattern: findQuery, options: findCaseSensitive ? [] : [.caseInsensitive]) else {
-                findStatusMessage = "Invalid regex pattern"
+        let result = ReleaseRuntimePolicy.findMatches(
+            in: source,
+            query: findQuery,
+            useRegex: findUsesRegex,
+            caseSensitive: findCaseSensitive,
+            wholeWord: findWholeWord && !findUsesRegex
+        )
+        guard result.isValid else {
+            findStatusMessage = result.errorMessage ?? "Invalid regular expression"
 #if os(macOS)
-                NSSound.beep()
+            NSSound.beep()
 #endif
-                return nil
-            }
-            let range = NSRange(location: 0, length: (source as NSString).length)
-            let count = regex.numberOfMatches(in: source, options: [], range: range)
-            guard count > 0 else {
-                findStatusMessage = "No matches found"
-                return nil
-            }
-            return FindReplaceAllPreview(
-                source: source,
-                replacement: regex.stringByReplacingMatches(in: source, options: [], range: range, withTemplate: replaceQuery),
-                matchCount: count
-            )
+            return nil
         }
-
-        let options: NSString.CompareOptions = findCaseSensitive ? [] : [.caseInsensitive]
-        let original = source as NSString
-        var count = 0
-        var searchLocation = 0
-        while searchLocation < original.length {
-            let range = original.range(of: findQuery, options: options, range: NSRange(location: searchLocation, length: original.length - searchLocation))
-            if range.location == NSNotFound { break }
-            count += 1
-            searchLocation = max(range.location + max(range.length, 1), searchLocation + 1)
-        }
-        guard count > 0 else {
+        guard !result.ranges.isEmpty else {
             findStatusMessage = "No matches found"
             return nil
         }
+        let replacement = NSMutableString(string: source)
+        for range in result.ranges.reversed() {
+            guard let text = ReleaseRuntimePolicy.replacementForFindMatch(
+                in: source,
+                range: range,
+                query: findQuery,
+                replacement: replaceQuery,
+                useRegex: findUsesRegex,
+                caseSensitive: findCaseSensitive,
+                wholeWord: findWholeWord && !findUsesRegex
+            ) else { continue }
+            replacement.replaceCharacters(in: range, with: text)
+        }
         return FindReplaceAllPreview(
             source: source,
-            replacement: original.replacingOccurrences(of: findQuery, with: replaceQuery, options: options, range: NSRange(location: 0, length: original.length)),
-            matchCount: count
+            replacement: replacement as String,
+            matchCount: result.ranges.count
         )
     }
 

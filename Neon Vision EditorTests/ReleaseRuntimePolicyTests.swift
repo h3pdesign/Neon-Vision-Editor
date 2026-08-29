@@ -67,6 +67,93 @@ final class ReleaseRuntimePolicyTests: XCTestCase {
         XCTAssertEqual(match?.range.length, 5)
     }
 
+    func testFindSessionReturnsAllMatchesAndStartsAtCaret() {
+        let result = ReleaseRuntimePolicy.findMatches(
+            in: "alpha beta alpha alpha",
+            query: "alpha",
+            useRegex: false,
+            caseSensitive: true
+        )
+
+        XCTAssertEqual(result.ranges.map(\.location), [0, 11, 17])
+        XCTAssertEqual(
+            ReleaseRuntimePolicy.initialFindMatchIndex(in: result.ranges, caretLocation: 7),
+            1
+        )
+        XCTAssertEqual(
+            ReleaseRuntimePolicy.movedFindMatchIndex(currentIndex: 2, matchCount: 3, delta: 1),
+            0
+        )
+        XCTAssertEqual(
+            ReleaseRuntimePolicy.movedFindMatchIndex(currentIndex: 0, matchCount: 3, delta: -1),
+            2
+        )
+        XCTAssertEqual(
+            ReleaseRuntimePolicy.movedFindMatchIndex(currentIndex: nil, matchCount: 3, delta: 1),
+            0
+        )
+        XCTAssertEqual(
+            ReleaseRuntimePolicy.movedFindMatchIndex(currentIndex: nil, matchCount: 3, delta: -1),
+            2
+        )
+    }
+
+    func testWholeWordFindDoesNotMatchIdentifierFragments() {
+        let result = ReleaseRuntimePolicy.findMatches(
+            in: "cat concatenate cat_2 cat",
+            query: "cat",
+            useRegex: false,
+            caseSensitive: true,
+            wholeWord: true
+        )
+
+        XCTAssertEqual(result.ranges.map(\.location), [0, 22])
+    }
+
+    func testInvalidRegexReturnsAnErrorWithoutMatches() {
+        let result = ReleaseRuntimePolicy.findMatches(
+            in: "alpha",
+            query: "[",
+            useRegex: true,
+            caseSensitive: true
+        )
+
+        XCTAssertFalse(result.isValid)
+        XCTAssertTrue(result.ranges.isEmpty)
+        XCTAssertEqual(result.errorMessage, "Invalid regular expression")
+    }
+
+    func testSingleFindReplacementOnlyTransformsSelectedMatch() {
+        let source = "alpha beta alpha"
+        let replacement = ReleaseRuntimePolicy.replacementForFindMatch(
+            in: source,
+            range: NSRange(location: 11, length: 5),
+            query: "alpha",
+            replacement: "omega",
+            useRegex: false,
+            caseSensitive: true
+        )
+
+        XCTAssertEqual(replacement, "omega")
+        XCTAssertEqual(
+            (source as NSString).replacingCharacters(in: NSRange(location: 11, length: 5), with: replacement ?? ""),
+            "alpha beta omega"
+        )
+    }
+
+    func testRegexReplacementUsesCaptureGroupsForSelectedMatch() {
+        let replacement = ReleaseRuntimePolicy.replacementForFindMatch(
+            in: "id-12 id-345",
+            range: NSRange(location: 6, length: 6),
+            query: "id-([0-9]+)",
+            replacement: "value-$1",
+            useRegex: true,
+            caseSensitive: true
+        )
+
+        XCTAssertEqual(replacement, "value-345")
+    }
+
     func testSubscriptionButtonEnablement() {
         XCTAssertTrue(
             ReleaseRuntimePolicy.subscriptionButtonsEnabled(

@@ -565,6 +565,9 @@ extension ContentView {
             Image(systemName: "sidebar.left")
         }
         .help("Toggle Sidebar (Cmd+Opt+S)")
+        .accessibilityLabel("Table of Contents")
+        .accessibilityValue(viewModel.showSidebar ? "Shown" : "Hidden")
+        .accessibilityHint("Shows or hides the document table of contents")
     }
 
     @ViewBuilder
@@ -965,11 +968,12 @@ extension ContentView {
     }
 
     private var visibleIPadToolbarActions: [IPadToolbarAction] {
-        return ToolbarActionSelection.visibleActions(
+        ToolbarActionSelection.visibleActions(
             enabledActions: enabledIPadActionPriority,
             requestedCount: toolbarFavoriteCountIOS,
             preset: effectiveIOSToolbarPreset
         )
+        .filter { $0 != .toggleSidebar }
     }
 
     private var iPadOverflowActions: [IPadToolbarAction] {
@@ -977,6 +981,7 @@ extension ContentView {
             enabledActions: enabledIPadActionPriority,
             visibleActions: visibleIPadToolbarActions
         )
+        .filter { $0 != .toggleSidebar }
     }
 
 #if os(visionOS)
@@ -2041,6 +2046,10 @@ extension ContentView {
     @ViewBuilder
     private var iPadScrollableToolbarControls: some View {
         HStack(spacing: 8) {
+            toggleSidebarControl
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+                .padding(.leading, 8)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     toolbarPresetMenuControl

@@ -8,6 +8,13 @@ import SwiftUI
 enum ReleaseRuntimePolicy {
     static let safeModeFailureThreshold = 2
 
+    struct FindSearchResult: Equatable, Sendable {
+        let ranges: [NSRange]
+        let errorMessage: String?
+
+        var isValid: Bool { errorMessage == nil }
+    }
+
     static var isUpdaterEnabledForCurrentDistribution: Bool {
 #if os(macOS)
         return !isMacAppStoreDistribution
@@ -73,32 +80,123 @@ enum ReleaseRuntimePolicy {
         query: String,
         useRegex: Bool,
         caseSensitive: Bool,
-        cursorLocation: Int
+        cursorLocation: Int,
+        wholeWord: Bool = false
     ) -> (range: NSRange, nextCursorLocation: Int)? {
-        guard !query.isEmpty else { return nil }
-        let ns = source as NSString
-        let clampedStart = min(max(0, cursorLocation), ns.length)
-        let forwardRange = NSRange(location: clampedStart, length: max(0, ns.length - clampedStart))
-        let wrapRange = NSRange(location: 0, length: max(0, clampedStart))
+        let result = findMatches(
+            in: source,
+            query: query,
+            useRegex: useRegex,
+            caseSensitive: caseSensitive,
+            wholeWord: wholeWord
+        )
+        guard result.isValid,
+              let index = initialFindMatchIndex(in: result.ranges, caretLocation: cursorLocation) else {
+            return nil
+        }
+        let found = result.ranges[index]
+        let sourceLength = (source as NSString).length
+        let nextLocation = found.length > 0
+            ? found.upperBound
+            : min(sourceLength, found.location + 1)
+        return (range: found, nextCursorLocation: nextLocation)
+    }
 
-        let match: NSRange?
+    nonisolated static func findMatches(
+        in source: String,
+        query: String,
+        useRegex: Bool,
+        caseSensitive: Bool,
+        wholeWord: Bool = false
+    ) -> FindSearchResult {
+        guard !query.isEmpty else { return FindSearchResult(ranges: [], errorMessage: nil) }
+        let sourceRange = NSRange(location: 0, length: (source as NSString).length)
+        let pattern: String
         if useRegex {
-            guard let regex = try? NSRegularExpression(
-                pattern: query,
-                options: caseSensitive ? [] : [.caseInsensitive]
-            ) else {
-                return nil
-            }
-            match = regex.firstMatch(in: source, options: [], range: forwardRange)?.range
-                ?? regex.firstMatch(in: source, options: [], range: wrapRange)?.range
+            pattern = query
+        } else if wholeWord {
+            pattern = "(?<![\\p{L}\\p{N}_])\(NSRegularExpression.escapedPattern(for: query))(?![\\p{L}\\p{N}_])"
         } else {
+            let nsSource = source as NSString
             let options: NSString.CompareOptions = caseSensitive ? [] : [.caseInsensitive]
-            match = ns.range(of: query, options: options, range: forwardRange).toOptional()
-                ?? ns.range(of: query, options: options, range: wrapRange).toOptional()
+            var ranges: [NSRange] = []
+            var searchRange = sourceRange
+            while searchRange.length > 0 {
+                let found = nsSource.range(of: query, options: options, range: searchRange)
+                guard found.location != NSNotFound else { break }
+                ranges.append(found)
+                let nextLocation = found.location + max(found.length, 1)
+                guard nextLocation < nsSource.length else { break }
+                searchRange = NSRange(location: nextLocation, length: nsSource.length - nextLocation)
+            }
+            return FindSearchResult(ranges: ranges, errorMessage: nil)
         }
 
-        guard let found = match else { return nil }
-        return (range: found, nextCursorLocation: found.upperBound)
+        do {
+            let expression = try NSRegularExpression(
+                pattern: pattern,
+                options: caseSensitive ? [] : [.caseInsensitive]
+            )
+            return FindSearchResult(
+                ranges: expression.matches(in: source, options: [], range: sourceRange).map(\.range),
+                errorMessage: nil
+            )
+        } catch {
+            return FindSearchResult(ranges: [], errorMessage: "Invalid regular expression")
+        }
+    }
+
+    static func initialFindMatchIndex(in ranges: [NSRange], caretLocation: Int) -> Int? {
+        guard !ranges.isEmpty else { return nil }
+        let caret = max(0, caretLocation)
+        return ranges.firstIndex(where: { range in
+            NSLocationInRange(caret, range) || range.location >= caret
+        }) ?? 0
+    }
+
+    static func movedFindMatchIndex(currentIndex: Int?, matchCount: Int, delta: Int) -> Int? {
+        guard matchCount > 0 else { return nil }
+        guard let currentIndex else { return delta < 0 ? matchCount - 1 : 0 }
+        let current = min(max(0, currentIndex), matchCount - 1)
+        return (current + delta + matchCount) % matchCount
+    }
+
+    static func replacementForFindMatch(
+        in source: String,
+        range: NSRange,
+        query: String,
+        replacement: String,
+        useRegex: Bool,
+        caseSensitive: Bool,
+        wholeWord: Bool = false
+    ) -> String? {
+        let nsSource = source as NSString
+        guard range.location >= 0, range.length >= 0, NSMaxRange(range) <= nsSource.length else { return nil }
+        let selectedText = nsSource.substring(with: range)
+        if useRegex {
+            guard let expression = try? NSRegularExpression(
+                pattern: query,
+                options: caseSensitive ? [] : [.caseInsensitive]
+            ) else { return nil }
+            let selectedRange = NSRange(location: 0, length: (selectedText as NSString).length)
+            guard let match = expression.firstMatch(in: selectedText, options: [], range: selectedRange),
+                  match.range == selectedRange else { return nil }
+            return expression.stringByReplacingMatches(
+                in: selectedText,
+                options: [],
+                range: selectedRange,
+                withTemplate: replacement
+            )
+        }
+        let result = findMatches(
+            in: selectedText,
+            query: query,
+            useRegex: false,
+            caseSensitive: caseSensitive,
+            wholeWord: wholeWord
+        )
+        guard result.ranges == [NSRange(location: 0, length: range.length)] else { return nil }
+        return replacement
     }
 
     static func subscriptionButtonsEnabled(

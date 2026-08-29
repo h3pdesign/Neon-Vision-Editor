@@ -323,12 +323,162 @@ struct PDFExportDocument: FileDocument {
     }
 }
 
+struct EditorFindSessionState: Equatable {
+    var ranges: [NSRange] = []
+    var selectedIndex: Int?
+    var documentID: UUID?
+    var fingerprint: String = ""
+    var sourceRevision: Int = 0
+    var isSearching = false
+    var errorMessage: String?
+    var presentationRevision = 0
+
+    var selectedRange: NSRange? {
+        guard let selectedIndex, ranges.indices.contains(selectedIndex) else { return nil }
+        return ranges[selectedIndex]
+    }
+}
+
+struct MobileInlineFindBar: View {
+    @Binding var query: String
+    @Binding var replacement: String
+    @Binding var useRegex: Bool
+    @Binding var caseSensitive: Bool
+    @Binding var wholeWord: Bool
+    let matchCount: Int
+    let selectedIndex: Int?
+    let statusMessage: String
+    let isSearching: Bool
+    let onPreviewChanged: () -> Void
+    let onPrevious: () -> Void
+    let onNext: () -> Void
+    let onReplace: () -> Void
+    let onReplaceAll: () -> Void
+    let onFindInFiles: () -> Void
+    let onClose: () -> Void
+
+    @FocusState private var searchFocused: Bool
+    @State private var showsReplace = false
+
+    private var isPhone: Bool {
+#if canImport(UIKit)
+        UIDevice.current.userInterfaceIdiom == .phone
+#else
+        false
+#endif
+    }
+
+    private var resultText: String {
+        if isSearching { return NSLocalizedString("Searching…", comment: "") }
+        if let selectedIndex, matchCount > 0 { return "\(selectedIndex + 1) of \(matchCount)" }
+        return matchCount == 1 ? "1 match" : "\(matchCount) matches"
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                TextField(NSLocalizedString("Find", comment: ""), text: $query)
+                    .textFieldStyle(.plain)
+                    .focused($searchFocused)
+                    .submitLabel(.search)
+                    .onSubmit(onNext)
+                    .accessibilityLabel("Find text")
+                Text(resultText)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(statusMessage.localizedCaseInsensitiveContains("invalid") ? .red : .secondary)
+                    .lineLimit(1)
+                    .accessibilityLabel("Search results, \(resultText)")
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close find")
+            }
+
+            HStack(spacing: 8) {
+                findButton("chevron.up", label: "Previous match", action: onPrevious)
+                findButton("chevron.down", label: "Next match", action: onNext)
+                Spacer(minLength: 8)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.16)) { showsReplace.toggle() }
+                } label: {
+                    Label(
+                        showsReplace ? NSLocalizedString("Hide Replace", comment: "") : NSLocalizedString("Replace", comment: ""),
+                        systemImage: "arrow.triangle.2.circlepath"
+                    )
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .accessibilityLabel(showsReplace ? "Hide replace controls" : "Show replace controls")
+                Menu {
+                    Toggle("Case Sensitive", isOn: $caseSensitive)
+                    Toggle("Whole Words", isOn: $wholeWord)
+                        .disabled(useRegex)
+                    Toggle("Regular Expression", isOn: $useRegex)
+                    Divider()
+                    Button("Find in Files", systemImage: "doc.text.magnifyingglass", action: onFindInFiles)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .frame(width: 28, height: 28)
+                }
+                .accessibilityLabel("Find options")
+            }
+
+            if showsReplace {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    TextField(NSLocalizedString("Replace", comment: ""), text: $replacement)
+                        .textFieldStyle(.plain)
+                        .accessibilityLabel("Replacement text")
+                    Button("Replace", action: onReplace)
+                        .disabled(selectedIndex == nil)
+                    Button("All", action: onReplaceAll)
+                        .disabled(matchCount == 0)
+                        .accessibilityLabel("Replace all matches")
+                }
+                .transition(.opacity.combined(with: .move(edge: isPhone ? .bottom : .top)))
+            }
+        }
+        .font(.body)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(.regularMaterial)
+        .overlay(alignment: isPhone ? .top : .bottom) { Divider() }
+        .onAppear { searchFocused = true }
+        .onChange(of: query) { _, _ in onPreviewChanged() }
+        .onChange(of: useRegex) { _, enabled in
+            if enabled { wholeWord = false }
+            onPreviewChanged()
+        }
+        .onChange(of: caseSensitive) { _, _ in onPreviewChanged() }
+        .onChange(of: wholeWord) { _, _ in onPreviewChanged() }
+    }
+
+    private func findButton(_ image: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: image)
+                .frame(width: 28, height: 28)
+        }
+        .buttonStyle(.plain)
+        .disabled(matchCount == 0)
+        .accessibilityLabel(label)
+    }
+}
+
 struct FindReplacePanel: View {
     @Binding var findQuery: String
     @Binding var replaceQuery: String
     @Binding var useRegex: Bool
     @Binding var caseSensitive: Bool
+    @Binding var wholeWord: Bool
     @Binding var matchCount: Int
+    var selectedMatchIndex: Int?
     @Binding var statusMessage: String
     @Binding var scope: ContentView.SearchScope
     var onPreviewChanged: () -> Void
@@ -359,7 +509,10 @@ struct FindReplacePanel: View {
     }
 
     private var matchSummaryText: String {
-        matchCount == 1
+        if let selectedMatchIndex, matchCount > 0 {
+            return "\(selectedMatchIndex + 1) of \(matchCount)"
+        }
+        return matchCount == 1
             ? String.localizedStringWithFormat(NSLocalizedString("%lld match", comment: ""), Int64(matchCount))
             : String.localizedStringWithFormat(NSLocalizedString("%lld matches", comment: ""), Int64(matchCount))
     }
@@ -418,7 +571,6 @@ struct FindReplacePanel: View {
 
             Picker("Scope", selection: $scope) {
                 Text("Current File").tag(ContentView.SearchScope.currentFile)
-                Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
                 Text("Project").tag(ContentView.SearchScope.project)
             }
             .neonSettingsDropdown(maxWidth: 150)
@@ -428,6 +580,8 @@ struct FindReplacePanel: View {
             }
 
             Toggle(NSLocalizedString("Case Sensitive", comment: ""), isOn: $caseSensitive)
+            Toggle(NSLocalizedString("Whole Words", comment: ""), isOn: $wholeWord)
+                .disabled(useRegex)
 
             Spacer(minLength: 0)
         }
@@ -572,7 +726,6 @@ struct FindReplacePanel: View {
         VStack(alignment: .leading, spacing: 12) {
             Picker("Scope", selection: $scope) {
                 Text("Current File").tag(ContentView.SearchScope.currentFile)
-                Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
                 Text("Project").tag(ContentView.SearchScope.project)
             }
             .neonSettingsDropdown(maxWidth: nil)
@@ -604,7 +757,6 @@ struct FindReplacePanel: View {
                     .font(.caption.weight(.medium))
                 Picker("Scope", selection: $scope) {
                     Text("Current File").tag(ContentView.SearchScope.currentFile)
-                    Text("Open Tabs").tag(ContentView.SearchScope.openTabs)
                     Text("Project").tag(ContentView.SearchScope.project)
                 }
                 .neonSettingsDropdown(maxWidth: 180)
@@ -859,6 +1011,7 @@ struct FindReplacePanel: View {
         }
         .onChange(of: useRegex) { _, _ in onPreviewChanged() }
         .onChange(of: caseSensitive) { _, _ in onPreviewChanged() }
+        .onChange(of: wholeWord) { _, _ in onPreviewChanged() }
     }
 
     private func focusFindField() {
@@ -877,7 +1030,9 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
     @Binding var replaceQuery: String
     @Binding var useRegex: Bool
     @Binding var caseSensitive: Bool
+    @Binding var wholeWord: Bool
     @Binding var matchCount: Int
+    let selectedMatchIndex: Int?
     @Binding var statusMessage: String
     @Binding var scope: ContentView.SearchScope
     let onPreviewChanged: () -> Void
@@ -906,7 +1061,9 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
                 replaceQuery: parent.$replaceQuery,
                 useRegex: parent.$useRegex,
                 caseSensitive: parent.$caseSensitive,
+                wholeWord: parent.$wholeWord,
                 matchCount: parent.$matchCount,
+                selectedMatchIndex: parent.selectedMatchIndex,
                 statusMessage: parent.$statusMessage,
                 scope: parent.$scope,
                 onPreviewChanged: parent.onPreviewChanged,
@@ -4230,6 +4387,7 @@ extension Notification.Name {
     static let applyEditorLayoutPresetRequested = Notification.Name("applyEditorLayoutPresetRequested")
     static let openPreviewInSeparateWindowRequested = Notification.Name("openPreviewInSeparateWindowRequested")
     nonisolated static let moveCursorToRange = Notification.Name("moveCursorToRange")
+    nonisolated static let updateEditorFindHighlights = Notification.Name("updateEditorFindHighlights")
     nonisolated static let replaceEditorRangeRequested = Notification.Name("replaceEditorRangeRequested")
     static let toggleVimModeRequested = Notification.Name("toggleVimModeRequested")
     static let vimModeStateDidChange = Notification.Name("vimModeStateDidChange")
@@ -4343,12 +4501,21 @@ enum EditorCommandUserInfo {
     nonisolated static let viewportTopFraction = "viewportTopFraction"
     nonisolated static let viewportHeightFraction = "viewportHeightFraction"
     nonisolated static let focusEditor = "focusEditor"
+    nonisolated static let centerSelection = "centerSelection"
+    nonisolated static let findMatchRanges = "findMatchRanges"
+    nonisolated static let selectedFindMatchRange = "selectedFindMatchRange"
     nonisolated static let replacementText = "replacementText"
     nonisolated static let bracketToken = "bracketToken"
     nonisolated static let sourceTextView = "sourceTextView"
     nonisolated static let completionContext = "completionContext"
     nonisolated static let completionCaretOffset = "completionCaretOffset"
     static let updaterCheckNow = "updaterCheckNow"
+}
+
+enum EditorNavigationFocusPolicy {
+    nonisolated static func shouldFocusEditor(explicitValue: Bool?) -> Bool {
+        explicitValue ?? true
+    }
 }
 
 #if os(macOS)

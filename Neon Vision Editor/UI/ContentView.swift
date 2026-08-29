@@ -93,6 +93,27 @@ private struct ContentViewWidthPreferenceKey: PreferenceKey {
     }
 }
 
+enum IOSSplitChromePolicy {
+    nonisolated static func usesAppOwnedChrome(
+        usesUnifiedTopHost: Bool,
+        usesSplitView: Bool
+    ) -> Bool {
+        usesUnifiedTopHost && usesSplitView
+    }
+}
+
+enum IOSFloatingStatusPolicy {
+    nonisolated static func isVisible(
+        brainDumpLayoutEnabled: Bool,
+        shouldPinToTop: Bool,
+        findPresented: Bool,
+        pinnedPresentation: Bool
+    ) -> Bool {
+        guard !brainDumpLayoutEnabled, !findPresented else { return false }
+        return shouldPinToTop == pinnedPresentation
+    }
+}
+
 #if os(iOS) || os(visionOS)
 private struct MobileFloatingStatusOverlayModifier: ViewModifier {
     let showsStatus: Bool
@@ -601,12 +622,14 @@ struct ContentView: View {
     @State var replaceQuery: String = ""
     @AppStorage("EditorFindUsesRegex") var findUsesRegex: Bool = false
     @AppStorage("EditorFindCaseSensitive") var findCaseSensitive: Bool = false
+    @AppStorage("EditorFindWholeWord") var findWholeWord: Bool = false
     @State var findStatusMessage: String = ""
     @State var findMatchCount: Int = 0
+    @State var findSession = EditorFindSessionState()
+    @State var findRefreshTask: Task<Void, Never>?
+    @State var findRefreshGeneration: Int = 0
     @State var findScope: SearchScope = .currentFile
     @State var findInFilesScope: SearchScope = .project
-    @State var iOSFindCursorLocation: Int = 0
-    @State var iOSLastFindFingerprint: String = ""
     @State var showProjectStructureSidebar: Bool = false
     @State var aiChatConversation = AIChatConversation()
     @State var showCompactSidebarSheet: Bool = false
@@ -1262,6 +1285,13 @@ struct ContentView: View {
 #else
         false
 #endif
+    }
+
+    var usesAppOwnedIOSSplitChromeLayout: Bool {
+        IOSSplitChromePolicy.usesAppOwnedChrome(
+            usesUnifiedTopHost: useIOSUnifiedTopHost,
+            usesSplitView: shouldUseSplitView
+        )
     }
 
     var tabBarLeadingPadding: CGFloat {
@@ -2377,13 +2407,28 @@ struct ContentView: View {
         NavigationStack {
             Group {
                 if shouldUseSplitView {
-                    NavigationSplitView {
-                        sidebarView
-                    } detail: {
-                        editorView
+                    VStack(spacing: 0) {
+                        if usesAppOwnedIOSSplitChromeLayout {
+                            iOSUnifiedToolbarHost
+                        }
+                        NavigationSplitView {
+#if os(iOS)
+                            sidebarView
+                                .toolbar(
+                                    removing: usesAppOwnedIOSSplitChromeLayout
+                                        ? .sidebarToggle
+                                        : nil
+                                )
+#else
+                            sidebarView
+#endif
+                        } detail: {
+                            editorView
+                        }
+                        .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
+                        .toolbar(.hidden, for: .navigationBar)
+                        .background(editorSurfaceBackgroundStyle)
                     }
-                .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 600)
-                .background(editorSurfaceBackgroundStyle)
                 } else {
                     editorView
                 }
@@ -2396,6 +2441,22 @@ struct ContentView: View {
     // Layout: NavigationSplitView with optional sidebar and the primary code editor.
     var body: some View {
         lifecycleConfiguredRootView
+        .onChange(of: showFindReplace) { _, isPresented in
+            if isPresented {
+                refreshFindPreview()
+            } else {
+                findRefreshTask?.cancel()
+                findSession = EditorFindSessionState(presentationRevision: findSession.presentationRevision &+ 1)
+                findMatchCount = 0
+                postEditorFindHighlights()
+            }
+        }
+        .onChange(of: viewModel.selectedTabID) { _, _ in
+            if showFindReplace { refreshFindPreview() }
+        }
+        .onChange(of: viewModel.selectedTab?.contentRevision) { _, _ in
+            if showFindReplace { refreshFindPreview() }
+        }
 #if os(macOS)
         .background(
             WindowAccessor { window in
@@ -2410,7 +2471,9 @@ struct ContentView: View {
                 replaceQuery: $replaceQuery,
                 useRegex: $findUsesRegex,
                 caseSensitive: $findCaseSensitive,
+                wholeWord: $findWholeWord,
                 matchCount: $findMatchCount,
+                selectedMatchIndex: findSession.selectedIndex,
                 statusMessage: $findStatusMessage,
                 scope: $findScope,
                 onPreviewChanged: { refreshFindPreview() },
@@ -2920,7 +2983,9 @@ struct ContentView: View {
                 replaceQuery: contentView.$replaceQuery,
                 useRegex: contentView.$findUsesRegex,
                 caseSensitive: contentView.$findCaseSensitive,
+                wholeWord: contentView.$findWholeWord,
                 matchCount: contentView.$findMatchCount,
+                selectedMatchIndex: contentView.findSession.selectedIndex,
                 statusMessage: contentView.$findStatusMessage,
                 scope: contentView.$findScope,
                 onPreviewChanged: { contentView.refreshFindPreview() },
@@ -2980,6 +3045,9 @@ struct ContentView: View {
 
 #if !os(macOS)
         private func applyingFindReplaceSheet(to view: AnyView) -> AnyView {
+#if os(iOS)
+            AnyView(view)
+#else
             AnyView(view.sheet(isPresented: contentView.$showFindReplace) {
 #if canImport(UIKit)
                 findReplaceSheetContent
@@ -2989,7 +3057,9 @@ struct ContentView: View {
                     replaceQuery: contentView.$replaceQuery,
                     useRegex: contentView.$findUsesRegex,
                     caseSensitive: contentView.$findCaseSensitive,
+                    wholeWord: contentView.$findWholeWord,
                     matchCount: contentView.$findMatchCount,
+                    selectedMatchIndex: contentView.findSession.selectedIndex,
                     statusMessage: contentView.$findStatusMessage,
                     scope: contentView.$findScope,
                     onPreviewChanged: { contentView.refreshFindPreview() },
@@ -3012,6 +3082,7 @@ struct ContentView: View {
                 .frame(width: 420)
 #endif
             })
+#endif
         }
 #endif
 
@@ -3182,7 +3253,15 @@ struct ContentView: View {
                                 contentView.showCompactSidebarSheet = false
                             },
                             onJumpToLine: { line in
+#if os(iOS)
+                                contentView.moveEditorFromMinimap(
+                                    to: line,
+                                    tabID: contentView.viewModel.selectedTabID,
+                                    focusEditor: false
+                                )
+#else
                                 contentView.moveEditorFromMinimap(to: line, tabID: contentView.viewModel.selectedTabID)
+#endif
                             }
                         )
                             .navigationTitle(Text(NSLocalizedString("Sidebar", comment: "")))
@@ -3827,7 +3906,11 @@ struct ContentView: View {
 #endif
                 },
                 onJumpToLine: { line in
-                    moveEditorFromMinimap(to: line, tabID: viewModel.selectedTabID)
+                    moveEditorFromMinimap(
+                        to: line,
+                        tabID: viewModel.selectedTabID,
+                        focusEditor: false
+                    )
                 }
             )
                 .frame(minWidth: 200, idealWidth: 250, maxWidth: 600)
@@ -4518,8 +4601,10 @@ struct ContentView: View {
         .accessibilityLabel(showsCloseButton ? "Secondary editor \(title)" : "Primary editor \(title)")
     }
 
-    private func moveEditorFromMinimap(to line: Int, tabID: UUID?) {
-        var userInfo: [String: Any] = [:]
+    private func moveEditorFromMinimap(to line: Int, tabID: UUID?, focusEditor: Bool = true) {
+        var userInfo: [String: Any] = [
+            EditorCommandUserInfo.focusEditor: focusEditor
+        ]
         if let tabID {
             userInfo[EditorCommandUserInfo.documentID] = tabID.uuidString
         }
@@ -4625,6 +4710,32 @@ struct ContentView: View {
         persistUnsavedDraftSnapshotIfNeeded()
     }
 
+#if os(iOS)
+    private var mobileInlineFindBar: some View {
+        MobileInlineFindBar(
+            query: $findQuery,
+            replacement: $replaceQuery,
+            useRegex: $findUsesRegex,
+            caseSensitive: $findCaseSensitive,
+            wholeWord: $findWholeWord,
+            matchCount: findSession.ranges.count,
+            selectedIndex: findSession.selectedIndex,
+            statusMessage: findStatusMessage,
+            isSearching: findSession.isSearching,
+            onPreviewChanged: { refreshFindPreview() },
+            onPrevious: { findPrevious(focusEditor: false) },
+            onNext: { findNext(focusEditor: false) },
+            onReplace: { replaceSelection() },
+            onReplaceAll: { replaceAll() },
+            onFindInFiles: {
+                closeFindReplace()
+                requestFindInFilesFromToolbar()
+            },
+            onClose: { closeFindReplace() }
+        )
+    }
+#endif
+
     var editorView: some View {
         @Bindable var bindableViewModel = viewModel
         let shouldThrottleFeatures = shouldThrottleHeavyEditorFeatures()
@@ -4636,6 +4747,11 @@ struct ContentView: View {
                 if !useIOSUnifiedTopHost && !brainDumpLayoutEnabled {
                     tabBarView
                 }
+#if os(iOS)
+                if showFindReplace && UIDevice.current.userInterfaceIdiom == .pad {
+                    mobileInlineFindBar
+                }
+#endif
                 if isConvertingTextToMarkdown {
                     markdownConversionProgressBanner
                 }
@@ -4756,6 +4872,11 @@ struct ContentView: View {
                             .padding(.trailing, 12)
                         .zIndex(5)
                     }
+                }
+#endif
+#if os(iOS)
+                if showFindReplace && UIDevice.current.userInterfaceIdiom == .phone {
+                    mobileInlineFindBar
                 }
 #endif
                 if !brainDumpLayoutEnabled {
@@ -4947,7 +5068,11 @@ struct ContentView: View {
         let contentWithTopChrome = useIOSUnifiedTopHost
             ? AnyView(
                 content.safeAreaInset(edge: .top, spacing: 0) {
-                    iOSUnifiedTopChromeHost
+                    if usesAppOwnedIOSSplitChromeLayout {
+                        iOSUnifiedDocumentChromeHost
+                    } else {
+                        iOSUnifiedTopChromeHost
+                    }
                 }
                 .modifier(IPhoneFullWidthModifier())
             )
@@ -5144,7 +5269,12 @@ struct ContentView: View {
 #if os(iOS) || os(visionOS)
         .modifier(
             MobileFloatingStatusOverlayModifier(
-                showsStatus: !brainDumpLayoutEnabled && !shouldPinFloatingStatusToTop,
+                showsStatus: IOSFloatingStatusPolicy.isVisible(
+                    brainDumpLayoutEnabled: brainDumpLayoutEnabled,
+                    shouldPinToTop: shouldPinFloatingStatusToTop,
+                    findPresented: showFindReplace,
+                    pinnedPresentation: false
+                ),
                 status: AnyView(floatingStatusPill)
             )
         )

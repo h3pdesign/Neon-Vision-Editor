@@ -1,11 +1,20 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-08-29 (v1.5.5 release-aligned architecture)
+Last updated: 2026-08-29 (v1.5.6 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v1.5.6 (2026-08-29)
+
+- Uses icon-only mobile toolbar presets and language-specific symbols or initials for the current document language.
+- Adds a horizontally scrollable mobile Markdown formatting row while keeping the collapsed control in a compact opaque pill over a transparent surrounding area.
+- Treats explicit language choices as tab-level overrides so automatic detection does not immediately replace the user's selection.
+- Makes Settings and Help toolbar visibility follow their configured switches in standard, all-actions, and custom presets.
+- Increments ordered Markdown markers such as `1.` to `2.` and `9)` to `10)` when continuing lists, including in the macOS virtual editor.
+- Restores the system edit menu for caret-only interactions so Select and Select All remain available while preserving snapshot actions for selected ranges.
 
 ### v1.5.5 (2026-08-29)
 
@@ -15,13 +24,6 @@ Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and vision
 - Stops line-number, wrapped-row, and marked-text drawing from contaminating subsequent Core Text matrix and position state.
 - Removes the stale macOS regression expectation for the retired `0.96` Markdown preview scale.
 - Prevents false external-refresh and terminal-session failures during heavily parallelized test runs.
-
-### v1.5.4 (2026-08-27)
-
-- Measures a bounded, distributed sample of wrapped rows when calculating the virtual canvas scroll extent.
-- Uses exact row accounting for fully loaded documents and immediate expansion when wrapping increases.
-- Prevents the macOS editor from stopping before the document's final lines when the project sidebar or preview narrows the source pane.
-- Recalculates cached row geometry after sidebar width transitions without reintroducing unbounded layout work.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

@@ -66,4 +66,30 @@ final class ContentViewLayoutTests: XCTestCase {
             )
         )
     }
+
+    func testMobileFindChromeSuppressesMarkdownFormattingChrome() {
+        XCTAssertFalse(
+            MarkdownFormattingChromePolicy.shouldShow(
+                isMarkdown: true,
+                isReadOnlyPreview: false,
+                brainDumpLayoutEnabled: false,
+                isLoadingContent: false,
+                findPresented: true,
+                findOccupiesEditorChrome: true
+            )
+        )
+    }
+
+    func testSeparateFindWindowDoesNotSuppressMarkdownFormattingChrome() {
+        XCTAssertTrue(
+            MarkdownFormattingChromePolicy.shouldShow(
+                isMarkdown: true,
+                isReadOnlyPreview: false,
+                brainDumpLayoutEnabled: false,
+                isLoadingContent: false,
+                findPresented: true,
+                findOccupiesEditorChrome: false
+            )
+        )
+    }
 }

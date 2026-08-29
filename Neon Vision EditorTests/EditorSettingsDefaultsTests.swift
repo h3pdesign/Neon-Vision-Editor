@@ -109,6 +109,37 @@ final class EditorSettingsDefaultsTests: XCTestCase {
         XCTAssertEqual(iPadShiftScrollFontSizeDelta(contentOffsetDeltaY: 25), -1, accuracy: 0.0001)
     }
 
+    func testPencilSelectionRangeSupportsForwardReverseAndClampedDrags() {
+        XCTAssertEqual(
+            EditorPencilInputPolicy.selectionAnchorPoint(
+                current: CGPoint(x: 42, y: 18),
+                translation: CGPoint(x: 7, y: -3)
+            ),
+            CGPoint(x: 35, y: 21)
+        )
+        XCTAssertEqual(
+            EditorPencilInputPolicy.selectionRange(anchor: 3, current: 9, textLength: 12),
+            NSRange(location: 3, length: 6)
+        )
+        XCTAssertEqual(
+            EditorPencilInputPolicy.selectionRange(anchor: 9, current: 3, textLength: 12),
+            NSRange(location: 3, length: 6)
+        )
+        XCTAssertEqual(
+            EditorPencilInputPolicy.selectionRange(anchor: -4, current: 18, textLength: 12),
+            NSRange(location: 0, length: 12)
+        )
+    }
+
+    func testPencilUndoPolicyHonorsSystemShortcutAndCompletedSqueeze() {
+        XCTAssertFalse(EditorPencilInputPolicy.shouldPerformUndo(for: .ignore))
+        XCTAssertFalse(EditorPencilInputPolicy.shouldPerformUndo(for: .runSystemShortcut))
+        XCTAssertTrue(EditorPencilInputPolicy.shouldPerformUndo(for: .showContextualPalette))
+        XCTAssertFalse(EditorPencilInputPolicy.shouldPerformUndo(for: UIPencilInteraction.Phase.began))
+        XCTAssertFalse(EditorPencilInputPolicy.shouldPerformUndo(for: UIPencilInteraction.Phase.changed))
+        XCTAssertTrue(EditorPencilInputPolicy.shouldPerformUndo(for: UIPencilInteraction.Phase.ended))
+    }
+
     func testLineStartIndexAppliesSingleLineEditWithoutRescanningDocument() {
         let original = "one\ntwo\nthree"
         let starts = EditorLineStartIndex.offsets(in: original)

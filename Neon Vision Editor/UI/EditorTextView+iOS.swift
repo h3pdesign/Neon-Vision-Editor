@@ -11,6 +11,39 @@ nonisolated func iPadShiftScrollFontSizeDelta(contentOffsetDeltaY: CGFloat) -> C
     -contentOffsetDeltaY * 0.04
 }
 
+#if os(iOS)
+enum EditorPencilInputPolicy {
+    static func selectionAnchorPoint(current: CGPoint, translation: CGPoint) -> CGPoint {
+        CGPoint(x: current.x - translation.x, y: current.y - translation.y)
+    }
+
+    static func selectionRange(anchor: Int, current: Int, textLength: Int) -> NSRange {
+        let safeLength = max(0, textLength)
+        let safeAnchor = min(max(0, anchor), safeLength)
+        let safeCurrent = min(max(0, current), safeLength)
+        return NSRange(
+            location: min(safeAnchor, safeCurrent),
+            length: abs(safeAnchor - safeCurrent)
+        )
+    }
+
+    static func shouldPerformUndo(for preferredAction: UIPencilPreferredAction) -> Bool {
+        switch preferredAction {
+        case .ignore, .runSystemShortcut:
+            return false
+        case .switchEraser, .switchPrevious, .showColorPalette, .showInkAttributes, .showContextualPalette:
+            return true
+        @unknown default:
+            return false
+        }
+    }
+
+    static func shouldPerformUndo(for squeezePhase: UIPencilInteraction.Phase) -> Bool {
+        squeezePhase == .ended
+    }
+}
+#endif
+
 enum EditorLineStartIndex {
     static func offsets(in text: String) -> [Int] {
         var starts = [0]
@@ -91,10 +124,165 @@ final class EditorInputTextView: UITextView {
     private var noWrapWidthCache: NoWrapWidthCache?
     private var lineStartCache: (revision: Int, offsets: [Int])?
     private var activeShiftPressIdentifiers: Set<ObjectIdentifier> = []
+#if os(iOS)
+    private var pencilHoverRecognizer: UIHoverGestureRecognizer?
+    private var pencilSelectionRecognizer: UIPanGestureRecognizer?
+    private var pencilInteraction: UIPencilInteraction?
+    private var pencilScribbleInteraction: UIScribbleInteraction?
+    private var pencilSelectionAnchorOffset: Int?
+    private lazy var pencilHoverCaretView: UIView = {
+        let view = UIView(frame: .zero)
+        view.isHidden = true
+        view.isUserInteractionEnabled = false
+        view.accessibilityElementsHidden = true
+        view.layer.cornerRadius = 1
+        return view
+    }()
+#endif
     var isHardwareKeyboardShiftPressed: Bool {
         !activeShiftPressIdentifiers.isEmpty
     }
     var markdownFormattingEnabled: Bool = false
+
+#if os(iOS)
+    func installPencilInputIfNeeded() {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return }
+
+        if pencilHoverCaretView.superview == nil {
+            addSubview(pencilHoverCaretView)
+        }
+
+        if pencilHoverRecognizer == nil {
+            let recognizer = UIHoverGestureRecognizer(target: self, action: #selector(handlePencilHover(_:)))
+            recognizer.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.pencil.rawValue)]
+            recognizer.cancelsTouchesInView = false
+            addGestureRecognizer(recognizer)
+            pencilHoverRecognizer = recognizer
+        }
+
+        if pencilSelectionRecognizer == nil {
+            let recognizer = UIPanGestureRecognizer(target: self, action: #selector(handlePencilSelection(_:)))
+            recognizer.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.pencil.rawValue)]
+            recognizer.minimumNumberOfTouches = 1
+            recognizer.maximumNumberOfTouches = 1
+            recognizer.cancelsTouchesInView = true
+            recognizer.delegate = self
+            addGestureRecognizer(recognizer)
+            panGestureRecognizer.require(toFail: recognizer)
+            pencilSelectionRecognizer = recognizer
+        }
+
+        if pencilInteraction == nil {
+            let interaction = UIPencilInteraction(delegate: self)
+            addInteraction(interaction)
+            pencilInteraction = interaction
+        }
+
+        if pencilScribbleInteraction == nil {
+            let interaction = UIScribbleInteraction(delegate: self)
+            addInteraction(interaction)
+            pencilScribbleInteraction = interaction
+        }
+    }
+
+    @objc private func handlePencilHover(_ gesture: UIHoverGestureRecognizer) {
+        guard UIPencilInteraction.prefersHoverToolPreview else {
+            pencilHoverCaretView.isHidden = true
+            return
+        }
+
+        switch gesture.state {
+        case .began, .changed:
+            guard pencilSelectionAnchorOffset == nil,
+                  let position = closestPosition(to: gesture.location(in: self)) else {
+                pencilHoverCaretView.isHidden = true
+                return
+            }
+            var rect = caretRect(for: position)
+            guard rect.origin.x.isFinite,
+                  rect.origin.y.isFinite,
+                  rect.width.isFinite,
+                  rect.height.isFinite,
+                  !rect.isEmpty else {
+                pencilHoverCaretView.isHidden = true
+                return
+            }
+            rect.size.width = max(2, rect.width)
+            pencilHoverCaretView.backgroundColor = tintColor.withAlphaComponent(0.82)
+            pencilHoverCaretView.frame = rect.integral
+            pencilHoverCaretView.isHidden = false
+
+        case .ended, .cancelled, .failed:
+            pencilHoverCaretView.isHidden = true
+
+        default:
+            break
+        }
+    }
+
+    @objc private func handlePencilSelection(_ gesture: UIPanGestureRecognizer) {
+        let point = gesture.location(in: self)
+        switch gesture.state {
+        case .began:
+            pencilHoverCaretView.isHidden = true
+            let anchorPoint = EditorPencilInputPolicy.selectionAnchorPoint(
+                current: point,
+                translation: gesture.translation(in: self)
+            )
+            guard isSelectable, let offset = pencilTextOffset(at: anchorPoint) else { return }
+            pencilSelectionAnchorOffset = offset
+            _ = becomeFirstResponder()
+            selectedRange = EditorPencilInputPolicy.selectionRange(
+                anchor: offset,
+                current: offset,
+                textLength: textStorage.length
+            )
+
+        case .changed:
+            guard let anchor = pencilSelectionAnchorOffset,
+                  let current = pencilTextOffset(at: point) else { return }
+            let range = EditorPencilInputPolicy.selectionRange(
+                anchor: anchor,
+                current: current,
+                textLength: textStorage.length
+            )
+            if selectedRange != range {
+                selectedRange = range
+            }
+            scrollPencilSelectionEndpointToVisible(current)
+
+        case .ended, .cancelled, .failed:
+            pencilSelectionAnchorOffset = nil
+
+        default:
+            break
+        }
+    }
+
+    private func pencilTextOffset(at point: CGPoint) -> Int? {
+        guard let position = closestPosition(to: point) else { return nil }
+        return offset(from: beginningOfDocument, to: position)
+    }
+
+    private func scrollPencilSelectionEndpointToVisible(_ offset: Int) {
+        guard let position = position(from: beginningOfDocument, offset: offset) else { return }
+        let rect = caretRect(for: position).insetBy(dx: 0, dy: -24)
+        scrollRectToVisible(rect, animated: false)
+    }
+
+    private func performPencilUndo() {
+        guard isEditable, undoManager?.canUndo == true else { return }
+        undoManager?.undo()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil {
+            pencilHoverCaretView.isHidden = true
+            pencilSelectionAnchorOffset = nil
+        }
+    }
+#endif
 
     func invalidateTextMetrics() {
         textMetricsRevision &+= 1
@@ -565,6 +753,25 @@ final class EditorInputTextView: UITextView {
         }
     }
 }
+
+#if os(iOS)
+extension EditorInputTextView: UIPencilInteractionDelegate, UIScribbleInteractionDelegate, UIGestureRecognizerDelegate {
+    func pencilInteraction(_ interaction: UIPencilInteraction, didReceiveTap tap: UIPencilInteraction.Tap) {
+        guard EditorPencilInputPolicy.shouldPerformUndo(for: UIPencilInteraction.preferredTapAction) else { return }
+        performPencilUndo()
+    }
+
+    func pencilInteraction(_ interaction: UIPencilInteraction, didReceiveSqueeze squeeze: UIPencilInteraction.Squeeze) {
+        guard EditorPencilInputPolicy.shouldPerformUndo(for: UIPencilInteraction.preferredSqueezeAction),
+              EditorPencilInputPolicy.shouldPerformUndo(for: squeeze.phase) else { return }
+        performPencilUndo()
+    }
+
+    func scribbleInteraction(_ interaction: UIScribbleInteraction, shouldBeginAt location: CGPoint) -> Bool {
+        false
+    }
+}
+#endif
 
 // MARK: - Invisible Character Overlay
 
@@ -1754,6 +1961,7 @@ struct CustomTextEditor: UIViewRepresentable {
         )
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         configurePointerSelectionBehavior(textView)
+        textView.installPencilInputIfNeeded()
         context.coordinator.installFontSizePinchRecognizer(on: textView)
         let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
         applyWrapMode(shouldWrapText, textView: textView, preserveOffset: false)

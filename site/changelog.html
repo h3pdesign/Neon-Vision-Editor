@@ -118,7 +118,19 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.5.4</h2><span class="date">27 August 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.5.5</h2><span class="date">29 August 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Draws every virtual-editor line through an isolated Core Text boundary that derives coordinates from the canvas and restores inherited text state.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Uses Pencil-only hover and drag recognizers for caret preview and range selection, with side tap or squeeze undo that respects system shortcut preferences.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Strengthens cross-platform preview-size coverage and asynchronous release-test deadlines.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Stops line-number, wrapped-row, and marked-text drawing from contaminating subsequent Core Text matrix and position state.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Removes the stale macOS regression expectation for the retired `0.96` Markdown preview scale.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents false external-refresh and terminal-session failures during heavily parallelized test runs.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.5.4</h2><span class="date">27 August 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Measures a bounded, distributed sample of wrapped rows when calculating the virtual canvas scroll extent.</p></div>
           <div class="item"><span class="badge new">New</span><p>Uses exact row accounting for fully loaded documents and immediate expansion when wrapping increases.</p></div>

@@ -4,6 +4,35 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.5.5] - 2026-08-29
+
+### Why Upgrade
+
+- Prevents AppKit and Core Text drawing from leaking text state between macOS virtual-editor rows and producing mirrored or upside-down glyphs.
+- Makes Apple Pencil a precision iPad editing input with hover caret preview and direct range selection.
+- Keeps Markdown live-preview text at the exact resolved editor font size on every supported platform.
+- Makes the release regression suite more reliable while parallel performance, filesystem, and PTY tests compete for resources.
+
+### Highlights
+
+- Draws every virtual-editor line through an isolated Core Text boundary that derives coordinates from the canvas and restores inherited text state.
+- Uses Pencil-only hover and drag recognizers for caret preview and range selection, with side tap or squeeze undo that respects system shortcut preferences.
+- Strengthens cross-platform preview-size coverage and asynchronous release-test deadlines.
+
+### Fixes
+
+- Stops line-number, wrapped-row, and marked-text drawing from contaminating subsequent Core Text matrix and position state.
+- Removes the stale macOS regression expectation for the retired `0.96` Markdown preview scale.
+- Prevents false external-refresh and terminal-session failures during heavily parallelized test runs.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.5.4] - 2026-08-27
 
 ### Why Upgrade

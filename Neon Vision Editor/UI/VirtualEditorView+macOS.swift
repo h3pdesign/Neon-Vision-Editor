@@ -371,6 +371,31 @@ enum VirtualEditorViewportGeometry {
     }
 }
 
+enum VirtualEditorCoreTextDrawing {
+    static func textMatrix(forFlippedCoordinates isFlipped: Bool) -> CGAffineTransform {
+        isFlipped ? CGAffineTransform(scaleX: 1, y: -1) : .identity
+    }
+
+    static func draw(
+        _ line: CTLine,
+        in context: CGContext,
+        at textPosition: CGPoint,
+        flippedCoordinates: Bool
+    ) {
+        let inheritedTextMatrix = context.textMatrix
+        let inheritedTextPosition = context.textPosition
+        context.saveGState()
+        defer {
+            context.restoreGState()
+            context.textMatrix = inheritedTextMatrix
+            context.textPosition = inheritedTextPosition
+        }
+        context.textMatrix = textMatrix(forFlippedCoordinates: flippedCoordinates)
+        context.textPosition = textPosition
+        CTLineDraw(line, context)
+    }
+}
+
 enum VirtualEditorResizePolicy {
     static func shouldReflow(isSplitPaneResizeInProgress: Bool) -> Bool {
         !isSplitPaneResizeInProgress
@@ -1085,10 +1110,10 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         if let documentID {
             EditorPerformanceMonitor.shared.markTabSwitchFirstDraw(tabID: documentID)
         }
-        let context = NSGraphicsContext.current?.cgContext
-        context?.saveGState()
-        context?.clip(to: dirtyRect)
-        defer { context?.restoreGState() }
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
+        context.saveGState()
+        context.clip(to: dirtyRect)
+        defer { context.restoreGState() }
         if !translucentBackgroundEnabled {
             NSColor(resolvedEditorTheme.background).setFill()
             dirtyRect.fill()
@@ -1099,7 +1124,6 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         drawCurrentLineHighlight(rows: rows)
         drawSelectionBackground(rows: rows)
         for row in rows where row.baseline + lineHeight >= dirtyRect.minY && row.baseline <= dirtyRect.maxY {
-            let context = NSGraphicsContext.current!.cgContext
             context.saveGState()
             if showsLineNumbers, row.isFirstFragment {
                 let lineNumber = "\(row.logicalLine + 1)" as NSString
@@ -1115,16 +1139,20 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                     .foregroundColor: NSColor(resolvedEditorTheme.text).withAlphaComponent(0.58)
                 ])
             }
-            context.textPosition = CGPoint(x: gutterWidth + Geometry.gutterTextInset, y: row.baseline)
-            CTLineDraw(row.fragment.line, context)
+            VirtualEditorCoreTextDrawing.draw(
+                row.fragment.line,
+                in: context,
+                at: CGPoint(x: gutterWidth + Geometry.gutterTextInset, y: row.baseline),
+                flippedCoordinates: isFlipped
+            )
             context.restoreGState()
             drawWhitespaceAndIndentationDecorations(for: row, dark: dark)
         }
-        drawMarkedText(rows: rows)
+        drawMarkedText(rows: rows, context: context)
         drawCaret(rows: rows)
     }
 
-    private func drawMarkedText(rows: [VisualRow]) {
+    private func drawMarkedText(rows: [VisualRow], context: CGContext) {
         guard let markedText, markedTextRange.location != NSNotFound else { return }
         let start = markedTextRange.location - viewportLineOriginStartUTF16
         guard start >= 0, start <= viewportText.utf16.count else { return }
@@ -1136,11 +1164,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         ]
         let line = CTLineCreateWithAttributedString(NSAttributedString(string: markedText, attributes: attributes))
         let point = caretPoint(localLocation: start)
-        let context = NSGraphicsContext.current?.cgContext
-        context?.saveGState()
-        context?.textPosition = CGPoint(x: point.x, y: point.y)
-        CTLineDraw(line, context!)
-        context?.restoreGState()
+        VirtualEditorCoreTextDrawing.draw(
+            line,
+            in: context,
+            at: point,
+            flippedCoordinates: isFlipped
+        )
     }
 
     private func drawWhitespaceAndIndentationDecorations(for row: VisualRow, dark: Bool) {

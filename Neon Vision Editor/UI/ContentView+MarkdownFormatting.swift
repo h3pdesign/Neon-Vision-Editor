@@ -68,6 +68,23 @@ enum MarkdownFormattingAction: CaseIterable, Identifiable {
     }
 }
 
+enum MarkdownFormattingChromePolicy {
+    nonisolated static func shouldShow(
+        isMarkdown: Bool,
+        isReadOnlyPreview: Bool,
+        brainDumpLayoutEnabled: Bool,
+        isLoadingContent: Bool,
+        findPresented: Bool,
+        findOccupiesEditorChrome: Bool
+    ) -> Bool {
+        isMarkdown
+            && !isReadOnlyPreview
+            && !brainDumpLayoutEnabled
+            && !isLoadingContent
+            && !(findPresented && findOccupiesEditorChrome)
+    }
+}
+
 extension ContentView {
     var markdownFormattingOverlayAlignment: Alignment {
 #if os(macOS)
@@ -80,10 +97,19 @@ extension ContentView {
     }
 
     var shouldShowMarkdownFormattingControls: Bool {
-        currentLanguage == "markdown"
-            && viewModel.selectedTab?.isReadOnlyPreview != true
-            && !brainDumpLayoutEnabled
-            && viewModel.selectedTab?.isLoadingContent != true
+#if os(iOS)
+        let findOccupiesEditorChrome = true
+#else
+        let findOccupiesEditorChrome = false
+#endif
+        return MarkdownFormattingChromePolicy.shouldShow(
+            isMarkdown: currentLanguage == "markdown",
+            isReadOnlyPreview: viewModel.selectedTab?.isReadOnlyPreview == true,
+            brainDumpLayoutEnabled: brainDumpLayoutEnabled,
+            isLoadingContent: viewModel.selectedTab?.isLoadingContent == true,
+            findPresented: showFindReplace,
+            findOccupiesEditorChrome: findOccupiesEditorChrome
+        )
     }
 
 #if os(iOS) || os(visionOS)

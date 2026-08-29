@@ -117,16 +117,6 @@ struct SidebarView: View {
 #endif
     }
 
-    private var sidebarRowFill: Color {
-#if os(macOS)
-        Color.secondary.opacity(0.10)
-#else
-        colorScheme == .dark
-            ? Color.white.opacity(0.045)
-            : Color.primary.opacity(0.035)
-#endif
-    }
-
     @ViewBuilder
     private func tocRow(for item: TOCItem) -> some View {
         let isSelected = selectedTOCItemID == item.id
@@ -169,7 +159,7 @@ struct SidebarView: View {
 #if os(macOS)
         isSelected ? Color.accentColor.opacity(colorScheme == .dark ? 0.22 : 0.16) : Color.clear
 #else
-        isSelected ? Color.accentColor.opacity(colorScheme == .dark ? 0.26 : 0.20) : sidebarRowFill
+        isSelected ? Color.accentColor.opacity(colorScheme == .dark ? 0.26 : 0.20) : Color.clear
 #endif
     }
 
@@ -355,6 +345,9 @@ struct SidebarView: View {
             if let documentID {
                 userInfo[EditorCommandUserInfo.documentID] = documentID.uuidString
             }
+#if os(iOS)
+            userInfo[EditorCommandUserInfo.focusEditor] = false
+#endif
 #if os(macOS)
             if let windowNumber = NSApp.keyWindow?.windowNumber {
                 userInfo[EditorCommandUserInfo.windowNumber] = windowNumber

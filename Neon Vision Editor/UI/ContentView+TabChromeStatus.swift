@@ -107,28 +107,43 @@ extension ContentView {
     }
 
     @ViewBuilder
-    var iOSUnifiedTopChromeHost: some View {
+    var iOSUnifiedToolbarHost: some View {
+        if isIPadToolbarLayout {
+            iPadUnifiedToolbarRow
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+        } else {
+            iPhoneUnifiedToolbarRow
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+        }
+    }
+
+    var iOSUnifiedDocumentChromeHost: some View {
         VStack(spacing: 0) {
-            if isIPadToolbarLayout {
-                iPadUnifiedToolbarRow
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-            } else {
-                iPhoneUnifiedToolbarRow
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-            }
             tabBarView
             if shouldPlaceMarkdownFormattingBelowTabs {
                 iPhoneMarkdownFormattingTopChrome
             }
         }
         .overlay(alignment: .bottom) {
-            if !brainDumpLayoutEnabled && shouldPinFloatingStatusToTop {
+            if IOSFloatingStatusPolicy.isVisible(
+                brainDumpLayoutEnabled: brainDumpLayoutEnabled,
+                shouldPinToTop: shouldPinFloatingStatusToTop,
+                findPresented: showFindReplace,
+                pinnedPresentation: true
+            ) {
                 iOSPinnedEditingStatusRow
                     // Overlay the editor instead of reserving a separate opaque strip.
                     .offset(y: 48)
             }
+        }
+    }
+
+    var iOSUnifiedTopChromeHost: some View {
+        VStack(spacing: 0) {
+            iOSUnifiedToolbarHost
+            iOSUnifiedDocumentChromeHost
         }
     }
 

@@ -742,6 +742,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     var viewportLineOrigin = 0
     private var absoluteCaret = 0
     private var selection = NSRange(location: 0, length: 0)
+    private var findMatchRanges: [NSRange] = []
+    private var selectedFindMatchRange: NSRange?
     private var markedText: String?
     private var markedTextRange = NSRange(location: NSNotFound, length: 0)
     private var markedTextSelectedRange = NSRange(location: 0, length: 0)
@@ -872,6 +874,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         super.init(frame: frameRect)
         NotificationCenter.default.addObserver(self, selector: #selector(moveToLine(_:)), name: .moveCursorToLine, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(updateFindHighlights(_:)), name: .updateEditorFindHighlights, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(replaceRange(_:)), name: .replaceEditorRangeRequested, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(moveSelectedLines(_:)), name: .moveSelectedLinesRequested, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(insertBracketHelperToken(_:)), name: .insertBracketHelperTokenRequested, object: nil)
@@ -912,8 +915,23 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         absoluteCaret = max(0, min(document?.utf16Length ?? location, location))
         selection = NSRange(location: absoluteCaret, length: max(0, min(length, (document?.utf16Length ?? absoluteCaret) - absoluteCaret)))
         selectionAnchor = absoluteCaret
-        ensureCaretVisible()
+        if notification.userInfo?[EditorCommandUserInfo.centerSelection] as? Bool == true {
+            ensureLineVisible(line)
+        } else {
+            ensureCaretVisible()
+        }
         publishCaret()
+        needsDisplay = true
+    }
+
+    @objc private func updateFindHighlights(_ notification: Notification) {
+        if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+           documentID?.uuidString != targetDocumentID {
+            return
+        }
+        findMatchRanges = (notification.userInfo?[EditorCommandUserInfo.findMatchRanges] as? [NSValue] ?? [])
+            .map(\.rangeValue)
+        selectedFindMatchRange = (notification.userInfo?[EditorCommandUserInfo.selectedFindMatchRange] as? NSValue)?.rangeValue
         needsDisplay = true
     }
 
@@ -1122,6 +1140,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let dark = scheme == .dark
         let rows = visualRows()
         drawCurrentLineHighlight(rows: rows)
+        drawFindMatchBackgrounds(rows: rows)
         drawSelectionBackground(rows: rows)
         for row in rows where row.baseline + lineHeight >= dirtyRect.minY && row.baseline <= dirtyRect.maxY {
             context.saveGState()
@@ -1438,6 +1457,45 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 nil
             ))
             NSRect(x: gutterWidth + Geometry.gutterTextInset + x, y: row.baseline - lineHeight + 2, width: max(2, rightX - x), height: lineHeight).fill()
+        }
+    }
+
+    private func drawFindMatchBackgrounds(rows: [VisualRow]) {
+        guard !findMatchRanges.isEmpty else { return }
+        let viewportStart = viewportLineOriginStartUTF16
+        let visibleStart = rows.first?.fragment.absoluteStartUTF16 ?? 0
+        let visibleEnd = rows.last.map { $0.fragment.absoluteStartUTF16 + $0.fragment.lengthUTF16 } ?? 0
+        for match in findMatchRanges where match.length > 0 {
+            let selected = match == selectedFindMatchRange
+            (selected ? NSColor.systemBlue : NSColor.systemYellow)
+                .withAlphaComponent(selected ? 0.42 : 0.28)
+                .setFill()
+            let matchStart = match.location - viewportStart
+            let matchEnd = NSMaxRange(match) - viewportStart
+            guard matchEnd > visibleStart, matchStart < visibleEnd else { continue }
+            for row in rows {
+                let rowStart = row.fragment.absoluteStartUTF16
+                let rowEnd = rowStart + row.fragment.lengthUTF16
+                let left = max(rowStart, matchStart)
+                let right = min(rowEnd, matchEnd)
+                guard left < right else { continue }
+                let x = CGFloat(CTLineGetOffsetForStringIndex(
+                    row.fragment.line,
+                    row.coreTextStringIndex(forViewportOffset: left),
+                    nil
+                ))
+                let rightX = CGFloat(CTLineGetOffsetForStringIndex(
+                    row.fragment.line,
+                    row.coreTextStringIndex(forViewportOffset: right),
+                    nil
+                ))
+                NSRect(
+                    x: gutterWidth + Geometry.gutterTextInset + x,
+                    y: row.baseline - lineHeight + 2,
+                    width: max(2, rightX - x),
+                    height: lineHeight
+                ).fill()
+            }
         }
     }
 

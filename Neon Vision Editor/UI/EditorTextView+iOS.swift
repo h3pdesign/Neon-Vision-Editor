@@ -2220,6 +2220,7 @@ struct CustomTextEditor: UIViewRepresentable {
         private var lastScrollOffsetY: CGFloat?
         private var pendingShiftScrollFontSizeDelta: CGFloat = 0
         private var isRestoringShiftScrollOffset = false
+        private var findHighlightBackgrounds: [(range: NSRange, value: Any?)] = []
         var lastDocumentResourceID: String?
         var lastStoredCaretLocation: Int?
         var lastTabLoadingContent: Bool?
@@ -2236,6 +2237,7 @@ struct CustomTextEditor: UIViewRepresentable {
             super.init()
             NotificationCenter.default.addObserver(self, selector: #selector(moveToLine(_:)), name: .moveCursorToLine, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(updateFindHighlights(_:)), name: .updateEditorFindHighlights, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(replaceRange(_:)), name: .replaceEditorRangeRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveSelectedLines(_:)), name: .moveSelectedLinesRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(scrollViewportToFraction(_:)), name: .scrollEditorViewportToFraction, object: nil)
@@ -2526,21 +2528,77 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         @objc private func moveToRange(_ notification: Notification) {
+            if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+               parent.documentID?.uuidString != targetDocumentID {
+                return
+            }
             guard let textView else { return }
             guard let location = notification.userInfo?[EditorCommandUserInfo.rangeLocation] as? Int,
                   let length = notification.userInfo?[EditorCommandUserInfo.rangeLength] as? Int else { return }
             let textLength = (textView.text as NSString?)?.length ?? 0
             guard location >= 0, length >= 0, location + length <= textLength else { return }
             let range = NSRange(location: location, length: length)
-            let shouldFocusEditor = notification.userInfo?[EditorCommandUserInfo.focusEditor] as? Bool ?? true
+            let shouldFocusEditor = EditorNavigationFocusPolicy.shouldFocusEditor(
+                explicitValue: notification.userInfo?[EditorCommandUserInfo.focusEditor] as? Bool
+            )
+            let shouldCenterSelection = notification.userInfo?[EditorCommandUserInfo.centerSelection] as? Bool ?? false
             DispatchQueue.main.async {
                 if shouldFocusEditor {
                     textView.becomeFirstResponder()
                 }
                 textView.selectedRange = range
-                textView.scrollRangeToVisible(range)
+                if shouldCenterSelection {
+                    self.centerEditorLine(at: range, in: textView)
+                } else {
+                    textView.scrollRangeToVisible(range)
+                }
                 self.updateCaretStatus()
             }
+        }
+
+        @objc private func updateFindHighlights(_ notification: Notification) {
+            if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+               parent.documentID?.uuidString != targetDocumentID {
+                return
+            }
+            guard let textView else { return }
+            let textStorage = textView.textStorage
+            textStorage.beginEditing()
+            defer { textStorage.endEditing() }
+            for snapshot in findHighlightBackgrounds {
+                guard NSMaxRange(snapshot.range) <= textStorage.length else { continue }
+                textStorage.removeAttribute(.backgroundColor, range: snapshot.range)
+                if let value = snapshot.value {
+                    textStorage.addAttribute(.backgroundColor, value: value, range: snapshot.range)
+                }
+            }
+            let textLength = (textView.text as NSString?)?.length ?? 0
+            let ranges = (notification.userInfo?[EditorCommandUserInfo.findMatchRanges] as? [NSValue] ?? [])
+                .map(\.rangeValue)
+                .filter { $0.location >= 0 && $0.length > 0 && NSMaxRange($0) <= textLength }
+            var backgroundSnapshots: [(range: NSRange, value: Any?)] = []
+            for range in ranges {
+                textStorage.enumerateAttribute(.backgroundColor, in: range) { value, effectiveRange, _ in
+                    backgroundSnapshots.append((effectiveRange, value))
+                }
+            }
+            for range in ranges {
+                textStorage.addAttribute(
+                    .backgroundColor,
+                    value: UIColor.systemYellow.withAlphaComponent(0.28),
+                    range: range
+                )
+            }
+            if let selected = (notification.userInfo?[EditorCommandUserInfo.selectedFindMatchRange] as? NSValue)?.rangeValue,
+               selected.location >= 0, selected.length > 0, NSMaxRange(selected) <= textLength {
+                textStorage.addAttribute(
+                    .backgroundColor,
+                    value: UIColor.systemBlue.withAlphaComponent(0.42),
+                    range: selected
+                )
+            }
+            findHighlightBackgrounds = backgroundSnapshots
+            textView.setNeedsDisplay()
         }
 
         @objc private func replaceRange(_ notification: Notification) {
@@ -2599,7 +2657,14 @@ struct CustomTextEditor: UIViewRepresentable {
             }
             location = max(0, min(location, nsText.length))
             let target = NSRange(location: location, length: 0)
-            textView.becomeFirstResponder()
+            let shouldFocusEditor = EditorNavigationFocusPolicy.shouldFocusEditor(
+                explicitValue: notification.userInfo?[EditorCommandUserInfo.focusEditor] as? Bool
+            )
+            if shouldFocusEditor {
+                textView.becomeFirstResponder()
+            } else if textView.isFirstResponder {
+                textView.resignFirstResponder()
+            }
             textView.selectedRange = target
             centerEditorLine(at: target, in: textView)
             updateCaretStatus()

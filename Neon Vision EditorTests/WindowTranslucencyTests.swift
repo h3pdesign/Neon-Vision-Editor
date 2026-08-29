@@ -114,6 +114,47 @@ final class WindowTranslucencyTests: XCTestCase {
         XCTAssertFalse(scrollView.contentView.drawsBackground)
     }
 
+    func testVirtualEditorCoreTextDrawingOwnsCoordinateState() {
+        let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: 4,
+            pixelsHigh: 4,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        )!
+        let context = NSGraphicsContext(bitmapImageRep: bitmap)!.cgContext
+        context.translateBy(x: 0, y: 4)
+        context.scaleBy(x: 1, y: -1)
+        let inheritedPosition = CGPoint(x: 1, y: 1)
+        context.textMatrix = CGAffineTransform(scaleX: -1, y: 1)
+        context.textPosition = inheritedPosition
+        let inheritedMatrix = context.textMatrix
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: "A"))
+
+        VirtualEditorCoreTextDrawing.draw(
+            line,
+            in: context,
+            at: CGPoint(x: 2, y: 3),
+            flippedCoordinates: true
+        )
+
+        XCTAssertEqual(context.textMatrix, inheritedMatrix)
+        XCTAssertEqual(context.textPosition, inheritedPosition)
+
+        let flippedMatrix = VirtualEditorCoreTextDrawing.textMatrix(forFlippedCoordinates: true)
+        XCTAssertEqual(flippedMatrix.a, 1, accuracy: 0.001)
+        XCTAssertEqual(flippedMatrix.d, -1, accuracy: 0.001)
+        XCTAssertGreaterThan(context.ctm.d * flippedMatrix.d, 0)
+
+        let unflippedMatrix = VirtualEditorCoreTextDrawing.textMatrix(forFlippedCoordinates: false)
+        XCTAssertEqual(unflippedMatrix, .identity)
+    }
+
     func testVirtualEditorCanvasUsesEditorThemeWhenTranslucencyIsDisabled() {
         let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 1, height: 1))
         let bitmap = NSBitmapImageRep(

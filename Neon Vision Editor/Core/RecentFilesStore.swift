@@ -15,8 +15,10 @@ struct RecentFilesStore {
     private static let bookmarkMapKey = "RecentFilesBookmarksV1"
     private static let maximumItemCount = 30
 
-    static func items(limit: Int = maximumItemCount) -> [Item] {
-        let defaults = UserDefaults.standard
+    static func items(
+        limit: Int = maximumItemCount,
+        defaults: UserDefaults = .standard
+    ) -> [Item] {
         let recentPaths = sanitizedPaths(from: defaults.stringArray(forKey: recentPathsKey) ?? [])
         let pinnedPaths = sanitizedPaths(from: defaults.stringArray(forKey: pinnedPathsKey) ?? [])
         let pinnedSet = Set(pinnedPaths)
@@ -27,9 +29,8 @@ struct RecentFilesStore {
         return urls.map { Item(url: $0, isPinned: pinnedSet.contains($0.standardizedFileURL.path)) }
     }
 
-    static func remember(_ url: URL) {
+    static func remember(_ url: URL, defaults: UserDefaults = .standard) {
         let standardizedPath = url.standardizedFileURL.path
-        let defaults = UserDefaults.standard
         var recentPaths = sanitizedPaths(from: defaults.stringArray(forKey: recentPathsKey) ?? [])
         recentPaths.removeAll { $0 == standardizedPath }
         recentPaths.insert(standardizedPath, at: 0)
@@ -56,9 +57,8 @@ struct RecentFilesStore {
         }
     }
 
-    static func togglePinned(_ url: URL) {
+    static func togglePinned(_ url: URL, defaults: UserDefaults = .standard) {
         let standardizedPath = url.standardizedFileURL.path
-        let defaults = UserDefaults.standard
         var pinnedPaths = sanitizedPaths(from: defaults.stringArray(forKey: pinnedPathsKey) ?? [])
         var recentPaths = sanitizedPaths(from: defaults.stringArray(forKey: recentPathsKey) ?? [])
 
@@ -89,8 +89,7 @@ struct RecentFilesStore {
         }
     }
 
-    static func clearUnpinned() {
-        let defaults = UserDefaults.standard
+    static func clearUnpinned(defaults: UserDefaults = .standard) {
         let pinnedPaths = sanitizedPaths(from: defaults.stringArray(forKey: pinnedPathsKey) ?? [])
         var bookmarkMap = loadBookmarkMap(from: defaults)
         pruneBookmarks(&bookmarkMap, keeping: Set(pinnedPaths))

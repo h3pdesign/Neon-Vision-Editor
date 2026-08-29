@@ -1799,7 +1799,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             return
         }
         let indentation = context.linePrefix.prefix { $0 == " " || $0 == "\t" }
-        replaceSelection(with: "\n" + indentation)
+        let normalizedIndent = String(indentation)
+        let listPrefix = continuedMarkdownListPrefix(
+            for: context.linePrefix,
+            normalizedIndent: normalizedIndent
+        )
+        replaceSelection(with: "\n" + (listPrefix ?? normalizedIndent))
     }
 
     private func registerUndo(replacement: String, range: NSRange, inverseReplacement: String) {

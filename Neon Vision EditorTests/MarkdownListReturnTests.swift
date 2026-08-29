@@ -37,6 +37,23 @@ final class MarkdownListReturnTests: XCTestCase {
         XCTAssertEqual(context?.linePrefix, "- ")
     }
 
+    func testOrderedMarkdownListContinuationIncrementsNumber() {
+        XCTAssertEqual(continuedMarkdownListPrefix(for: "1. First", normalizedIndent: ""), "2. ")
+        XCTAssertEqual(continuedMarkdownListPrefix(for: "  9) Ninth", normalizedIndent: "  "), "  10) ")
+    }
+
+    func testUnorderedMarkdownListContinuationPreservesMarker() {
+        XCTAssertEqual(continuedMarkdownListPrefix(for: "- First", normalizedIndent: ""), "- ")
+        XCTAssertEqual(continuedMarkdownListPrefix(for: "  * First", normalizedIndent: "  "), "  * ")
+    }
+
+#if os(iOS) || os(visionOS)
+    func testCollapsedSelectionUsesSystemEditMenu() {
+        XCTAssertTrue(EditorEditMenuPolicy.shouldUseDefaultMenu(for: NSRange(location: 4, length: 0)))
+        XCTAssertFalse(EditorEditMenuPolicy.shouldUseDefaultMenu(for: NSRange(location: 4, length: 3)))
+    }
+#endif
+
     func testMoveCurrentLineUpPreservesCaretColumn() throws {
         let source = "first\nsecond\nthird"
         let result = try XCTUnwrap(

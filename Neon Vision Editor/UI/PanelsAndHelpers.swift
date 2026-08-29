@@ -2720,15 +2720,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.5.5",
-            subtitle: "Release highlights for v1.5.5.",
+            title: "What’s New in v1.5.6",
+            subtitle: "Release highlights for v1.5.6.",
             bullets: [
-                "Editor Improvements: Prevents AppKit and Core Text drawing from leaking text state between macOS virtual-editor rows and producing mirrored or…",
-                "Workflow Refinements: Makes Apple Pencil a precision iPad editing input with hover caret preview and direct range selection.",
-                "Performance Updates: Keeps Markdown live-preview text at the exact resolved editor font size on every supported platform.",
-                "Editor Performance: Makes the release regression suite more reliable while parallel performance, filesystem, and PTY tests compete for resources.",
-                "Editor Improvements: Draws every virtual-editor line through an isolated Core Text boundary that derives coordinates from the canvas and…",
-                "Workflow Refinements: Uses Pencil-only hover and drag recognizers for caret preview and range selection, with side tap or squeeze undo that…"
+                "Accessible Controls: Makes the iPhone and iPad editor toolbar more compact and language-aware without hiding full menu names or accessibility…",
+                "Workflow Refinements: Restores predictable Markdown list continuation and native text-selection commands across mobile and macOS editors.",
+                "Performance Updates: Keeps collapsed and expanded Markdown formatting controls readable without wasting editor space or covering actions.",
+                "Usability Updates: Uses icon-only mobile toolbar presets and language-specific symbols or initials for the current document language.",
+                "Editor Improvements: Adds a horizontally scrollable mobile Markdown formatting row while keeping the collapsed control in a compact opaque pill…",
+                "Workflow Refinements: Treats explicit language choices as tab-level overrides so automatic detection does not immediately replace the user's…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

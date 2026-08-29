@@ -2563,15 +2563,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.5.4",
-            subtitle: "Release highlights for v1.5.4.",
+            title: "What’s New in v1.5.5",
+            subtitle: "Release highlights for v1.5.5.",
             bullets: [
-                "Editor Improvements: Restores access to every wrapped source row in the macOS editor after project-sidebar or preview width changes.",
-                "Workflow Refinements: Keeps the final document lines reachable at both narrow and wide editor widths.",
-                "Editor Performance: Preserves responsive virtual-editor layout without performing unbounded full-document measurement.",
-                "Usability Updates: Measures a bounded, distributed sample of wrapped rows when calculating the virtual canvas scroll extent.",
-                "Editor Improvements: Uses exact row accounting for fully loaded documents and immediate expansion when wrapping increases.",
-                "Workflow Refinements: Prevents the macOS editor from stopping before the document's final lines when the project sidebar or preview narrows the…"
+                "Editor Improvements: Prevents AppKit and Core Text drawing from leaking text state between macOS virtual-editor rows and producing mirrored or…",
+                "Workflow Refinements: Makes Apple Pencil a precision iPad editing input with hover caret preview and direct range selection.",
+                "Performance Updates: Keeps Markdown live-preview text at the exact resolved editor font size on every supported platform.",
+                "Editor Performance: Makes the release regression suite more reliable while parallel performance, filesystem, and PTY tests compete for resources.",
+                "Editor Improvements: Draws every virtual-editor line through an isolated Core Text boundary that derives coordinates from the canvas and…",
+                "Workflow Refinements: Uses Pencil-only hover and drag recognizers for caret preview and range selection, with side tap or squeeze undo that…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -39,7 +39,7 @@ final class IntegratedTerminalSessionTests: XCTestCase {
         XCTAssertTrue(session.usesPTY)
 
         session.send("test -t 0 && test -t 1 && printf '\(marker)'", in: FileManager.default.temporaryDirectory)
-        let deadline = Date().addingTimeInterval(3)
+        let deadline = Date().addingTimeInterval(10)
         while !session.output.contains(marker), Date() < deadline {
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }

@@ -128,7 +128,5 @@ jobs:
             echo "Could not resolve the open App Store synchronization PR for ${sync_sha}." >&2
             exit 1
           fi
-          if ! gh pr merge "${sync_pr}" --repo "${GITHUB_REPOSITORY}" --merge --delete-branch; then
-            gh pr merge "${sync_pr}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
-              echo "Auto-merge is unavailable; leaving the App Store synchronization PR open."
-          fi
+          gh pr merge "${sync_pr}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
+            echo "Auto-merge is unavailable; leaving the App Store synchronization PR open."

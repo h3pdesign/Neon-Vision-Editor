@@ -174,11 +174,8 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         let contentView = ContentView()
         let css = contentView.markdownPreviewRuntimePreviewScaleCSS(runtimeFontSize: 18)
 
-        #if os(iOS)
         XCTAssertTrue(css.contains("font-size: 18px !important;"))
-        #else
-        XCTAssertTrue(css.contains("font-size: calc(18px * 0.96);"))
-        #endif
+        XCTAssertFalse(css.contains("0.96"))
     }
 
     func testDistinctMarkdownPreviewThemesIncludeTheirLayoutTreatment() {

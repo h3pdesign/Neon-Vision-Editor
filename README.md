@@ -481,11 +481,11 @@ flowchart TB
   MAC --> DIST
   TOUCH --> DIST
 
-  classDef platform stroke:#2563EB,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
-  classDef app stroke:#059669,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
-  classDef core stroke:#EA580C,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
-  classDef infra stroke:#9333EA,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
-  classDef distribution stroke:#DB2777,stroke-width:3px,fill:transparent,font-family:ui-monospace\, SFMono-Regular\, Menlo\, Monaco\, Consolas\, Liberation Mono\, monospace,font-size:13px;
+  classDef platform stroke:#2563EB,stroke-width:3px,fill:transparent;
+  classDef app stroke:#059669,stroke-width:3px,fill:transparent;
+  classDef core stroke:#EA580C,stroke-width:3px,fill:transparent;
+  classDef infra stroke:#9333EA,stroke-width:3px,fill:transparent;
+  classDef distribution stroke:#DB2777,stroke-width:3px,fill:transparent;
 
   class MAC,TOUCH platform;
   class ACTIONS,VM,COMMANDS,REVISIONS app;

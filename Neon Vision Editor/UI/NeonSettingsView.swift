@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import UniformTypeIdentifiers
 #if os(macOS)
 import AppKit
@@ -42,6 +43,7 @@ struct NeonSettingsView: View {
     let supportsOpenInTabs: Bool
     let supportsTranslucency: Bool
     @Environment(EditorViewModel.self) private var editorViewModel
+    @Environment(\.purchase) private var purchase
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
     @EnvironmentObject private var appUpdateManager: AppUpdateManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -1329,6 +1331,8 @@ struct NeonSettingsView: View {
             #if os(visionOS)
             if newValue == "ai" {
                 loadAPITokensIfNeeded()
+            } else if newValue == "support" {
+                refreshSupportStoreStateIfNeeded()
             }
 #elseif os(iOS)
             if newValue == "toolbar" || newValue == "templates" || newValue == "more" {
@@ -1369,7 +1373,7 @@ struct NeonSettingsView: View {
         content
         .confirmationDialog("Support Neon Vision Editor", isPresented: $showSupportPurchaseDialog, titleVisibility: .visible) {
             Button(supportPurchaseManager.supportTipDialogButtonTitle) {
-                Task { await supportPurchaseManager.purchaseSupport() }
+                Task { await supportPurchaseManager.purchaseSupport { product in try await purchase(product) } }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -5801,7 +5805,7 @@ struct NeonSettingsView: View {
         SettingsFlowLayout(spacing: UI.space10, rowSpacing: UI.space8) {
             Button(supportPurchaseManager.isPurchasing ? localized("Purchasing…") : supportPurchaseManager.supportPurchaseButtonTitle) {
                 guard supportPurchaseManager.canUseInAppPurchases else {
-                    Task { await supportPurchaseManager.purchaseSupport() }
+                    Task { await supportPurchaseManager.purchaseSupport { product in try await purchase(product) } }
                     return
                 }
                 guard supportPurchaseManager.supportProduct != nil else {

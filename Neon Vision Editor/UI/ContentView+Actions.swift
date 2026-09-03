@@ -641,7 +641,16 @@ extension ContentView {
     }
 
     var clearEditorPreviewDescription: String {
-        let content = currentContentBinding.wrappedValue
+        Self.clearEditorPreviewDescription(isPresented: showClearEditorConfirmDialog) {
+            currentContentBinding.wrappedValue
+        }
+    }
+
+    static func clearEditorPreviewDescription(isPresented: Bool, content: () -> String) -> String {
+        // SwiftUI evaluates dialog messages while the dialog is hidden. Keep
+        // that normal render path from projecting and counting the whole file.
+        guard isPresented else { return "" }
+        let content = content()
         let lineCount = max(1, content.reduce(into: 1) { count, character in
             if character == "\n" { count += 1 }
         })

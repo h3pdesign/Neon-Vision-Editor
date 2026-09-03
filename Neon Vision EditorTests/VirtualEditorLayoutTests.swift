@@ -4,6 +4,173 @@ import XCTest
 
 @MainActor
 final class VirtualEditorLayoutTests: XCTestCase {
+    func testDenseMarkdownCanvasBoundsLayoutAcrossScrollAndEdit() throws {
+        let source = String(repeating: "# x\n", count: 220_000)
+        for wraps in [true, false] {
+            let document = FileBackedTextDocument(content: source)
+            let documentID = UUID()
+            let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+            let canvas = VirtualEditorCanvas(frame: scrollView.bounds)
+            scrollView.documentView = canvas
+            _ = canvas.setViewportSize(scrollView.contentSize)
+            let started = ProcessInfo.processInfo.systemUptime
+            canvas.configure(
+                document: document,
+                documentID: documentID,
+                resourceID: "dense-markdown-regression",
+                displayName: "Architecture.md",
+                contentRevision: 0,
+                externalContentRevision: 0,
+                caret: 0,
+                language: "markdown",
+                colorScheme: .light,
+                fontSize: 14,
+                fontName: "",
+                lineHeightMultiplier: 1,
+                isReadOnly: false,
+                translucentBackgroundEnabled: false,
+                showsLineNumbers: true,
+                highlightCurrentLine: false,
+                lineWrapEnabled: wraps,
+                showsInvisibleCharacters: false,
+                showsIndentationGuides: false,
+                showsScopeGuides: false,
+                highlightsScopeBackground: false,
+                highlightsMatchingBrackets: false,
+                autoIndentEnabled: true,
+                autoCloseBracketsEnabled: false,
+                onFontSizeChange: nil,
+                onTextMutation: { mutation in
+                    do {
+                        if let viewport = mutation.viewport {
+                            try document.replace(in: viewport, utf16Range: mutation.range, with: mutation.replacement)
+                        } else {
+                            try document.replace(utf16Range: mutation.range, with: mutation.replacement)
+                        }
+                        return true
+                    } catch { return false }
+                }
+            )
+            canvas.setFrameSize(NSSize(width: 800, height: canvas.logicalHeight))
+            let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 800,
+                pixelsHigh: 600, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+            let context = try XCTUnwrap(NSGraphicsContext(bitmapImageRep: bitmap))
+            for fraction: CGFloat in [0, 0.5, 1, 0] {
+                let y = max(0, canvas.logicalHeight - 600) * fraction
+                scrollView.contentView.scroll(to: NSPoint(x: 0, y: y))
+                canvas.reloadViewportIfNeeded(scrollY: y)
+                let visibleText = try XCTUnwrap(canvas.accessibilityValue() as? String)
+                XCTAssertLessThanOrEqual(visibleText.utf8.count, 2048)
+                NSGraphicsContext.saveGraphicsState()
+                NSGraphicsContext.current = context
+                canvas.draw(NSRect(x: 0, y: y, width: 800, height: 600))
+                NSGraphicsContext.restoreGraphicsState()
+            }
+            let elapsed = (ProcessInfo.processInfo.systemUptime - started) * 1000
+            print("DENSE_MARKDOWN_CANVAS wraps=\(wraps) configure_draw_scroll_ms=\(elapsed)")
+            canvas.insertText("Y", replacementRange: NSRange(location: 2, length: 1))
+            XCTAssertTrue(document.string().hasPrefix("# Y\n"))
+            canvas.undoManager?.undo()
+            XCTAssertTrue(document.string().hasPrefix("# x\n"))
+            // Native input can deliver several edits before SwiftUI configures again.
+            for character in "NVE_SAVE_CHECK" {
+                canvas.insertText(String(character), replacementRange: NSRange(location: NSNotFound, length: 0))
+            }
+            XCTAssertTrue(document.string().hasPrefix("# xNVE_SAVE_CHECK\n"))
+            XCTAssertEqual(canvas.selectedRange(), NSRange(location: 17, length: 0))
+            XCTAssertTrue(canvas.accessibilityHelp()?.contains("Line 1, column 18") == true)
+            canvas.insertText("😀", replacementRange: NSRange(location: NSNotFound, length: 0))
+            canvas.insertText("é", replacementRange: NSRange(location: NSNotFound, length: 0))
+            XCTAssertTrue(document.string().hasPrefix("# xNVE_SAVE_CHECK😀é\n"))
+            XCTAssertTrue(canvas.isAccessibilityElement())
+            XCTAssertEqual(canvas.accessibilityRole(), .textArea)
+            XCTAssertTrue(canvas.acceptsFirstResponder)
+        }
+    }
+
+    func testScrollContainerDoesNotRetainMeasurementsFromAnUnallocatedWidth() throws {
+        let text = String(repeating: "Markdown text ", count: 12)
+        let document = FileBackedTextDocument(content: String(repeating: text + "\n", count: 2_000))
+        let documentID = UUID()
+        let scrollView = VirtualEditorScrollView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        let canvas = try XCTUnwrap(scrollView.documentView as? VirtualEditorCanvas)
+        for width: CGFloat in [800, 440, 1000] {
+            scrollView.setFrameSize(NSSize(width: width, height: 600))
+            scrollView.configure(
+                document: document,
+                documentID: documentID,
+                resourceID: "dense-markdown-regression",
+                displayName: "Architecture.md",
+                contentRevision: 0,
+                externalContentRevision: 0,
+                caret: 0,
+                language: "markdown",
+                colorScheme: .light,
+                fontSize: 14,
+                fontName: "",
+                lineHeightMultiplier: 1,
+                isReadOnly: false,
+                translucentBackgroundEnabled: false,
+                showsLineNumbers: true,
+                highlightCurrentLine: false,
+                lineWrapEnabled: true,
+                showsInvisibleCharacters: false,
+                showsIndentationGuides: false,
+                showsScopeGuides: false,
+                highlightsScopeBackground: false,
+                highlightsMatchingBrackets: false,
+                autoIndentEnabled: true,
+                autoCloseBracketsEnabled: false,
+                isSplitPaneResizeInProgress: false,
+                onFontSizeChange: nil,
+                onTextMutation: { mutation in
+                    do {
+                        if let viewport = mutation.viewport {
+                            try document.replace(in: viewport, utf16Range: mutation.range, with: mutation.replacement)
+                        } else {
+                            try document.replace(utf16Range: mutation.range, with: mutation.replacement)
+                        }
+                        return true
+                    } catch { return false }
+                }
+            )
+            let font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+            let gutter = max(44, CGFloat(document.lineCount.description.count) * 14 * 0.7 + 18)
+            let fragments = VirtualEditorVisualLayout.fragments(
+                for: NSAttributedString(string: text, attributes: [.font: font]), lineStartUTF16: 0,
+                width: scrollView.contentView.bounds.width - gutter - 16, wraps: true)
+            let rowHeight = font.ascender - font.descender + font.leading + 4
+            let expectedHeight = CGFloat(document.lineCount * fragments.count) * rowHeight + 16
+            XCTAssertLessThan(canvas.logicalHeight, expectedHeight * 1.05)
+            XCTAssertGreaterThan(canvas.logicalHeight, expectedHeight * 0.95)
+            let y = max(0, canvas.logicalHeight - 600) * 0.5
+            scrollView.contentView.scroll(to: NSPoint(x: 0, y: y))
+            XCTAssertGreaterThan(canvas.viewportLineOrigin, 0)
+            let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(width),
+                pixelsHigh: 600, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+            let context = try XCTUnwrap(NSGraphicsContext(bitmapImageRep: bitmap))
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = context
+            let visible = scrollView.contentView.bounds
+            context.cgContext.translateBy(x: 0, y: -visible.minY)
+            canvas.draw(visible)
+            NSGraphicsContext.restoreGraphicsState()
+            var textPixels = 0
+            for pixelY in stride(from: 0, to: 600, by: 4) {
+                for pixelX in stride(from: 80, to: Int(width), by: 4) {
+                    if let color = bitmap.colorAt(x: pixelX, y: pixelY)?.usingColorSpace(.deviceRGB),
+                       color.alphaComponent > 0.5,
+                       min(color.redComponent, color.greenComponent, color.blueComponent) < 0.8 {
+                        textPixels += 1
+                    }
+                }
+            }
+            XCTAssertGreaterThan(textPixels, 100, "A scroll jump must render visible text, not a blank viewport")
+        }
+    }
+
     func testAccessibilityContextIncludesDocumentPositionEditabilityAndSelection() {
         let context = VirtualEditorAccessibilityContext(
             documentName: "Notes.md",

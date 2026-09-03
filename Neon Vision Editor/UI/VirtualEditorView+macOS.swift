@@ -910,6 +910,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var viewportSize: CGSize = .zero {
         didSet {
             guard viewportSize != oldValue else { return }
+            if viewportSize.width != oldValue.width { hasValidVisualMetrics = false }
             visualFragmentCache.removeAll(keepingCapacity: true)
             visualRowsSnapshot = nil
             invalidateIntrinsicContentSize()
@@ -919,6 +920,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     var lastScrollY: CGFloat = -1
     var lastReloadAnchorLine = -1
     private var estimatedRowsPerLogicalLine: CGFloat = 1
+    private var hasValidVisualMetrics = false
     private var configuredContentRevision: Int?
     private var configuredExternalContentRevision: Int?
     private let viewportMaximumByteCount = 256_000
@@ -950,6 +952,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     func recalculateVisualMetrics() {
+        // A one-point fallback width is not a measurement of this viewport.
+        // Wait for allocation, and never blend estimates from different widths.
+        guard viewportSize.width >= minimumUsableViewportWidth else { return }
         guard lineWrapEnabled, !viewportText.isEmpty else {
             estimatedRowsPerLogicalLine = 1
             contentWidth = max(viewportSize.width, 1)
@@ -960,12 +965,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             measuredRowsPerLogicalLine()
         }
         let observed = measurement.rowsPerLogicalLine
-        if abs(observed - estimatedRowsPerLogicalLine) > 0.05 {
+        if !hasValidVisualMetrics || abs(observed - estimatedRowsPerLogicalLine) > 0.05 {
             estimatedRowsPerLogicalLine = VirtualEditorVisualRowIndex.scrollExtentEstimate(
                 previous: estimatedRowsPerLogicalLine,
                 observed: observed,
-                measurementIsComplete: measurement.isComplete
+                measurementIsComplete: measurement.isComplete || !hasValidVisualMetrics
             )
+            hasValidVisualMetrics = true
             visualRowsSnapshot = nil
         }
         contentWidth = max(viewportSize.width, 1)
@@ -1003,6 +1009,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     override var acceptsFirstResponder: Bool { true }
     override var undoManager: UndoManager? { documentUndoManager }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func isAccessibilityElement() -> Bool { true }
     override func accessibilityRole() -> NSAccessibility.Role? { .textArea }
     override func accessibilityLabel() -> String? { accessibilityContext.label }
     override func accessibilityValue() -> Any? { viewportText }
@@ -1252,6 +1259,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         }
         guard key != lastConfigurationKey else { return }
         lastConfigurationKey = key
+        hasValidVisualMetrics = false
         configuredContentRevision = contentRevision
         configuredExternalContentRevision = externalContentRevision
         viewport = nil
@@ -1280,10 +1288,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        if let documentID {
-            EditorPerformanceMonitor.shared.markTabSwitchFirstDraw(tabID: documentID)
-        }
         guard let context = NSGraphicsContext.current?.cgContext else { return }
+        defer {
+            if let documentID {
+                EditorPerformanceMonitor.shared.markTabSwitchFirstDraw(tabID: documentID)
+            }
+        }
         context.saveGState()
         context.clip(to: dirtyRect)
         defer { context.restoreGState() }
@@ -1447,7 +1457,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             String(configuredExternalContentRevision ?? 0),
             String(viewportLineOrigin),
             String(Int((availableWidth * 2).rounded())),
-            String(Int((bounds.maxY * 2).rounded())),
+            String(Int(((enclosingScrollView?.contentView.bounds.maxY ?? viewportSize.height) * 2).rounded())),
             String(Int((lineHeight * 100).rounded()))
         ].joined(separator: "|")
         if let visualRowsSnapshot, visualRowsSnapshot.key == snapshotKey {
@@ -1461,7 +1471,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         )
         for viewportLine in viewportLines {
             let estimatedBaseline = baseline
-            let viewportMaxY = bounds.maxY + lineHeight * 2
+            let viewportMaxY = (enclosingScrollView?.contentView.bounds.maxY ?? viewportSize.height) + lineHeight * 2
             if estimatedBaseline > viewportMaxY {
                 break
             }
@@ -1971,6 +1981,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             absoluteCaret = location + value.utf16.count
             selection = NSRange(location: absoluteCaret, length: 0)
             selectionAnchor = nil
+            reloadViewport(anchorLine: lineForAbsoluteOffset(absoluteCaret), maximumByteCount: editRefreshMaximumByteCount)
             publishCaret()
             publishTextChange()
             return true
@@ -1990,10 +2001,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             range: NSRange(location: absoluteRange.location, length: value.utf16.count),
             inverseReplacement: value
         )
-        absoluteCaret = selection.location + value.utf16.count
+        absoluteCaret = absoluteRange.location + value.utf16.count
         selection = NSRange(location: absoluteCaret, length: 0)
         selectionAnchor = nil
-        _ = document
+        // The next native key event can arrive before SwiftUI configures again.
+        // Refresh byte/UTF-16 coordinates before publishing or accepting input.
+        reloadViewport(anchorLine: lineForAbsoluteOffset(absoluteRange.location), maximumByteCount: editRefreshMaximumByteCount)
         publishCaret()
         publishTextChange()
         return true
@@ -2079,6 +2092,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         absoluteCaret = location + replacement.utf16.count
         selection = NSRange(location: absoluteCaret, length: 0)
         selectionAnchor = nil
+        reloadViewport(anchorLine: lineForAbsoluteOffset(location), maximumByteCount: editRefreshMaximumByteCount)
         publishCaret()
         publishTextChange()
     }
@@ -2345,7 +2359,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private func reloadViewport(anchorLine: Int, maximumByteCount: Int? = nil) {
         guard let document, let next = try? document.viewport(
             aroundLine: max(0, anchorLine),
-            maximumByteCount: maximumByteCount ?? viewportMaximumByteCount
+            maximumByteCount: maximumByteCount ?? viewportMaximumByteCount,
+            maximumLineCount: 512
         ) else { return }
         if let documentID {
             EditorPerformanceMonitor.shared.markViewportLoaded(tabID: documentID)

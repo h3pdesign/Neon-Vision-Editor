@@ -330,6 +330,7 @@ private struct EditorFileLoadResult: Sendable {
     let byteCount: Int
     let isPartialPreview: Bool
     let fileBackedEncoding: TextEncodingDescriptor?
+    let fileBackedDocument: FileBackedTextDocument?
 }
 
 private struct EditorFileSavePayload: Sendable {
@@ -3012,7 +3013,8 @@ class EditorViewModel {
                     isLargeCandidate: false,
                     byteCount: totalByteCount,
                     isPartialPreview: true,
-                    fileBackedEncoding: nil
+                    fileBackedEncoding: nil,
+                    fileBackedDocument: nil
                 )
             }
             let boundedPreviewLimit = EditorLoadHelper.boundedPreviewLimit(
@@ -3023,7 +3025,7 @@ class EditorViewModel {
 
             if isLargeCandidate, !isPartialPreview {
                 let prefix = try EditorLoadHelper.partialFileData(from: url, maximumByteCount: 64_000)
-                let encoding = preferredEncoding ?? FileBackedTextDocument.boundedEncoding(from: prefix)
+                let encoding = preferredEncoding ?? FileBackedTextDocument.boundedEncoding(from: prefix, allowsIncompleteUTF8Sequence: totalByteCount > prefix.count)
                 if let encoding,
                    Self.isFileBackedEligible(
                        url: url,
@@ -3043,7 +3045,8 @@ class EditorViewModel {
                         isLargeCandidate: true,
                         byteCount: totalByteCount,
                         isPartialPreview: false,
-                        fileBackedEncoding: encoding
+                        fileBackedEncoding: encoding,
+                        fileBackedDocument: try Self.prepareFileBackedDocument(from: url, encoding: encoding)
                     )
                 }
                 let preview = String(decoding: prefix, as: UTF8.self)
@@ -3059,7 +3062,8 @@ class EditorViewModel {
                     isLargeCandidate: true,
                     byteCount: totalByteCount,
                     isPartialPreview: true,
-                    fileBackedEncoding: nil
+                    fileBackedEncoding: nil,
+                    fileBackedDocument: nil
                 )
             }
 
@@ -3105,6 +3109,16 @@ class EditorViewModel {
                 ? nil
                 : Self.contentFingerprintValue(content)
 
+            // Also handle a file that grew past the threshold after openFile's
+            // metadata check. Preparation remains inside this detached loader.
+            let fileBackedDocument: FileBackedTextDocument?
+            if max(totalByteCount, data.count) >= EditorLoadHelper.largeFileCandidateByteThreshold,
+               Self.isFileBackedEligible(url: url, encoding: raw.encoding, isRemote: false, isPartialPreview: isPartialPreview) {
+                fileBackedDocument = try? Self.prepareFileBackedDocument(from: url, encoding: nil)
+            } else {
+                fileBackedDocument = nil
+            }
+
             return EditorFileLoadResult(
                 content: content,
                 fileEncodingRawValue: raw.encodingRawValue,
@@ -3117,9 +3131,22 @@ class EditorViewModel {
                 isLargeCandidate: isPartialPreview || data.count >= EditorLoadHelper.largeFileCandidateByteThreshold,
                 byteCount: max(totalByteCount, data.count),
                 isPartialPreview: isPartialPreview,
-                fileBackedEncoding: nil
+                fileBackedEncoding: nil,
+                fileBackedDocument: fileBackedDocument
             )
         }.value
+    }
+
+    private nonisolated static func prepareFileBackedDocument(
+        from url: URL,
+        encoding: TextEncodingDescriptor?
+    ) throws -> FileBackedTextDocument {
+        let document = try encoding.map { try FileBackedTextDocument(url: url, knownEncoding: $0) }
+            ?? FileBackedTextDocument(url: url)
+        // Finish before transferring ownership to the main actor. The editor's
+        // synchronous viewport callbacks must never extend the whole-file index.
+        try document.prepareViewportIndex()
+        return document
     }
 
     nonisolated static func normalizedSaveText(
@@ -3175,44 +3202,7 @@ class EditorViewModel {
         result: EditorFileLoadResult,
         isExternalRefresh: Bool = false
     ) async {
-    cancelPendingLanguageDetection(for: tabID)
-
-    let loadedTab = tabs.first(where: { $0.id == tabID })
-    let fileBackedURL: URL? = {
-        guard Self.isFileBackedEligible(
-            url: loadedTab?.fileURL,
-            encoding: result.fileEncoding,
-            isRemote: loadedTab?.isRemoteDocument ?? false,
-            isPartialPreview: result.isPartialPreview
-        ),
-        result.byteCount >= EditorLoadHelper.largeFileCandidateByteThreshold,
-        let fileURL = loadedTab?.fileURL else { return nil }
-        return fileURL
-    }()
-
-    let fileBackedDocument: FileBackedTextDocument? = {
-        guard let fileBackedURL else { return nil }
-        do {
-            let document: FileBackedTextDocument
-            if let fileBackedEncoding = result.fileBackedEncoding {
-                document = try FileBackedTextDocument(url: fileBackedURL, knownEncoding: fileBackedEncoding)
-            } else {
-                document = try FileBackedTextDocument(url: fileBackedURL)
-            }
-            // Complete indexing before publishing this document to the virtual
-            // editor. Its synchronous viewport callbacks now only read a bounded
-            // window and never grow the index on the scrolling path.
-            try document.prepareViewportIndex()
-            return document
-        } catch {
-            return nil
-        }
-    }()
-
-    if result.fileBackedEncoding != nil, fileBackedDocument == nil {
-        await markTabLoadFailed(tabID: tabID)
-        return
-    }
+        cancelPendingLanguageDetection(for: tabID)
 
         _ = await dispatchTabCommandSerialized(
             .applyLoadedTabState(
@@ -3229,7 +3219,7 @@ class EditorViewModel {
                 isPartialPreview: result.isPartialPreview,
                 byteCount: result.byteCount,
                 isExternalRefresh: isExternalRefresh,
-                fileBackedDocument: fileBackedDocument
+                fileBackedDocument: result.fileBackedDocument
             )
         )
         EditorPerformanceMonitor.shared.markLoadedTabStateApplied(tabID: tabID)

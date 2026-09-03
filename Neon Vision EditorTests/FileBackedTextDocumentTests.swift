@@ -15,6 +15,83 @@ final class FileBackedTextDocumentTests: XCTestCase {
         try? FileManager.default.removeItem(at: directory)
     }
 
+    func testBoundedEncodingProbeAcceptsOnlyValidTruncatedUTF8() {
+        for scalar in ["é", "ह", "😀"] {
+            let bytes = Array(scalar.utf8)
+            for length in 1..<bytes.count {
+                let prefix = Data("Markdown ".utf8) + Data(bytes.prefix(length))
+                XCTAssertEqual(FileBackedTextDocument.boundedEncoding(from: prefix,
+                    allowsIncompleteUTF8Sequence: true), .utf8)
+                XCTAssertNotEqual(FileBackedTextDocument.boundedEncoding(from: prefix), .utf8)
+            }
+        }
+        for tail in [[UInt8(0xFF)], [0x80], [0xE0, 0x80], [0xED, 0xA0], [0xF4, 0x90], [0xF0, 0x28]] {
+            XCTAssertNotEqual(FileBackedTextDocument.boundedEncoding(from: Data("abc".utf8) + Data(tail),
+                allowsIncompleteUTF8Sequence: true), .utf8)
+        }
+    }
+
+    func testViewportByteBoundariesAndUTF16EditsPreserveUnicode() throws {
+        let source = "abc😀हé" + String(repeating: "x", count: 100) + "\nnext"
+        for identifier in [TextEncodingDescriptor.Identifier.utf8, .utf8WithBOM,
+                           .utf16LittleEndianWithBOM, .utf16BigEndianWithBOM] {
+            let encoding = TextEncodingDescriptor(identifier: identifier)
+            let url = directory.appendingPathComponent("boundary-\(identifier).md")
+            try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
+            for lazy in [true, false] {
+                let document = try lazy ? FileBackedTextDocument(url: url, knownEncoding: encoding)
+                    : FileBackedTextDocument(content: source, encoding: encoding)
+                try document.prepareViewportIndex()
+                for budget in 8...24 {
+                    let viewport = try document.viewport(aroundLine: 0, maximumByteCount: budget)
+                    XCTAssertTrue(source.hasPrefix(viewport.text))
+                    XCTAssertLessThanOrEqual(try XCTUnwrap(encoding.encodedData(for: viewport.text)).count, budget)
+                }
+                try document.replace(utf16Range: NSRange(location: 5, length: 1), with: "Y")
+                XCTAssertEqual(document.string(), source.replacingOccurrences(of: "ह", with: "Y"))
+                XCTAssertEqual(document.utf16Length, source.utf16.count)
+                try document.replace(utf16Range: NSRange(location: 6, length: 1), with: "Z")
+                XCTAssertEqual(document.string(), source.replacingOccurrences(of: "हé", with: "YZ"))
+            }
+        }
+    }
+
+    func testPreparedDenseMarkdownIndexAndLineBoundedViewportsRemainExactAfterEditing() throws {
+        let source = String(repeating: "# x\n", count: 220_000)
+        let url = directory.appendingPathComponent("dense.md")
+        try source.write(to: url, atomically: true, encoding: .utf8)
+        let document = try FileBackedTextDocument(url: url, knownEncoding: .utf8)
+        try document.prepareViewportIndex()
+        XCTAssertEqual(document.lineCount, 220_001)
+        for edited in [false, true] {
+            if edited { try document.replace(utf16Range: NSRange(location: 440_002, length: 1), with: "Y") }
+            for anchor in [0, 110_000, 219_999, 220_000, 0] {
+                let viewport = try document.viewport(aroundLine: anchor, maximumByteCount: 256_000, maximumLineCount: 512)
+                XCTAssertTrue(viewport.lineRange.contains(anchor))
+                XCTAssertLessThanOrEqual(viewport.lineRange.count, 512)
+                XCTAssertLessThanOrEqual(viewport.text.utf8.count, 2048)
+                XCTAssertEqual(viewport.startUTF16Offset, viewport.startByteOffset)
+            }
+        }
+        XCTAssertTrue(try document.viewport(aroundLine: 110_000, maximumByteCount: 64).text.contains("Y"))
+        XCTAssertThrowsError(try document.viewport(aroundLine: 0, maximumByteCount: 10, maximumLineCount: 0))
+    }
+
+    func testFailedSaveAsPreservesOriginalAndUnsavedEdits() throws {
+        let url = directory.appendingPathComponent("source.md")
+        try "original\n".write(to: url, atomically: true, encoding: .utf8)
+        let document = try FileBackedTextDocument(url: url)
+        try document.replace(utf16Range: NSRange(location: 0, length: 8), with: "edited")
+        let unavailable = directory.appendingPathComponent("missing/target.md")
+        XCTAssertThrowsError(try document.saveAtomically(to: unavailable))
+        XCTAssertTrue(document.isDirty)
+        XCTAssertEqual(document.string(), "edited\n")
+        XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "original\n")
+        try document.saveAtomically()
+        XCTAssertFalse(document.isDirty)
+        XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "edited\n")
+    }
+
     func testIndexesAndReadsOnlyRequestedLinesFromUTF8File() throws {
         let url = directory.appendingPathComponent("large.txt")
         try "zero\none\ntwo\nthree\n".write(to: url, atomically: true, encoding: .utf8)
@@ -215,8 +292,9 @@ final class FileBackedTextDocumentTests: XCTestCase {
             XCTAssertEqual(error as? FileBackedTextDocument.Error, .externalConflict)
         }
 
-        try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
-        try document.saveAtomically()
+        // Restoring bytes does not restore the original modification date.
+        // Overwriting a file changed externally must remain an explicit choice.
+        try document.saveAtomically(allowExternalOverwrite: true)
         let saved = try Data(contentsOf: url)
         XCTAssertEqual(Array(saved.prefix(2)), [0xFF, 0xFE])
         XCTAssertTrue(encoding.decode(saved)?.contains("utf16-20000 🚀") == true)
@@ -266,6 +344,37 @@ final class FileBackedTextDocumentTests: XCTestCase {
                 )
             } catch {
                 XCTFail("bounded viewport failed for \(encoding.identifier.rawValue): \(error)")
+            }
+        }
+    }
+
+    func testSegmentedIndexPreservesCoordinatesAcrossSupportedEncodings() throws {
+        for identifier in TextEncodingDescriptor.Identifier.allCases {
+            let encoding = TextEncodingDescriptor(identifier: identifier)
+            let isUnicode = identifier.rawValue.hasPrefix("utf")
+            // Both halves of a UTF-16 unit can contain 0x0A without being LF.
+            let suffix = isUnicode ? "😀 ਁ䄊" : (identifier == .ascii ? "ASCII" : "é")
+            let line = "## Markdown **bold** `code` \(suffix)\r\n"
+            // CP1251 has Cyrillic rather than Latin accented letters.
+            let encodedLine = identifier == .windowsCP1251
+                ? line.replacingOccurrences(of: "é", with: "я") : line
+            let source = String(repeating: encodedLine, count: 20_000) + "tail"
+            let url = directory.appendingPathComponent("index-\(identifier.rawValue).md")
+            try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
+            let document = try FileBackedTextDocument(url: url, knownEncoding: encoding)
+            XCTAssertFalse(document.isViewportIndexReady, identifier.rawValue)
+            try document.prepareViewportIndex()
+            XCTAssertEqual(document.utf16Length, source.utf16.count, identifier.rawValue)
+            let bomBytes = try XCTUnwrap(encoding.encodedData(for: "")).count
+            let lineBytes = try XCTUnwrap(encoding.encodedData(for: encodedLine)).count - bomBytes
+            for anchor in [0, 8_000, 19_999, 20_000] {
+                let viewport = try document.viewport(aroundLine: anchor, maximumByteCount: lineBytes * 10 + (anchor == 0 ? bomBytes : 0))
+                let expectedOffset = encodedLine.utf16.count * viewport.lineRange.lowerBound
+                XCTAssertEqual(viewport.startUTF16Offset, expectedOffset, identifier.rawValue)
+                XCTAssertEqual(viewport.text, (source as NSString).substring(with: NSRange(location: expectedOffset, length: viewport.text.utf16.count)), identifier.rawValue)
+                let expectedPrefix = String(repeating: encodedLine, count: viewport.lineRange.lowerBound)
+                let expectedBytes = try XCTUnwrap(encoding.encodedData(for: expectedPrefix)).count
+                XCTAssertEqual(viewport.startByteOffset, expectedOffset == 0 ? 0 : expectedBytes, identifier.rawValue)
             }
         }
     }

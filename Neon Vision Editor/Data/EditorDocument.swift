@@ -33,11 +33,15 @@ protocol EditorDocument: AnyObject {
     func replace(utf16Range: NSRange, with replacement: String) throws
     func replaceAll(with text: String) throws
     func markClean()
-    func viewport(aroundLine line: Int, maximumByteCount: Int) throws -> EditorDocumentViewport
+    func viewport(aroundLine line: Int, maximumByteCount: Int, maximumLineCount: Int) throws -> EditorDocumentViewport
     func replace(in viewport: EditorDocumentViewport, utf16Range: NSRange, with replacement: String) throws
 }
 
 extension EditorDocument {
+    func viewport(aroundLine line: Int, maximumByteCount: Int) throws -> EditorDocumentViewport {
+        try viewport(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: .max)
+    }
+
     var supportsBoundedWindows: Bool { true }
     var lineCount: Int { 1 }
 }

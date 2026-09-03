@@ -1967,7 +1967,9 @@ struct CustomTextEditor: UIViewRepresentable {
         )
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         configurePointerSelectionBehavior(textView)
+#if os(iOS)
         textView.installPencilInputIfNeeded()
+#endif
         context.coordinator.installFontSizePinchRecognizer(on: textView)
         let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
         applyWrapMode(shouldWrapText, textView: textView, preserveOffset: false)

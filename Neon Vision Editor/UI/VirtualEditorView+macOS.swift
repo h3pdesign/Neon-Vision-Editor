@@ -903,7 +903,10 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var visualFragmentCache = VirtualEditorVisualFragmentCache()
     private var visualRowsSnapshot: (key: String, rows: [VisualRow])?
     private var syntaxSpansByLine: [Int: [VirtualEditorSyntaxSpan]] = [:]
-    private var syntaxHighlightTask: Task<Void, Never>?
+    private(set) var syntaxHighlightTask: Task<Void, Never>?
+    private var htmlContextDocument: ObjectIdentifier?
+    private var htmlContextGeneration: UInt64?
+    private var htmlContexts: [Int: HTMLSyntaxState] = [:]
     private var syntaxHighlightGeneration = 0
     private var visibleColors: [NSRange: NSColor] = [:]
     private var colorPickerPopover: NSPopover?
@@ -1510,7 +1513,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         return rows
     }
 
-    private func attributedLine(_ line: String, localLine: Int) -> NSAttributedString {
+    func attributedLine(_ line: String, localLine: Int) -> NSAttributedString {
         let base = NSMutableAttributedString(string: line, attributes: [
             .font: editorFont,
             .foregroundColor: NSColor(resolvedEditorTheme.text)
@@ -2419,6 +2422,43 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         return max(viewportSize.width, gutterWidth + 16 + maximum)
     }
 
+    /// Read immutable chunks on the document's owning actor, then scan off actor.
+    /// Cached viewport boundaries avoid rescanning a prefix when scrolling back.
+    private func htmlContext(before target: EditorDocumentViewport, colors: SyntaxColors) async throws -> HTMLSyntaxState {
+        guard let document else { return HTMLSyntaxState() }
+        let identity = ObjectIdentifier(document)
+        if htmlContextDocument != identity || htmlContextGeneration != target.generation {
+            htmlContexts = [0: HTMLSyntaxState()]
+            htmlContextDocument = identity
+            htmlContextGeneration = target.generation
+        }
+        let start = htmlContexts.keys.filter { $0 <= target.startByteOffset }.max() ?? 0
+        var state = htmlContexts[start] ?? HTMLSyntaxState()
+        var offset = start
+        var pending = ""
+        while offset < target.startByteOffset {
+            try Task.checkCancellation()
+            let chunk = try document.textChunk(startByteOffset: offset, maximumByteCount: min(64 * 1024, target.startByteOffset - offset))
+            guard chunk.byteCount > 0 else { throw FileBackedTextDocument.Error.invalidRange }
+            offset += chunk.byteCount
+            let source = pending + chunk.text
+            let initialState = state
+            let isFinal = offset == target.startByteOffset
+            let worker = Task.detached(priority: .userInitiated) {
+                let text = source as NSString
+                let length = isFinal ? text.length : HTMLSyntaxHighlighter.safePrefixLength(text)
+                var nextState = initialState
+                _ = HTMLSyntaxHighlighter.ranges(in: text, range: NSRange(location: 0, length: length), state: &nextState, colors: colors, emitColors: false)
+                return (nextState, text.substring(from: length))
+            }
+            (state, pending) = await worker.value
+            try Task.checkCancellation()
+        }
+        if htmlContexts.count >= 128 { htmlContexts = [0: HTMLSyntaxState()] }
+        htmlContexts[target.startByteOffset] = state
+        return state
+    }
+
     private func scheduleSyntaxHighlighting() {
         syntaxHighlightTask?.cancel()
         syntaxHighlightGeneration &+= 1
@@ -2426,11 +2466,45 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let lines = viewportLines
         let syntaxLanguage = language
         let syntaxTheme = syntaxThemeKey(for: scheme)
-        let patterns = getSyntaxPatterns(for: syntaxLanguage, colors: resolvedSyntaxColors)
+        let colors = resolvedSyntaxColors
+        let patterns = getSyntaxPatterns(for: syntaxLanguage, colors: colors)
+        let htmlText = viewportText
+        let htmlViewport = isHTMLLikeSyntaxLanguage(syntaxLanguage) ? viewport : nil
         syntaxHighlightTask = Task { [weak self] in
+            let initialHTMLState: HTMLSyntaxState?
+            if let htmlViewport {
+                do { initialHTMLState = try await self?.htmlContext(before: htmlViewport, colors: colors) }
+                catch { return }
+            } else { initialHTMLState = nil }
+            guard !Task.isCancelled else { return }
             let worker = Task.detached(priority: .userInitiated) {
                 var result: [Int: [VirtualEditorSyntaxSpan]] = [:]
                 result.reserveCapacity(lines.count)
+                if var state = initialHTMLState {
+                    let text = htmlText as NSString
+                    let ranges = HTMLSyntaxHighlighter.ranges(in: text, range: NSRange(location: 0, length: text.length), state: &state, colors: colors)
+                    for (range, color) in ranges {
+                        guard !Task.isCancelled else { return result }
+                        var low = 0
+                        var high = lines.count
+                        while low < high {
+                            let middle = (low + high) / 2
+                            if lines[middle].startUTF16 <= range.location { low = middle + 1 }
+                            else { high = middle }
+                        }
+                        var index = max(0, low - 1)
+                        while index < lines.count && lines[index].startUTF16 < NSMaxRange(range) {
+                            let line = lines[index]
+                            let overlap = NSIntersectionRange(range, NSRange(location: line.startUTF16, length: line.text.utf16.count))
+                            if overlap.length > 0 {
+                                result[line.localLine, default: []].append(VirtualEditorSyntaxSpan(
+                                    range: NSRange(location: overlap.location - line.startUTF16, length: overlap.length), color: color))
+                            }
+                            index += 1
+                        }
+                    }
+                    return result
+                }
                 for line in lines {
                     guard !Task.isCancelled else { return result }
                     let cacheKey = VirtualEditorSyntaxLineCacheKey(

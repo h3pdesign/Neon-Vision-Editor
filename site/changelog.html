@@ -118,7 +118,23 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.5.6</h2><span class="date">29 August 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.6.0</h2><span class="date">3 September 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Prepares large-file indexes in the background and limits rendering to visible rows and bounded document windows.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Shows color swatches for supported HEX literals and preserves their format when editing colors.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Coalesces recent-file and performance-history persistence so repeated editor actions do not queue obsolete preference writes.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents blank scrolling after editor-width changes and preserves forward content in bounded viewports.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Refreshes edit coordinates before consecutive keystrokes, preserving typed text and accurate caret positions.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps independent document views valid until the underlying content changes.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Uses exact document positions for navigation across uneven line lengths and offscreen accessibility reporting.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves UTF-8 and UTF-16 boundaries, byte-order marks, surrogate pairs, and precise line counts.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Saves user-selected files through the system replacement directory while retaining atomic replacement and external-change protection.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Avoids full-document work for hidden editor confirmation messages and restores accessibility exposure of the source canvas.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.5.6</h2><span class="date">29 August 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Uses icon-only mobile toolbar presets and language-specific symbols or initials for the current document language.</p></div>
           <div class="item"><span class="badge new">New</span><p>Adds a horizontally scrollable mobile Markdown formatting row while keeping the collapsed control in a compact opaque pill over a transparent surrounding area.</p></div>

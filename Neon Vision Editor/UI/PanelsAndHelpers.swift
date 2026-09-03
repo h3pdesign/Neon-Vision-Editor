@@ -2720,15 +2720,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.5.6",
-            subtitle: "Release highlights for v1.5.6.",
+            title: "What’s New in v1.6.0",
+            subtitle: "Release highlights for v1.6.0.",
             bullets: [
-                "Accessible Controls: Makes the iPhone and iPad editor toolbar more compact and language-aware without hiding full menu names or accessibility…",
-                "Workflow Refinements: Restores predictable Markdown list continuation and native text-selection commands across mobile and macOS editors.",
-                "Performance Updates: Keeps collapsed and expanded Markdown formatting controls readable without wasting editor space or covering actions.",
-                "Usability Updates: Uses icon-only mobile toolbar presets and language-specific symbols or initials for the current document language.",
-                "Editor Improvements: Adds a horizontally scrollable mobile Markdown formatting row while keeping the collapsed control in a compact opaque pill…",
-                "Workflow Refinements: Treats explicit language choices as tab-level overrides so automatic detection does not immediately replace the user's…"
+                "Editor Improvements: Opens and edits large Markdown and source files with less blocking work and bounded viewport rendering.",
+                "Workflow Refinements: Keeps scrolling, rapid typing, Unicode edits, and saving reliable in large documents.",
+                "Performance Updates: Adds native macOS HEX color previews and a color picker directly in the source editor.",
+                "Usability Updates: Prepares large-file indexes in the background and limits rendering to visible rows and bounded document windows.",
+                "Editor Improvements: Shows color swatches for supported HEX literals and preserves their format when editing colors.",
+                "Editor Performance: Coalesces recent-file and performance-history persistence so repeated editor actions do not queue obsolete preference writes."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

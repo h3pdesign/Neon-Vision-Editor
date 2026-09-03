@@ -3,6 +3,152 @@ import AppKit
 import CoreText
 import SwiftUI
 
+struct VirtualEditorHexColorLiteral: Equatable {
+    let range: NSRange
+    let token: String
+    let color: NSColor
+}
+
+enum VirtualEditorHexColorPreview {
+    private static let supportedLanguages: Set<String> = ["css", "html", "xml", "svg"]
+    private static let literalRegex = try! NSRegularExpression(pattern: "#[0-9A-Fa-f]{3,8}")
+
+    static func isSupported(language: String) -> Bool {
+        supportedLanguages.contains(language.lowercased())
+    }
+
+    static func literals(in line: String, absoluteStart: Int) -> [VirtualEditorHexColorLiteral] {
+        let source = line as NSString
+        let matches = literalRegex.matches(in: line, range: NSRange(location: 0, length: source.length))
+        return matches.compactMap { match in
+            let token = source.substring(with: match.range)
+            let digitCount = token.dropFirst().utf16.count
+            guard [3, 4, 6, 8].contains(digitCount),
+                  isBoundary(source, before: match.range.location),
+                  isBoundary(source, after: NSMaxRange(match.range)),
+                  let color = color(for: token) else { return nil }
+            return VirtualEditorHexColorLiteral(
+                range: NSRange(location: absoluteStart + match.range.location, length: match.range.length),
+                token: token,
+                color: color
+            )
+        }
+    }
+
+    static func replacement(for color: NSColor, preserving token: String) -> String? {
+        guard let rgb = color.usingColorSpace(.deviceRGB) else { return nil }
+        let red = Int((rgb.redComponent * 255).rounded())
+        let green = Int((rgb.greenComponent * 255).rounded())
+        let blue = Int((rgb.blueComponent * 255).rounded())
+        let alpha = Int((rgb.alphaComponent * 255).rounded())
+        let digitCount = token.dropFirst().utf16.count
+        let includesAlpha = [4, 8].contains(digitCount)
+        let full = includesAlpha
+            ? String(format: "#%02X%02X%02X%02X", red, green, blue, alpha)
+            : String(format: "#%02X%02X%02X", red, green, blue)
+        if [3, 4].contains(digitCount),
+           red % 17 == 0, green % 17 == 0, blue % 17 == 0,
+           !includesAlpha || alpha % 17 == 0 {
+            let components = [red, green, blue].map { String(format: "%X", $0 / 17) }
+            return includesAlpha
+                ? "#\(components.joined())\(String(format: "%X", alpha / 17))"
+                : "#\(components.joined())"
+        }
+        return full
+    }
+
+    private static func color(for token: String) -> NSColor? {
+        let digits = Array(token.dropFirst())
+        let values: [Int]
+        switch digits.count {
+        case 3, 4:
+            values = digits.map { Int(String(repeating: String($0), count: 2), radix: 16) ?? 0 }
+        case 6, 8:
+            values = stride(from: 0, to: digits.count, by: 2).map {
+                Int(String(digits[$0..<$0 + 2]), radix: 16) ?? 0
+            }
+        default:
+            return nil
+        }
+        let alpha = values.count == 4 ? values[3] : 255
+        return NSColor(
+            calibratedRed: CGFloat(values[0]) / 255,
+            green: CGFloat(values[1]) / 255,
+            blue: CGFloat(values[2]) / 255,
+            alpha: CGFloat(alpha) / 255
+        )
+    }
+
+    private static func isBoundary(_ source: NSString, before index: Int) -> Bool {
+        guard index > 0 else { return true }
+        return !isHexDigit(source.character(at: index - 1))
+    }
+
+    private static func isBoundary(_ source: NSString, after index: Int) -> Bool {
+        guard index < source.length else { return true }
+        return !isHexDigit(source.character(at: index))
+    }
+
+    private static func isHexDigit(_ codeUnit: unichar) -> Bool {
+        switch codeUnit {
+        case 48...57, 65...70, 97...102:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+@MainActor
+private final class VirtualEditorColorPickerState {
+    var literal: VirtualEditorHexColorLiteral
+
+    init(literal: VirtualEditorHexColorLiteral) {
+        self.literal = literal
+    }
+}
+
+@MainActor
+private final class VirtualEditorColorPickerViewController: NSViewController {
+    let colorWell: NSColorWell
+    var onColorChange: ((NSColor) -> Void)?
+
+    init(color: NSColor, token: String, isReadOnly: Bool) {
+        colorWell = NSColorWell(style: .expanded)
+        super.init(nibName: nil, bundle: nil)
+        colorWell.color = color
+        colorWell.isEnabled = !isReadOnly
+        colorWell.toolTip = "Edit \(token)"
+        colorWell.setAccessibilityLabel("Color for \(token)")
+        colorWell.target = self
+        colorWell.action = #selector(colorChanged(_:))
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func loadView() {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 220))
+        let stack = NSStackView(views: [colorWell])
+        stack.orientation = .vertical
+        stack.alignment = .centerX
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
+            stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 12),
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -12),
+            colorWell.widthAnchor.constraint(equalToConstant: 256),
+            colorWell.heightAnchor.constraint(equalToConstant: 196)
+        ])
+        view = container
+    }
+
+    @objc private func colorChanged(_ sender: NSColorWell) {
+        onColorChange?(sender.color)
+    }
+}
+
 struct VirtualEditorVisualFragment {
     let absoluteStartUTF16: Int
     let lengthUTF16: Int
@@ -760,9 +906,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var syntaxHighlightTask: Task<Void, Never>?
     private var syntaxHighlightGeneration = 0
     private var visibleColors: [NSRange: NSColor] = [:]
+    private var colorPickerPopover: NSPopover?
     private var viewportSize: CGSize = .zero {
         didSet {
             guard viewportSize != oldValue else { return }
+            if viewportSize.width != oldValue.width { hasValidVisualMetrics = false }
             visualFragmentCache.removeAll(keepingCapacity: true)
             visualRowsSnapshot = nil
             invalidateIntrinsicContentSize()
@@ -772,6 +920,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     var lastScrollY: CGFloat = -1
     var lastReloadAnchorLine = -1
     private var estimatedRowsPerLogicalLine: CGFloat = 1
+    private var hasValidVisualMetrics = false
     private var configuredContentRevision: Int?
     private var configuredExternalContentRevision: Int?
     private let viewportMaximumByteCount = 256_000
@@ -779,7 +928,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private let visualMetricSampleLineLimit = 512
     private var lineHeight: CGFloat { max(1, (editorFont.ascender - editorFont.descender + editorFont.leading + 4) * lineHeightMultiplier) }
     private var editorFont: NSFont { resolvedEditorFont }
-    private var gutterWidth: CGFloat { max(44, CGFloat(max(1, document?.lineCount ?? 1).description.count) * editorFontSize * 0.7 + 18) }
+    private var gutterWidth: CGFloat {
+        let lineNumberWidth = CGFloat(max(1, document?.lineCount ?? 1).description.count) * editorFontSize * 0.7
+        let colorPreviewAllowance: CGFloat = VirtualEditorHexColorPreview.isSupported(language: language) ? 18 : 0
+        return max(44, lineNumberWidth + 18 + colorPreviewAllowance)
+    }
     var minimumUsableViewportWidth: CGFloat {
         let characterWidth = ("m" as NSString).size(withAttributes: [.font: editorFont]).width
         return gutterWidth + 16 + characterWidth * 4
@@ -799,6 +952,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     func recalculateVisualMetrics() {
+        // A one-point fallback width is not a measurement of this viewport.
+        // Wait for allocation, and never blend estimates from different widths.
+        guard viewportSize.width >= minimumUsableViewportWidth else { return }
         guard lineWrapEnabled, !viewportText.isEmpty else {
             estimatedRowsPerLogicalLine = 1
             contentWidth = max(viewportSize.width, 1)
@@ -809,12 +965,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             measuredRowsPerLogicalLine()
         }
         let observed = measurement.rowsPerLogicalLine
-        if abs(observed - estimatedRowsPerLogicalLine) > 0.05 {
+        if !hasValidVisualMetrics || abs(observed - estimatedRowsPerLogicalLine) > 0.05 {
             estimatedRowsPerLogicalLine = VirtualEditorVisualRowIndex.scrollExtentEstimate(
                 previous: estimatedRowsPerLogicalLine,
                 observed: observed,
-                measurementIsComplete: measurement.isComplete
+                measurementIsComplete: measurement.isComplete || !hasValidVisualMetrics
             )
+            hasValidVisualMetrics = true
             visualRowsSnapshot = nil
         }
         contentWidth = max(viewportSize.width, 1)
@@ -852,12 +1009,19 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     override var acceptsFirstResponder: Bool { true }
     override var undoManager: UndoManager? { documentUndoManager }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func isAccessibilityElement() -> Bool { true }
     override func accessibilityRole() -> NSAccessibility.Role? { .textArea }
     override func accessibilityLabel() -> String? { accessibilityContext.label }
     override func accessibilityValue() -> Any? { viewportText }
     override func accessibilityHelp() -> String? { accessibilityContext.help }
 
     private var accessibilityContext: VirtualEditorAccessibilityContext {
+        if (absoluteCaret < viewportLineOriginStartUTF16 || absoluteCaret > viewportLineOriginStartUTF16 + viewportText.utf16.count),
+           let position = try? document?.position(atUTF16Offset: absoluteCaret) {
+            return VirtualEditorAccessibilityContext(
+                documentName: documentDisplayName, line: position.line + 1,
+                column: position.column + 1, isReadOnly: isReadOnly, selectionLength: selection.length)
+        }
         let localCaret = max(0, min(viewportText.utf16.count, absoluteCaret - viewportLineOriginStartUTF16))
         let localLine = newlineCount(inUTF16PrefixOf: viewportText, length: localCaret)
         let lineStart = lineStarts[min(localLine, max(0, lineStarts.count - 1))]
@@ -1033,7 +1197,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         if offset >= viewportLineOriginStartUTF16 && offset <= viewportLineOriginStartUTF16 + viewportText.utf16.count {
             return viewportLineOrigin + newlineCount(inUTF16PrefixOf: viewportText, length: offset - viewportLineOriginStartUTF16)
         }
-        return min(document.lineCount - 1, max(0, Int(Double(offset) / Double(max(1, document.utf16Length)) * Double(document.lineCount))))
+        return (try? document.position(atUTF16Offset: offset).line) ?? 0
     }
 
     func configure(
@@ -1079,6 +1243,10 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         self.autoCloseBracketsEnabled = autoCloseBracketsEnabled
         self.onFontSizeChange = onFontSizeChange
         self.onTextMutation = onTextMutation
+        if isNewDocument {
+            colorPickerPopover?.close()
+            colorPickerPopover = nil
+        }
         if abs(editorFontSize - fontSize) > 0.01 {
             editorFontSize = fontSize
             pendingFontSizeDelta = 0
@@ -1097,6 +1265,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         }
         guard key != lastConfigurationKey else { return }
         lastConfigurationKey = key
+        hasValidVisualMetrics = false
         configuredContentRevision = contentRevision
         configuredExternalContentRevision = externalContentRevision
         viewport = nil
@@ -1122,13 +1291,23 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         recalculateVisualMetrics()
         setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
         needsDisplay = true
+        if isNewDocument {
+            // Publish after the representable update so the status bar reflects
+            // the selected document without mutating SwiftUI during configure.
+            Task { @MainActor [weak self] in
+                guard let self, self.documentID == documentID else { return }
+                self.publishCaret()
+            }
+        }
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        if let documentID {
-            EditorPerformanceMonitor.shared.markTabSwitchFirstDraw(tabID: documentID)
-        }
         guard let context = NSGraphicsContext.current?.cgContext else { return }
+        defer {
+            if let documentID {
+                EditorPerformanceMonitor.shared.markTabSwitchFirstDraw(tabID: documentID)
+            }
+        }
         context.saveGState()
         context.clip(to: dirtyRect)
         defer { context.restoreGState() }
@@ -1167,8 +1346,21 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             context.restoreGState()
             drawWhitespaceAndIndentationDecorations(for: row, dark: dark)
         }
+        drawHexColorSwatches(rows: rows, dirtyRect: dirtyRect)
         drawMarkedText(rows: rows, context: context)
         drawCaret(rows: rows)
+    }
+
+    private func drawHexColorSwatches(rows: [VisualRow], dirtyRect: NSRect) {
+        guard VirtualEditorHexColorPreview.isSupported(language: language) else { return }
+        for target in hexColorSwatchTargets(rows: rows) where target.rect.intersects(dirtyRect) {
+            target.literal.color.setFill()
+            let path = NSBezierPath(roundedRect: target.rect, xRadius: 2.5, yRadius: 2.5)
+            path.fill()
+            NSColor.separatorColor.withAlphaComponent(0.75).setStroke()
+            path.lineWidth = 0.75
+            path.stroke()
+        }
     }
 
     private func drawMarkedText(rows: [VisualRow], context: CGContext) {
@@ -1279,7 +1471,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             String(configuredExternalContentRevision ?? 0),
             String(viewportLineOrigin),
             String(Int((availableWidth * 2).rounded())),
-            String(Int((bounds.maxY * 2).rounded())),
+            String(Int(((enclosingScrollView?.contentView.bounds.maxY ?? viewportSize.height) * 2).rounded())),
             String(Int((lineHeight * 100).rounded()))
         ].joined(separator: "|")
         if let visualRowsSnapshot, visualRowsSnapshot.key == snapshotKey {
@@ -1293,7 +1485,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         )
         for viewportLine in viewportLines {
             let estimatedBaseline = baseline
-            let viewportMaxY = bounds.maxY + lineHeight * 2
+            let viewportMaxY = (enclosingScrollView?.contentView.bounds.maxY ?? viewportSize.height) + lineHeight * 2
             if estimatedBaseline > viewportMaxY {
                 break
             }
@@ -1517,11 +1709,81 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
         let point = convert(event.locationInWindow, from: nil)
+        if let target = hexColorSwatchTargets(rows: visualRows()).first(where: { $0.rect.contains(point) }) {
+            presentColorPicker(for: target.literal, relativeTo: target.rect)
+            return
+        }
+        colorPickerPopover?.close()
+        colorPickerPopover = nil
         absoluteCaret = documentOffset(at: point)
         selection = NSRange(location: absoluteCaret, length: 0)
         selectionAnchor = absoluteCaret
         publishCaret()
         needsDisplay = true
+    }
+
+    private struct HexColorSwatchTarget {
+        let literal: VirtualEditorHexColorLiteral
+        let rect: NSRect
+    }
+
+    private func hexColorSwatchTargets(rows: [VisualRow]) -> [HexColorSwatchTarget] {
+        guard VirtualEditorHexColorPreview.isSupported(language: language) else { return [] }
+        var targets: [HexColorSwatchTarget] = []
+        var linesWithSwatches: Set<Int> = []
+        for row in rows where row.isFirstFragment {
+            let localLine = row.logicalLine - viewportLineOrigin
+            guard viewportLines.indices.contains(localLine) else { continue }
+            let viewportLine = viewportLines[localLine]
+            let literals = VirtualEditorHexColorPreview.literals(
+                in: viewportLine.text,
+                absoluteStart: viewportLine.startUTF16
+            )
+            guard !literals.isEmpty, !linesWithSwatches.contains(row.logicalLine) else { continue }
+            let lineNumber = "\(row.logicalLine + 1)" as NSString
+            let numberWidth = lineNumber.size(withAttributes: [.font: editorFont]).width
+            let swatchSize: CGFloat = 10
+            let rect = NSRect(
+                x: max(2, gutterWidth - numberWidth - Geometry.lineNumberTrailingInset - 14),
+                y: row.baseline - lineHeight + 5,
+                width: swatchSize,
+                height: swatchSize
+            )
+            targets.append(HexColorSwatchTarget(literal: literals[0], rect: rect))
+            linesWithSwatches.insert(row.logicalLine)
+        }
+        return targets
+    }
+
+    private func presentColorPicker(for literal: VirtualEditorHexColorLiteral, relativeTo rect: NSRect) {
+        colorPickerPopover?.close()
+        let state = VirtualEditorColorPickerState(literal: literal)
+        let picker = VirtualEditorColorPickerViewController(
+            color: literal.color,
+            token: literal.token,
+            isReadOnly: isReadOnly
+        )
+        picker.onColorChange = { [weak self, weak picker] color in
+            guard let self,
+                  let replacement = VirtualEditorHexColorPreview.replacement(for: color, preserving: state.literal.token),
+                  replacement != state.literal.token else { return }
+            self.selection = state.literal.range
+            self.absoluteCaret = state.literal.range.location
+            guard self.replaceSelection(with: replacement) else { return }
+            state.literal = VirtualEditorHexColorLiteral(
+                range: NSRange(location: state.literal.range.location, length: replacement.utf16.count),
+                token: replacement,
+                color: color
+            )
+            picker?.view.window?.makeFirstResponder(picker?.colorWell)
+        }
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.animates = true
+        popover.contentViewController = picker
+        popover.contentSize = NSSize(width: 280, height: 220)
+        colorPickerPopover = popover
+        popover.show(relativeTo: rect, of: self, preferredEdge: .maxX)
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -1716,8 +1978,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
     func characterIndex(for point: NSPoint) -> Int { documentOffset(at: convert(point, from: nil)) }
 
-    private func replaceSelection(with value: String) {
-        guard let document, let documentID else { return }
+    @discardableResult
+    private func replaceSelection(with value: String) -> Bool {
+        guard let document, let documentID else { return false }
         let selectionEnd = NSMaxRange(selection)
         let viewportContainsSelection = viewport != nil &&
             selection.location >= viewportStartUTF16 &&
@@ -1727,16 +1990,17 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             let location = min(max(0, selection.location), source.length)
             let length = min(max(0, selection.length), source.length - location)
             let original = source.substring(with: NSRange(location: location, length: length))
-            guard onTextMutation?(EditorTextMutation(documentID: documentID, range: NSRange(location: location, length: length), replacement: value)) == true else { return }
+            guard onTextMutation?(EditorTextMutation(documentID: documentID, range: NSRange(location: location, length: length), replacement: value)) == true else { return false }
             registerUndo(replacement: original, range: NSRange(location: location, length: value.utf16.count), inverseReplacement: value)
             absoluteCaret = location + value.utf16.count
             selection = NSRange(location: absoluteCaret, length: 0)
             selectionAnchor = nil
+            reloadViewport(anchorLine: lineForAbsoluteOffset(absoluteCaret), maximumByteCount: editRefreshMaximumByteCount)
             publishCaret()
             publishTextChange()
-            return
+            return true
         }
-        guard let viewport else { return }
+        guard let viewport else { return false }
         let local = max(0, min(selection.location - viewportStartUTF16, viewportText.utf16.count))
         let length = min(selection.length, max(0, viewportText.utf16.count - local))
         let range = NSRange(location: local, length: length)
@@ -1744,19 +2008,22 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let absoluteRange = NSRange(location: selection.location, length: length)
         guard onTextMutation?(EditorTextMutation(documentID: documentID, range: range, replacement: value, viewport: viewport)) == true else {
             reloadViewport(anchorLine: viewportLineOrigin)
-            return
+            return false
         }
         registerUndo(
             replacement: original,
             range: NSRange(location: absoluteRange.location, length: value.utf16.count),
             inverseReplacement: value
         )
-        absoluteCaret = selection.location + value.utf16.count
+        absoluteCaret = absoluteRange.location + value.utf16.count
         selection = NSRange(location: absoluteCaret, length: 0)
         selectionAnchor = nil
-        _ = document
+        // The next native key event can arrive before SwiftUI configures again.
+        // Refresh byte/UTF-16 coordinates before publishing or accepting input.
+        reloadViewport(anchorLine: lineForAbsoluteOffset(absoluteRange.location), maximumByteCount: editRefreshMaximumByteCount)
         publishCaret()
         publishTextChange()
+        return true
     }
 
     private func autoClosingPair(for value: String) -> String? {
@@ -1839,6 +2106,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         absoluteCaret = location + replacement.utf16.count
         selection = NSRange(location: absoluteCaret, length: 0)
         selectionAnchor = nil
+        reloadViewport(anchorLine: lineForAbsoluteOffset(location), maximumByteCount: editRefreshMaximumByteCount)
         publishCaret()
         publishTextChange()
     }
@@ -2105,7 +2373,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private func reloadViewport(anchorLine: Int, maximumByteCount: Int? = nil) {
         guard let document, let next = try? document.viewport(
             aroundLine: max(0, anchorLine),
-            maximumByteCount: maximumByteCount ?? viewportMaximumByteCount
+            maximumByteCount: maximumByteCount ?? viewportMaximumByteCount,
+            maximumLineCount: 512
         ) else { return }
         if let documentID {
             EditorPerformanceMonitor.shared.markViewportLoaded(tabID: documentID)

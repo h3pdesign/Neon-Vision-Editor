@@ -4,6 +4,38 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.6.0] - 2026-09-03
+
+### Why Upgrade
+
+- Opens and edits large Markdown and source files with less blocking work and bounded viewport rendering.
+- Keeps scrolling, rapid typing, Unicode edits, and saving reliable in large documents.
+- Adds native macOS HEX color previews and a color picker directly in the source editor.
+
+### Highlights
+
+- Prepares large-file indexes in the background and limits rendering to visible rows and bounded document windows.
+- Shows color swatches for supported HEX literals and preserves their format when editing colors.
+- Coalesces recent-file and performance-history persistence so repeated editor actions do not queue obsolete preference writes.
+
+### Fixes
+
+- Prevents blank scrolling after editor-width changes and preserves forward content in bounded viewports.
+- Refreshes edit coordinates before consecutive keystrokes, preserving typed text and accurate caret positions.
+- Keeps independent document views valid until the underlying content changes.
+- Uses exact document positions for navigation across uneven line lengths and offscreen accessibility reporting.
+- Preserves UTF-8 and UTF-16 boundaries, byte-order marks, surrogate pairs, and precise line counts.
+- Saves user-selected files through the system replacement directory while retaining atomic replacement and external-change protection.
+- Avoids full-document work for hidden editor confirmation messages and restores accessibility exposure of the source canvas.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.5.6] - 2026-08-29
 
 ### Why Upgrade

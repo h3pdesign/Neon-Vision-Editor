@@ -164,6 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        EditorPreferenceWriter.shared.flushBeforeTermination()
         MacEditorWindowSessionStore.shared.beginTermination()
         appUpdateManager?.applicationWillTerminate()
         RuntimeReliabilityMonitor.shared.markGracefulTermination()
@@ -979,6 +980,7 @@ struct NeonVisionEditorApp: App {
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
+                    EditorPreferenceWriter.shared.flushBeforeTermination()
                     RuntimeReliabilityMonitor.shared.markGracefulTermination()
                 }
                 .onChange(of: appearance) { _, _ in applyIOSAppearanceOverride() }

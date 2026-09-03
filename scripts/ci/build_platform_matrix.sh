@@ -22,6 +22,7 @@ Runs build verification sequentially for:
   1) macOS
   2) iOS Simulator
   3) iPad Simulator target family
+  4) visionOS
 
 Environment overrides:
   PROJECT, SCHEME, CONFIGURATION, CODE_SIGNING_ALLOWED
@@ -151,6 +152,11 @@ run_build "iPad Simulator" \
   -sdk iphonesimulator \
   -destination "generic/platform=iOS Simulator" \
   TARGETED_DEVICE_FAMILY=2 \
+  build
+
+run_build "visionOS" \
+  -sdk xros \
+  -destination "generic/platform=visionOS" \
   build
 
 echo "Build matrix completed successfully."

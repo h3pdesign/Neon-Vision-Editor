@@ -3,6 +3,33 @@ import XCTest
 
 @MainActor
 final class FileBackedTextDocumentTests: XCTestCase {
+    func testBoundedTextChunksPreserveUnicodeAndBOMAcrossLazyReadsAndEdits() throws {
+        let source = String(repeating: "é😀<style>/* x */</style>\n", count: 120)
+        for identifier in [TextEncodingDescriptor.Identifier.utf8, .utf8WithBOM, .utf16LittleEndianWithBOM, .utf16BigEndian] {
+            let encoding = TextEncodingDescriptor(identifier: identifier)
+            let url = directory.appendingPathComponent("chunk-test.html")
+            try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
+            let document = try FileBackedTextDocument(url: url, knownEncoding: encoding)
+            for edited in [false, true] {
+                if edited { try document.replace(utf16Range: NSRange(location: 0, length: 0), with: "😀") }
+                var offset = 0
+                var result = ""
+                while offset < document.byteCount {
+                    let chunk = try document.textChunk(startByteOffset: offset, maximumByteCount: 67)
+                    XCTAssertGreaterThan(chunk.byteCount, 0)
+                    XCTAssertLessThanOrEqual(chunk.byteCount, 67)
+                    guard chunk.byteCount > 0 else { break }
+                    result += chunk.text
+                    offset += chunk.byteCount
+                }
+                XCTAssertEqual(result, (edited ? "😀" : "") + source)
+                XCTAssertEqual(try document.textChunk(startByteOffset: offset, maximumByteCount: 64).byteCount, 0)
+                XCTAssertThrowsError(try document.textChunk(startByteOffset: -1, maximumByteCount: 64))
+                XCTAssertThrowsError(try document.textChunk(startByteOffset: 0, maximumByteCount: 0))
+            }
+        }
+    }
+
     func testLogicalPositionsAreExactAcrossUnicodeStorageAndEdits() throws {
         for identifier in [TextEncodingDescriptor.Identifier.utf8, .utf8WithBOM, .utf16LittleEndianWithBOM, .utf16BigEndian] {
             let encoding = TextEncodingDescriptor(identifier: identifier)

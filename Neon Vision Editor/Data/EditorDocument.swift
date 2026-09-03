@@ -27,6 +27,9 @@ protocol EditorDocument: AnyObject {
     /// Zero-based logical line and UTF-16 column, independent of visible windows.
     func position(atUTF16Offset offset: Int) throws -> (line: Int, column: Int)
 
+    /// Decode a bounded byte chunk, ending on a complete character.
+    func textChunk(startByteOffset: Int, maximumByteCount: Int) throws -> (text: String, byteCount: Int)
+
     func string() -> String
     func replace(range: NSRange, with replacement: String) throws
     /// Applies a native UTF-16 edit without exposing the document's storage.

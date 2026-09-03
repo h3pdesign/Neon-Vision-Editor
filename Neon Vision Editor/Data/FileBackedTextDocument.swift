@@ -393,6 +393,20 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         return text
     }
 
+    func textChunk(startByteOffset: Int, maximumByteCount: Int) throws -> (text: String, byteCount: Int) {
+        let total = lazyFileHandle != nil ? lazyFileByteCount : byteCount
+        guard startByteOffset >= 0, startByteOffset <= total, maximumByteCount > 0 else { throw Error.invalidRange }
+        let length = min(maximumByteCount, total - startByteOffset)
+        let range = NSRange(location: startByteOffset, length: length)
+        let raw = try lazyFileHandle != nil ? lazyRead(range) : data(inByteRange: range)
+        let completeLength = Self.completeSegmentLength(in: raw, encoding: encodingDescriptor,
+            isFinal: startByteOffset + length == total, atDocumentStart: startByteOffset == 0, prefersLineBoundary: false)
+        guard let text = decode(Data(raw.prefix(completeLength)), beginsAtDocumentStart: startByteOffset == 0) else {
+            throw Error.unsupportedEncoding
+        }
+        return (text, completeLength)
+    }
+
     func window(aroundLine requestedLine: Int, maximumByteCount: Int, maximumLineCount: Int = .max) throws -> Window {
         if lazyFileHandle != nil {
             let result = try lazyWindow(aroundLine: requestedLine, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)

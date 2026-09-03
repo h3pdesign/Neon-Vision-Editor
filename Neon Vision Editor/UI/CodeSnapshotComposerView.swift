@@ -532,8 +532,10 @@ struct CodeSnapshotComposerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-#if os(iOS)
+#if os(iOS) || os(visionOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+#endif
+#if os(iOS)
     @AppStorage("EnableTranslucentWindow") private var translucentWindow = true
 #else
     @AppStorage("EnableTranslucentWindow") private var translucentWindow = false

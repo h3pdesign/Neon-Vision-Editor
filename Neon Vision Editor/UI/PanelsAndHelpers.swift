@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import Foundation
 import UniformTypeIdentifiers
 #if os(macOS)
@@ -2669,6 +2670,7 @@ private final class DirectionalKeyCommandView: UIView {
 struct WelcomeTourView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openURL) private var openURL
+    @Environment(\.purchase) private var purchase
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
 
     static var releaseID: String {
@@ -3647,7 +3649,7 @@ struct WelcomeTourView: View {
             HStack {
                 Spacer()
                 Button {
-                    Task { await supportPurchaseManager.purchaseSupport() }
+                    Task { await supportPurchaseManager.purchaseSupport { product in try await purchase(product) } }
                 } label: {
                     HStack(spacing: compactLayout ? 8 : 10) {
                         Image(systemName: "heart.fill")
@@ -3846,6 +3848,7 @@ struct WelcomeTourView: View {
 struct SupportPromptSheetView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openURL) private var openURL
+    @Environment(\.purchase) private var purchase
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
     let onDismiss: () -> Void
 
@@ -3923,7 +3926,7 @@ struct SupportPromptSheetView: View {
 
                 VStack(spacing: compact ? 8 : 10) {
                     Button {
-                        Task { await supportPurchaseManager.purchaseSupport() }
+                        Task { await supportPurchaseManager.purchaseSupport { product in try await purchase(product) } }
                     } label: {
                         Label(supportPurchaseManager.supportPurchaseButtonTitle, systemImage: "heart.fill")
                             .frame(maxWidth: .infinity)

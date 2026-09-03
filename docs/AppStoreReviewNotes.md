@@ -35,4 +35,8 @@
 ## Test Notes
 - Local StoreKit config file included at:
   - `Neon Vision Editor/SupportOptional.storekit`
-- Use a Sandbox account or local StoreKit testing for verification.
+- Local StoreKit tests verify loading and purchase state transitions, but do not verify App Store Connect or App Review sandbox availability.
+- Before resubmitting, use a TestFlight build on iPhone and Apple Vision Pro to open Settings -> Support, confirm the localized price loads, and complete a sandbox support tip. Also check the welcome/support prompt purchase entry points.
+- For an Xcode-launched sandbox check, set the Run action's StoreKit Configuration to None; the shared schemes use the local configuration by default. TestFlight always uses Apple's sandbox.
+- A failed or interrupted lookup must recover when revisiting Support or selecting Retry App Store. Successful prices may be cached for five minutes.
+- visionOS purchases use the presenting SwiftUI view's StoreKit purchase action so the system can anchor purchase confirmation to the correct window.

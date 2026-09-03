@@ -1016,6 +1016,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     override func accessibilityHelp() -> String? { accessibilityContext.help }
 
     private var accessibilityContext: VirtualEditorAccessibilityContext {
+        if (absoluteCaret < viewportLineOriginStartUTF16 || absoluteCaret > viewportLineOriginStartUTF16 + viewportText.utf16.count),
+           let position = try? document?.position(atUTF16Offset: absoluteCaret) {
+            return VirtualEditorAccessibilityContext(
+                documentName: documentDisplayName, line: position.line + 1,
+                column: position.column + 1, isReadOnly: isReadOnly, selectionLength: selection.length)
+        }
         let localCaret = max(0, min(viewportText.utf16.count, absoluteCaret - viewportLineOriginStartUTF16))
         let localLine = newlineCount(inUTF16PrefixOf: viewportText, length: localCaret)
         let lineStart = lineStarts[min(localLine, max(0, lineStarts.count - 1))]
@@ -1191,7 +1197,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         if offset >= viewportLineOriginStartUTF16 && offset <= viewportLineOriginStartUTF16 + viewportText.utf16.count {
             return viewportLineOrigin + newlineCount(inUTF16PrefixOf: viewportText, length: offset - viewportLineOriginStartUTF16)
         }
-        return min(document.lineCount - 1, max(0, Int(Double(offset) / Double(max(1, document.utf16Length)) * Double(document.lineCount))))
+        return (try? document.position(atUTF16Offset: offset).line) ?? 0
     }
 
     func configure(
@@ -1285,6 +1291,14 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         recalculateVisualMetrics()
         setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
         needsDisplay = true
+        if isNewDocument {
+            // Publish after the representable update so the status bar reflects
+            // the selected document without mutating SwiftUI during configure.
+            Task { @MainActor [weak self] in
+                guard let self, self.documentID == documentID else { return }
+                self.publishCaret()
+            }
+        }
     }
 
     override func draw(_ dirtyRect: NSRect) {

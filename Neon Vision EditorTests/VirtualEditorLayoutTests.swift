@@ -86,6 +86,17 @@ final class VirtualEditorLayoutTests: XCTestCase {
             XCTAssertTrue(canvas.isAccessibilityElement())
             XCTAssertEqual(canvas.accessibilityRole(), .textArea)
             XCTAssertTrue(canvas.acceptsFirstResponder)
+            // Find/navigation offsets must not be estimated from average line lengths.
+            let uneven = String(repeating: "x", count: 300_000) + "\ntarget\n" + String(repeating: "z\n", count: 1_000)
+            try document.replaceAll(with: uneven)
+            NotificationCenter.default.post(name: .moveCursorToRange, object: nil, userInfo: [
+                EditorCommandUserInfo.documentID: documentID.uuidString,
+                EditorCommandUserInfo.rangeLocation: 300_001,
+                EditorCommandUserInfo.rangeLength: 6,
+                EditorCommandUserInfo.centerSelection: true
+            ])
+            XCTAssertEqual(canvas.selectedRange(), NSRange(location: 300_001, length: 6))
+            XCTAssertTrue(canvas.accessibilityHelp()?.contains("Line 2, column 1") == true)
         }
     }
 

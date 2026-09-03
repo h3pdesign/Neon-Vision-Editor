@@ -24,6 +24,8 @@ protocol EditorDocument: AnyObject {
     var isDirty: Bool { get }
     var supportsBoundedWindows: Bool { get }
     var lineCount: Int { get }
+    /// Zero-based logical line and UTF-16 column, independent of visible windows.
+    func position(atUTF16Offset offset: Int) throws -> (line: Int, column: Int)
 
     func string() -> String
     func replace(range: NSRange, with replacement: String) throws

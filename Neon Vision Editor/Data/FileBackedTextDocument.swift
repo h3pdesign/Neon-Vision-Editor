@@ -3,8 +3,8 @@ import Foundation
 /// An encoding-aware text document whose unchanged source stays range-backed on disk.
 ///
 /// Edits are represented as small replacement pieces. The original file is never
-/// copied into a `String`, and saving streams source and edit pieces to a temporary
-/// sibling before atomically replacing the source file.
+/// copied into a `String`, and saving streams source and edit pieces to the system
+/// replacement directory before atomically replacing the source file.
 /// The loader owns this mutable storage exclusively until its prepared index is
 /// transferred to the main actor; it must never be accessed concurrently.
 nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
@@ -244,15 +244,32 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
     var supportsBoundedWindows: Bool { true }
     var isViewportIndexReady: Bool { lazyFileHandle == nil || lazyIndexComplete }
 
+    func position(atUTF16Offset offset: Int) throws -> (line: Int, column: Int) {
+        if lazyFileHandle != nil {
+            if !lazyIndexComplete { try prepareViewportIndex() }
+            guard offset >= 0, offset <= utf16Length else { throw Error.invalidRange }
+            var low = 0
+            var high = lazyLineUTF16Starts.count
+            while low < high {
+                let middle = (low + high) / 2
+                if lazyLineUTF16Starts[middle] <= offset { low = middle + 1 } else { high = middle }
+            }
+            let line = max(0, low - 1)
+            return (line, offset - lazyLineUTF16Starts[line])
+        }
+        guard offset >= 0, offset <= utf16Length,
+              let byte = byteOffset(forUTF16Offset: offset) else { throw Error.invalidRange }
+        let line = max(0, firstLineStart(after: byte) - 1)
+        return (line, offset - utf16Offset(atByteOffset: lineStarts[line]))
+    }
+
 
     func viewport(aroundLine line: Int, maximumByteCount: Int, maximumLineCount: Int = .max) throws -> EditorDocumentViewport {
         if lazyFileHandle != nil {
             let window = try lazyWindow(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
-            viewportGeneration &+= 1
             return EditorDocumentViewport(text: window.text, startByteOffset: window.startByteOffset, startUTF16Offset: window.startUTF16Offset, lineRange: window.lineRange, generation: viewportGeneration)
         }
         let window = try self.window(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
-        viewportGeneration &+= 1
         return EditorDocumentViewport(
             text: window.text,
             startByteOffset: window.startByteOffset,

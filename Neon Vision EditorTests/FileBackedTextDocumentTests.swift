@@ -3,6 +3,53 @@ import XCTest
 
 @MainActor
 final class FileBackedTextDocumentTests: XCTestCase {
+    func testLogicalPositionsAreExactAcrossUnicodeStorageAndEdits() throws {
+        for identifier in [TextEncodingDescriptor.Identifier.utf8, .utf8WithBOM, .utf16LittleEndianWithBOM, .utf16BigEndian] {
+            let encoding = TextEncodingDescriptor(identifier: identifier)
+            let text = String(repeating: "é😀", count: 1_000) + "\ntarget\n"
+            let url = directory.appendingPathComponent("positions.md")
+            try XCTUnwrap(encoding.encodedData(for: text)).write(to: url)
+            let document = try FileBackedTextDocument(url: url, knownEncoding: encoding)
+            for edited in [false, true] {
+                if edited { try document.replace(utf16Range: NSRange(location: 0, length: 0), with: "x") }
+                let lineStart = 3_001 + (edited ? 1 : 0)
+                let position = try document.position(atUTF16Offset: lineStart + 2)
+                XCTAssertEqual(position.line, 1)
+                XCTAssertEqual(position.column, 2)
+                XCTAssertEqual(try document.position(atUTF16Offset: 0).line, 0)
+                let end = try document.position(atUTF16Offset: document.utf16Length)
+                XCTAssertEqual(end.line, 2)
+                XCTAssertEqual(end.column, 0)
+                XCTAssertThrowsError(try document.position(atUTF16Offset: -1))
+                XCTAssertThrowsError(try document.position(atUTF16Offset: document.utf16Length + 1))
+            }
+        }
+        let empty = FileBackedTextDocument(content: "")
+        XCTAssertEqual(try empty.position(atUTF16Offset: 0).column, 0)
+    }
+
+    func testViewportReadsDoNotInvalidateOtherEditorsButMutationsDo() throws {
+        for lazy in [false, true] {
+            let source = "first 😀\nsecond é\nthird\n"
+            let url = directory.appendingPathComponent("shared-viewport.md")
+            try source.write(to: url, atomically: true, encoding: .utf8)
+            let document = try lazy
+                ? FileBackedTextDocument(url: url, knownEncoding: .utf8)
+                : FileBackedTextDocument(content: source)
+            try document.prepareViewportIndex()
+            let first = try document.viewport(aroundLine: 0, maximumByteCount: 64)
+            let other = try document.viewport(aroundLine: 2, maximumByteCount: 32)
+            XCTAssertEqual(first.generation, other.generation)
+            try document.replace(in: first, utf16Range: NSRange(location: 0, length: 5), with: "updated")
+            XCTAssertEqual(document.string(), "updated 😀\nsecond é\nthird\n")
+            XCTAssertThrowsError(try document.replace(in: other, utf16Range: NSRange(location: 0, length: 0), with: "stale"))
+            let refreshed = try document.viewport(aroundLine: 0, maximumByteCount: 64)
+            XCTAssertNotEqual(refreshed.generation, first.generation)
+            try document.replace(in: refreshed, utf16Range: NSRange(location: 0, length: 7), with: "current")
+            XCTAssertEqual(document.string(), "current 😀\nsecond é\nthird\n")
+        }
+    }
+
     nonisolated(unsafe) private var directory: URL!
 
     override func setUpWithError() throws {
@@ -158,7 +205,8 @@ final class FileBackedTextDocumentTests: XCTestCase {
         let document = try FileBackedTextDocument(url: url)
 
         let first = try document.viewport(aroundLine: 10, maximumByteCount: 64)
-        _ = try document.viewport(aroundLine: 80, maximumByteCount: 64)
+        let second = try document.viewport(aroundLine: 80, maximumByteCount: 64)
+        try document.replace(in: second, utf16Range: NSRange(location: 0, length: 1), with: "Y")
 
         XCTAssertThrowsError(try document.replace(in: first, utf16Range: NSRange(location: 0, length: 1), with: "X"))
     }

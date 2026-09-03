@@ -1,7 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.5.6-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.6.0-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-github-only.yml"><img alt="Primary Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-github-only.yml?branch=main&label=Primary%20Release"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md"><img alt="Security Policy" src="https://img.shields.io/badge/security-policy-22C55E"></a>
@@ -52,38 +52,26 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.5.6**
-> Next release target: **v1.5.7**
+> Latest release: **v1.6.0**
+> Next release target: **v1.6.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v1.5.6** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-08-31** for latest release **v1.5.6**
+> Direct GitHub release: **v1.6.0** / App Store and TestFlight availability varies by platform and review status
+> Last updated (README): **2026-09-03** for latest release **v1.6.0**
 
-## What's New in v1.5.5 and v1.5.6
+## What's New Since v1.5.6
 
 ### Why Upgrade
 
-- v1.5.6: Makes the iPhone and iPad editor toolbar more compact and language-aware without hiding full menu names or accessibility context.
-- v1.5.6: Restores predictable Markdown list continuation and native text-selection commands across mobile and macOS editors.
-- v1.5.6: Keeps collapsed and expanded Markdown formatting controls readable without wasting editor space or covering actions.
+- v1.6.0: Opens and edits large Markdown and source files with less blocking work and bounded viewport rendering.
+- v1.6.0: Keeps scrolling, rapid typing, Unicode edits, and saving reliable in large documents.
+- v1.6.0: Adds native macOS HEX color previews and a color picker directly in the source editor.
 
-### v1.5.6 Highlights
+### v1.6.0 Highlights
 
-- Uses icon-only mobile toolbar presets and language-specific symbols or initials for the current document language.
-- Adds a horizontally scrollable mobile Markdown formatting row while keeping the collapsed control in a compact opaque pill over a transparent surrounding area.
-- Treats explicit language choices as tab-level overrides so automatic detection does not immediately replace the user's selection.
-
-### v1.5.5 Context
-
-- v1.5.5: Prevents AppKit and Core Text drawing from leaking text state between macOS virtual-editor rows and producing mirrored or upside-down glyphs.
-- v1.5.5: Makes Apple Pencil a precision iPad editing input with hover caret preview and direct range selection.
-- v1.5.5: Keeps Markdown live-preview text at the exact resolved editor font size on every supported platform.
-
-### v1.5.5 Highlights
-
-- Draws every virtual-editor line through an isolated Core Text boundary that derives coordinates from the canvas and restores inherited text state.
-- Uses Pencil-only hover and drag recognizers for caret preview and range selection, with side tap or squeeze undo that respects system shortcut preferences.
-- Strengthens cross-platform preview-size coverage and asynchronous release-test deadlines.
+- Prepares large-file indexes in the background and limits rendering to visible rows and bounded document windows.
+- Shows color swatches for supported HEX literals and preserves their format when editing colors.
+- Coalesces recent-file and performance-history persistence so repeated editor actions do not queue obsolete preference writes.
 
 ## Start Here
 
@@ -142,7 +130,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v1.5.6 release docs current; v1.5.6 direct download current</td>
+        <td>v1.6.0 release docs current; v1.6.0 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -221,7 +209,7 @@ The direct GitHub release is currently ahead of the iOS/iPadOS App Store version
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.5.6** | Current direct download |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.6.0** | Current direct download |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.5.4** | Current public App Store listing |
 | **Store Review** | macOS | Corrected App Store update | App Store Connect review | **v1.5.6** | In Apple review |
 | **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.5.0** | Current recorded visionOS listing |
@@ -360,7 +348,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - **Languages and structured documents:** Swift 6-ready highlighting includes TeX/LaTeX and Typst/CeTZ-aware editing; CSV/TSV, property lists, Apple crash reports, and recognized logs can switch between structured and raw-text views, and plain text can be transformed into validated JSON through an explicit AI-assisted action.
 - **Project and preview workflows:** project-level Markdown/PDF cards reuse the project index for bounded excerpts and thumbnails, while Markdown, HTML, SVG, PDF, and PNG previews remain integrated with the editor.
 - **macOS integration:** the embedded Quick Look extension previews supported Markdown and source files in Finder, and detached Markdown previews can use the same glass treatment without changing editor content.
-- **Latest stable additions (v1.5.6):** Uses icon-only mobile toolbar presets and language-specific symbols or initials for the current document language; Adds a horizontally scrollable mobile Markdown formatting row while keeping the collapsed control in a compact opaque pill over a transparent surrounding area; Treats explicit language choices as tab-level overrides so automatic detection does not immediately replace the user's selection.
+- **Latest stable additions (v1.6.0):** Prepares large-file indexes in the background and limits rendering to visible rows and bounded document windows; Shows color swatches for supported HEX literals and preserves their format when editing colors; Coalesces recent-file and performance-history persistence so repeated editor actions do not queue obsolete preference writes.
 <!-- FEATURE_COVERAGE:END -->
 
 ### Editing Core
@@ -662,7 +650,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v1.5.6` notarized GitHub release | Current |
+| Stable direct download | `v1.6.0` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
 | Post-1.4 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v1.5+` work |
@@ -670,19 +658,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.5.6-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.5.7-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.6.0-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.6.1-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v1.5%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v1.5.6)
+### Now (v1.6.0)
 
 - ![v1.4.0](https://img.shields.io/badge/v1.4.0-22C55E?style=flat-square) delivers file-backed large-document editing, bounded live viewport virtualization, reliable ordinary-file installation, and the release workflow hardening shipped alongside the release.
-  Tracking: [Release v1.5.6](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.5.6)
+  Tracking: [Release v1.6.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.6.0)
 
-### Next (v1.5.7)
+### Next (v1.6.1)
 
-- ![v1.5.7](https://img.shields.io/badge/v1.5.7-F59E0B?style=flat-square) targets post-1.5.6 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
+- ![v1.6.1](https://img.shields.io/badge/v1.6.1-F59E0B?style=flat-square) targets post-1.6.0 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v1.5+)
@@ -772,7 +760,7 @@ Vim navigation is also available on iPad with a hardware keyboard after enabling
 
 ## Changelog
 
-Latest stable: **v1.5.6** (2026-08-29)
+Latest stable: **v1.6.0** (2026-09-03)
 
 ### Editor Evolution
 
@@ -780,8 +768,6 @@ Latest stable: **v1.5.6** (2026-08-29)
 ```mermaid
 timeline
     title Neon Vision Editor — recent release story
-    22 August 2026 : v1.5.2 · A more deliberate workflow
-                : Keeps Markdown preview body text at the same effective base size as the editor while font zoom changes.
     26 August 2026 : v1.5.3 · Release highlights
                 : Makes large-file editing and scrolling more responsive across macOS, iOS, and iPadOS.
     27 August 2026 : v1.5.4 · Release highlights
@@ -790,6 +776,8 @@ timeline
                 : Prevents AppKit and Core Text drawing from leaking text state between macOS virtual-editor rows and producing mirrored or upside-down glyphs.
     29 August 2026 : v1.5.6 · A more deliberate workflow
                 : Makes the iPhone and iPad editor toolbar more compact and language-aware without hiding full menu names or accessibility context.
+    3 September 2026 : v1.6.0 · A more deliberate workflow
+                : Opens and edits large Markdown and source files with less blocking work and bounded viewport rendering.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -799,13 +787,13 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
+| [`v1.6.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.6.0) | **A more deliberate workflow** — Opens and edits large Markdown and source files with less blocking work and bounded viewport rendering. | Prevents blank scrolling after editor-width changes and preserves forward content in bounded viewports. |
 | [`v1.5.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.5.6) | **A more deliberate workflow** — Makes the iPhone and iPad editor toolbar more compact and language-aware without hiding full menu names or accessibility context. | Makes Settings and Help toolbar visibility follow their configured switches in standard, all-actions, and custom presets. |
 | [`v1.5.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.5.5) | **Safer document transitions** — Prevents AppKit and Core Text drawing from leaking text state between macOS virtual-editor rows and producing mirrored or upside-down glyphs. | Stops line-number, wrapped-row, and marked-text drawing from contaminating subsequent Core Text matrix and position state. |
-| [`v1.5.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.5.4) | **Release highlights** — Restores access to every wrapped source row in the macOS editor after project-sidebar or preview width changes. | Prevents the macOS editor from stopping before the document's final lines when the project sidebar or preview narrows the source pane. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.5.6**
-- Compare recent changes: [v1.5.5...v1.5.6](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.5.5...v1.5.6)
+- Latest release: **v1.6.0**
+- Compare recent changes: [v1.5.6...v1.6.0](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.5.6...v1.6.0)
 
 ## Known Limitations
 
@@ -827,12 +815,12 @@ The recent release arc is about continuity: files that change outside the app, w
 
 ## Release Integrity
 
-- Tag: `v1.5.6`
+- Tag: `v1.6.0`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v1.5.6
+git rev-parse --verify v1.6.0
 ```
 
 - Verify downloaded artifact checksum locally:

@@ -57,6 +57,7 @@ jobs:
           swiftc \
             "Neon Vision Editor/Core/NVELock.swift" \
             "Neon Vision Editor/Core/SyntaxHighlighting.swift" \
+            "Neon Vision Editor/Core/HTMLSyntaxHighlighting.swift" \
             "Neon Vision Editor/UI/EditorTextView+RuntimePolicy.swift" \
             scripts/ci/run_syntax_highlighting_regressions.swift \
             -o "$RUNNER_TEMP/syntax-highlighting-regressions"

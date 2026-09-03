@@ -3,9 +3,11 @@ import Foundation
 /// An encoding-aware text document whose unchanged source stays range-backed on disk.
 ///
 /// Edits are represented as small replacement pieces. The original file is never
-/// copied into a `String`, and saving streams source and edit pieces to a temporary
-/// sibling before atomically replacing the source file.
-final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
+/// copied into a `String`, and saving streams source and edit pieces to the system
+/// replacement directory before atomically replacing the source file.
+/// The loader owns this mutable storage exclusively until its prepared index is
+/// transferred to the main actor; it must never be accessed concurrently.
+nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
     enum Error: Swift.Error, Equatable {
         case unsupportedEncoding
         case invalidRange
@@ -104,22 +106,15 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
     private var savedFileMetadata: FileMetadata?
     let encodingDescriptor: TextEncodingDescriptor
     private var edits: [SessionState.Edit] = []
-    private(set) var isDirty = false
+    private var dirty = false
+    var isDirty: Bool { dirty }
     private var viewportGeneration: UInt64 = 0
+    private(set) var viewportIndexPreparedOnMainThread: Bool?
 
     convenience init(url: URL) throws {
         let prefix = try Self.readPrefix(from: url, maximumByteCount: 64 * 1024)
-        let prefixDescriptor: TextEncodingDescriptor?
-        if prefix.starts(with: [0xEF, 0xBB, 0xBF]) {
-            prefixDescriptor = TextEncodingDescriptor(identifier: .utf8WithBOM)
-        } else if prefix.starts(with: [0xFF, 0xFE]) || prefix.starts(with: [0xFE, 0xFF]) {
-            prefixDescriptor = Self.detectEncoding(in: prefix)
-        } else if !prefix.isEmpty,
-                  Self.completeUTF8PrefixLength(in: prefix, maximumLength: prefix.count).map({ $0 > 0 }) == true {
-            prefixDescriptor = .utf8
-        } else {
-            prefixDescriptor = Self.detectEncoding(in: prefix)
-        }
+        let byteCount = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? prefix.count
+        let prefixDescriptor = Self.boundedEncoding(from: prefix, allowsIncompleteUTF8Sequence: byteCount > prefix.count)
         if let prefixDescriptor {
             let values = try url.resourceValues(forKeys: [.fileSizeKey])
             guard let byteCount = values.fileSize, byteCount >= 0 else { throw Error.invalidRange }
@@ -244,20 +239,37 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
 
     var byteCount: Int { lazyFileHandle == nil ? pieces.reduce(0) { $0 + $1.length } : lazyFileByteCount }
     var utf16Length: Int { lazyFileHandle == nil ? cachedUTF16Length : max(cachedUTF16Length, lazyIndexedUTF16Length) }
-    var lineCount: Int { lazyFileHandle == nil ? lineStarts.count : max(lazyEstimatedLineCount, lazyLineStarts.count) }
+    var lineCount: Int { lazyFileHandle == nil ? lineStarts.count : (lazyIndexComplete ? lazyLineStarts.count : max(lazyEstimatedLineCount, lazyLineStarts.count)) }
     var storageKind: EditorDocumentStorageKind { .fileBacked }
     var supportsBoundedWindows: Bool { true }
     var isViewportIndexReady: Bool { lazyFileHandle == nil || lazyIndexComplete }
 
-
-    func viewport(aroundLine line: Int, maximumByteCount: Int) throws -> EditorDocumentViewport {
+    func position(atUTF16Offset offset: Int) throws -> (line: Int, column: Int) {
         if lazyFileHandle != nil {
-            let window = try lazyWindow(aroundLine: line, maximumByteCount: maximumByteCount)
-            viewportGeneration &+= 1
+            if !lazyIndexComplete { try prepareViewportIndex() }
+            guard offset >= 0, offset <= utf16Length else { throw Error.invalidRange }
+            var low = 0
+            var high = lazyLineUTF16Starts.count
+            while low < high {
+                let middle = (low + high) / 2
+                if lazyLineUTF16Starts[middle] <= offset { low = middle + 1 } else { high = middle }
+            }
+            let line = max(0, low - 1)
+            return (line, offset - lazyLineUTF16Starts[line])
+        }
+        guard offset >= 0, offset <= utf16Length,
+              let byte = byteOffset(forUTF16Offset: offset) else { throw Error.invalidRange }
+        let line = max(0, firstLineStart(after: byte) - 1)
+        return (line, offset - utf16Offset(atByteOffset: lineStarts[line]))
+    }
+
+
+    func viewport(aroundLine line: Int, maximumByteCount: Int, maximumLineCount: Int = .max) throws -> EditorDocumentViewport {
+        if lazyFileHandle != nil {
+            let window = try lazyWindow(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
             return EditorDocumentViewport(text: window.text, startByteOffset: window.startByteOffset, startUTF16Offset: window.startUTF16Offset, lineRange: window.lineRange, generation: viewportGeneration)
         }
-        let window = try self.window(aroundLine: line, maximumByteCount: maximumByteCount)
-        viewportGeneration &+= 1
+        let window = try self.window(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
         return EditorDocumentViewport(
             text: window.text,
             startByteOffset: window.startByteOffset,
@@ -271,6 +283,7 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
     /// Viewport reloads then only perform their bounded read/decode work.
     func prepareViewportIndex() throws {
         guard lazyFileHandle != nil else { return }
+        viewportIndexPreparedOnMainThread = Thread.isMainThread
         try extendLazyIndex(throughByte: lazyFileByteCount)
     }
 
@@ -318,7 +331,7 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
         )
     }
 
-    func markClean() { isDirty = false }
+    func markClean() { dirty = false }
     var restoreRecord: RestoreRecord {
         try? materializeLazyStorageIfNeeded()
         return RestoreRecord(
@@ -380,8 +393,12 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
         return text
     }
 
-    func window(aroundLine requestedLine: Int, maximumByteCount: Int) throws -> Window {
-        guard maximumByteCount > 0, !lineStarts.isEmpty else { throw Error.invalidRange }
+    func window(aroundLine requestedLine: Int, maximumByteCount: Int, maximumLineCount: Int = .max) throws -> Window {
+        if lazyFileHandle != nil {
+            let result = try lazyWindow(aroundLine: requestedLine, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
+            return Window(text: result.text, startByteOffset: result.startByteOffset, lineRange: result.lineRange)
+        }
+        guard maximumByteCount > 0, maximumLineCount > 0, !lineStarts.isEmpty else { throw Error.invalidRange }
         let centerLine = min(max(0, requestedLine), lineStarts.count - 1)
         var firstLine = centerLine
         var lastLine = centerLine
@@ -390,15 +407,18 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
             ? lineStarts[centerLine + 1]
             : byteCount
 
-        // Prefer nearby preceding lines so the requested line is not pinned to the
-        // top edge, but never exceed the TextKit window's byte budget.
-        while firstLine > 0 {
+        end = min(end, start + maximumByteCount)
+
+        // Reserve forward context for the visible rows after the scroll anchor.
+        // Consuming the entire budget on preceding lines leaves prefetched
+        // anchors above the viewport with nothing available to draw below them.
+        while firstLine > 0 && lastLine - firstLine + 1 < max(1, maximumLineCount / 2) {
             let candidateStart = lineStarts[firstLine - 1]
-            guard end - candidateStart <= maximumByteCount else { break }
+            guard end - candidateStart <= maximumByteCount / 2 else { break }
             firstLine -= 1
             start = candidateStart
         }
-        while lastLine + 1 < lineStarts.count {
+        while lastLine + 1 < lineStarts.count && lastLine - firstLine + 1 < maximumLineCount {
             let candidateEnd = lastLine + 2 < lineStarts.count
                 ? lineStarts[lastLine + 2]
                 : byteCount
@@ -406,12 +426,15 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
             lastLine += 1
             end = candidateEnd
         }
-        let text = try text(inByteRange: NSRange(location: start, length: end - start))
+        let rawData = try data(inByteRange: NSRange(location: start, length: end - start))
+        let length = Self.completeSegmentLength(in: rawData, encoding: encodingDescriptor,
+            isFinal: end == byteCount, atDocumentStart: start == 0, prefersLineBoundary: false)
+        guard let text = decode(Data(rawData.prefix(length)), beginsAtDocumentStart: start == 0) else { throw Error.unsupportedEncoding }
         return Window(text: text, startByteOffset: start, lineRange: firstLine...lastLine)
     }
 
-    private func lazyWindow(aroundLine requestedLine: Int, maximumByteCount: Int) throws -> (text: String, startByteOffset: Int, startUTF16Offset: Int, lineRange: ClosedRange<Int>) {
-        guard maximumByteCount > 0 else { throw Error.invalidRange }
+    private func lazyWindow(aroundLine requestedLine: Int, maximumByteCount: Int, maximumLineCount: Int) throws -> (text: String, startByteOffset: Int, startUTF16Offset: Int, lineRange: ClosedRange<Int>) {
+        guard maximumByteCount > 0, maximumLineCount > 0 else { throw Error.invalidRange }
         // Activation completes this index before the document can reach the
         // virtual editor. Never revive the former on-scroll indexing fallback.
         guard lazyIndexComplete else { throw Error.invalidRange }
@@ -419,15 +442,17 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
         var first = center
         var last = center
         var start = lazyLineStarts[center]
-        var end = min(lazyFileByteCount, start + maximumByteCount)
-        if Self.utf16Endianness(for: encodingDescriptor) != nil {
-            end -= (end - start) % 2
-            if end <= start { end = min(lazyFileByteCount, start + 2) }
-        }
-        while first > 0 && end - lazyLineStarts[first - 1] <= maximumByteCount { first -= 1; start = lazyLineStarts[first] }
+        let lineLimit = center + min(maximumLineCount, lazyLineStarts.count - center)
+        var end = min(lineLimit < lazyLineStarts.count ? lazyLineStarts[lineLimit] : lazyFileByteCount, start + maximumByteCount)
         while last + 1 < lazyLineStarts.count && lazyLineStarts[last + 1] < end { last += 1 }
-        let data = try lazyRead(NSRange(location: start, length: end - start))
-        guard let text = decode(data, beginsAtDocumentStart: start == 0) else { throw Error.unsupportedEncoding }
+        while first > 0 && last - first + 1 < maximumLineCount && end - lazyLineStarts[first - 1] <= maximumByteCount { first -= 1; start = lazyLineStarts[first] }
+        let rawData = try lazyRead(NSRange(location: start, length: end - start))
+        let length = Self.completeSegmentLength(in: rawData, encoding: encodingDescriptor,
+            isFinal: end == lazyFileByteCount, atDocumentStart: start == 0, prefersLineBoundary: false)
+        end = start + length
+        last = center
+        while last + 1 < lazyLineStarts.count && lazyLineStarts[last + 1] < end { last += 1 }
+        guard let text = decode(Data(rawData.prefix(length)), beginsAtDocumentStart: start == 0) else { throw Error.unsupportedEncoding }
         return (text, start, lazyUTF16Offset(atByteOffset: start), first...max(first, last))
     }
 
@@ -470,12 +495,19 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
 
     private func lazyUTF16Offset(atByteOffset target: Int) -> Int {
         if target <= 0 { return 0 }
-        if let index = lazyLineStarts.lastIndex(where: { $0 <= target }), index < lazyLineUTF16Starts.count {
+        var low = 0
+        var high = lazyLineStarts.count
+        while low < high {
+            let middle = (low + high) / 2
+            if lazyLineStarts[middle] <= target { low = middle + 1 } else { high = middle }
+        }
+        let index = max(0, low - 1)
+        if index < lazyLineUTF16Starts.count {
             let lineByteStart = lazyLineStarts[index]
             let lineUTF16Start = lazyLineUTF16Starts[index]
             guard target > lineByteStart,
                   let data = try? lazyRead(NSRange(location: lineByteStart, length: target - lineByteStart)),
-                  let text = String(data: data, encoding: .utf8) else { return lineUTF16Start }
+                  let text = decode(data, beginsAtDocumentStart: lineByteStart == 0) else { return lineUTF16Start }
             return lineUTF16Start + text.utf16.count
         }
         return lazyIndexedUTF16Length
@@ -555,27 +587,31 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
         cachedUTF16Length += insertedUTF16Length - removedUTF16Length
         updateLineStarts(replacingByteRange: rawRange, with: replacementData)
         edits.append(.init(location: rawRange.location, length: rawRange.length, replacement: replacement))
-        isDirty = true
+        dirty = true
         viewportGeneration &+= 1
     }
 
     func saveAtomically(allowExternalOverwrite: Bool = false) throws {
-        try materializeLazyStorageIfNeeded()
-        guard isDirty else { return }
+        guard dirty else { return }
         guard let url, savedFileMetadata != nil else { throw Error.externalConflict }
+        let didAccess = url.startAccessingSecurityScopedResource()
+        defer { if didAccess { url.stopAccessingSecurityScopedResource() } }
+        try materializeLazyStorageIfNeeded()
         guard allowExternalOverwrite || !hasExternalConflict() else { throw Error.externalConflict }
-        let temporaryURL = url.deletingLastPathComponent()
-            .appendingPathComponent(".\(url.lastPathComponent).neon-save-\(UUID().uuidString)")
-        FileManager.default.createFile(atPath: temporaryURL.path, contents: nil)
+        let replacementDirectory = try FileManager.default.url(
+            for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: url, create: true)
+        defer { try? FileManager.default.removeItem(at: replacementDirectory) }
+        let temporaryURL = replacementDirectory.appendingPathComponent(url.lastPathComponent)
+        try Data().write(to: temporaryURL, options: .withoutOverwriting)
         let output = try FileHandle(forWritingTo: temporaryURL)
         do {
             for piece in pieces {
-                output.write(piece.data)
+                try output.write(contentsOf: piece.data)
             }
             try output.synchronize()
             try output.close()
             _ = try FileManager.default.replaceItemAt(url, withItemAt: temporaryURL)
-            isDirty = false
+            dirty = false
             lineStarts = lineStartsFromPieceMetadata()
             let savedData = try Data(contentsOf: url, options: [.alwaysMapped])
             self.savedFileMetadata = try Self.fileMetadata(at: url, fingerprint: Self.fingerprint(of: savedData))
@@ -591,14 +627,18 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
     /// a whole-document string. Transcoding and normalization are intentionally
     /// unavailable on this virtual-document path.
     func saveAtomically(to destinationURL: URL) throws {
+        let didAccess = destinationURL.startAccessingSecurityScopedResource()
+        defer { if didAccess { destinationURL.stopAccessingSecurityScopedResource() } }
         try materializeLazyStorageIfNeeded()
-        let temporaryURL = destinationURL.deletingLastPathComponent()
-            .appendingPathComponent(".\(destinationURL.lastPathComponent).neon-save-\(UUID().uuidString)")
-        FileManager.default.createFile(atPath: temporaryURL.path, contents: nil)
+        let replacementDirectory = try FileManager.default.url(
+            for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: destinationURL, create: true)
+        defer { try? FileManager.default.removeItem(at: replacementDirectory) }
+        let temporaryURL = replacementDirectory.appendingPathComponent(destinationURL.lastPathComponent)
+        try Data().write(to: temporaryURL, options: .withoutOverwriting)
         let output = try FileHandle(forWritingTo: temporaryURL)
         do {
             for piece in pieces {
-                output.write(piece.data)
+                try output.write(contentsOf: piece.data)
             }
             try output.synchronize()
             try output.close()
@@ -677,7 +717,7 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
 
     /// Performs encoding detection using only a bounded prefix. UTF-8 and
     /// UTF-16 BOM encodings are eligible for the bounded editor path.
-    nonisolated static func boundedEncoding(from prefix: Data) -> TextEncodingDescriptor? {
+    nonisolated static func boundedEncoding(from prefix: Data, allowsIncompleteUTF8Sequence: Bool = false) -> TextEncodingDescriptor? {
         if prefix.starts(with: [0xEF, 0xBB, 0xBF]) {
             return TextEncodingDescriptor(identifier: .utf8WithBOM)
         }
@@ -688,7 +728,8 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
             return TextEncodingDescriptor(identifier: .utf16BigEndianWithBOM)
         }
         if !prefix.isEmpty,
-           completeUTF8PrefixLength(in: prefix, maximumLength: prefix.count) == prefix.count {
+           (String(data: prefix, encoding: .utf8) != nil ||
+            (allowsIncompleteUTF8Sequence && hasIncompleteUTF8Suffix(prefix))) {
             return .utf8
         }
         let legacyCandidates: [TextEncodingDescriptor] = [
@@ -762,6 +803,9 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
             var lineUTF16Starts = [0]
             var newlineOffsets: [Int] = []
             var fingerprint = UInt64(0xcbf29ce484222325)
+            for offset in 0..<start {
+                fingerprint = (fingerprint ^ UInt64(bytes[offset])) &* 0x100000001b3
+            }
             while index < data.count {
                 let first = bytes[index]
                 if first < 0x80 {
@@ -803,21 +847,48 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
         }
     }
 
+    private static func hasIncompleteUTF8Suffix(_ data: Data) -> Bool {
+        guard !data.isEmpty else { return false }
+        var start = data.count - 1
+        while start > 0 && data[start] & 0xC0 == 0x80 { start -= 1 }
+        let lead = data[start]
+        let width: Int
+        switch lead {
+        case 0xC2...0xDF: width = 2
+        case 0xE0...0xEF: width = 3
+        case 0xF0...0xF4: width = 4
+        default: return false
+        }
+        guard data.count - start < width,
+              String(data: data.prefix(start), encoding: .utf8) != nil else { return false }
+        if start + 1 < data.count {
+            let second = data[start + 1]
+            if lead == 0xE0 && second < 0xA0 { return false }
+            if lead == 0xED && second > 0x9F { return false }
+            if lead == 0xF0 && second < 0x90 { return false }
+            if lead == 0xF4 && second > 0x8F { return false }
+        }
+        return true
+    }
+
     private nonisolated static func completeUTF8PrefixLength(in data: Data, maximumLength: Int) -> Int? {
         let limit = min(maximumLength, data.count)
         guard limit > 0 else { return 0 }
         if String(data: data.prefix(limit), encoding: .utf8) != nil { return limit }
-        let lowerBound = max(0, limit - 4)
-        for candidate in stride(from: limit - 1, through: lowerBound, by: -1) {
-            if String(data: data.prefix(candidate), encoding: .utf8) != nil { return candidate }
+        let prefix = Data(data.prefix(limit))
+        if hasIncompleteUTF8Suffix(prefix) {
+            var start = limit - 1
+            while start > 0 && prefix[start] & 0xC0 == 0x80 { start -= 1 }
+            return start
         }
         return nil
     }
 
 
 
-    private static func completeSegmentLength(in data: Data, encoding: TextEncodingDescriptor, isFinal: Bool, atDocumentStart: Bool = true) -> Int {
+    private static func completeSegmentLength(in data: Data, encoding: TextEncodingDescriptor, isFinal: Bool, atDocumentStart: Bool = true, prefersLineBoundary: Bool = true) -> Int {
         if isFinal { return data.count }
+        if atDocumentStart && data.count < byteOrderMarkLength(for: encoding) { return 0 }
         if let endianness = utf16Endianness(for: encoding) {
             let bom = atDocumentStart ? byteOrderMarkLength(for: encoding) : 0
             var length = bom + max(0, data.count - bom) / 2 * 2
@@ -835,10 +906,10 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
             return length
         }
         if encoding.identifier == .utf8 || encoding.identifier == .utf8WithBOM {
-            let newlineEnd = data.lastIndex(of: 0x0A).map { data.distance(from: data.startIndex, to: $0) + 1 } ?? data.count
+            let newlineEnd = (prefersLineBoundary ? data.lastIndex(of: 0x0A) : nil).map { data.distance(from: data.startIndex, to: $0) + 1 } ?? data.count
             return completeUTF8PrefixLength(in: data, maximumLength: newlineEnd) ?? 0
         }
-        return data.lastIndex(of: 0x0A).map { data.distance(from: data.startIndex, to: $0) + 1 } ?? data.count
+        return (prefersLineBoundary ? data.lastIndex(of: 0x0A) : nil).map { data.distance(from: data.startIndex, to: $0) + 1 } ?? data.count
     }
 
     private static func indexSegment(in data: Data, baseByteOffset: Int, encoding: TextEncodingDescriptor, atDocumentStart: Bool) throws -> UTF8Index {
@@ -849,22 +920,36 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
         let bom = atDocumentStart ? byteOrderMarkLength(for: encoding) : 0
         let payload = Data(data.dropFirst(min(bom, data.count)))
         guard let text = String(data: payload, encoding: encoding.encoding) else { throw Error.unsupportedEncoding }
-        var starts = [baseByteOffset]
-        var utf16Starts = [0]
-        var newlines: [Int] = []
-        var utf16 = 0
-        var byteOffset = bom
-        for scalar in text.unicodeScalars {
-            byteOffset += (String(scalar).data(using: encoding.encoding) ?? Data()).count
-            utf16 += scalar.utf16.count
-            if scalar.value == 10 {
-                let absolute = baseByteOffset + byteOffset
-                starts.append(absolute)
-                utf16Starts.append(utf16)
-                newlines.append(absolute)
+        // The remaining supported encodings use either two bytes per UTF-16
+        // unit or one byte per character. Decode once for validation, then index
+        // the original units instead of allocating and re-encoding each scalar.
+        return data.withUnsafeBytes { rawBuffer in
+            let bytes = rawBuffer.bindMemory(to: UInt8.self)
+            let endianness = utf16Endianness(for: encoding)
+            let unitWidth = endianness == nil ? 1 : 2
+            var starts = [baseByteOffset]
+            var utf16Starts = [0]
+            var newlines: [Int] = []
+            var byteOffset = bom
+            while byteOffset + unitWidth <= bytes.count {
+                let isNewline: Bool
+                if let endianness {
+                    isNewline = endianness == .littleEndian
+                        ? bytes[byteOffset] == 0x0A && bytes[byteOffset + 1] == 0
+                        : bytes[byteOffset] == 0 && bytes[byteOffset + 1] == 0x0A
+                } else {
+                    isNewline = bytes[byteOffset] == 0x0A
+                }
+                byteOffset += unitWidth
+                if isNewline {
+                    let absolute = baseByteOffset + byteOffset
+                    starts.append(absolute)
+                    utf16Starts.append((byteOffset - bom) / unitWidth)
+                    newlines.append(absolute)
+                }
             }
+            return UTF8Index(utf16Length: text.utf16.count, lineStarts: starts, lineUTF16Starts: utf16Starts, newlineOffsets: newlines, fingerprint: fingerprint(of: data))
         }
-        return UTF8Index(utf16Length: utf16, lineStarts: starts, lineUTF16Starts: utf16Starts, newlineOffsets: newlines, fingerprint: fingerprint(of: data))
     }
 
     private static func readPrefix(from url: URL, maximumByteCount: Int) throws -> Data {
@@ -905,10 +990,13 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
 
     private func slice(_ piece: Piece, _ range: Range<Int>) -> Piece {
         let data = Data(piece.data[range])
-        if let sourceOffset = piece.sourceOffset {
-            return .source(data, offset: sourceOffset + range.lowerBound, encoding: encodingDescriptor)
-        }
-        return .inserted(data, encoding: encodingDescriptor)
+        let sourceOffset = piece.sourceOffset.map { $0 + range.lowerBound }
+        return Piece(sourceOffset: sourceOffset, data: data,
+            utf16Length: Self.utf16Length(in: data, encoding: encodingDescriptor,
+                includesByteOrderMark: sourceOffset == 0),
+            newlineOffsets: piece.newlineOffsets.lazy
+                .filter { $0 > range.lowerBound && $0 <= range.upperBound }
+                .map { $0 - range.lowerBound })
     }
 
     func hasExternalConflict() -> Bool {
@@ -935,11 +1023,11 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
             let data = try handle.readToEnd() ?? Data()
             let index = try Self.indexSegment(in: data, baseByteOffset: 0, encoding: encodingDescriptor, atDocumentStart: true)
             originalData = data
-            pieces = [Piece.source(data, offset: 0, encoding: encodingDescriptor)]
+            pieces = [Piece(sourceOffset: 0, data: data, utf16Length: index.utf16Length, newlineOffsets: index.newlineOffsets)]
             lineStarts = index.lineStarts
             cachedUTF16Length = index.utf16Length
             if savedFileMetadata?.fingerprint == 0 {
-                savedFileMetadata = try? Self.fileMetadata(at: url!, fingerprint: Self.fingerprint(of: data))
+                savedFileMetadata = try? Self.fileMetadata(at: url!, fingerprint: index.fingerprint)
             }
         } catch {
             throw error
@@ -1075,6 +1163,9 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
             let bomLength = includesByteOrderMark ? utf16BOMLength(for: encoding, data: data) : 0
             return max(0, data.count - bomLength) / 2
         }
+        if encoding.identifier == .utf8WithBOM, !includesByteOrderMark {
+            return String(decoding: data, as: UTF8.self).utf16.count
+        }
         return encoding.decode(data)?.utf16.count ?? String(decoding: data, as: UTF8.self).utf16.count
     }
 
@@ -1096,7 +1187,7 @@ final class FileBackedTextDocument: EditorDocument, @unchecked Sendable {
                 let width = (unit >= 0xD800 && unit <= 0xDBFF && offset + 3 < data.count) ? 2 : 1
                 if units + width > target { return offset }
                 units += width
-                offset += 2
+                offset += width * 2
                 if units == target { return offset }
             }
             return data.count

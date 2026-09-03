@@ -41,12 +41,12 @@ final class EditorPerformanceMonitor {
     private var previewReloadExecutedCount = 0
     private(set) var lastMinimapViewportLatencyMilliseconds: Int?
     private(set) var lastTabSwitchLatencyMilliseconds: Int?
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private let eventsDefaultsKey = "PerformanceRecentFileOpenEventsV1"
     private let tabSwitchEventsDefaultsKey = "PerformanceRecentTabSwitchEventsV1"
     private let maxEvents = 30
 
-    private init() {}
+    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
     func markLaunchConfigured() {
 #if DEBUG
@@ -194,7 +194,7 @@ final class EditorPerformanceMonitor {
     }
 
     func recentFileOpenEvents(limit: Int = 10) -> [FileOpenEvent] {
-        guard let data = defaults.data(forKey: eventsDefaultsKey),
+        guard let data = EditorPreferenceWriter.shared.object(forKey: eventsDefaultsKey, defaults: defaults) as? Data,
               let decoded = try? JSONDecoder().decode([FileOpenEvent].self, from: data) else {
             return []
         }
@@ -203,11 +203,11 @@ final class EditorPerformanceMonitor {
     }
 
     func clearRecentFileOpenEvents() {
-        defaults.removeObject(forKey: eventsDefaultsKey)
+        EditorPreferenceWriter.shared.set(.removed, forKey: eventsDefaultsKey, defaults: defaults)
     }
 
     func recentTabSwitchEvents(limit: Int = 10) -> [TabSwitchEvent] {
-        guard let data = defaults.data(forKey: tabSwitchEventsDefaultsKey),
+        guard let data = EditorPreferenceWriter.shared.object(forKey: tabSwitchEventsDefaultsKey, defaults: defaults) as? Data,
               let decoded = try? JSONDecoder().decode([TabSwitchEvent].self, from: data) else {
             return []
         }
@@ -216,7 +216,7 @@ final class EditorPerformanceMonitor {
     }
 
     func clearRecentTabSwitchEvents() {
-        defaults.removeObject(forKey: tabSwitchEventsDefaultsKey)
+        EditorPreferenceWriter.shared.set(.removed, forKey: tabSwitchEventsDefaultsKey, defaults: defaults)
     }
 
     private func storeFileOpenEvent(_ event: FileOpenEvent) {
@@ -226,7 +226,7 @@ final class EditorPerformanceMonitor {
             existing.removeFirst(existing.count - maxEvents)
         }
         guard let encoded = try? JSONEncoder().encode(existing) else { return }
-        defaults.set(encoded, forKey: eventsDefaultsKey)
+        EditorPreferenceWriter.shared.set(.data(encoded), forKey: eventsDefaultsKey, defaults: defaults)
     }
 
     private func storeTabSwitchEvent(_ event: TabSwitchEvent) {
@@ -236,7 +236,7 @@ final class EditorPerformanceMonitor {
             existing.removeFirst(existing.count - maxEvents)
         }
         guard let encoded = try? JSONEncoder().encode(existing) else { return }
-        defaults.set(encoded, forKey: tabSwitchEventsDefaultsKey)
+        EditorPreferenceWriter.shared.set(.data(encoded), forKey: tabSwitchEventsDefaultsKey, defaults: defaults)
     }
 
     private static func elapsedMilliseconds(since startUptime: TimeInterval) -> Int {

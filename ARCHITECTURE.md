@@ -1,11 +1,20 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-08-29 (v1.5.6 release-aligned architecture)
+Last updated: 2026-09-03 (v1.6.0 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v1.6.0 (2026-09-03)
+
+- Prepares large-file indexes in the background and limits rendering to visible rows and bounded document windows.
+- Shows color swatches for supported HEX literals and preserves their format when editing colors.
+- Coalesces recent-file and performance-history persistence so repeated editor actions do not queue obsolete preference writes.
+- Prevents blank scrolling after editor-width changes and preserves forward content in bounded viewports.
+- Refreshes edit coordinates before consecutive keystrokes, preserving typed text and accurate caret positions.
+- Keeps independent document views valid until the underlying content changes.
 
 ### v1.5.6 (2026-08-29)
 
@@ -15,15 +24,6 @@ Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and vision
 - Makes Settings and Help toolbar visibility follow their configured switches in standard, all-actions, and custom presets.
 - Increments ordered Markdown markers such as `1.` to `2.` and `9)` to `10)` when continuing lists, including in the macOS virtual editor.
 - Restores the system edit menu for caret-only interactions so Select and Select All remain available while preserving snapshot actions for selected ranges.
-
-### v1.5.5 (2026-08-29)
-
-- Draws every virtual-editor line through an isolated Core Text boundary that derives coordinates from the canvas and restores inherited text state.
-- Uses Pencil-only hover and drag recognizers for caret preview and range selection, with side tap or squeeze undo that respects system shortcut preferences.
-- Strengthens cross-platform preview-size coverage and asynchronous release-test deadlines.
-- Stops line-number, wrapped-row, and marked-text drawing from contaminating subsequent Core Text matrix and position state.
-- Removes the stale macOS regression expectation for the retired `0.96` Markdown preview scale.
-- Prevents false external-refresh and terminal-session failures during heavily parallelized test runs.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

@@ -114,6 +114,28 @@ final class WindowTranslucencyTests: XCTestCase {
         XCTAssertFalse(scrollView.contentView.drawsBackground)
     }
 
+    func testVirtualEditorHexColorPreviewParsesSupportedFormsAndRejectsPartialTokens() {
+        let literals = VirtualEditorHexColorPreview.literals(
+            in: "color: #abc; background: #12345678; invalid: #12345;",
+            absoluteStart: 10
+        )
+
+        XCTAssertEqual(literals.map(\.token), ["#abc", "#12345678"])
+        XCTAssertEqual(literals.map(\.range.location), [17, 35])
+        XCTAssertEqual(literals.map(\.range.length), [4, 9])
+        XCTAssertTrue(VirtualEditorHexColorPreview.isSupported(language: "HTML"))
+        XCTAssertFalse(VirtualEditorHexColorPreview.isSupported(language: "swift"))
+    }
+
+    func testVirtualEditorHexColorPreviewPreservesShortFormOnlyWhenRepresentable() {
+        let white = NSColor.white
+        let black = NSColor.black
+
+        XCTAssertEqual(VirtualEditorHexColorPreview.replacement(for: white, preserving: "#fff"), "#FFF")
+        XCTAssertEqual(VirtualEditorHexColorPreview.replacement(for: black, preserving: "#ffff"), "#000F")
+        XCTAssertEqual(VirtualEditorHexColorPreview.replacement(for: white, preserving: "#abcd"), "#FFFF")
+    }
+
     func testVirtualEditorCoreTextDrawingOwnsCoordinateState() {
         let bitmap = NSBitmapImageRep(
             bitmapDataPlanes: nil,

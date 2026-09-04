@@ -4426,6 +4426,7 @@ extension Notification.Name {
     static let editorViewportDidChange = Notification.Name("editorViewportDidChange")
     static let requestEditorViewport = Notification.Name("requestEditorViewport")
     static let virtualEditorTextDidChange = Notification.Name("virtualEditorTextDidChange")
+    static let showVirtualEditorInlineSuggestion = Notification.Name("showVirtualEditorInlineSuggestion")
     static let markdownPreviewViewportDidChange = Notification.Name("markdownPreviewViewportDidChange")
     static let scrollEditorViewportToFraction = Notification.Name("scrollEditorViewportToFraction")
 }

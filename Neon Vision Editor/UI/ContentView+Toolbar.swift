@@ -1350,7 +1350,7 @@ extension ContentView {
     private var performanceModeControl: some View {
         Button(action: {
             forceLargeFileMode.toggle()
-            updateLargeFileMode(for: currentContentBinding.wrappedValue)
+            updateLargeFileModeForCurrentContext()
             recordDiagnostic("Toolbar toggled performance mode: \(forceLargeFileMode ? "on" : "off")")
         }) {
             Image(systemName: forceLargeFileMode ? "speedometer" : "speedometer")
@@ -1722,7 +1722,7 @@ extension ContentView {
                     case .performanceMode:
                         Button(action: {
                             forceLargeFileMode.toggle()
-                            updateLargeFileMode(for: currentContentBinding.wrappedValue)
+                            updateLargeFileModeForCurrentContext()
                         }) {
                             Label(forceLargeFileMode ? "Disable Performance Mode" : "Enable Performance Mode", systemImage: "speedometer")
                         }
@@ -2007,7 +2007,7 @@ extension ContentView {
 
             iOSOverflowItem("performanceMode") { Button(action: {
                 forceLargeFileMode.toggle()
-                updateLargeFileMode(for: currentContentBinding.wrappedValue)
+                updateLargeFileModeForCurrentContext()
             }) {
                 Label(forceLargeFileMode ? "Disable Performance Mode" : "Enable Performance Mode", systemImage: "speedometer")
             } }

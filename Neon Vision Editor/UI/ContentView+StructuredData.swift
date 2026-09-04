@@ -828,7 +828,7 @@ extension ContentView {
 
     private func currentDelimitedTableSource() -> (text: String, isLarge: Bool, isBounded: Bool) {
         if let selectedTab = viewModel.selectedTab {
-            let requiresBoundedPreview = selectedTab.document.storageKind == .fileBacked &&
+            let requiresBoundedPreview = selectedTab.usesFileBackedStorage &&
                 (selectedTab.isLargeFileCandidate || selectedTab.document.utf16Length >= ContentView.EditorPerformanceThresholds.heavyFeatureUTF16Length)
             if requiresBoundedPreview {
                 let viewport = try? selectedTab.document.viewport(

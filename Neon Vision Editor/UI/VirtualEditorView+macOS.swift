@@ -375,6 +375,8 @@ struct VirtualEditorView: NSViewRepresentable {
     let highlightsMatchingBrackets: Bool
     let autoIndentEnabled: Bool
     let autoCloseBracketsEnabled: Bool
+    let indentStyle: String
+    let indentWidth: Int
     let isSplitPaneResizeInProgress: Bool
     let preferredLayoutWidth: CGFloat?
     let onFontSizeChange: ((CGFloat) -> Void)?
@@ -415,6 +417,8 @@ struct VirtualEditorView: NSViewRepresentable {
             highlightsMatchingBrackets: highlightsMatchingBrackets,
             autoIndentEnabled: autoIndentEnabled,
             autoCloseBracketsEnabled: autoCloseBracketsEnabled,
+            indentStyle: indentStyle,
+            indentWidth: indentWidth,
             isSplitPaneResizeInProgress: isSplitPaneResizeInProgress,
             onFontSizeChange: onFontSizeChange,
             onTextMutation: onTextMutation
@@ -448,6 +452,8 @@ struct VirtualEditorView: NSViewRepresentable {
             highlightsMatchingBrackets: highlightsMatchingBrackets,
             autoIndentEnabled: autoIndentEnabled,
             autoCloseBracketsEnabled: autoCloseBracketsEnabled,
+            indentStyle: indentStyle,
+            indentWidth: indentWidth,
             isSplitPaneResizeInProgress: isSplitPaneResizeInProgress,
             onFontSizeChange: onFontSizeChange,
             onTextMutation: onTextMutation
@@ -687,6 +693,7 @@ final class VirtualEditorScrollView: NSScrollView {
         lineWrapEnabled: Bool, showsInvisibleCharacters: Bool, showsIndentationGuides: Bool,
         showsScopeGuides: Bool, highlightsScopeBackground: Bool,
         highlightsMatchingBrackets: Bool, autoIndentEnabled: Bool, autoCloseBracketsEnabled: Bool,
+        indentStyle: String = "spaces", indentWidth: Int = 4,
         isSplitPaneResizeInProgress: Bool,
         onFontSizeChange: ((CGFloat) -> Void)?, onTextMutation: ((EditorTextMutation) -> Bool)?
     ) {
@@ -708,6 +715,8 @@ final class VirtualEditorScrollView: NSScrollView {
             highlightsMatchingBrackets: highlightsMatchingBrackets,
             autoIndentEnabled: autoIndentEnabled,
             autoCloseBracketsEnabled: autoCloseBracketsEnabled,
+            indentStyle: indentStyle,
+            indentWidth: indentWidth,
             onFontSizeChange: onFontSizeChange, onTextMutation: onTextMutation
         )
         if let documentID {
@@ -878,6 +887,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var highlightsMatchingBrackets = false
     private var autoIndentEnabled = true
     private var autoCloseBracketsEnabled = false
+    private var indentStyle = "spaces"
+    private var indentWidth = 4
+    private var isVimInsertMode = true
+    private var inlineSuggestion: String?
+    private var inlineSuggestionLocation: Int?
     private var onFontSizeChange: ((CGFloat) -> Void)?
     private var onTextMutation: ((EditorTextMutation) -> Bool)?
     private var pendingFontSizeDelta: CGFloat = 0
@@ -1017,6 +1031,30 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     override func accessibilityLabel() -> String? { accessibilityContext.label }
     override func accessibilityValue() -> Any? { viewportText }
     override func accessibilityHelp() -> String? { accessibilityContext.help }
+    override func accessibilityNumberOfCharacters() -> Int { document?.utf16Length ?? 0 }
+    override func accessibilityVisibleCharacterRange() -> NSRange {
+        NSRange(location: viewportStartUTF16, length: viewportText.utf16.count)
+    }
+    override func accessibilitySelectedTextRange() -> NSRange { selection }
+    override func accessibilitySelectedText() -> String? {
+        guard selection.length > 0 else { return "" }
+        return try? document?.text(inUTF16Range: selection)
+    }
+    override func accessibilityString(for range: NSRange) -> String? {
+        try? document?.text(inUTF16Range: range)
+    }
+    override func setAccessibilitySelectedTextRange(_ range: NSRange) {
+        guard let document else { return }
+        let location = min(max(0, range.location), document.utf16Length)
+        let length = min(max(0, range.length), document.utf16Length - location)
+        selection = NSRange(location: location, length: length)
+        absoluteCaret = NSMaxRange(selection)
+        selectionAnchor = selection.length > 0 ? selection.location : nil
+        reloadViewport(anchorLine: lineForAbsoluteOffset(absoluteCaret))
+        ensureCaretVisible()
+        publishCaret()
+        needsDisplay = true
+    }
 
     private var accessibilityContext: VirtualEditorAccessibilityContext {
         if (absoluteCaret < viewportLineOriginStartUTF16 || absoluteCaret > viewportLineOriginStartUTF16 + viewportText.utf16.count),
@@ -1045,6 +1083,10 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         NotificationCenter.default.addObserver(self, selector: #selector(replaceRange(_:)), name: .replaceEditorRangeRequested, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(moveSelectedLines(_:)), name: .moveSelectedLinesRequested, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(insertBracketHelperToken(_:)), name: .insertBracketHelperTokenRequested, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(inspectWhitespaceScalars(_:)), name: .inspectWhitespaceScalarsRequested, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(updateVimMode(_:)), name: .vimModeStateDidChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(showInlineSuggestion(_:)), name: .showVirtualEditorInlineSuggestion, object: nil)
+        registerForDraggedTypes([.fileURL, .URL, .string, .rtf])
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -1055,6 +1097,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     @objc private func moveToLine(_ notification: Notification) {
         guard matchesDocument(notification), let line = notification.object as? Int else { return }
+        clearInlineSuggestion()
         let targetLine = max(0, line - 1)
         reloadViewport(anchorLine: targetLine)
         let localLine = targetLine - viewportLineOrigin
@@ -1077,6 +1120,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         guard matchesDocument(notification),
               let location = notification.userInfo?[EditorCommandUserInfo.rangeLocation] as? Int,
               let length = notification.userInfo?[EditorCommandUserInfo.rangeLength] as? Int else { return }
+        clearInlineSuggestion()
         let line = max(0, lineForAbsoluteOffset(location))
         reloadViewport(anchorLine: line)
         absoluteCaret = max(0, min(document?.utf16Length ?? location, location))
@@ -1212,12 +1256,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         lineWrapEnabled: Bool, showsInvisibleCharacters: Bool, showsIndentationGuides: Bool,
         showsScopeGuides: Bool, highlightsScopeBackground: Bool,
         highlightsMatchingBrackets: Bool, autoIndentEnabled: Bool, autoCloseBracketsEnabled: Bool,
+        indentStyle: String = "spaces", indentWidth: Int = 4,
         onFontSizeChange: ((CGFloat) -> Void)?, onTextMutation: ((EditorTextMutation) -> Bool)?
     ) {
         let previousResourceID = self.resourceID
         let previousDocumentID = self.documentID
         let isNewDocument = previousResourceID != resourceID || previousDocumentID != documentID
-        let key = "\(resourceID)|\(document?.utf16Length ?? 0)|\(language)|\(fontSize)|\(fontName)|\(lineHeightMultiplier)|\(colorScheme)|\(syntaxThemeKey(for: colorScheme))|\(editorBaseThemeKey(for: colorScheme))|\(document?.isDirty ?? false)|\(translucentBackgroundEnabled)|\(showsLineNumbers)|\(highlightCurrentLine)|\(lineWrapEnabled)|\(showsInvisibleCharacters)|\(showsIndentationGuides)|\(showsScopeGuides)|\(highlightsScopeBackground)|\(highlightsMatchingBrackets)|\(autoIndentEnabled)|\(autoCloseBracketsEnabled)"
+        let key = "\(resourceID)|\(document?.utf16Length ?? 0)|\(language)|\(fontSize)|\(fontName)|\(lineHeightMultiplier)|\(colorScheme)|\(syntaxThemeKey(for: colorScheme))|\(editorBaseThemeKey(for: colorScheme))|\(document?.isDirty ?? false)|\(translucentBackgroundEnabled)|\(showsLineNumbers)|\(highlightCurrentLine)|\(lineWrapEnabled)|\(showsInvisibleCharacters)|\(showsIndentationGuides)|\(showsScopeGuides)|\(highlightsScopeBackground)|\(highlightsMatchingBrackets)|\(autoIndentEnabled)|\(autoCloseBracketsEnabled)|\(indentStyle)|\(indentWidth)"
         let contentChanged = configuredContentRevision != contentRevision || configuredExternalContentRevision != externalContentRevision
         self.document = document
         self.documentID = documentID
@@ -1244,11 +1289,15 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         self.highlightsMatchingBrackets = highlightsMatchingBrackets
         self.autoIndentEnabled = autoIndentEnabled
         self.autoCloseBracketsEnabled = autoCloseBracketsEnabled
+        self.indentStyle = indentStyle
+        self.indentWidth = max(1, indentWidth)
         self.onFontSizeChange = onFontSizeChange
         self.onTextMutation = onTextMutation
         if isNewDocument {
             colorPickerPopover?.close()
             colorPickerPopover = nil
+            clearInlineSuggestion()
+            isVimInsertMode = !vimModeIsEnabled
         }
         if abs(editorFontSize - fontSize) > 0.01 {
             editorFontSize = fontSize
@@ -1259,6 +1308,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             configuredContentRevision = contentRevision
             configuredExternalContentRevision = externalContentRevision
             guard contentChanged else { return }
+            clearInlineSuggestion()
             reloadViewport(anchorLine: lineForAbsoluteOffset(absoluteCaret), maximumByteCount: editRefreshMaximumByteCount)
             recalculateVisualMetrics()
             setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
@@ -1351,7 +1401,35 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         }
         drawHexColorSwatches(rows: rows, dirtyRect: dirtyRect)
         drawMarkedText(rows: rows, context: context)
+        drawInlineSuggestion(rows: rows, context: context)
         drawCaret(rows: rows)
+    }
+
+    private func drawInlineSuggestion(rows: [VisualRow], context: CGContext) {
+        guard let inlineSuggestion,
+              let inlineSuggestionLocation,
+              selection.length == 0,
+              absoluteCaret == inlineSuggestionLocation else { return }
+        let local = inlineSuggestionLocation - viewportLineOriginStartUTF16
+        guard let row = visualRow(containing: local, in: rows) else { return }
+        let x = CGFloat(CTLineGetOffsetForStringIndex(
+            row.fragment.line,
+            row.coreTextStringIndex(forViewportOffset: local),
+            nil
+        ))
+        let line = CTLineCreateWithAttributedString(NSAttributedString(
+            string: inlineSuggestion,
+            attributes: [
+                .font: editorFont,
+                .foregroundColor: NSColor.secondaryLabelColor.withAlphaComponent(0.6)
+            ]
+        ))
+        VirtualEditorCoreTextDrawing.draw(
+            line,
+            in: context,
+            at: CGPoint(x: gutterWidth + Geometry.gutterTextInset + x, y: row.baseline),
+            flippedCoordinates: isFlipped
+        )
     }
 
     private func drawHexColorSwatches(rows: [VisualRow], dirtyRect: NSRect) {
@@ -1711,6 +1789,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
+        clearInlineSuggestion()
         let point = convert(event.locationInWindow, from: nil)
         if let target = hexColorSwatchTargets(rows: visualRows()).first(where: { $0.rect.contains(point) }) {
             presentColorPicker(for: target.literal, relativeTo: target.rect)
@@ -1805,6 +1884,64 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         super.mouseUp(with: event)
     }
 
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        let pasteboard = sender.draggingPasteboard
+        let hasFile = pasteboard.canReadObject(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        )
+        return hasFile || plainString(from: pasteboard)?.isEmpty == false ? .copy : []
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let pasteboard = sender.draggingPasteboard
+        if publishFileURLs(from: pasteboard) { return true }
+        guard !isReadOnly,
+              let raw = plainString(from: pasteboard),
+              !raw.isEmpty else { return false }
+        absoluteCaret = documentOffset(at: convert(sender.draggingLocation, from: nil))
+        selection = NSRange(location: absoluteCaret, length: 0)
+        selectionAnchor = nil
+        let sanitized = EditorTextSanitizer.sanitize(raw)
+        guard replaceSelection(with: sanitized) else { return false }
+        NotificationCenter.default.post(name: .pastedText, object: sanitized)
+        return true
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let menu = NSMenu()
+        if !isReadOnly {
+            menu.addItem(withTitle: "Cut", action: #selector(cut(_:)), keyEquivalent: "")
+        }
+        menu.addItem(withTitle: "Copy", action: #selector(copy(_:)), keyEquivalent: "")
+        if !isReadOnly {
+            menu.addItem(withTitle: "Paste", action: #selector(paste(_:)), keyEquivalent: "")
+        }
+        menu.addItem(withTitle: "Select All", action: #selector(selectAll(_:)), keyEquivalent: "")
+        for item in menu.items { item.target = self }
+        if selection.length > 0 {
+            menu.addItem(.separator())
+            let snapshot = NSMenuItem(
+                title: "Create Code Snapshot",
+                action: #selector(createCodeSnapshotFromSelection(_:)),
+                keyEquivalent: ""
+            )
+            snapshot.target = self
+            snapshot.image = NSImage(
+                systemSymbolName: "camera.viewfinder",
+                accessibilityDescription: "Create Code Snapshot"
+            )
+            menu.addItem(snapshot)
+        }
+        return menu
+    }
+
+    @objc private func createCodeSnapshotFromSelection(_ sender: Any?) {
+        guard selection.length > 0 else { return }
+        publishCaret()
+        NotificationCenter.default.post(name: .editorRequestCodeSnapshotFromSelection, object: nil)
+    }
+
     private func scheduleDragPublication() {
         guard pendingDragPublication == nil else { return }
         let work = DispatchWorkItem { [weak self] in
@@ -1838,6 +1975,30 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             return
         }
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if language == "markdown",
+           modifiers == .command,
+           let command = EditorCommandSemantics.markdownCommand(for: event.charactersIgnoringModifiers) {
+            NotificationCenter.default.post(name: .markdownFormattingRequested, object: command)
+            return
+        }
+        if modifiers.isEmpty,
+           (event.keyCode == 48 || event.keyCode == 124),
+           acceptInlineSuggestion() {
+            return
+        }
+        if vimModeIsEnabled,
+           !modifiers.contains(.command),
+           !modifiers.contains(.option),
+           !modifiers.contains(.control) {
+            if !isVimInsertMode {
+                if handleVimCommand(event.charactersIgnoringModifiers ?? "", keyCode: event.keyCode) { return }
+            } else if event.keyCode == 53 || event.characters == "\u{1B}" {
+                isVimInsertMode = false
+                postVimModeState()
+                clearInlineSuggestion()
+                return
+            }
+        }
         if VirtualEditorKeyRouting.shouldInterpretArrow(modifiers: modifiers) {
             interpretKeyEvents([event])
             return
@@ -1851,6 +2012,56 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         case 126: moveCaretVertically(-1, extending: extending)
         default: interpretKeyEvents([event])
         }
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let accepted = super.becomeFirstResponder()
+        if accepted, vimModeIsEnabled {
+            isVimInsertMode = false
+            postVimModeState()
+        }
+        return accepted
+    }
+
+    @discardableResult
+    func handleVimCommand(_ key: String, keyCode: UInt16? = nil) -> Bool {
+        guard !isVimInsertMode else { return false }
+        switch keyCode {
+        case 123: moveCaret(-1, extending: false); return true
+        case 124: moveCaret(1, extending: false); return true
+        case 125: moveCaretVertically(1, extending: false); return true
+        case 126: moveCaretVertically(-1, extending: false); return true
+        default: break
+        }
+        switch key {
+        case "h": moveCaret(-1, extending: false)
+        case "j": moveCaretVertically(1, extending: false)
+        case "k": moveCaretVertically(-1, extending: false)
+        case "l": moveCaret(1, extending: false)
+        case "w": moveCaret(to: wordBoundary(from: absoluteCaret, direction: 1), extending: false)
+        case "b": moveCaret(to: wordBoundary(from: absoluteCaret, direction: -1), extending: false)
+        case "0": moveToLineBoundary(end: false)
+        case "$": moveToLineBoundary(end: true)
+        case "x": deleteForward()
+        case "p": pasteSelection()
+        case "i": isVimInsertMode = true; postVimModeState()
+        case "a": moveCaret(1, extending: false); isVimInsertMode = true; postVimModeState()
+        case "\u{1B}": break
+        default: break
+        }
+        return true
+    }
+
+    private func moveToLineBoundary(end: Bool) {
+        let local = max(0, min(viewportText.utf16.count, absoluteCaret - viewportLineOriginStartUTF16))
+        let source = viewportText as NSString
+        let lineRange = source.lineRange(for: NSRange(location: local, length: 0))
+        var target = end ? NSMaxRange(lineRange) : lineRange.location
+        while end, target > lineRange.location,
+              source.character(at: target - 1) == 10 || source.character(at: target - 1) == 13 {
+            target -= 1
+        }
+        moveCaret(to: viewportLineOriginStartUTF16 + target, extending: false)
     }
 
     private func requestCloseSelectedTab() {
@@ -1885,6 +2096,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     func insertText(_ string: Any, replacementRange: NSRange) {
         guard !isReadOnly else { return }
+        clearInlineSuggestion()
         let value = (string as? String) ?? (string as? NSAttributedString)?.string ?? ""
         guard !value.isEmpty else { return }
         if markedTextRange.location != NSNotFound {
@@ -1914,6 +2126,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         case #selector(deleteBackward(_:)): deleteBackward()
         case #selector(deleteForward(_:)): deleteForward()
         case #selector(insertNewline(_:)): insertNewline()
+        case #selector(insertTab(_:)):
+            if !acceptInlineSuggestion(), !expandEmmetAtCaret() { insertConfiguredIndentation() }
         case #selector(moveLeft(_:)): moveCaret(-1, extending: false)
         case #selector(moveRight(_:)): moveCaret(1, extending: false)
         case #selector(moveUp(_:)): moveCaretVertically(-1, extending: false)
@@ -1933,6 +2147,61 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     override func selectAll(_ sender: Any?) { selectAllContent() }
     @objc func undo(_ sender: Any?) { documentUndoManager.undo() }
     @objc func redo(_ sender: Any?) { documentUndoManager.redo() }
+
+    private var vimModeIsEnabled: Bool {
+        UserDefaults.standard.bool(forKey: "EditorVimModeEnabled")
+            && UserDefaults.standard.bool(forKey: "EditorVimInterceptionEnabled")
+    }
+
+    @objc private func updateVimMode(_ notification: Notification) {
+        guard notification.object == nil || notification.object as AnyObject? === self else { return }
+        isVimInsertMode = notification.userInfo?["insertMode"] as? Bool ?? !vimModeIsEnabled
+        clearInlineSuggestion()
+    }
+
+    private func postVimModeState() {
+        NotificationCenter.default.post(
+            name: .vimModeStateDidChange,
+            object: self,
+            userInfo: ["insertMode": isVimInsertMode]
+        )
+    }
+
+    @objc private func showInlineSuggestion(_ notification: Notification) {
+        guard matchesDocument(notification),
+              let suggestion = notification.userInfo?[EditorCommandUserInfo.replacementText] as? String,
+              let location = notification.userInfo?[EditorCommandUserInfo.completionCaretOffset] as? Int,
+              !suggestion.isEmpty,
+              selection.length == 0,
+              absoluteCaret == location else { return }
+        inlineSuggestion = EditorTextSanitizer.sanitize(suggestion)
+        inlineSuggestionLocation = location
+        needsDisplay = true
+    }
+
+    private func clearInlineSuggestion() {
+        guard inlineSuggestion != nil || inlineSuggestionLocation != nil else { return }
+        inlineSuggestion = nil
+        inlineSuggestionLocation = nil
+        needsDisplay = true
+    }
+
+    @discardableResult
+    private func acceptInlineSuggestion() -> Bool {
+        guard let suggestion = inlineSuggestion,
+              inlineSuggestionLocation == absoluteCaret,
+              selection.length == 0 else {
+            clearInlineSuggestion()
+            return false
+        }
+        clearInlineSuggestion()
+        return replaceSelection(with: suggestion)
+    }
+
+    private func insertConfiguredIndentation() {
+        let insertion = EditorCommandSemantics.indentation(style: indentStyle, width: indentWidth)
+        replaceSelection(with: insertion)
+    }
 
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
         markedText = (string as? String) ?? (string as? NSAttributedString)?.string ?? ""
@@ -1984,15 +2253,17 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     @discardableResult
     private func replaceSelection(with value: String) -> Bool {
         guard let document, let documentID else { return false }
+        clearInlineSuggestion()
         let selectionEnd = NSMaxRange(selection)
         let viewportContainsSelection = viewport != nil &&
             selection.location >= viewportStartUTF16 &&
             selectionEnd <= viewportStartUTF16 + viewportText.utf16.count
         guard viewportContainsSelection else {
-            let source = document.string() as NSString
-            let location = min(max(0, selection.location), source.length)
-            let length = min(max(0, selection.length), source.length - location)
-            let original = source.substring(with: NSRange(location: location, length: length))
+            let location = min(max(0, selection.location), document.utf16Length)
+            let length = min(max(0, selection.length), document.utf16Length - location)
+            guard let original = try? document.text(inUTF16Range: NSRange(location: location, length: length)) else {
+                return false
+            }
             guard onTextMutation?(EditorTextMutation(documentID: documentID, range: NSRange(location: location, length: length), replacement: value)) == true else { return false }
             registerUndo(replacement: original, range: NSRange(location: location, length: value.utf16.count), inverseReplacement: value)
             absoluteCaret = location + value.utf16.count
@@ -2048,6 +2319,82 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
               absoluteCaret >= viewportStartUTF16,
               absoluteCaret < viewportStartUTF16 + viewportText.utf16.count else { return false }
         return (viewportText as NSString).substring(with: NSRange(location: absoluteCaret - viewportStartUTF16, length: 1)) == value
+    }
+
+    private func expandEmmetAtCaret() -> Bool {
+        guard !isReadOnly,
+              selection.length == 0,
+              let viewport,
+              absoluteCaret >= viewport.startUTF16Offset,
+              absoluteCaret <= viewport.startUTF16Offset + viewportText.utf16.count,
+              let expansion = EmmetExpander.expansionIfPossible(
+                in: viewportText,
+                cursorUTF16Location: absoluteCaret - viewport.startUTF16Offset,
+                language: language,
+                indentStyle: indentStyle,
+                indentWidth: indentWidth
+              ) else { return false }
+
+        let previousCaret = absoluteCaret
+        let previousSelection = selection
+        let absoluteRange = NSRange(
+            location: viewport.startUTF16Offset + expansion.range.location,
+            length: expansion.range.length
+        )
+        absoluteCaret = absoluteRange.location
+        selection = absoluteRange
+        guard replaceSelection(with: expansion.expansion) else {
+            absoluteCaret = previousCaret
+            selection = previousSelection
+            return false
+        }
+
+        absoluteCaret = absoluteRange.location + expansion.caretOffset
+        selection = NSRange(location: absoluteCaret, length: 0)
+        publishCaret()
+        needsDisplay = true
+        return true
+    }
+
+    @objc func inspectWhitespaceScalars(_ notification: Notification) {
+        if let targetWindowNumber = notification.userInfo?[EditorCommandUserInfo.windowNumber] as? Int,
+           let ownWindowNumber = window?.windowNumber,
+           targetWindowNumber != ownWindowNumber { return }
+        let localCaret = max(0, min(viewportText.utf16.count, absoluteCaret - viewportLineOriginStartUTF16))
+        let source = viewportText as NSString
+        let lineRange = source.lineRange(for: NSRange(location: localCaret, length: 0))
+        let line = source.substring(with: lineRange)
+        var counts: [UInt32: Int] = [:]
+        for scalar in line.unicodeScalars {
+            let value = scalar.value
+            let isWhitespace = scalar.properties.generalCategory == .spaceSeparator || value == 0x20 || value == 0x09
+            if isWhitespace || value == 0x0A || value == 0x0D || (0x2400...0x243F).contains(value) || value == 0x2581 {
+                counts[value, default: 0] += 1
+            }
+        }
+        let body = counts.isEmpty
+            ? "none detected"
+            : counts.keys.sorted().map { "\(whitespaceScalarName($0)) x\(counts[$0] ?? 0)" }.joined(separator: ", ")
+        NotificationCenter.default.post(
+            name: .whitespaceScalarInspectionResult,
+            object: nil,
+            userInfo: [
+                EditorCommandUserInfo.windowNumber: window?.windowNumber ?? -1,
+                EditorCommandUserInfo.inspectionMessage:
+                    "Line \(lineForAbsoluteOffset(absoluteCaret) + 1) at UTF16@\(absoluteCaret), whitespace scalars:\n\(body)"
+            ]
+        )
+    }
+
+    private func whitespaceScalarName(_ value: UInt32) -> String {
+        switch value {
+        case 0x20: return "SPACE"
+        case 0x09: return "TAB"
+        case 0x0A: return "LF"
+        case 0x0D: return "CR"
+        case 0x2581: return "LOWER_ONE_EIGHTH_BLOCK"
+        default: return "U+\(String(format: "%04X", value))"
+        }
     }
 
     private func insertNewline() {
@@ -2169,11 +2516,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let local = selection.location - viewportStartUTF16
         guard local >= 0, NSMaxRange(selection) <= viewportStartUTF16 + viewportText.utf16.count else {
             guard let document else { return }
-            let source = document.string() as NSString
-            let location = min(max(0, selection.location), source.length)
-            let length = min(max(0, selection.length), source.length - location)
+            let location = min(max(0, selection.location), document.utf16Length)
+            let length = min(max(0, selection.length), document.utf16Length - location)
+            guard let selectedText = try? document.text(inUTF16Range: NSRange(location: location, length: length)) else { return }
             NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(source.substring(with: NSRange(location: location, length: length)), forType: .string)
+            NSPasteboard.general.setString(selectedText, forType: .string)
             return
         }
         NSPasteboard.general.clearContents()
@@ -2195,8 +2542,55 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     private func pasteSelection() {
-        guard let text = NSPasteboard.general.string(forType: .string) else { return }
-        replaceSelection(with: text)
+        let pasteboard = NSPasteboard.general
+        if publishFileURLs(from: pasteboard) { return }
+        guard let text = plainString(from: pasteboard) else { return }
+        if let fileURL = fileURL(from: text) {
+            NotificationCenter.default.post(name: .pastedFileURL, object: fileURL)
+            return
+        }
+        let sanitized = EditorTextSanitizer.sanitize(text)
+        guard replaceSelection(with: sanitized) else { return }
+        NotificationCenter.default.post(name: .pastedText, object: sanitized)
+    }
+
+    @discardableResult
+    private func publishFileURLs(from pasteboard: NSPasteboard) -> Bool {
+        guard let values = pasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [NSURL], !values.isEmpty else { return false }
+        let urls = values.map { $0 as URL }
+        NotificationCenter.default.post(name: .pastedFileURL, object: urls.count == 1 ? urls[0] : urls)
+        return true
+    }
+
+    private func plainString(from pasteboard: NSPasteboard) -> String? {
+        if let raw = pasteboard.string(forType: .string), !raw.isEmpty { return raw }
+        if let strings = pasteboard.readObjects(forClasses: [NSString.self], options: nil) as? [NSString],
+           let first = strings.first, first.length > 0 {
+            return first as String
+        }
+        if let rtf = pasteboard.data(forType: .rtf),
+           let attributed = try? NSAttributedString(
+               data: rtf,
+               options: [.documentType: NSAttributedString.DocumentType.rtf],
+               documentAttributes: nil
+           ), !attributed.string.isEmpty {
+            return attributed.string
+        }
+        return nil
+    }
+
+    private func fileURL(from text: String) -> URL? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let url = URL(string: trimmed), url.isFileURL,
+           FileManager.default.fileExists(atPath: url.path) {
+            return url
+        }
+        let expanded = (trimmed as NSString).expandingTildeInPath
+        guard FileManager.default.fileExists(atPath: expanded) else { return nil }
+        return URL(fileURLWithPath: expanded)
     }
 
     private func selectAllContent() {
@@ -2237,6 +2631,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     private func finishCaretMovement() {
+        clearInlineSuggestion()
         ensureCaretVisible()
         publishCaret()
         needsDisplay = true

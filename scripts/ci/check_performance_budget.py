@@ -67,6 +67,12 @@ def main() -> None:
         fail("interaction benchmarks must use at least 100000 lines")
     if interaction_benchmarks["iterations"] < 5:
         fail("interaction benchmarks must run at least five measured iterations")
+    latency_budgets = interaction_benchmarks.get("maximumMedianSeconds", {})
+    required_latency_budgets = {"typing", "scrolling", "selection", "viewportReload"}
+    if set(latency_budgets) != required_latency_budgets:
+        fail("interaction latency budgets must cover typing, scrolling, selection, and viewport reload")
+    if any(not isinstance(value, (int, float)) or value <= 0 for value in latency_budgets.values()):
+        fail("interaction latency budgets must be positive seconds")
     benchmark_tests = ROOT / "Neon Vision EditorTests" / "VirtualEditorPerformanceTests.swift"
     benchmark_source = benchmark_tests.read_text(encoding="utf-8")
     required_interactions = {
@@ -80,6 +86,8 @@ def main() -> None:
     for test_name in required_interactions:
         if f"func {test_name}(" not in benchmark_source:
             fail(f"missing interaction benchmark {test_name}")
+    if "assertMedianLatency" not in benchmark_source or "maximumMedianSeconds" not in benchmark_source:
+        fail("interaction benchmarks must enforce the configured median latency budgets")
 
     pre_release_workflow = (ROOT / ".github" / "workflows" / "pre-release-ci.yml").read_text(encoding="utf-8")
     for required_trend_export in (

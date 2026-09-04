@@ -29,6 +29,9 @@ protocol EditorDocument: AnyObject {
 
     /// Decode a bounded byte chunk, ending on a complete character.
     func textChunk(startByteOffset: Int, maximumByteCount: Int) throws -> (text: String, byteCount: Int)
+    /// Decode only the requested UTF-16 range. Interactive editor commands must
+    /// use this instead of promoting a file-backed document to a full String.
+    func text(inUTF16Range range: NSRange) throws -> String
 
     func string() -> String
     func replace(range: NSRange, with replacement: String) throws

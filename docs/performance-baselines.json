@@ -17,6 +17,12 @@
   "interactionBenchmarks": {
     "largeFileLines": 100000,
     "iterations": 5,
+    "maximumMedianSeconds": {
+      "typing": 5.0,
+      "scrolling": 2.0,
+      "selection": 2.0,
+      "viewportReload": 1.5
+    },
     "tests": [
       "testLargeDocumentTypingLatencyBenchmark",
       "testLargeDocumentScrollingLatencyBenchmark",

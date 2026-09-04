@@ -1027,8 +1027,7 @@ struct ContentView: View {
             return true
         }
         guard lowerLanguage == "xml" else { return false }
-        guard viewModel.selectedTab?.usesFileBackedStorage != true else { return false }
-        let sample = currentContent.prefix(512).lowercased()
+        let sample = currentDocumentPrefix(maxUTF16Length: 512).lowercased()
         return sample.contains("<plist")
     }
 
@@ -1044,8 +1043,9 @@ struct ContentView: View {
         if currentLanguage.lowercased() == "crashlog" {
             return true
         }
-        guard viewModel.selectedTab?.usesFileBackedStorage != true else { return false }
-        return AppleCrashReportParser.looksLikeAppleCrashReport(currentContent)
+        return AppleCrashReportParser.looksLikeAppleCrashReport(
+            currentDocumentPrefix(maxUTF16Length: 16_000)
+        )
     }
 
     var shouldShowCrashReportStructure: Bool {
@@ -1903,7 +1903,7 @@ struct ContentView: View {
         return false
     }
 
-    private func updateLargeFileModeForCurrentContext() {
+    func updateLargeFileModeForCurrentContext() {
         if droppedFileLoadInProgress {
             if !largeFileModeEnabled {
                 largeFileModeEnabled = true
@@ -1934,6 +1934,7 @@ struct ContentView: View {
         guard viewModel.selectedTab?.usesFileBackedStorage != true else {
             return nil
         }
+        guard currentDocumentUTF16Length <= maxUTF16Length else { return nil }
         let snapshot = currentContentBinding.wrappedValue
         guard (snapshot as NSString).length <= maxUTF16Length else { return nil }
         return snapshot
@@ -3244,7 +3245,7 @@ struct ContentView: View {
                 .sheet(isPresented: contentView.$showCompactSidebarSheet) {
                     NavigationStack {
                         SidebarView(
-                            content: contentView.currentContent,
+                            content: contentView.sidebarTOCContent,
                             language: contentView.currentLanguage,
                             contentUTF16Length: contentView.currentDocumentUTF16Length,
                             documentID: contentView.viewModel.selectedTabID,
@@ -3971,6 +3972,22 @@ struct ContentView: View {
     var currentContent: String { currentContentBinding.wrappedValue }
     var currentLanguage: String { currentLanguageBinding.wrappedValue }
 
+    var currentDocumentIsEmpty: Bool {
+        if let tab = viewModel.selectedTab {
+            return tab.document.utf16Length == 0
+        }
+        return singleContent.isEmpty
+    }
+
+    func currentDocumentPrefix(maxUTF16Length: Int) -> String {
+        guard maxUTF16Length > 0 else { return "" }
+        if let document = viewModel.selectedTab?.document {
+            let length = min(document.utf16Length, maxUTF16Length)
+            return (try? document.text(inUTF16Range: NSRange(location: 0, length: length))) ?? ""
+        }
+        return String(singleContent.prefix(maxUTF16Length))
+    }
+
     var activeSplitSecondaryTabID: UUID? {
         guard let secondaryID = splitSecondaryTabID,
               secondaryID != viewModel.selectedTabID,
@@ -4425,6 +4442,8 @@ struct ContentView: View {
             highlightsMatchingBrackets: effectiveBracketHighlight,
             autoIndentEnabled: autoIndentEnabled,
             autoCloseBracketsEnabled: autoCloseBracketsEnabled,
+            indentStyle: indentStyle,
+            indentWidth: effectiveIndentWidth,
             isSplitPaneResizeInProgress: previewPaneResizeStartWidth != nil,
             preferredLayoutWidth: brainDumpLayoutEnabled ? 920 : nil,
             onFontSizeChange: { setEditorFontSize(Double($0)) },

@@ -30,7 +30,7 @@ extension ContentView {
             containsPotentialSensitiveContent: AIChatSensitiveContentDetector.containsPotentialSecret(aiChatSelection ?? ""),
             isOnDeviceProvider: selectedModel == .appleIntelligence,
             hasSelection: aiChatSelection != nil,
-            hasCurrentFile: viewModel.selectedTab != nil || !currentContent.isEmpty,
+            hasCurrentFile: viewModel.selectedTab != nil || !singleContent.isEmpty,
             hasProjectStructure: aiChatProjectStructure != nil,
             onSend: { prompt, scopes in
                 sendAIChat(prompt: prompt, scopes: scopes)
@@ -210,7 +210,7 @@ extension ContentView {
               range.location != NSNotFound,
               range.length > 0,
               NSMaxRange(range) <= tab.document.utf16Length,
-              (tab.document.string() as NSString).substring(with: range) == currentSelectionSnapshotText else {
+              (try? tab.document.text(inUTF16Range: range)) == currentSelectionSnapshotText else {
             aiChatConversation.reportError("Select unchanged text in an editable document before replacing it.")
             return
         }
@@ -227,7 +227,7 @@ extension ContentView {
               tab.id == preview.tabID,
               !tab.isReadOnlyPreview,
               NSMaxRange(preview.range) <= tab.document.utf16Length,
-              (tab.document.string() as NSString).substring(with: preview.range) == preview.source else {
+              (try? tab.document.text(inUTF16Range: preview.range)) == preview.source else {
             aiChatConversation.reportError("The selected text changed. Review the AI proposal again before applying it.")
             return
         }
@@ -253,7 +253,10 @@ extension ContentView {
             aiChatConversation.reportError("Select text before reviewing a proposed replacement.")
             return
         }
-        let source = (tab.document.string() as NSString).substring(with: range)
+        guard let source = try? tab.document.text(inUTF16Range: range) else {
+            aiChatConversation.reportError("The selected text could not be read. Select it again and retry.")
+            return
+        }
         utilitySidebarMode = .project
         showProjectStructureSidebar = true
         Task { @MainActor in

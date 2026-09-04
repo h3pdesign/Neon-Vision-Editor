@@ -110,6 +110,25 @@ final class RecentFilesStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testTabSwitchPerformanceEventRetainsEndToEndStages() throws {
+        let monitor = EditorPerformanceMonitor(defaults: defaults)
+        let id = UUID()
+        monitor.beginTabSwitch(tabID: id)
+        monitor.markLoadedTabStateApplied(tabID: id)
+        monitor.markSwiftUIEditorUpdated(tabID: id)
+        monitor.markViewportLoaded(tabID: id)
+        monitor.markTabSwitchFirstDraw(tabID: id)
+
+        let event = try XCTUnwrap(monitor.recentTabSwitchEvents().last)
+        XCTAssertNotNil(event.loadedStateMilliseconds)
+        XCTAssertNotNil(event.swiftUIUpdateMilliseconds)
+        XCTAssertNotNil(event.viewportMilliseconds)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(event.loadedStateMilliseconds), event.elapsedMilliseconds)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(event.swiftUIUpdateMilliseconds), event.elapsedMilliseconds)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(event.viewportMilliseconds), event.elapsedMilliseconds)
+    }
+
+    @MainActor
     func testRapidPreferenceUpdatesCoalesceAndPersistTheLatestValue() async {
         let counter = PreferenceWriteCounter()
         let releaseFirstWrite = DispatchSemaphore(value: 0)

@@ -168,12 +168,11 @@ extension ContentView {
                   lastCaretLocation == caretLocation else { return }
             storeCompletionInCache(sanitized, for: cacheKey)
             NotificationCenter.default.post(
-                name: .replaceEditorRangeRequested,
+                name: .showVirtualEditorInlineSuggestion,
                 object: nil,
                 userInfo: [
                     EditorCommandUserInfo.documentID: tabID.uuidString,
-                    EditorCommandUserInfo.rangeLocation: caretLocation,
-                    EditorCommandUserInfo.rangeLength: 0,
+                    EditorCommandUserInfo.completionCaretOffset: caretLocation,
                     EditorCommandUserInfo.replacementText: sanitized
                 ]
             )

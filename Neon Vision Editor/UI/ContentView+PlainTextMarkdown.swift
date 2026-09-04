@@ -4,18 +4,26 @@ extension ContentView {
     func convertTextToMarkdown() {
         guard !isConvertingTextToMarkdown else { return }
         guard let tab = viewModel.selectedTab else { return }
-        let document = tab.document.string() as NSString
         let selectedRange: NSRange? = {
             guard currentSelectionSnapshotTabID == tab.id,
                   let range = currentSelectionSnapshotRange,
                   range.location != NSNotFound,
                   range.length > 0,
-                  NSMaxRange(range) <= document.length else {
+                  NSMaxRange(range) <= tab.document.utf16Length else {
                 return nil
             }
             return range
         }()
-        let source = selectedRange.map(document.substring(with:)) ?? tab.document.string()
+        let source: String
+        if let selectedRange {
+            guard let selectedText = try? tab.document.text(inUTF16Range: selectedRange) else {
+                markdownConversionErrorMessage = "The selected text could not be read. Select it again and retry."
+                return
+            }
+            source = selectedText
+        } else {
+            source = tab.document.string()
+        }
         guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             markdownConversionErrorMessage = PlainTextMarkdownConversionError.emptyDocument.localizedDescription
             return
@@ -195,7 +203,7 @@ extension ContentView {
             guard let targetTab = viewModel.tabs.first(where: { $0.id == targetTabID }),
                   targetRange.location != NSNotFound,
                   NSMaxRange(targetRange) <= targetTab.document.utf16Length,
-                  (targetTab.document.string() as NSString).substring(with: targetRange) == proposal.source else {
+                  (try? targetTab.document.text(inUTF16Range: targetRange)) == proposal.source else {
                 markdownConversionErrorMessage = "The selected text changed while the proposal was open. Convert it again to avoid replacing newer edits."
                 markdownConversionProposal = nil
                 return

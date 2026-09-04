@@ -352,6 +352,25 @@ final class EditorViewModelTabTests: XCTestCase {
         await fulfillment(of: [invalidated], timeout: 1)
     }
 
+    func testTabObservationChannelsRemainIsolatedByMutationKind() throws {
+        let viewModel = EditorViewModel()
+        let tab = try XCTUnwrap(viewModel.selectedTab)
+        let initialStructure = viewModel.tabsObservationToken
+        let initialContent = viewModel.tabContentObservationToken
+        let initialMetadata = viewModel.tabMetadataObservationToken
+
+        viewModel.updateTabContent(tabID: tab.id, content: "updated")
+        XCTAssertEqual(viewModel.tabsObservationToken, initialStructure)
+        XCTAssertGreaterThan(viewModel.tabContentObservationToken, initialContent)
+        XCTAssertEqual(viewModel.tabMetadataObservationToken, initialMetadata)
+
+        let contentAfterEdit = viewModel.tabContentObservationToken
+        viewModel.updateTabLanguage(tabID: tab.id, language: "swift")
+        XCTAssertEqual(viewModel.tabsObservationToken, initialStructure)
+        XCTAssertEqual(viewModel.tabContentObservationToken, contentAfterEdit)
+        XCTAssertGreaterThan(viewModel.tabMetadataObservationToken, initialMetadata)
+    }
+
     func testTabContentReadInvalidatesWhenDocumentContentChanges() async {
         let tab = TabData(
             name: "Preview.md",

@@ -109,6 +109,13 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
     private var dirty = false
     var isDirty: Bool { dirty }
     private var viewportGeneration: UInt64 = 0
+    private struct ViewportCacheKey: Equatable {
+        let line: Int
+        let maximumByteCount: Int
+        let maximumLineCount: Int
+        let generation: UInt64
+    }
+    private var cachedViewport: (key: ViewportCacheKey, value: EditorDocumentViewport)?
     private(set) var viewportIndexPreparedOnMainThread: Bool?
 
     convenience init(url: URL) throws {
@@ -265,18 +272,31 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
 
 
     func viewport(aroundLine line: Int, maximumByteCount: Int, maximumLineCount: Int = .max) throws -> EditorDocumentViewport {
-        if lazyFileHandle != nil {
-            let window = try lazyWindow(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
-            return EditorDocumentViewport(text: window.text, startByteOffset: window.startByteOffset, startUTF16Offset: window.startUTF16Offset, lineRange: window.lineRange, generation: viewportGeneration)
-        }
-        let window = try self.window(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
-        return EditorDocumentViewport(
-            text: window.text,
-            startByteOffset: window.startByteOffset,
-            startUTF16Offset: utf16Offset(atByteOffset: window.startByteOffset),
-            lineRange: window.lineRange,
+        let key = ViewportCacheKey(
+            line: line,
+            maximumByteCount: maximumByteCount,
+            maximumLineCount: maximumLineCount,
             generation: viewportGeneration
         )
+        if let cachedViewport, cachedViewport.key == key {
+            return cachedViewport.value
+        }
+        let result: EditorDocumentViewport
+        if lazyFileHandle != nil {
+            let window = try lazyWindow(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
+            result = EditorDocumentViewport(text: window.text, startByteOffset: window.startByteOffset, startUTF16Offset: window.startUTF16Offset, lineRange: window.lineRange, generation: viewportGeneration)
+        } else {
+            let window = try self.window(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
+            result = EditorDocumentViewport(
+                text: window.text,
+                startByteOffset: window.startByteOffset,
+                startUTF16Offset: utf16Offset(atByteOffset: window.startByteOffset),
+                lineRange: window.lineRange,
+                generation: viewportGeneration
+            )
+        }
+        cachedViewport = (key, result)
+        return result
     }
 
     /// Completes the lazy line index before this document reaches the editor.
@@ -308,6 +328,42 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
     func string() -> String {
         try? materializeLazyStorageIfNeeded()
         return (try? text(inByteRange: NSRange(location: 0, length: byteCount))) ?? ""
+    }
+
+    func text(inUTF16Range range: NSRange) throws -> String {
+        guard range.location >= 0, range.length >= 0,
+              range.location <= utf16Length,
+              range.location + range.length <= utf16Length else {
+            throw Error.invalidRange
+        }
+        guard range.length > 0 else { return "" }
+
+        if lazyFileHandle != nil {
+            guard lazyIndexComplete else { throw Error.invalidRange }
+            let startLine = lazyLineIndex(forUTF16Offset: range.location)
+            let endLine = lazyLineIndex(forUTF16Offset: range.location + range.length)
+            let startByte = lazyLineStarts[startLine]
+            let endByte = endLine + 1 < lazyLineStarts.count
+                ? lazyLineStarts[endLine + 1]
+                : lazyFileByteCount
+            let raw = try lazyRead(NSRange(location: startByte, length: max(0, endByte - startByte)))
+            guard let decoded = decode(raw, beginsAtDocumentStart: startByte == 0) else {
+                throw Error.unsupportedEncoding
+            }
+            let localLocation = range.location - lazyLineUTF16Starts[startLine]
+            let source = decoded as NSString
+            guard localLocation >= 0, localLocation + range.length <= source.length else {
+                throw Error.invalidRange
+            }
+            return source.substring(with: NSRange(location: localLocation, length: range.length))
+        }
+
+        guard let start = byteOffset(forUTF16Offset: range.location),
+              let end = byteOffset(forUTF16Offset: range.location + range.length),
+              end >= start else {
+            throw Error.invalidRange
+        }
+        return try text(inByteRange: NSRange(location: start, length: end - start))
     }
 
     func replace(range: NSRange, with replacement: String) throws {
@@ -525,6 +581,20 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
             return lineUTF16Start + text.utf16.count
         }
         return lazyIndexedUTF16Length
+    }
+
+    private func lazyLineIndex(forUTF16Offset target: Int) -> Int {
+        var low = 0
+        var high = lazyLineUTF16Starts.count
+        while low < high {
+            let middle = (low + high) / 2
+            if lazyLineUTF16Starts[middle] <= target {
+                low = middle + 1
+            } else {
+                high = middle
+            }
+        }
+        return min(max(0, low - 1), max(0, lazyLineUTF16Starts.count - 1))
     }
 
     func replace(in window: Window, utf16Range range: NSRange, with replacement: String) throws {

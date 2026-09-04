@@ -4,6 +4,320 @@ import XCTest
 
 @MainActor
 final class VirtualEditorLayoutTests: XCTestCase {
+    func testSharedEditorCommandSemanticsDefinePlatformParity() {
+        XCTAssertEqual(EditorCommandSemantics.indentation(style: "tabs", width: 8), "\t")
+        XCTAssertEqual(EditorCommandSemantics.indentation(style: "spaces", width: 2), "  ")
+        XCTAssertEqual(EditorCommandSemantics.markdownCommand(for: "B"), "bold")
+        XCTAssertEqual(EditorCommandSemantics.markdownCommand(for: "i"), "italic")
+        XCTAssertEqual(EditorCommandSemantics.markdownCommand(for: "k"), "link")
+        XCTAssertNil(EditorCommandSemantics.markdownCommand(for: "x"))
+    }
+
+    func testVirtualEditorNativeInteractionAndAccessibilityContract() throws {
+        let source = String(repeating: "first line\n", count: 30_000) + "accessible target"
+        let backing = FileBackedTextDocument(content: source)
+        let document = CountingEditorDocument(backing: backing)
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        canvas.configure(
+            document: document,
+            documentID: UUID(),
+            resourceID: "native-contract",
+            displayName: "contract.txt",
+            contentRevision: 0,
+            externalContentRevision: 0,
+            caret: 0,
+            language: "plain",
+            colorScheme: .dark,
+            fontSize: 14,
+            fontName: "",
+            lineHeightMultiplier: 1,
+            isReadOnly: false,
+            translucentBackgroundEnabled: false,
+            showsLineNumbers: true,
+            highlightCurrentLine: false,
+            lineWrapEnabled: true,
+            showsInvisibleCharacters: false,
+            showsIndentationGuides: false,
+            showsScopeGuides: false,
+            highlightsScopeBackground: false,
+            highlightsMatchingBrackets: false,
+            autoIndentEnabled: true,
+            autoCloseBracketsEnabled: false,
+            onFontSizeChange: nil,
+            onTextMutation: nil
+        )
+
+        XCTAssertTrue(canvas.acceptsFirstResponder)
+        XCTAssertEqual(canvas.accessibilityRole(), .textArea)
+        XCTAssertEqual(canvas.accessibilityNumberOfCharacters(), (source as NSString).length)
+        XCTAssertTrue(Set(canvas.registeredDraggedTypes).isSuperset(of: [.fileURL, .string, .rtf]))
+        for selector in [
+            #selector(VirtualEditorCanvas.copy(_:)),
+            #selector(VirtualEditorCanvas.cut(_:)),
+            #selector(VirtualEditorCanvas.paste(_:)),
+            #selector(VirtualEditorCanvas.selectAll(_:))
+        ] {
+            XCTAssertTrue(canvas.responds(to: selector), NSStringFromSelector(selector))
+        }
+
+        let targetRange = (source as NSString).range(of: "accessible target")
+        XCTAssertEqual(canvas.accessibilityString(for: targetRange), "accessible target")
+        canvas.setAccessibilitySelectedTextRange(targetRange)
+        XCTAssertEqual(canvas.accessibilitySelectedTextRange(), targetRange)
+        XCTAssertEqual(canvas.accessibilitySelectedText(), "accessible target")
+        XCTAssertEqual(document.stringCallCount, 0)
+    }
+
+    func testOfficialEmmetEngineExpandsComplexMarkupAndStylesheets() throws {
+        let markup = try XCTUnwrap(EmmetExpander.expansionIfPossible(
+            in: "ul#nav>li.item$*2>a{Item $}",
+            cursorUTF16Location: 27,
+            language: "html",
+            indentStyle: "spaces",
+            indentWidth: 2
+        ))
+        XCTAssertEqual(markup.range, NSRange(location: 0, length: 27))
+        XCTAssertEqual(markup.expansion, """
+        <ul id="nav">
+          <li class="item1"><a href="">Item 1</a></li>
+          <li class="item2"><a href="">Item 2</a></li>
+        </ul>
+        """)
+        XCTAssertEqual(markup.caretOffset, 43)
+
+        let stylesheet = try XCTUnwrap(EmmetExpander.expansionIfPossible(
+            in: "m10-20",
+            cursorUTF16Location: 7,
+            language: "css"
+        ))
+        XCTAssertEqual(stylesheet.expansion, "margin: 10px 20px;")
+
+        let embeddedCSS = try XCTUnwrap(EmmetExpander.expansionIfPossible(
+            in: "<style>\nm10",
+            cursorUTF16Location: 11,
+            language: "html"
+        ))
+        XCTAssertEqual(embeddedCSS.range, NSRange(location: 8, length: 3))
+        XCTAssertEqual(embeddedCSS.expansion, "margin: 10px;")
+    }
+
+    func testTabExpandsEmmetAbbreviationInMacOSVirtualEditor() {
+        let source = "ul>li*2"
+        let document = FileBackedTextDocument(content: source)
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        canvas.configure(
+            document: document,
+            documentID: UUID(),
+            resourceID: "emmet-regression",
+            displayName: "index.html",
+            contentRevision: 0,
+            externalContentRevision: 0,
+            caret: (source as NSString).length,
+            language: "html",
+            colorScheme: .dark,
+            fontSize: 14,
+            fontName: "",
+            lineHeightMultiplier: 1,
+            isReadOnly: false,
+            translucentBackgroundEnabled: false,
+            showsLineNumbers: true,
+            highlightCurrentLine: false,
+            lineWrapEnabled: true,
+            showsInvisibleCharacters: false,
+            showsIndentationGuides: false,
+            showsScopeGuides: false,
+            highlightsScopeBackground: false,
+            highlightsMatchingBrackets: false,
+            autoIndentEnabled: true,
+            autoCloseBracketsEnabled: false,
+            onFontSizeChange: nil,
+            onTextMutation: { mutation in
+                do {
+                    if let viewport = mutation.viewport {
+                        try document.replace(in: viewport, utf16Range: mutation.range, with: mutation.replacement)
+                    } else {
+                        try document.replace(utf16Range: mutation.range, with: mutation.replacement)
+                    }
+                    return true
+                } catch {
+                    return false
+                }
+            }
+        )
+
+        canvas.doCommand(by: #selector(NSResponder.insertTab(_:)))
+
+        XCTAssertEqual(document.string(), "<ul>\n    <li></li>\n    <li></li>\n</ul>")
+        XCTAssertEqual(canvas.selectedRange(), NSRange(location: 13, length: 0))
+    }
+
+    func testTabUsesConfiguredIndentationWhenThereIsNoEmmetExpansion() {
+        let (document, canvas, _) = makeCanvas(source: "let value = 1", language: "swift", indentStyle: "spaces", indentWidth: 2)
+        canvas.doCommand(by: #selector(NSResponder.insertTab(_:)))
+        XCTAssertEqual(document.string(), "let value = 1  ")
+    }
+
+    func testInlineSuggestionRemainsVirtualUntilTabAcceptsIt() {
+        let (document, canvas, documentID) = makeCanvas(source: "pri", language: "swift")
+        NotificationCenter.default.post(
+            name: .showVirtualEditorInlineSuggestion,
+            object: nil,
+            userInfo: [
+                EditorCommandUserInfo.documentID: documentID.uuidString,
+                EditorCommandUserInfo.completionCaretOffset: 3,
+                EditorCommandUserInfo.replacementText: "nt(\"Hello\")"
+            ]
+        )
+        XCTAssertEqual(document.string(), "pri")
+        canvas.doCommand(by: #selector(NSResponder.insertTab(_:)))
+        XCTAssertEqual(document.string(), "print(\"Hello\")")
+    }
+
+    func testVimNormalModeCommandsMutateAndReturnToInsertMode() {
+        let (document, canvas, _) = makeCanvas(source: "abc", language: "plain", caret: 0)
+        NotificationCenter.default.post(
+            name: .vimModeStateDidChange,
+            object: nil,
+            userInfo: ["insertMode": false]
+        )
+        XCTAssertTrue(canvas.handleVimCommand("x"))
+        XCTAssertEqual(document.string(), "bc")
+        XCTAssertTrue(canvas.handleVimCommand("i"))
+        XCTAssertFalse(canvas.handleVimCommand("x"))
+    }
+
+    func testWhitespaceInspectionReadsTheVisibleLine() {
+        let (_, canvas, _) = makeCanvas(source: "value\t  \nnext", language: "plain", caret: 6)
+        let result = expectation(description: "whitespace result")
+        var message = ""
+        let token = NotificationCenter.default.addObserver(
+            forName: .whitespaceScalarInspectionResult,
+            object: nil,
+            queue: .main
+        ) { notification in
+            message = notification.userInfo?[EditorCommandUserInfo.inspectionMessage] as? String ?? ""
+            result.fulfill()
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+        canvas.inspectWhitespaceScalars(Notification(name: .inspectWhitespaceScalarsRequested))
+        wait(for: [result], timeout: 1)
+        withExtendedLifetime(canvas) {}
+        XCTAssertTrue(message.contains("TAB x1"))
+        XCTAssertTrue(message.contains("SPACE x2"))
+    }
+
+    func testSelectionContextMenuRestoresCodeSnapshotAction() throws {
+        let (_, canvas, documentID) = makeCanvas(source: "selected", language: "plain", caret: 0)
+        NotificationCenter.default.post(
+            name: .moveCursorToRange,
+            object: nil,
+            userInfo: [
+                EditorCommandUserInfo.documentID: documentID.uuidString,
+                EditorCommandUserInfo.rangeLocation: 0,
+                EditorCommandUserInfo.rangeLength: 8
+            ]
+        )
+        let event = try XCTUnwrap(NSEvent.mouseEvent(
+            with: .rightMouseDown,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            eventNumber: 0,
+            clickCount: 1,
+            pressure: 0
+        ))
+        XCTAssertNotNil(canvas.menu(for: event)?.items.first(where: { $0.title == "Create Code Snapshot" }))
+    }
+
+    func testEmmetExpansionDoesNotMaterializeLargeDocument() {
+        let suffix = "ul>li.item$*2"
+        let backing = FileBackedTextDocument(content: String(repeating: "<p>row</p>\n", count: 100_000) + suffix)
+        let document = CountingEditorDocument(backing: backing)
+        let documentID = UUID()
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        canvas.configure(
+            document: document,
+            documentID: documentID,
+            resourceID: "bounded-emmet",
+            displayName: "large.html",
+            contentRevision: 0,
+            externalContentRevision: 0,
+            caret: document.utf16Length,
+            language: "html",
+            colorScheme: .dark,
+            fontSize: 14,
+            fontName: "",
+            lineHeightMultiplier: 1,
+            isReadOnly: false,
+            translucentBackgroundEnabled: false,
+            showsLineNumbers: true,
+            highlightCurrentLine: false,
+            lineWrapEnabled: true,
+            showsInvisibleCharacters: false,
+            showsIndentationGuides: false,
+            showsScopeGuides: false,
+            highlightsScopeBackground: false,
+            highlightsMatchingBrackets: false,
+            autoIndentEnabled: true,
+            autoCloseBracketsEnabled: false,
+            onFontSizeChange: nil,
+            onTextMutation: { mutation in
+                do {
+                    if let viewport = mutation.viewport {
+                        try document.replace(in: viewport, utf16Range: mutation.range, with: mutation.replacement)
+                    } else {
+                        try document.replace(utf16Range: mutation.range, with: mutation.replacement)
+                    }
+                    return true
+                } catch { return false }
+            }
+        )
+        canvas.doCommand(by: #selector(NSResponder.insertTab(_:)))
+        XCTAssertEqual(document.stringCallCount, 0)
+        XCTAssertTrue((try? document.viewport(aroundLine: document.lineCount - 1, maximumByteCount: 4_096).text.contains("<ul>")) == true)
+    }
+
+    private func makeCanvas(
+        source: String,
+        language: String,
+        caret: Int? = nil,
+        indentStyle: String = "spaces",
+        indentWidth: Int = 4
+    ) -> (FileBackedTextDocument, VirtualEditorCanvas, UUID) {
+        let document = FileBackedTextDocument(content: source)
+        let documentID = UUID()
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        canvas.configure(
+            document: document, documentID: documentID, resourceID: documentID.uuidString,
+            displayName: "fixture", contentRevision: 0, externalContentRevision: 0,
+            caret: caret ?? (source as NSString).length, language: language, colorScheme: .dark,
+            fontSize: 14, fontName: "", lineHeightMultiplier: 1, isReadOnly: false,
+            translucentBackgroundEnabled: false, showsLineNumbers: true, highlightCurrentLine: false,
+            lineWrapEnabled: true, showsInvisibleCharacters: false, showsIndentationGuides: false,
+            showsScopeGuides: false, highlightsScopeBackground: false, highlightsMatchingBrackets: false,
+            autoIndentEnabled: true, autoCloseBracketsEnabled: false,
+            indentStyle: indentStyle, indentWidth: indentWidth,
+            onFontSizeChange: nil,
+            onTextMutation: { mutation in
+                do {
+                    if let viewport = mutation.viewport {
+                        try document.replace(in: viewport, utf16Range: mutation.range, with: mutation.replacement)
+                    } else {
+                        try document.replace(utf16Range: mutation.range, with: mutation.replacement)
+                    }
+                    return true
+                } catch { return false }
+            }
+        )
+        return (document, canvas, documentID)
+    }
+
     func testDenseMarkdownCanvasBoundsLayoutAcrossScrollAndEdit() throws {
         let source = String(repeating: "# x\n", count: 220_000)
         for wraps in [true, false] {
@@ -810,6 +1124,46 @@ final class VirtualEditorLayoutTests: XCTestCase {
             usesFileBackedStorage: false,
             fileByteCount: 0
         ))
+    }
+}
+
+private final class CountingEditorDocument: EditorDocument {
+    let backing: FileBackedTextDocument
+    private(set) var stringCallCount = 0
+
+    init(backing: FileBackedTextDocument) { self.backing = backing }
+
+    var storageKind: EditorDocumentStorageKind { backing.storageKind }
+    var utf16Length: Int { backing.utf16Length }
+    var isDirty: Bool { backing.isDirty }
+    var supportsBoundedWindows: Bool { backing.supportsBoundedWindows }
+    var lineCount: Int { backing.lineCount }
+    func position(atUTF16Offset offset: Int) throws -> (line: Int, column: Int) {
+        try backing.position(atUTF16Offset: offset)
+    }
+    func textChunk(startByteOffset: Int, maximumByteCount: Int) throws -> (text: String, byteCount: Int) {
+        try backing.textChunk(startByteOffset: startByteOffset, maximumByteCount: maximumByteCount)
+    }
+    func text(inUTF16Range range: NSRange) throws -> String {
+        try backing.text(inUTF16Range: range)
+    }
+    func string() -> String {
+        stringCallCount += 1
+        return backing.string()
+    }
+    func replace(range: NSRange, with replacement: String) throws {
+        try backing.replace(range: range, with: replacement)
+    }
+    func replace(utf16Range: NSRange, with replacement: String) throws {
+        try backing.replace(utf16Range: utf16Range, with: replacement)
+    }
+    func replaceAll(with text: String) throws { try backing.replaceAll(with: text) }
+    func markClean() { backing.markClean() }
+    func viewport(aroundLine line: Int, maximumByteCount: Int, maximumLineCount: Int) throws -> EditorDocumentViewport {
+        try backing.viewport(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
+    }
+    func replace(in viewport: EditorDocumentViewport, utf16Range: NSRange, with replacement: String) throws {
+        try backing.replace(in: viewport, utf16Range: utf16Range, with: replacement)
     }
 }
 #endif

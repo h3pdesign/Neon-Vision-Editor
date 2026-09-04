@@ -577,6 +577,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v1.6.1": ("Vollständiges Emmet und vertraute Editorbefehle", "Erweitert Emmet-Abkürzungen in Markup und Stylesheets, stellt macOS-Editoraktionen wieder her und verbessert Syntaxfarben sowie die Leistung großer Dateien.", ["Emmet", "Editor", "Leistung"]),
         "v1.6.0": ("Große Dateien schneller und zuverlässiger bearbeiten", "Beschleunigt das Öffnen und Scrollen großer Markdown-Dateien, verbessert Eingabe und Speichern und ergänzt native HEX-Farbvorschauen unter macOS.", ["Editor", "Leistung", "Farben"]),
         "v1.5.6": ("Kompaktere, verlässlichere Editorwerkzeuge", "Macht mobile Symbolleisten übersichtlicher, setzt Markdown-Nummerierungen korrekt fort und schützt die eingeklappte Formatierungspille vor durchscheinendem Text.", ["Symbolleiste", "Markdown", "Auswahl"]),
         "v1.5.5": ("Präzise Bearbeitung mit Apple Pencil", "Zeigt auf dem iPad beim Schweben die Caret-Position, ermöglicht die direkte Bereichsauswahl mit dem Pencil und korrigiert die macOS-Editorzeichnung.", ["Editor", "Apple Pencil", "iPad"]),
@@ -595,6 +596,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v1.6.1": ("Fuld Emmet og velkendte editorhandlinger", "Udvider Emmet-forkortelser i markup og stylesheets, gendanner macOS-editorhandlinger og forbedrer syntaksfarver samt ydeevnen i store filer.", ["Emmet", "Editor", "Ydeevne"]),
         "v1.6.0": ("Hurtigere og mere pålidelig redigering af store filer", "Åbner og ruller hurtigere i store Markdown-filer, forbedrer indtastning og lagring og tilføjer native HEX-farvevisninger på macOS.", ["Editor", "Ydeevne", "Farver"]),
         "v1.5.6": ("Mere kompakte og pålidelige editorværktøjer", "Gør mobile værktøjslinjer tydeligere, fortsætter Markdown-nummerering korrekt og beskytter den sammenklappede formateringsknap mod gennemskinnende tekst.", ["Værktøjslinje", "Markdown", "Markering"]),
         "v1.5.5": ("Præcis redigering med Apple Pencil", "Viser markørens placering ved svævning på iPad, vælger tekstområder direkte med Pencil og retter tegningen i macOS-editoren.", ["Editor", "Apple Pencil", "iPad"]),
@@ -613,6 +615,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v1.6.1": ("Emmet complet et commandes d’édition familières", "Développe les abréviations Emmet dans le balisage et les feuilles de style, restaure les actions de l’éditeur macOS et améliore les couleurs syntaxiques ainsi que les performances des grands fichiers.", ["Emmet", "Éditeur", "Performances"]),
         "v1.6.0": ("Une édition plus rapide et fiable des fichiers volumineux", "Accélère l’ouverture et le défilement des grands fichiers Markdown, fiabilise la saisie et l’enregistrement et ajoute des aperçus de couleurs HEX natifs sur macOS.", ["Éditeur", "Performances", "Couleurs"]),
         "v1.5.6": ("Des outils d’édition plus compacts et fiables", "Clarifie les barres d’outils mobiles, poursuit correctement la numérotation Markdown et empêche le texte de traverser la pastille de formatage repliée.", ["Barre d’outils", "Markdown", "Sélection"]),
         "v1.5.5": ("Édition précise avec Apple Pencil", "Affiche la position du curseur au survol sur iPad, sélectionne directement des plages avec le Pencil et corrige le rendu de l’éditeur macOS.", ["Éditeur", "Apple Pencil", "iPad"]),
@@ -631,6 +634,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v1.6.1": ("Emmet completo y acciones de edición habituales", "Expande abreviaturas Emmet en marcado y hojas de estilo, restaura las acciones del editor de macOS y mejora los colores de sintaxis y el rendimiento de archivos grandes.", ["Emmet", "Editor", "Rendimiento"]),
         "v1.6.0": ("Edición más rápida y fiable de archivos grandes", "Acelera la apertura y el desplazamiento de archivos Markdown grandes, mejora la escritura y el guardado y añade vistas previas nativas de colores HEX en macOS.", ["Editor", "Rendimiento", "Colores"]),
         "v1.5.6": ("Herramientas de edición más compactas y fiables", "Aclara las barras móviles, continúa correctamente la numeración Markdown e impide que el texto atraviese la píldora de formato contraída.", ["Barra", "Markdown", "Selección"]),
         "v1.5.5": ("Edición precisa con Apple Pencil", "Muestra la posición del cursor al pasar el Pencil en iPad, permite seleccionar rangos directamente y corrige el dibujo del editor de macOS.", ["Editor", "Apple Pencil", "iPad"]),
@@ -649,6 +653,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v1.6.1": ("完全な Emmet と使い慣れた編集操作", "マークアップとスタイルシートの Emmet 略語を展開し、macOS エディタの操作を復元して、構文カラーと大きなファイルの性能を改善します。", ["Emmet", "エディタ", "パフォーマンス"]),
         "v1.6.0": ("大きなファイルをより速く確実に編集", "大きな Markdown ファイルの表示とスクロールを高速化し、入力と保存の安定性を向上。macOS ではネイティブの HEX カラープレビューを追加しました。", ["エディタ", "パフォーマンス", "カラー"]),
         "v1.5.6": ("よりコンパクトで確実な編集ツール", "モバイルのツールバーを整理し、Markdown の番号付きリストを正しく継続し、折りたたんだ書式ピルへの文字の透過を防ぎます。", ["ツールバー", "Markdown", "選択"]),
         "v1.5.5": ("Apple Pencil で正確に編集", "iPad でホバー時にキャレット位置を表示し、Pencil で範囲を直接選択できるようにして、macOS エディタの描画も修正します。", ["エディタ", "Apple Pencil", "iPad"]),
@@ -667,6 +672,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v1.6.1": ("完整 Emmet 与熟悉的编辑操作", "扩展标记和样式表中的 Emmet 缩写，恢复 macOS 编辑器操作，并改进语法颜色和大型文件性能。", ["Emmet", "编辑器", "性能"]),
         "v1.6.0": ("更快速、更可靠的大文件编辑", "加快大型 Markdown 文件的打开和滚动，提升输入与保存的可靠性，并在 macOS 上新增原生 HEX 颜色预览。", ["编辑器", "性能", "颜色"]),
         "v1.5.6": ("更紧凑、更可靠的编辑工具", "简化移动工具栏，正确续排 Markdown 编号列表，并防止编辑器文字透过折叠的格式工具胶囊。", ["工具栏", "Markdown", "选择"]),
         "v1.5.5": ("使用 Apple Pencil 精确编辑", "在 iPad 悬停时预览插入点，使用 Pencil 直接选择文本范围，并修复 macOS 编辑器绘制问题。", ["编辑器", "Apple Pencil", "iPad"]),

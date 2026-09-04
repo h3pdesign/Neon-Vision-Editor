@@ -1,0 +1,9 @@
+Neon Vision Editor includes a bundled build of the official Emmet expansion engine:
+
+- emmet 2.4.11
+- @emmetio/abbreviation 2.3.3
+- @emmetio/css-abbreviation 2.1.8
+- @emmetio/scanner 1.0.4
+
+Source: https://github.com/emmetio/emmet
+License: MIT. See LICENSE-emmet.txt in this directory.

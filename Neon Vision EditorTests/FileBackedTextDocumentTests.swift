@@ -3,6 +3,28 @@ import XCTest
 
 @MainActor
 final class FileBackedTextDocumentTests: XCTestCase {
+    func testUTF16RangeReadsStayBoundedAcrossLazyAndEditedDocuments() throws {
+        let prefix = String(repeating: "prefix line\n", count: 30_000)
+        let selected = "selected 😀 text"
+        let source = prefix + selected + String(repeating: "\nsuffix line", count: 30_000)
+        let range = NSRange(location: (prefix as NSString).length, length: (selected as NSString).length)
+
+        let url = directory.appendingPathComponent("bounded-range.txt")
+        try source.write(to: url, atomically: true, encoding: .utf8)
+        let lazyDocument = try FileBackedTextDocument(url: url, knownEncoding: .utf8)
+        try lazyDocument.prepareViewportIndex()
+        XCTAssertEqual(try lazyDocument.text(inUTF16Range: range), selected)
+
+        let editedDocument = FileBackedTextDocument(content: source)
+        try editedDocument.replace(utf16Range: NSRange(location: range.location, length: 0), with: "new ")
+        XCTAssertEqual(
+            try editedDocument.text(inUTF16Range: NSRange(location: range.location, length: range.length + 4)),
+            "new " + selected
+        )
+        XCTAssertThrowsError(try lazyDocument.text(inUTF16Range: NSRange(location: -1, length: 1)))
+        XCTAssertThrowsError(try lazyDocument.text(inUTF16Range: NSRange(location: lazyDocument.utf16Length, length: 1)))
+    }
+
     func testBoundedTextChunksPreserveUnicodeAndBOMAcrossLazyReadsAndEdits() throws {
         let source = String(repeating: "é😀<style>/* x */</style>\n", count: 120)
         for identifier in [TextEncodingDescriptor.Identifier.utf8, .utf8WithBOM, .utf16LittleEndianWithBOM, .utf16BigEndian] {

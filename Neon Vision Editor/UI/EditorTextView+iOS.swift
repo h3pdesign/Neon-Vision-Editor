@@ -3434,7 +3434,9 @@ struct CustomTextEditor: UIViewRepresentable {
                 if let expansion = EmmetExpander.expansionIfPossible(
                     in: textView.text ?? "",
                     cursorUTF16Location: range.location,
-                    language: parent.language
+                    language: parent.language,
+                    indentStyle: parent.indentStyle,
+                    indentWidth: parent.indentWidth
                 ) {
                     setPendingTextMutation(range: expansion.range, replacement: expansion.expansion)
                     performProgrammaticReplacement(
@@ -3445,12 +3447,10 @@ struct CustomTextEditor: UIViewRepresentable {
                     )
                     return false
                 }
-                let insertion: String
-                if parent.indentStyle == "tabs" {
-                    insertion = "\t"
-                } else {
-                    insertion = String(repeating: " ", count: max(1, parent.indentWidth))
-                }
+                let insertion = EditorCommandSemantics.indentation(
+                    style: parent.indentStyle,
+                    width: parent.indentWidth
+                )
                 setPendingTextMutation(range: range, replacement: insertion)
                 performProgrammaticReplacement(
                     in: textView,

@@ -118,7 +118,21 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.6.0</h2><span class="date">3 September 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.6.1</h2><span class="date">4 September 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Expands complex HTML, JSX, CSS, SCSS, Less, Sass, and related Emmet abbreviations with configured indentation.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Restores Tab-to-accept inline completion, Vim navigation, Markdown shortcuts, drag and drop, rich-text paste, code snapshots, and whitespace inspection in the macOS virtual editor.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Caches generation-safe bounded viewports and enforces median latency budgets for typing, scrolling, selection, and viewport reloads.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Colors HTML tags, attributes, strings, embedded CSS properties, and numbers as separate syntax tokens instead of treating complete attribute or style values as one string.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Reads offscreen selections and edits through bounded UTF-16 document ranges instead of materializing an entire file-backed document.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves tab selection, preview, structured-data, AI completion, toolbar, and persistence behavior when switching to the virtual editor.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Uses the correct StoreKit purchase action on visionOS and recovers product loading cleanly during App Review-style sessions.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps Emmet and inline-completion work limited to the active viewport so large files do not regress to full-document processing.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.6.0</h2><span class="date">3 September 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Prepares large-file indexes in the background and limits rendering to visible rows and bounded document windows.</p></div>
           <div class="item"><span class="badge new">New</span><p>Shows color swatches for supported HEX literals and preserves their format when editing colors.</p></div>

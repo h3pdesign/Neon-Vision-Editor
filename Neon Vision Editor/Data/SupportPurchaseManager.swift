@@ -19,11 +19,20 @@ final class SupportPurchaseManager: ObservableObject {
     @Published var statusMessage: String?
 
     private var transactionUpdatesTask: Task<Void, Never>?
-    private var lastStoreStateRefreshAt: Date?
+    private var productLoadTask: Task<Void, Never>?
+    private let loadProducts: @MainActor () async throws -> [Product]
+    private let canMakePayments: @MainActor () -> Bool
     private let storeStateFreshnessInterval: TimeInterval = 300
     private let productLookupAttempts = 3
 
-    init() {
+    init(
+        loadProducts: @escaping @MainActor () async throws -> [Product] = {
+            try await Product.products(for: [SupportPurchaseManager.supportProductID])
+        },
+        canMakePayments: @escaping @MainActor () -> Bool = { AppStore.canMakePayments }
+    ) {
+        self.loadProducts = loadProducts
+        self.canMakePayments = canMakePayments
         transactionUpdatesTask = observeTransactionUpdates()
     }
 
@@ -67,18 +76,15 @@ final class SupportPurchaseManager: ObservableObject {
 
     // Refreshes StoreKit capability and product metadata.
     func refreshStoreState() async {
-        guard !isLoadingProducts else { return }
-        lastStoreStateRefreshAt = Date()
-        isLoadingProducts = true
-        await refreshBypassEligibility()
-        await loadSupportProduct(showStatusOnFailure: false)
+        refreshPurchaseAvailability()
+        await refreshProducts(showStatusOnFailure: false)
     }
 
     // Refreshes only when the cached StoreKit state is stale or unavailable.
     func refreshStoreStateIfStale() async {
-        guard !isLoadingProducts else { return }
-        if let lastStoreStateRefreshAt,
-           Date().timeIntervalSince(lastStoreStateRefreshAt) < storeStateFreshnessInterval {
+        refreshPurchaseAvailability()
+        if supportProduct != nil, let lastSuccessfulPriceRefreshAt,
+           Date().timeIntervalSince(lastSuccessfulPriceRefreshAt) < storeStateFreshnessInterval {
             return
         }
         await refreshStoreState()
@@ -86,9 +92,19 @@ final class SupportPurchaseManager: ObservableObject {
 
     // Loads support product metadata from App Store.
     func refreshProducts(showStatusOnFailure: Bool = true) async {
-        guard !isLoadingProducts else { return }
+        if let productLoadTask {
+            await productLoadTask.value
+            return
+        }
         isLoadingProducts = true
-        await loadSupportProduct(showStatusOnFailure: showStatusOnFailure)
+        // Keep a shared lookup alive when a settings view disappears. All
+        // callers, including purchases, await the same metadata request.
+        let task = Task {
+            await loadSupportProduct(showStatusOnFailure: showStatusOnFailure)
+        }
+        productLoadTask = task
+        await task.value
+        productLoadTask = nil
     }
 
     private func loadSupportProduct(showStatusOnFailure: Bool) async {
@@ -106,13 +122,15 @@ final class SupportPurchaseManager: ObservableObject {
             }
 
             do {
-                let products = try await Product.products(for: [Self.supportProductID])
+                let products = try await loadProducts()
                 if let product = products.first(where: { $0.id == Self.supportProductID }) {
                     supportProduct = product
                     lastSuccessfulPriceRefreshAt = Date()
                     statusMessage = nil
                     return
                 }
+            } catch is CancellationError {
+                return
             } catch {
                 lastLookupError = error
                 continue
@@ -136,21 +154,17 @@ final class SupportPurchaseManager: ObservableObject {
 
     // Refreshes in-app purchase availability and product pricing for settings UI.
     func refreshPrice() async {
-        guard !isLoadingProducts else { return }
         statusMessage = nil
-        isLoadingProducts = true
-        await refreshBypassEligibility()
-        await loadSupportProduct(showStatusOnFailure: true)
+        refreshPurchaseAvailability()
+        await refreshProducts(showStatusOnFailure: true)
     }
 
     // Starts purchase flow for the optional support product.
-    func purchaseSupport() async {
-        #if os(visionOS)
-        statusMessage = NSLocalizedString("Support purchase is currently unavailable on visionOS.", comment: "")
-        return
-        #else
+    func purchaseSupport(using purchase: @MainActor (Product) async throws -> Product.PurchaseResult) async {
         // Prevent overlapping StoreKit purchase flows that can race and surface misleading cancel states.
         guard !isPurchasing else { return }
+        isPurchasing = true
+        defer { isPurchasing = false }
         if !hasCheckedStoreAvailability {
             await refreshStoreState()
         }
@@ -168,11 +182,8 @@ final class SupportPurchaseManager: ObservableObject {
 
         statusMessage = nil
         let hadSupportedBeforeAttempt = hasSupported
-        isPurchasing = true
-        defer { isPurchasing = false }
-
         do {
-            let result = try await product.purchase()
+            let result = try await purchase(product)
             switch result {
             case .success(let verificationResult):
                 let transaction = try verify(verificationResult)
@@ -205,39 +216,21 @@ final class SupportPurchaseManager: ObservableObject {
                 statusMessage = String(format: format, error.localizedDescription, details)
             }
         }
-        #endif
     }
 
     // Detects whether this device can use in-app purchases.
-    private func refreshBypassEligibility() async {
-        defer { hasCheckedStoreAvailability = true }
-        #if os(iOS) || os(macOS)
-        canUseInAppPurchases = AppStore.canMakePayments
-        #else
-        canUseInAppPurchases = false
-        #endif
-        do {
-            let appTransactionResult = try await AppTransaction.shared
-            switch appTransactionResult {
-            case .verified:
-                break
-            case .unverified:
-                canUseInAppPurchases = AppStore.canMakePayments
-            }
-        } catch {
-            #if os(iOS) || os(macOS)
-            canUseInAppPurchases = AppStore.canMakePayments
-            #else
-            canUseInAppPurchases = false
-            #endif
-        }
+    private func refreshPurchaseAvailability() {
+        // Optional consumable tips have no app-receipt entitlement prerequisite.
+        // Product lookup must not wait for AppTransaction.shared to resolve.
+        canUseInAppPurchases = canMakePayments()
+        hasCheckedStoreAvailability = true
     }
 
     // Listens for transaction updates and applies verified changes.
     private func observeTransactionUpdates() -> Task<Void, Never> {
         Task { [weak self] in
-            guard let self else { return }
             for await result in Transaction.updates {
+                guard let self else { return }
                 do {
                     let transaction = try self.verify(result)
                     await transaction.finish()

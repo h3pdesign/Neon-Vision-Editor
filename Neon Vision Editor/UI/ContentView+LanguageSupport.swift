@@ -569,7 +569,7 @@ extension ContentView {
     }
 
     private func applyLanguageSelection(language: String, insertTemplate: Bool) {
-        let contentIsEmpty = currentContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let contentIsEmpty = currentDocumentIsEmpty
         if let tab = viewModel.selectedTab {
             viewModel.updateTabLanguage(tabID: tab.id, language: language)
             if insertTemplate, contentIsEmpty, let template = starterTemplate(for: language) {
@@ -584,7 +584,7 @@ extension ContentView {
     }
 
     var languageSetupSheet: some View {
-        let contentIsEmpty = currentContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let contentIsEmpty = currentDocumentIsEmpty
         let canInsertTemplate = contentIsEmpty
 
         return VStack(alignment: .leading, spacing: 16) {

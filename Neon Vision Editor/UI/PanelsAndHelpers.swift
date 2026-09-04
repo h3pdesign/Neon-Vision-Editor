@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import Foundation
 import UniformTypeIdentifiers
 #if os(macOS)
@@ -2669,6 +2670,7 @@ private final class DirectionalKeyCommandView: UIView {
 struct WelcomeTourView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openURL) private var openURL
+    @Environment(\.purchase) private var purchase
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
 
     static var releaseID: String {
@@ -2720,15 +2722,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.6.0",
-            subtitle: "Release highlights for v1.6.0.",
+            title: "What’s New in v1.6.1",
+            subtitle: "Release highlights for v1.6.1.",
             bullets: [
-                "Editor Improvements: Opens and edits large Markdown and source files with less blocking work and bounded viewport rendering.",
-                "Workflow Refinements: Keeps scrolling, rapid typing, Unicode edits, and saving reliable in large documents.",
-                "Performance Updates: Adds native macOS HEX color previews and a color picker directly in the source editor.",
-                "Usability Updates: Prepares large-file indexes in the background and limits rendering to visible rows and bounded document windows.",
-                "Editor Improvements: Shows color swatches for supported HEX literals and preserves their format when editing colors.",
-                "Editor Performance: Coalesces recent-file and performance-history persistence so repeated editor actions do not queue obsolete preference writes."
+                "Editor Improvements: Brings official Emmet 2 abbreviation expansion to markup and stylesheet editing across the native editors.",
+                "Workflow Refinements: Restores the established macOS editor commands and interactions after the move to bounded virtual rendering.",
+                "Editor Performance: Improves large-document responsiveness while correcting HTML/CSS colors and App Store support-purchase handling.",
+                "Usability Updates: Expands complex HTML, JSX, CSS, SCSS, Less, Sass, and related Emmet abbreviations with configured indentation.",
+                "Editor Navigation: Restores Tab-to-accept inline completion, Vim navigation, Markdown shortcuts, drag and drop, rich-text paste, code…",
+                "Workflow Refinements: Caches generation-safe bounded viewports and enforces median latency budgets for typing, scrolling, selection, and viewport…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -3647,7 +3649,7 @@ struct WelcomeTourView: View {
             HStack {
                 Spacer()
                 Button {
-                    Task { await supportPurchaseManager.purchaseSupport() }
+                    Task { await supportPurchaseManager.purchaseSupport { product in try await purchase(product) } }
                 } label: {
                     HStack(spacing: compactLayout ? 8 : 10) {
                         Image(systemName: "heart.fill")
@@ -3846,6 +3848,7 @@ struct WelcomeTourView: View {
 struct SupportPromptSheetView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openURL) private var openURL
+    @Environment(\.purchase) private var purchase
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
     let onDismiss: () -> Void
 
@@ -3923,7 +3926,7 @@ struct SupportPromptSheetView: View {
 
                 VStack(spacing: compact ? 8 : 10) {
                     Button {
-                        Task { await supportPurchaseManager.purchaseSupport() }
+                        Task { await supportPurchaseManager.purchaseSupport { product in try await purchase(product) } }
                     } label: {
                         Label(supportPurchaseManager.supportPurchaseButtonTitle, systemImage: "heart.fill")
                             .frame(maxWidth: .infinity)
@@ -4423,6 +4426,7 @@ extension Notification.Name {
     static let editorViewportDidChange = Notification.Name("editorViewportDidChange")
     static let requestEditorViewport = Notification.Name("requestEditorViewport")
     static let virtualEditorTextDidChange = Notification.Name("virtualEditorTextDidChange")
+    static let showVirtualEditorInlineSuggestion = Notification.Name("showVirtualEditorInlineSuggestion")
     static let markdownPreviewViewportDidChange = Notification.Name("markdownPreviewViewportDidChange")
     static let scrollEditorViewportToFraction = Notification.Name("scrollEditorViewportToFraction")
 }

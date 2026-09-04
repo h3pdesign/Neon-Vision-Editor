@@ -26,7 +26,7 @@ display_price="$(plutil -extract products.0.displayPrice raw "$STOREKIT_FILE")"
 grep -Fq "static let supportProductID = \"$EXPECTED_PRODUCT_ID\"" "$PURCHASE_MANAGER_FILE" || \
   fail "SupportPurchaseManager product ID does not match the StoreKit configuration."
 
-python3 - "$SETTINGS_FILE" <<'PY'
+python3 - "$SETTINGS_FILE" "$PURCHASE_MANAGER_FILE" <<'PY'
 import pathlib
 import sys
 
@@ -38,6 +38,12 @@ handler = source.split(anchor, 1)[1].split('.onChange(of: moreSectionTab)', 1)[0
 ios_branch = handler.split('#elseif os(iOS)', 1)[1].split('#else', 1)[0]
 if 'newValue == "support"' not in ios_branch or 'refreshSupportStoreStateIfNeeded()' not in ios_branch:
     raise SystemExit("error: Selecting Support on iOS must refresh StoreKit state.")
+vision_branch = handler.split('#if os(visionOS)', 1)[1].split('#elseif', 1)[0]
+if 'newValue == "support"' not in vision_branch or 'refreshSupportStoreStateIfNeeded()' not in vision_branch:
+    raise SystemExit("error: Selecting Support on visionOS must refresh StoreKit state.")
+manager = pathlib.Path(sys.argv[2]).read_text(encoding="utf-8")
+if 'Support purchase is currently unavailable on visionOS.' in manager:
+    raise SystemExit("error: Support purchases must not be disabled on visionOS.")
 PY
 
 for scheme in \

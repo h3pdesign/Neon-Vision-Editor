@@ -1,5 +1,8 @@
 import SwiftUI
 import Foundation
+#if canImport(JavaScriptCore)
+import JavaScriptCore
+#endif
 
 struct EditorTextMutation {
     let documentID: UUID
@@ -221,55 +224,92 @@ enum LargeFileInstallRuntime {
     static let chunkUTF16 = 262_144
 }
 
+@MainActor
 enum EmmetExpander {
-    struct Node {
-        var tag: String
-        var id: String?
-        var classes: [String]
-        var count: Int
-        var children: [Node]
-    }
+    private final class BundleMarker: NSObject {}
 
-    private static let allowedChars = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.#>+*-_")
-    private static let voidTags: Set<String> = ["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"]
+    private static let supportedMarkupLanguages: Set<String> = ["html", "xml", "svg", "php"]
+    private static let supportedStylesheetLanguages: Set<String> = ["css", "scss", "sass", "less", "stylus", "sss"]
 
-    static func expansionIfPossible(in text: String, cursorUTF16Location: Int, language: String) -> (range: NSRange, expansion: String, caretOffset: Int)? {
-        guard language == "html" || language == "php" else { return nil }
-        if language == "php" && !isHTMLContextInPHP(text: text, cursorUTF16Location: cursorUTF16Location) {
+#if canImport(JavaScriptCore)
+    private static let engine: JSValue? = {
+        let bundles = [Bundle.main, Bundle(for: BundleMarker.self)]
+        let resourceURL = bundles.lazy.compactMap { bundle in
+            bundle.url(forResource: "emmet.bundle", withExtension: "js", subdirectory: "Emmet")
+                ?? bundle.url(forResource: "emmet.bundle", withExtension: "js")
+        }.first
+        guard let resourceURL,
+              let script = try? String(contentsOf: resourceURL, encoding: .utf8),
+              let context = JSContext() else { return nil }
+        context.exceptionHandler = { _, _ in }
+        context.evaluateScript(script)
+        return context.objectForKeyedSubscript("NeonEmmet")?.objectForKeyedSubscript("expandAt")
+    }()
+#endif
+
+    static func expansionIfPossible(
+        in text: String,
+        cursorUTF16Location: Int,
+        language: String,
+        indentStyle: String = "spaces",
+        indentWidth: Int = 4
+    ) -> (range: NSRange, expansion: String, caretOffset: Int)? {
+        let normalizedLanguage = language.lowercased()
+        guard supportedMarkupLanguages.contains(normalizedLanguage)
+                || supportedStylesheetLanguages.contains(normalizedLanguage) else { return nil }
+        if normalizedLanguage == "php" && !isHTMLContextInPHP(text: text, cursorUTF16Location: cursorUTF16Location) {
             return nil
         }
-
-        let ns = text as NSString
-        let clamped = min(max(0, cursorUTF16Location), ns.length)
-        guard let range = abbreviationRange(in: ns, cursor: clamped), range.length > 0 else { return nil }
-        let raw = ns.substring(with: range).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !raw.isEmpty, !raw.contains("<"), !raw.contains("> ") else { return nil }
-        guard let nodes = parseChain(raw), !nodes.isEmpty else { return nil }
-        let indent = leadingIndentationForLine(in: ns, at: range.location)
-        let rendered = render(nodes: nodes, indent: indent, level: 0)
-        if let first = rendered.range(of: "></") {
-            let caretUTF16 = rendered[..<first.lowerBound].utf16.count + 1
-            return (range, rendered, caretUTF16)
-        }
-        return (range, rendered, rendered.utf16.count)
+#if canImport(JavaScriptCore)
+        guard let engine else { return nil }
+        let source = text as NSString
+        let clampedCursor = min(max(0, cursorUTF16Location), source.length)
+        let syntax = resolvedSyntax(
+            language: normalizedLanguage,
+            text: source,
+            cursor: clampedCursor
+        )
+        let indentUnit = EditorCommandSemantics.indentation(style: indentStyle, width: indentWidth)
+        let lineRange = source.lineRange(for: NSRange(location: clampedCursor, length: 0))
+        let linePrefixLength = max(0, min(clampedCursor - lineRange.location, lineRange.length))
+        let linePrefix = source.substring(with: NSRange(location: lineRange.location, length: linePrefixLength))
+        let baseIndent = String(linePrefix.prefix { $0 == " " || $0 == "\t" })
+        guard let result = engine.call(withArguments: [text, clampedCursor, syntax, indentUnit, baseIndent]),
+              !result.isNull, !result.isUndefined,
+              let dictionary = result.toDictionary() as? [String: Any],
+              let location = dictionary["location"] as? Int,
+              let abbreviation = dictionary["abbreviation"] as? String,
+              let expansion = dictionary["expansion"] as? String,
+              let caretOffset = dictionary["caretOffset"] as? Int,
+              location >= 0,
+              location <= clampedCursor,
+              !abbreviation.isEmpty,
+              !expansion.isEmpty else { return nil }
+        return (
+            NSRange(location: location, length: clampedCursor - location),
+            expansion,
+            min(max(0, caretOffset), expansion.utf16.count)
+        )
+#else
+        return nil
+#endif
     }
 
-    private static func abbreviationRange(in text: NSString, cursor: Int) -> NSRange? {
-        guard text.length > 0, cursor > 0 else { return nil }
-        var start = cursor
-        while start > 0 {
-            let scalar = text.character(at: start - 1)
-            guard let uni = UnicodeScalar(scalar), allowedChars.contains(uni) else { break }
-            start -= 1
+    private static func resolvedSyntax(language: String, text: NSString, cursor: Int) -> String {
+        if language == "svg" { return "xml" }
+        guard language == "html" || language == "php" else { return language }
+        let prefix = text.substring(to: cursor) as NSString
+        let lastStyleOpen = prefix.range(of: "<style", options: [.backwards, .caseInsensitive]).location
+        let lastStyleClose = prefix.range(of: "</style", options: [.backwards, .caseInsensitive]).location
+        if lastStyleOpen != NSNotFound && (lastStyleClose == NSNotFound || lastStyleOpen > lastStyleClose) {
+            return "css"
         }
-        guard start < cursor else { return nil }
-        return NSRange(location: start, length: cursor - start)
-    }
-
-    private static func leadingIndentationForLine(in text: NSString, at location: Int) -> String {
-        let lineRange = text.lineRange(for: NSRange(location: max(0, min(location, text.length)), length: 0))
-        let line = text.substring(with: lineRange)
-        return String(line.prefix { $0 == " " || $0 == "\t" })
+        let lineRange = prefix.lineRange(for: NSRange(location: prefix.length, length: 0))
+        let line = prefix.substring(with: lineRange)
+        if line.range(of: #"style\s*=\s*["'][^"']*$"#, options: [.regularExpression, .caseInsensitive]) != nil {
+            return "css"
+        }
+        return "html"
     }
 
     private static func isHTMLContextInPHP(text: String, cursorUTF16Location: Int) -> Bool {
@@ -285,106 +325,6 @@ enum EmmetExpander {
         let latestCloseRange = ns.range(of: "?>", options: .backwards, range: search)
         let latestClose = latestCloseRange.location
         return latestOpen == -1 || (latestClose != NSNotFound && latestClose > latestOpen)
-    }
-
-    private static func parseChain(_ raw: String) -> [Node]? {
-        let hierarchyParts = raw.split(separator: ">", omittingEmptySubsequences: false).map(String.init)
-        guard !hierarchyParts.isEmpty else { return nil }
-
-        var levels: [[Node]] = []
-        for part in hierarchyParts {
-            let siblings = part.split(separator: "+", omittingEmptySubsequences: false).map(String.init)
-            var levelNodes: [Node] = []
-            for sibling in siblings {
-                guard let node = parseNode(sibling), !node.tag.isEmpty else { return nil }
-                levelNodes.append(node)
-            }
-            guard !levelNodes.isEmpty else { return nil }
-            levels.append(levelNodes)
-        }
-
-        for level in stride(from: levels.count - 2, through: 0, by: -1) {
-            let children = levels[level + 1]
-            for idx in levels[level].indices {
-                levels[level][idx].children = children
-            }
-        }
-        return levels.first
-    }
-
-    private static func parseNode(_ token: String) -> Node? {
-        let source = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !source.isEmpty else { return nil }
-
-        var count = 1
-        var core = source
-        if let star = source.lastIndex(of: "*") {
-            let multiplier = String(source[source.index(after: star)...])
-            if let n = Int(multiplier), n > 0 {
-                count = n
-                core = String(source[..<star])
-            }
-        }
-
-        var tag = ""
-        var id: String?
-        var classes: [String] = []
-        var i = core.startIndex
-        while i < core.endIndex {
-            let ch = core[i]
-            if ch == "." || ch == "#" { break }
-            tag.append(ch)
-            i = core.index(after: i)
-        }
-        if tag.isEmpty { tag = "div" }
-
-        while i < core.endIndex {
-            let marker = core[i]
-            guard marker == "." || marker == "#" else { return nil }
-            i = core.index(after: i)
-            var value = ""
-            while i < core.endIndex {
-                let c = core[i]
-                if c == "." || c == "#" { break }
-                value.append(c)
-                i = core.index(after: i)
-            }
-            guard !value.isEmpty else { return nil }
-            if marker == "#" { id = value } else { classes.append(value) }
-        }
-
-        return Node(tag: tag, id: id, classes: classes, count: count, children: [])
-    }
-
-    private static func render(nodes: [Node], indent: String, level: Int) -> String {
-        nodes.map { render(node: $0, indent: indent, level: level) }.joined(separator: "\n")
-    }
-
-    private static func render(node: Node, indent: String, level: Int) -> String {
-        var lines: [String] = []
-        for _ in 0..<max(1, node.count) {
-            let pad = indent + String(repeating: "    ", count: level)
-            let attrs = attributes(for: node)
-            if node.children.isEmpty {
-                if voidTags.contains(node.tag.lowercased()) {
-                    lines.append("\(pad)<\(node.tag)\(attrs)>")
-                } else {
-                    lines.append("\(pad)<\(node.tag)\(attrs)></\(node.tag)>")
-                }
-            } else {
-                lines.append("\(pad)<\(node.tag)\(attrs)>")
-                lines.append(render(nodes: node.children, indent: indent, level: level + 1))
-                lines.append("\(pad)</\(node.tag)>")
-            }
-        }
-        return lines.joined(separator: "\n")
-    }
-
-    private static func attributes(for node: Node) -> String {
-        var attrs: [String] = []
-        if let id = node.id { attrs.append("id=\"\(id)\"") }
-        if !node.classes.isEmpty { attrs.append("class=\"\(node.classes.joined(separator: " "))\"") }
-        return attrs.isEmpty ? "" : " " + attrs.joined(separator: " ")
     }
 }
 

@@ -24,6 +24,25 @@ final class EditorPerformanceMonitor {
         let id: UUID
         let timestamp: Date
         let elapsedMilliseconds: Int
+        let loadedStateMilliseconds: Int?
+        let swiftUIUpdateMilliseconds: Int?
+        let viewportMilliseconds: Int?
+
+        init(
+            id: UUID,
+            timestamp: Date,
+            elapsedMilliseconds: Int,
+            loadedStateMilliseconds: Int? = nil,
+            swiftUIUpdateMilliseconds: Int? = nil,
+            viewportMilliseconds: Int? = nil
+        ) {
+            self.id = id
+            self.timestamp = timestamp
+            self.elapsedMilliseconds = elapsedMilliseconds
+            self.loadedStateMilliseconds = loadedStateMilliseconds
+            self.swiftUIUpdateMilliseconds = swiftUIUpdateMilliseconds
+            self.viewportMilliseconds = viewportMilliseconds
+        }
     }
 
     static let shared = EditorPerformanceMonitor()
@@ -36,6 +55,9 @@ final class EditorPerformanceMonitor {
     private var fileOpenStartUptimeByTabID: [UUID: TimeInterval] = [:]
     private var minimapViewportStartUptimeByTabID: [UUID: TimeInterval] = [:]
     private var tabSwitchStartUptimeByTabID: [UUID: TimeInterval] = [:]
+    private var tabSwitchLoadedStateMillisecondsByTabID: [UUID: Int] = [:]
+    private var tabSwitchSwiftUIUpdateMillisecondsByTabID: [UUID: Int] = [:]
+    private var tabSwitchViewportMillisecondsByTabID: [UUID: Int] = [:]
     private var previewReloadRequestedCount = 0
     private var previewReloadCoalescedCount = 0
     private var previewReloadExecutedCount = 0
@@ -76,21 +98,27 @@ final class EditorPerformanceMonitor {
 
     func beginTabSwitch(tabID: UUID) {
         tabSwitchStartUptimeByTabID[tabID] = ProcessInfo.processInfo.systemUptime
+        tabSwitchLoadedStateMillisecondsByTabID[tabID] = nil
+        tabSwitchSwiftUIUpdateMillisecondsByTabID[tabID] = nil
+        tabSwitchViewportMillisecondsByTabID[tabID] = nil
         signposter.emitEvent("selection")
     }
 
     func markLoadedTabStateApplied(tabID: UUID) {
-        guard tabSwitchStartUptimeByTabID[tabID] != nil else { return }
+        guard let startedAt = tabSwitchStartUptimeByTabID[tabID] else { return }
+        tabSwitchLoadedStateMillisecondsByTabID[tabID] = Self.elapsedMilliseconds(since: startedAt)
         signposter.emitEvent("loaded_state")
     }
 
     func markSwiftUIEditorUpdated(tabID: UUID) {
-        guard tabSwitchStartUptimeByTabID[tabID] != nil else { return }
+        guard let startedAt = tabSwitchStartUptimeByTabID[tabID] else { return }
+        tabSwitchSwiftUIUpdateMillisecondsByTabID[tabID] = Self.elapsedMilliseconds(since: startedAt)
         signposter.emitEvent("swiftui_update")
     }
 
     func markViewportLoaded(tabID: UUID) {
-        guard tabSwitchStartUptimeByTabID[tabID] != nil else { return }
+        guard let startedAt = tabSwitchStartUptimeByTabID[tabID] else { return }
+        tabSwitchViewportMillisecondsByTabID[tabID] = Self.elapsedMilliseconds(since: startedAt)
         signposter.emitEvent("viewport")
     }
 
@@ -152,7 +180,10 @@ final class EditorPerformanceMonitor {
             TabSwitchEvent(
                 id: UUID(),
                 timestamp: Date(),
-                elapsedMilliseconds: elapsed
+                elapsedMilliseconds: elapsed,
+                loadedStateMilliseconds: tabSwitchLoadedStateMillisecondsByTabID.removeValue(forKey: tabID),
+                swiftUIUpdateMilliseconds: tabSwitchSwiftUIUpdateMillisecondsByTabID.removeValue(forKey: tabID),
+                viewportMilliseconds: tabSwitchViewportMillisecondsByTabID.removeValue(forKey: tabID)
             )
         )
         signposter.emitEvent("first_draw")

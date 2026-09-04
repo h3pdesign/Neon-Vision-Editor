@@ -608,12 +608,15 @@ struct NeonVisionMacAppCommands: Commands {
         Task {
             let current = activeEditorViewModel()
             guard let tab = current.selectedTab else { return }
-            guard tab.document.storageKind != .fileBacked else {
+            guard !tab.usesFileBackedStorage else {
                 current.fileEncodingErrorMessage = "AI suggestions are unavailable for large file-backed documents. Use a bounded selection or open a smaller copy."
                 return
             }
 
-            let contentPrefix = String(tab.document.string().prefix(1000))
+            let prefixLength = min(1_000, tab.document.utf16Length)
+            let contentPrefix = (try? tab.document.text(
+                inUTF16Range: NSRange(location: 0, length: prefixLength)
+            )) ?? ""
             let prompt = "Suggest improvements for this \(tab.language) code: \(contentPrefix)"
 
             AIActivityLog.record("Suggest Code requested for current tab.", source: "Suggest")

@@ -4,6 +4,36 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [v1.6.1] - 2026-09-04
+
+### Why Upgrade
+
+- Brings official Emmet 2 abbreviation expansion to markup and stylesheet editing across the native editors.
+- Restores the established macOS editor commands and interactions after the move to bounded virtual rendering.
+- Improves large-document responsiveness while correcting HTML/CSS colors and App Store support-purchase handling.
+
+### Highlights
+
+- Expands complex HTML, JSX, CSS, SCSS, Less, Sass, and related Emmet abbreviations with configured indentation.
+- Restores Tab-to-accept inline completion, Vim navigation, Markdown shortcuts, drag and drop, rich-text paste, code snapshots, and whitespace inspection in the macOS virtual editor.
+- Caches generation-safe bounded viewports and enforces median latency budgets for typing, scrolling, selection, and viewport reloads.
+
+### Fixes
+
+- Colors HTML tags, attributes, strings, embedded CSS properties, and numbers as separate syntax tokens instead of treating complete attribute or style values as one string.
+- Reads offscreen selections and edits through bounded UTF-16 document ranges instead of materializing an entire file-backed document.
+- Preserves tab selection, preview, structured-data, AI completion, toolbar, and persistence behavior when switching to the virtual editor.
+- Uses the correct StoreKit purchase action on visionOS and recovers product loading cleanly during App Review-style sessions.
+- Keeps Emmet and inline-completion work limited to the active viewport so large files do not regress to full-document processing.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.6.0] - 2026-09-03
 
 ### Why Upgrade

@@ -14,14 +14,18 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import html
+import json
 import pathlib
 import re
 import sys
+
+sys.dont_write_bytecode = True
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
+RELEASE_STATE = ROOT / "release" / "prepared-release.json"
 ARCHITECTURE = ROOT / "ARCHITECTURE.md"
 WEBSITE = ROOT / "site" / "index.html"
 CHANGELOG_PAGE = ROOT / "site" / "changelog.html"
@@ -157,6 +161,13 @@ def has_changelog_section(changelog: str, tag: str) -> bool:
     return re.search(rf"^## \[{re.escape(tag)}\] - \d{{4}}-\d{{2}}-\d{{2}}$", changelog, flags=re.M) is not None
 
 
+def public_changelog(changelog: str, tag: str) -> str:
+    """Exclude future candidates from public release tables and download links."""
+    pattern = r"^## \[(v[^\]]+)\] - [^\n]+\n.*?(?=^## \[|\Z)"
+    return re.sub(pattern, lambda m: m[0] if parse_version_key(m[1]) <= parse_version_key(tag) else "",
+                  changelog, flags=re.M | re.S)
+
+
 def promote_unreleased_section(changelog: str, tag: str, date: str) -> str | None:
     """Move substantive Unreleased notes into the requested immutable release section."""
     pattern = re.compile(
@@ -171,7 +182,7 @@ def promote_unreleased_section(changelog: str, tag: str, date: str) -> str | Non
     if not meaningful:
         return None
     heading = f"## [{tag}] - {date}"
-    replacement = f"{heading}\n\n{body}\n\n## [Unreleased]\n\n"
+    replacement = f"## [Unreleased]\n\n{heading}\n\n{body}\n\n"
     return changelog[: match.start()] + replacement + changelog[match.end() :]
 
 
@@ -577,6 +588,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v1.6.2": ("Zuverlässigere Dateiänderungen und App-Starts", "Erkennt externe Änderungen auf Netzlaufwerken, macht die automatische Willkommenstour abschaltbar und stabilisiert Kaufmeldungen.", ["Netzlaufwerke", "Start", "Kaufmeldungen"]),
         "v1.6.1": ("Vollständiges Emmet und vertraute Editorbefehle", "Erweitert Emmet-Abkürzungen in Markup und Stylesheets, stellt macOS-Editoraktionen wieder her und verbessert Syntaxfarben sowie die Leistung großer Dateien.", ["Emmet", "Editor", "Leistung"]),
         "v1.6.0": ("Große Dateien schneller und zuverlässiger bearbeiten", "Beschleunigt das Öffnen und Scrollen großer Markdown-Dateien, verbessert Eingabe und Speichern und ergänzt native HEX-Farbvorschauen unter macOS.", ["Editor", "Leistung", "Farben"]),
         "v1.5.6": ("Kompaktere, verlässlichere Editorwerkzeuge", "Macht mobile Symbolleisten übersichtlicher, setzt Markdown-Nummerierungen korrekt fort und schützt die eingeklappte Formatierungspille vor durchscheinendem Text.", ["Symbolleiste", "Markdown", "Auswahl"]),
@@ -596,6 +608,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v1.6.2": ("Mere pålidelige filændringer og appstarter", "Registrerer eksterne ændringer på netværksdrev, gør den automatiske velkomst valgfri og stabiliserer købsbeskeder.", ["Netværk", "Opstart", "Køb"]),
         "v1.6.1": ("Fuld Emmet og velkendte editorhandlinger", "Udvider Emmet-forkortelser i markup og stylesheets, gendanner macOS-editorhandlinger og forbedrer syntaksfarver samt ydeevnen i store filer.", ["Emmet", "Editor", "Ydeevne"]),
         "v1.6.0": ("Hurtigere og mere pålidelig redigering af store filer", "Åbner og ruller hurtigere i store Markdown-filer, forbedrer indtastning og lagring og tilføjer native HEX-farvevisninger på macOS.", ["Editor", "Ydeevne", "Farver"]),
         "v1.5.6": ("Mere kompakte og pålidelige editorværktøjer", "Gør mobile værktøjslinjer tydeligere, fortsætter Markdown-nummerering korrekt og beskytter den sammenklappede formateringsknap mod gennemskinnende tekst.", ["Værktøjslinje", "Markdown", "Markering"]),
@@ -615,6 +628,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v1.6.2": ("Modifications de fichiers et démarrage plus fiables", "Détecte les modifications externes sur les volumes réseau, permet de désactiver l’accueil automatique et stabilise les messages d’achat.", ["Réseau", "Démarrage", "Achats"]),
         "v1.6.1": ("Emmet complet et commandes d’édition familières", "Développe les abréviations Emmet dans le balisage et les feuilles de style, restaure les actions de l’éditeur macOS et améliore les couleurs syntaxiques ainsi que les performances des grands fichiers.", ["Emmet", "Éditeur", "Performances"]),
         "v1.6.0": ("Une édition plus rapide et fiable des fichiers volumineux", "Accélère l’ouverture et le défilement des grands fichiers Markdown, fiabilise la saisie et l’enregistrement et ajoute des aperçus de couleurs HEX natifs sur macOS.", ["Éditeur", "Performances", "Couleurs"]),
         "v1.5.6": ("Des outils d’édition plus compacts et fiables", "Clarifie les barres d’outils mobiles, poursuit correctement la numérotation Markdown et empêche le texte de traverser la pastille de formatage repliée.", ["Barre d’outils", "Markdown", "Sélection"]),
@@ -634,6 +648,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v1.6.2": ("Cambios de archivos e inicio más fiables", "Detecta cambios externos en volúmenes de red, permite desactivar la bienvenida automática y estabiliza los mensajes de compra.", ["Red", "Inicio", "Compras"]),
         "v1.6.1": ("Emmet completo y acciones de edición habituales", "Expande abreviaturas Emmet en marcado y hojas de estilo, restaura las acciones del editor de macOS y mejora los colores de sintaxis y el rendimiento de archivos grandes.", ["Emmet", "Editor", "Rendimiento"]),
         "v1.6.0": ("Edición más rápida y fiable de archivos grandes", "Acelera la apertura y el desplazamiento de archivos Markdown grandes, mejora la escritura y el guardado y añade vistas previas nativas de colores HEX en macOS.", ["Editor", "Rendimiento", "Colores"]),
         "v1.5.6": ("Herramientas de edición más compactas y fiables", "Aclara las barras móviles, continúa correctamente la numeración Markdown e impide que el texto atraviese la píldora de formato contraída.", ["Barra", "Markdown", "Selección"]),
@@ -653,6 +668,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v1.6.2": ("ファイル変更の検出と起動の信頼性を改善", "ネットワークボリュームの外部変更を検出し、自動ウェルカム画面を無効にする設定を追加して、購入メッセージを安定させます。", ["ネットワーク", "起動", "購入"]),
         "v1.6.1": ("完全な Emmet と使い慣れた編集操作", "マークアップとスタイルシートの Emmet 略語を展開し、macOS エディタの操作を復元して、構文カラーと大きなファイルの性能を改善します。", ["Emmet", "エディタ", "パフォーマンス"]),
         "v1.6.0": ("大きなファイルをより速く確実に編集", "大きな Markdown ファイルの表示とスクロールを高速化し、入力と保存の安定性を向上。macOS ではネイティブの HEX カラープレビューを追加しました。", ["エディタ", "パフォーマンス", "カラー"]),
         "v1.5.6": ("よりコンパクトで確実な編集ツール", "モバイルのツールバーを整理し、Markdown の番号付きリストを正しく継続し、折りたたんだ書式ピルへの文字の透過を防ぎます。", ["ツールバー", "Markdown", "選択"]),
@@ -672,6 +688,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v1.6.2": ("更可靠的文件变更检测与启动体验", "检测网络卷上的外部修改，允许关闭自动欢迎界面，并改善购买提示的稳定性。", ["网络", "启动", "购买"]),
         "v1.6.1": ("完整 Emmet 与熟悉的编辑操作", "扩展标记和样式表中的 Emmet 缩写，恢复 macOS 编辑器操作，并改进语法颜色和大型文件性能。", ["Emmet", "编辑器", "性能"]),
         "v1.6.0": ("更快速、更可靠的大文件编辑", "加快大型 Markdown 文件的打开和滚动，提升输入与保存的可靠性，并在 macOS 上新增原生 HEX 颜色预览。", ["编辑器", "性能", "颜色"]),
         "v1.5.6": ("更紧凑、更可靠的编辑工具", "简化移动工具栏，正确续排 Markdown 编号列表，并防止编辑器文字透过折叠的格式工具胶囊。", ["工具栏", "Markdown", "选择"]),
@@ -1118,7 +1135,7 @@ def parse_stable_semver(tag: str) -> tuple[int, int, int] | None:
     return int(match.group(1)), int(match.group(2)), int(match.group(3))
 
 
-def update_readme_roadmap_windows(readme: str, tag: str) -> str:
+def update_readme_roadmap_windows(readme: str, tag: str, section: str = "") -> str:
     stable = parse_stable_semver(tag)
     if stable is None:
         return readme
@@ -1157,7 +1174,7 @@ def update_readme_roadmap_windows(readme: str, tag: str) -> str:
         r"(?m)^- !\[v[^]]+\]\(https://img\.shields\.io/badge/v[^)]+-22C55E\?style=flat-square\) focuses on .*$",
         (
             f"- ![v{major}.{minor}.{patch}](https://img.shields.io/badge/v{major}.{minor}.{patch}-22C55E?style=flat-square) "
-            "focuses on editor interaction polish, Markdown preview stability, local custom AI endpoints, sidebar terminal improvements, and release workflow hardening."
+            f"focuses on {release_timeline_description(section)}"
         ),
         readme,
     )
@@ -1171,7 +1188,7 @@ def update_readme_roadmap_windows(readme: str, tag: str) -> str:
         r"(?m)^- !\[v[^]]+\]\(https://img\.shields\.io/badge/v[^)]+-F59E0B\?style=flat-square\) targets .*$",
         (
             f"- ![v{major}.{minor}.{next_patch}](https://img.shields.io/badge/v{major}.{minor}.{next_patch}-F59E0B?style=flat-square) "
-            f"targets post-{major}.{minor}.{patch} stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes."
+            "targets the reviewed changes listed under Unreleased in CHANGELOG.md; scope is not final until release preparation."
         ),
         readme,
     )
@@ -1244,6 +1261,9 @@ def update_readme_feature_spotlight(readme: str, tag: str, section_body: str) ->
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare README and CHANGELOG for a release tag.")
     parser.add_argument("tag", help="Release tag, e.g. v0.4.6")
+    parser.add_argument("--notes-only", action="store_true", help="Promote reviewed Unreleased notes before preflight; no other edits")
+    parser.add_argument("--published", action="store_true", help="Promote public download references after verified publication")
+    parser.add_argument("--public-tag", action="store_true", help="Print the public documentation tag without modifying files")
     parser.add_argument(
         "--date",
         help="Release date for a new CHANGELOG section (YYYY-MM-DD). Defaults to today.",
@@ -1268,6 +1288,16 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     tag = normalize_tag(args.tag)
+    state = json.loads(read_text(RELEASE_STATE)) if RELEASE_STATE.exists() else None
+    if state is not None:
+        from release_prepare import validate_state
+        validate_state(state)
+    if state is not None and state["tag"] != tag:
+        raise ValueError(f"Release state belongs to {state['tag']}, not {tag}.")
+    public_tag = tag if not state or args.published or state["status"] == "published" else state["published_tag"]
+    if args.public_tag:
+        print(public_tag)
+        return 0
     if args.check and args.preflight:
         raise ValueError("--check and --preflight cannot be used together.")
     if args.build is not None and not re.fullmatch(r"[1-9]\d*", args.build):
@@ -1275,6 +1305,16 @@ def main() -> int:
     release_date = args.date or dt.date.today().isoformat()
 
     original_changelog = read_text(CHANGELOG)
+    if args.notes_only:
+        if args.check or args.preflight or args.published:
+            raise ValueError("--notes-only cannot be combined with check/preflight/published.")
+        if not has_changelog_section(original_changelog, tag):
+            promoted = promote_unreleased_section(original_changelog, tag, release_date)
+            if promoted is None:
+                raise ValueError("Write substantive Unreleased notes before preparing a release.")
+            validate_release_input(promoted, tag)
+            write_text(CHANGELOG, promoted)
+        return 0
     if args.preflight:
         validate_release_input(original_changelog, tag)
         print(f"Release input preflight passed for {tag}.")
@@ -1290,31 +1330,42 @@ def main() -> int:
     elif not args.check:
         print(f"Found existing CHANGELOG section for {tag}.")
 
+    candidate_tag = tag
+    candidate_section = extract_changelog_section(changelog, candidate_tag)
+    bullets = normalize_welcome_tour_bullets(welcome_release_bullets(changelog, candidate_tag, candidate_section))
+    # Candidate notes stay in CHANGELOG and the embedded app welcome screen.
+    # Public download surfaces advance only after verified publication.
+    tag = public_tag
+    candidate_changelog = changelog
+    changelog = public_changelog(changelog, tag)
     section = extract_changelog_section(changelog, tag)
     prev_tag = readme_previous_release_tag(changelog, tag)
-    bullets = normalize_welcome_tour_bullets(welcome_release_bullets(changelog, tag, section))
 
     original_readme = read_text(README)
     readme = update_readme_release_refs(original_readme, tag)
     readme = update_readme_whats_new_heading(readme, prev_tag, tag)
     readme = update_readme_whats_new_section(readme, changelog, tag, section, prev_tag)
-    readme = update_readme_roadmap_windows(readme, tag)
+    readme = update_readme_roadmap_windows(readme, tag, section)
     readme = update_readme_compare_link(readme, prev_tag, tag)
     readme = update_readme_feature_spotlight(readme, tag, section)
     readme = update_readme_latest_stable_line(readme, tag, changelog)
     readme = rebuild_readme_release_timeline(readme, changelog, tag)
     readme = rebuild_readme_changelog_table(readme, changelog, tag, limit=3)
     readme = update_readme_durable_documentation(readme, changelog, tag)
+    readme = re.sub(r"(?m)^> Prepared release: .*\n(?:\n)?", "", readme)
+    if candidate_tag != public_tag:
+        readme = readme.replace("\n", f"\n\n> Prepared release: **{candidate_tag}** — not published. See [candidate notes](CHANGELOG.md).\n", 1)
 
     original_architecture = read_text(ARCHITECTURE)
-    architecture = update_architecture_release_alignment(original_architecture, changelog, tag)
+    architecture = update_architecture_release_alignment(original_architecture, candidate_changelog, candidate_tag)
 
     original_welcome_src = read_text(WELCOME_TOUR_SWIFT)
-    welcome_src = update_welcome_tour_release_page(original_welcome_src, tag, bullets)
+    welcome_src = update_welcome_tour_release_page(original_welcome_src, candidate_tag, bullets)
 
     original_website = read_text(WEBSITE)
     website = rebuild_website_release_timeline(original_website, changelog, tag)
-    website = update_website_release_fallbacks(website, tag, args.build)
+    public_build = str(state["published_build"] if candidate_tag != public_tag else state["build"]) if state else args.build
+    website = update_website_release_fallbacks(website, tag, public_build)
     original_changelog_page = read_text(CHANGELOG_PAGE)
     changelog_page = rebuild_changelog_page(original_changelog_page, changelog, tag)
     original_localized_websites = {locale: read_text(path) for locale, path in LOCALIZED_WEBSITES.items()}
@@ -1322,10 +1373,12 @@ def main() -> int:
         locale: update_localized_website_release_fallbacks(
             rebuild_localized_website_release_timeline(content, changelog, tag, locale),
             tag,
-            args.build,
+            public_build,
         )
         for locale, content in original_localized_websites.items()
     }
+
+    changelog = candidate_changelog
 
     if args.check:
         outdated_files: list[str] = []
@@ -1347,13 +1400,13 @@ def main() -> int:
             if website_content != original_localized_websites[locale]
         )
         if outdated_files:
-            print(f"Release docs are not up to date for {tag}.", file=sys.stderr)
-            print("Run: scripts/prepare_release_docs.py {}{}".format(tag, f" --date {release_date}" if args.date else ""), file=sys.stderr)
+            print(f"Release docs are not up to date for {candidate_tag}.", file=sys.stderr)
+            print("Run: scripts/prepare_release_docs.py {}{}".format(candidate_tag, f" --date {release_date}" if args.date else ""), file=sys.stderr)
             print("Outdated files:", file=sys.stderr)
             for path in outdated_files:
                 print(f"- {path}", file=sys.stderr)
             return 1
-        print(f"Release docs are up to date for {tag}.")
+        print(f"Release docs are up to date for {candidate_tag} (public downloads: {public_tag}).")
         return 0
 
     write_text(CHANGELOG, changelog)
@@ -1364,10 +1417,13 @@ def main() -> int:
     write_text(CHANGELOG_PAGE, changelog_page)
     for locale, path in LOCALIZED_WEBSITES.items():
         write_text(path, localized_websites[locale])
+    if args.published and state:
+        state["status"] = "published"
+        write_text(RELEASE_STATE, json.dumps(state, indent=2) + "\n")
     print("Updated README release references, durable feature coverage, and top 3 release rows.")
     print("Updated architecture release alignment from CHANGELOG.")
     print("Updated English and localized GitHub Pages release fallbacks and timelines from CHANGELOG.")
-    print(f"Updated Welcome Tour release page from CHANGELOG for {tag}.")
+    print(f"Updated Welcome Tour release page from CHANGELOG for {candidate_tag}.")
 
     return 0
 

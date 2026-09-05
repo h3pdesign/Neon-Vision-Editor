@@ -735,6 +735,7 @@ class EditorViewModel {
     private static let deferredLanguageDetectionUTF16Length = 180_000
     private static let deferredLanguageDetectionDelayNanos: UInt64 = 220_000_000
     private static let deferredLanguageDetectionSampleUTF16Length = 180_000
+    private static let networkVolumePollingIntervalNanos: UInt64 = 3_000_000_000
 
     // MARK: - Observable State and Indexes
 
@@ -744,6 +745,7 @@ class EditorViewModel {
     private(set) var pendingEncodingReopen: PendingEncodingReopen?
     private(set) var externalFileRefreshStatus: ExternalFileRefreshStatus?
     private(set) var recentExternalSyncChanges: [ExternalSyncChange] = []
+    private(set) var hasReceivedExternalFileOpenRequest: Bool = false
     var pendingRemoteSaveIssue: RemoteSaveIssueState?
     var fileEncodingErrorMessage: String?
     var showSidebar: Bool = true
@@ -758,6 +760,8 @@ class EditorViewModel {
     @ObservationIgnored private var refreshedExternalTabIDs: Set<UUID> = []
     @ObservationIgnored private var reviewExternalTabIDs: Set<UUID> = []
     @ObservationIgnored private var externalRefreshStatusClearTask: Task<Void, Never>?
+    @ObservationIgnored private var networkVolumePollingTask: Task<Void, Never>?
+    @ObservationIgnored private var networkVolumePollingCandidatePaths: Set<String> = []
     @ObservationIgnored private lazy var openDocumentObservationCenter = OpenDocumentObservationCenter { [weak self] url in
         Task { @MainActor [weak self] in
             self?.handleObservedLocalFileChange(at: url)
@@ -838,14 +842,14 @@ class EditorViewModel {
     ) {
         if rebuildIndexes {
             rebuildTabIndexes()
-            openDocumentObservationCenter.updateObservedURLs(
-                tabs.compactMap { tab in
-                    guard !tab.isRemoteDocument,
-                          let fileURL = tab.fileURL,
-                          fileURL.isFileURL else { return nil }
-                    return fileURL
-                }
-            )
+            let observedURLs: [URL] = tabs.compactMap { tab -> URL? in
+                guard !tab.isRemoteDocument,
+                      let fileURL = tab.fileURL,
+                      fileURL.isFileURL else { return nil }
+                return fileURL
+            }
+            openDocumentObservationCenter.updateObservedURLs(observedURLs)
+            updateNetworkVolumePolling(for: observedURLs)
         }
         if rebuildIndexes || change == .structure {
             tabStructureVersion &+= 1
@@ -2523,6 +2527,75 @@ class EditorViewModel {
         }
     }
 
+    private func updateNetworkVolumePolling(for urls: [URL]) {
+        let uniqueURLs = Dictionary(
+            urls.compactMap { url in
+                Self.normalizedFilePathKey(for: url).map { ($0, url.standardizedFileURL) }
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let candidatePaths = Set(uniqueURLs.keys)
+        guard candidatePaths != networkVolumePollingCandidatePaths else { return }
+
+        networkVolumePollingCandidatePaths = candidatePaths
+        networkVolumePollingTask?.cancel()
+        networkVolumePollingTask = nil
+        guard !uniqueURLs.isEmpty else { return }
+
+        let candidates = Array(uniqueURLs.values)
+        networkVolumePollingTask = Task { @MainActor [weak self] in
+            let polledURLs = await Task.detached(priority: .utility) {
+                candidates.filter { Self.requiresExternalChangePolling(at: $0) }
+            }.value
+            guard !Task.isCancelled, !polledURLs.isEmpty else { return }
+
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(nanoseconds: Self.networkVolumePollingIntervalNanos)
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
+                _ = await self?.pollOpenDocumentsForExternalChanges(at: polledURLs)
+            }
+        }
+    }
+
+    @discardableResult
+    func pollOpenDocumentsForExternalChanges(at urls: [URL]) async -> [UUID] {
+        let uniqueURLs = Dictionary(
+            urls.compactMap { url in
+                Self.normalizedFilePathKey(for: url).map { ($0, url.standardizedFileURL) }
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let metadataByPath = await Task.detached(priority: .utility) {
+            uniqueURLs.reduce(into: [String: LocalFileMetadata]()) { result, entry in
+                if let metadata = Self.readLocalFileMetadata(at: entry.value) {
+                    result[entry.key] = metadata
+                }
+            }
+        }.value
+        guard !Task.isCancelled else { return [] }
+
+        var detectedTabIDs: [UUID] = []
+        for (path, metadata) in metadataByPath {
+            guard let tabID = tabIDByStandardizedFilePath[path],
+                  let index = tabIndex(for: tabID),
+                  !tabs[index].isLoadingContent,
+                  !reviewExternalTabIDs.contains(tabID),
+                  Self.hasLocalFileMetadataChanged(
+                      knownModificationDate: tabs[index].lastKnownFileModificationDate,
+                      knownByteCount: tabs[index].fileByteCount,
+                      current: metadata
+                  ),
+                  let fileURL = tabs[index].fileURL else { continue }
+            detectedTabIDs.append(tabID)
+            handleObservedLocalFileChange(at: fileURL)
+        }
+        return detectedTabIDs
+    }
+
     private func refreshObservedLocalFile(tabID: UUID, expectedURL: URL) async {
         guard !Task.isCancelled else { return }
         guard let initialIndex = tabIndex(for: tabID),
@@ -2642,6 +2715,17 @@ class EditorViewModel {
         )
     }
 
+    private nonisolated static func requiresExternalChangePolling(at url: URL) -> Bool {
+        let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if didStartScopedAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        let values = try? url.resourceValues(forKeys: [.volumeIsLocalKey])
+        return values?.volumeIsLocal != true
+    }
+
     private nonisolated static func hasLocalFileMetadataChanged(
         knownModificationDate: Date?,
         knownByteCount: Int,
@@ -2654,6 +2738,12 @@ class EditorViewModel {
     }
 
     // MARK: - File Opening
+
+    @discardableResult
+    func openFileFromExternalRequest(url: URL) -> Bool {
+        hasReceivedExternalFileOpenRequest = true
+        return openFile(url: url)
+    }
 
     // Opens file-picker UI on macOS.
     func openFile() {

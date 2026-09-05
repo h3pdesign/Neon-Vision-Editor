@@ -76,6 +76,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsReopenLastSession") private var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") private var openWithBlankDocument: Bool = true
     @AppStorage("SettingsShowRecentFilesOnEmptyDocuments") private var showRecentFilesOnEmptyDocuments: Bool = true
+    @AppStorage(SettingsPreferenceKey.showWelcomeTourAutomatically) private var showWelcomeTourAutomatically: Bool = true
     @AppStorage("SettingsShareImportsAutoOpen") private var shareImportsAutoOpen: Bool = true
 #if os(macOS)
     @AppStorage("SettingsShowMenuBarIconMac") private var showMenuBarIconMac: Bool = true
@@ -1784,6 +1785,8 @@ struct NeonSettingsView: View {
                     .disabled(reopenLastSession)
                 Toggle(localized("Reopen Last Session"), isOn: $reopenLastSession)
                 Toggle(localized("Show Recent Files on Empty Documents"), isOn: $showRecentFilesOnEmptyDocuments)
+                Toggle(localized("Show Welcome Tour Automatically"), isOn: $showWelcomeTourAutomatically)
+                    .accessibilityHint(localized("When disabled, the Welcome Tour remains available from the Help menu and toolbar."))
                 Toggle(localized("Automatically Open Shared Imports"), isOn: $shareImportsAutoOpen)
                     .accessibilityHint(localized("When disabled, shared files are saved to the import history without opening editor tabs immediately."))
                 Toggle(localized("Confirm Before Closing Dirty Tab"), isOn: $confirmCloseDirtyTab)
@@ -2454,6 +2457,8 @@ struct NeonSettingsView: View {
                 .disabled(reopenLastSession)
             Toggle(localized("Reopen Last Session"), isOn: $reopenLastSession)
             Toggle(localized("Show Recent Files on Empty Documents"), isOn: $showRecentFilesOnEmptyDocuments)
+            Toggle(localized("Show Welcome Tour Automatically"), isOn: $showWelcomeTourAutomatically)
+                .accessibilityHint(localized("When disabled, the Welcome Tour remains available from the Help menu and toolbar."))
             Toggle(localized("Automatically Open Shared Imports"), isOn: $shareImportsAutoOpen)
                 .accessibilityHint(localized("When disabled, shared files are saved to the import history without opening editor tabs immediately."))
             Toggle(localized("Confirm Before Closing Dirty Tab"), isOn: $confirmCloseDirtyTab)

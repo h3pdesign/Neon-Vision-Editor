@@ -12,6 +12,7 @@ enum SettingsPreferenceKey {
     static let editorFontSize = "SettingsEditorFontSize"
     static let lineHeight = "SettingsLineHeight"
     static let letterSpacing = "SettingsLetterSpacing"
+    static let showWelcomeTourAutomatically = "SettingsShowWelcomeTourAutomatically"
     static let lineWrapEnabled = "SettingsLineWrapEnabled"
     static let pythonInterpreterPath = "SettingsPythonInterpreterPath"
     static let showLineNumbers = "SettingsShowLineNumbers"
@@ -35,6 +36,18 @@ enum SettingsPreferenceKey {
     static let markdownProjectPreviewPlacement = "MarkdownProjectPreviewPlacementV1"
     static let markdownProjectPreviewSortOrder = "MarkdownProjectPreviewSortOrderV1"
     static let markdownPreviewSynchronousScroll = "MarkdownPreviewSynchronousScrollV1"
+}
+
+enum WelcomeTourPresentationPolicy {
+    static func shouldPresentAutomatically(
+        isEnabled: Bool,
+        isNormalLaunch: Bool,
+        hasSeenTour: Bool,
+        seenRelease: String,
+        currentRelease: String
+    ) -> Bool {
+        isEnabled && isNormalLaunch && (!hasSeenTour || seenRelease != currentRelease)
+    }
 }
 
 enum EditorWritingAssistanceMode: String, CaseIterable, Identifiable {

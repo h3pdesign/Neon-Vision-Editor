@@ -128,7 +128,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 let target = WindowViewModelRegistry.shared.activeViewModel() ?? self.viewModel
                 if let target {
-                    if target.openFile(url: fileURL) {
+                    if target.openFileFromExternalRequest(url: fileURL) {
                         self.bringEditorWindowToFront(for: target)
                     }
                 } else {
@@ -175,7 +175,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let urls = pendingOpenURLs
         pendingOpenURLs.removeAll()
         let didOpenFile = urls.reduce(false) { didOpen, url in
-            let opened = viewModel.openFile(url: url)
+            let opened = viewModel.openFileFromExternalRequest(url: url)
             return didOpen || opened
         }
         if didOpenFile {

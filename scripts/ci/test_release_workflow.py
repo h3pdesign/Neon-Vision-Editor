@@ -270,6 +270,70 @@ class CloudCounterTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "active, queued or unknown"):
                     self.client.snapshot()
 
+    def test_old_testflight_distribution_does_not_block_counter(self):
+        history = self.page(1028)
+        history['data'] += self.page(968, 'RUNNING')['data']
+        actions = {'data': [
+            {'id': 'archive', 'type': 'ciBuildActions', 'attributes': {
+                'actionType': 'ARCHIVE', 'name': 'Archive - macOS',
+                'executionProgress': 'COMPLETE', 'completionStatus': 'SUCCEEDED',
+                'finishedDate': '2026-08-05T23:44:16Z'}},
+            {'id': 'distribution', 'type': 'ciBuildActions', 'attributes': {
+                'actionType': 'TEST', 'name': 'TestFlight External Testing - macOS',
+                'executionProgress': 'RUNNING', 'completionStatus': None,
+                'startedDate': '2026-08-05T23:48:01Z', 'finishedDate': None}}
+        ], 'links': {}}
+        actions['data'].append({'id': 'notarize', 'type': 'ciBuildActions', 'attributes': {
+            'actionType': 'ARCHIVE', 'name': 'Notarize - macOS',
+            'executionProgress': 'COMPLETE', 'completionStatus': 'SUCCEEDED',
+            'finishedDate': '2026-08-05T23:49:04Z'}})
+        with mock.patch.object(self.client, '_get', side_effect=[history, actions]):
+            self.assertEqual(self.client.snapshot()['max_number'], 1028)
+
+        next_url = cloud_module.ORIGIN + '/v1/ciBuildRuns/968/actions?cursor=next'
+        first = {'data': actions['data'][:1], 'links': {'next': next_url}}
+        second = {'data': actions['data'][1:], 'links': {}}
+        with mock.patch.object(self.client, '_get', side_effect=[history, first, second]) as get:
+            self.assertEqual(self.client.snapshot()['max_number'], 1028)
+            self.assertEqual(get.call_args.kwargs, {'action_run_id': '968'})
+        for bad in ({'data': actions['data'], 'links': {'next': next_url}},
+                    {'data': None, 'links': {}}, {'data': actions['data'], 'links': {'next': 42}},
+                    {'data': actions['data'], 'links': {'next': ''}}):
+            with mock.patch.object(self.client, '_get', side_effect=[history, first, bad]):
+                with self.assertRaises(ValueError):
+                    self.client.snapshot()
+
+        failed_archive = copy.deepcopy(actions)
+        failed_archive['data'][0]['attributes']['completionStatus'] = 'FAILED'
+        with mock.patch.object(self.client, '_get', side_effect=[history, failed_archive]):
+            with self.assertRaises(ValueError):
+                self.client.snapshot()
+
+        with mock.patch.object(self.client, '_get') as get:
+            self.assertFalse(self.client._only_lingering_distribution('968', 0))
+            get.assert_not_called()
+
+        for field, value in [('name', 'Unit tests'), ('actionType', 'BUILD'),
+                             ('executionProgress', 'PENDING'), ('startedDate', None),
+                             ('startedDate', '2026-08-05T23:40:00Z')]:
+            bad = copy.deepcopy(actions)
+            bad['data'][1]['attributes'][field] = value
+            with self.subTest(field=field, value=value), mock.patch.object(self.client, '_get', side_effect=[history, bad]):
+                with self.assertRaises(ValueError):
+                    self.client.snapshot()
+
+        for records in ([], actions['data'][1:], [dict(actions['data'][0], attributes={})]):
+            with mock.patch.object(self.client, '_get', side_effect=[history, {'data': records, 'links': {}}]):
+                with self.assertRaises(ValueError):
+                    self.client.snapshot()
+
+        latest_running = self.page(1029, 'RUNNING')
+        latest_running['data'] += self.page(1028)['data']
+        with mock.patch.object(self.client, '_get', return_value=latest_running) as get:
+            with self.assertRaises(ValueError):
+                self.client.snapshot()
+            self.assertEqual(get.call_count, 1)
+
     def test_empty_malformed_and_duplicate_history_block(self):
         bad_pages = [{"data": [], "links": {}}, {"data": None, "links": {}},
                      self.page(number=True), self.page(number="1028"), self.page(number=-1)]
@@ -313,6 +377,22 @@ class CloudCounterTests(unittest.TestCase):
                     self.client._get(url, 1)
                 opened.assert_not_called()
         self.assertIsNone(cloud_module.NoRedirect().redirect_request(None, None, 302, "", {}, "https://evil.invalid"))
+
+    def test_action_requests_are_scoped_to_the_resolved_run(self):
+        correct = cloud_module.ORIGIN + '/v1/ciBuildRuns/968/actions'
+        for url in (correct.replace('/968/', '/969/'), correct.replace('https:', 'http:'),
+                    'https://evil.invalid/v1/ciBuildRuns/968/actions', correct + '#fragment'):
+            with mock.patch.object(self.client._opener, 'open') as opened:
+                with self.assertRaises(ValueError):
+                    self.client._get(url, 1, action_run_id='968')
+                opened.assert_not_called()
+        with self.assertRaises(ValueError):
+            self.client._get(correct, 1, action_run_id='../968')
+        response = mock.MagicMock()
+        response.__enter__.return_value.read.return_value = b'{}'
+        with mock.patch.object(self.client._opener, 'open', return_value=response) as opened:
+            self.client._get(correct, 1, action_run_id='968')
+            self.assertEqual(opened.call_args.args[0].get_method(), 'GET')
 
     def test_auth_rate_limit_and_network_errors_are_sanitized(self):
         url = cloud_module.ORIGIN + "/v1/ciProducts/product-id/buildRuns"
@@ -388,6 +468,10 @@ class TeamKeyAuthenticationTests(unittest.TestCase):
             self.assertEqual(len(raw), 64)
             der = utils.encode_dss_signature(int.from_bytes(raw[:32], "big"), int.from_bytes(raw[32:], "big"))
             self.key.public_key().verify(der, (header + "." + payload).encode(), ec.ECDSA(hashes.SHA256()))
+
+        actions_url = cloud_module.ORIGIN + '/v1/ciBuildRuns/968/actions?limit=200'
+        claims = json.loads(self.decode(signer(actions_url).split('.')[1]))
+        self.assertEqual(claims['scope'], ['GET /v1/ciBuildRuns/968/actions?limit=200'])
 
     def test_private_key_location_permissions_and_content(self):
         self.path.chmod(0o644)

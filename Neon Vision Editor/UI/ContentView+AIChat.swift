@@ -32,8 +32,11 @@ extension ContentView {
             hasSelection: aiChatSelection != nil,
             hasCurrentFile: viewModel.selectedTab != nil || !singleContent.isEmpty,
             hasProjectStructure: aiChatProjectStructure != nil,
-            onSend: { prompt, scopes in
-                sendAIChat(prompt: prompt, scopes: scopes)
+            supportsAgentMode: supportsEditorAgentMode,
+            supportsAgentVerification: EditorAgentVerificationRunner.executionIsSupported,
+            isAgentVerificationRunning: isEditorAgentVerificationRunning,
+            onSend: { prompt, scopes, agentMode in
+                sendAIChat(prompt: prompt, scopes: scopes, agentMode: agentMode)
             },
             onInsert: { response in
                 insertAIChatResponse(response)
@@ -43,6 +46,18 @@ extension ContentView {
             },
             onReviewReplacement: { response in
                 reviewAIChatReplacement(response)
+            },
+            onReviewAgentProposal: { proposal in
+                reviewEditorAgentProposal(proposal)
+            },
+            onApplyAgentProposal: { proposal in
+                requestEditorAgentProposalApplication(proposal)
+            },
+            onRequestAgentVerification: { action in
+                requestEditorAgentVerification(action)
+            },
+            onCancelAgentVerification: {
+                cancelEditorAgentVerification()
             },
             onOpenSettings: openAPISettings
         )
@@ -67,12 +82,20 @@ extension ContentView {
         return selection.isEmpty ? nil : selection
     }
 
-    private func sendAIChat(prompt: String, scopes: Set<AIChatContextScope>) {
+    private func sendAIChat(
+        prompt: String,
+        scopes requestedScopes: Set<AIChatContextScope>,
+        agentMode: EditorAgentMode?
+    ) {
+        var scopes = requestedScopes
+        if agentMode != nil, aiChatProjectStructure != nil {
+            scopes.insert(.projectStructure)
+        }
         if scopes.contains(.currentFile), viewModel.selectedTab?.usesFileBackedStorage == true {
             aiChatConversation.reportError("Current-file AI context is unavailable for large virtual documents until a bounded context reader is available.")
             return
         }
-        guard let client = configuredAIChatClient() else {
+        guard let client = configuredAIChatClient(agentMode: agentMode) else {
             aiChatConversation.reportError(aiChatConfigurationError)
             return
         }
@@ -94,6 +117,17 @@ extension ContentView {
             providerName: selectedModel.displayName,
             client: client
         )
+    }
+
+    private var supportsEditorAgentMode: Bool {
+#if os(macOS) && USE_FOUNDATION_MODELS && canImport(FoundationModels)
+        if #available(macOS 27.0, *) {
+            return selectedModel == .appleIntelligence &&
+                projectRootFolderURL != nil &&
+                (!projectFileIndexSnapshot.entries.isEmpty || viewModel.selectedTab?.fileURL != nil)
+        }
+#endif
+        return false
     }
 
     private var aiChatConfigurationError: String {
@@ -137,7 +171,28 @@ extension ContentView {
         return lines.joined(separator: "\n")
     }
 
-    private func configuredAIChatClient() -> AIClient? {
+    private func configuredAIChatClient(agentMode: EditorAgentMode? = nil) -> AIClient? {
+        if let agentMode {
+#if os(macOS) && USE_FOUNDATION_MODELS && canImport(FoundationModels)
+            if #available(macOS 27.0, *),
+               selectedModel == .appleIntelligence,
+               let rootURL = projectRootFolderURL {
+                var allowedURLs = projectFileIndexSnapshot.fileURLs
+                if let selectedURL = viewModel.selectedTab?.fileURL,
+                   !allowedURLs.contains(where: { $0.standardizedFileURL == selectedURL.standardizedFileURL }) {
+                    allowedURLs.append(selectedURL)
+                }
+                let workspace = EditorAgentWorkspace(rootURL: rootURL, allowedFileURLs: allowedURLs)
+                return AppleEditorAgentAIClient(
+                    mode: agentMode,
+                    workspace: workspace,
+                    editTarget: editorAgentEditTarget(for: agentMode),
+                    allowPrivateCloudCompute: editorAgentAllowPrivateCloudCompute
+                )
+            }
+#endif
+            return nil
+        }
         switch selectedModel {
         case .appleIntelligence:
             return appleModelAvailable ? AppleIntelligenceAIClient() : nil
@@ -171,6 +226,19 @@ extension ContentView {
             guard isSecureOpenAICompatibleBaseURL(baseURL), !model.isEmpty else { return nil }
             return OpenAICompatibleAIClient(apiKey: key, baseURL: baseURL, model: model)
         }
+    }
+
+    private func editorAgentEditTarget(for mode: EditorAgentMode) -> EditorAgentEditTarget? {
+        guard mode == .edit,
+              let tab = viewModel.selectedTab,
+              !tab.isReadOnlyPreview,
+              currentSelectionSnapshotTabID == tab.id,
+              let range = currentSelectionSnapshotRange,
+              range.location != NSNotFound,
+              range.length > 0,
+              NSMaxRange(range) <= tab.document.utf16Length,
+              (try? tab.document.text(inUTF16Range: range)) == currentSelectionSnapshotText else { return nil }
+        return .init(tabID: tab.id, range: range, source: currentSelectionSnapshotText)
     }
 
     private func resolvedAIChatToken(_ enteredToken: String, key: APITokenKey) -> String {
@@ -269,6 +337,119 @@ extension ContentView {
                 rightTitle: "AI Proposal",
                 diff: diff
             )
+        }
+    }
+
+    private func requestEditorAgentProposalApplication(_ proposal: EditorAgentEditProposal) {
+        guard let tab = viewModel.selectedTab,
+              !tab.isReadOnlyPreview,
+              NSMaxRange(proposal.range) <= tab.document.utf16Length,
+              let source = try? tab.document.text(inUTF16Range: proposal.range),
+              proposal.matches(tabID: tab.id, range: proposal.range, currentSource: source) else {
+            aiChatConversation.reportError("The selected text changed. Ask the agent to prepare the edit again.")
+            return
+        }
+        pendingAIChatReplacement = .init(
+            tabID: proposal.tabID,
+            range: proposal.range,
+            source: proposal.source,
+            replacement: proposal.replacement
+        )
+    }
+
+    private func reviewEditorAgentProposal(_ proposal: EditorAgentEditProposal) {
+        guard let tab = viewModel.selectedTab,
+              NSMaxRange(proposal.range) <= tab.document.utf16Length,
+              let source = try? tab.document.text(inUTF16Range: proposal.range),
+              proposal.matches(tabID: tab.id, range: proposal.range, currentSource: source) else {
+            aiChatConversation.reportError("The selected text changed. Ask the agent to prepare the edit again.")
+            return
+        }
+        utilitySidebarMode = .project
+        showProjectStructureSidebar = true
+        Task { @MainActor in
+            let diff = await Task.detached(priority: .userInitiated) {
+                DocumentDiffBuilder.build(leftContent: source, rightContent: proposal.replacement)
+            }.value
+            sidebarCompareDiffPresentation = .init(
+                title: "Review Agent Edit",
+                leftTitle: "Captured Selection",
+                rightTitle: "Agent Proposal",
+                diff: diff
+            )
+        }
+    }
+
+    private func requestEditorAgentVerification(_ action: EditorAgentVerificationAction) {
+        guard EditorAgentVerificationRunner.executionIsSupported else {
+            aiChatConversation.reportError("Local verification commands are unavailable in the App Store sandbox. Use the direct macOS build or run the recommendation yourself.")
+            return
+        }
+        guard let rootURL = projectRootFolderURL,
+              let plan = EditorAgentVerificationResolver.plan(
+                for: action,
+                rootURL: rootURL,
+                selectedFileURL: viewModel.selectedTab?.fileURL
+              ) else {
+            aiChatConversation.reportError("That verification is unavailable for the current project or selected file.")
+            return
+        }
+        pendingEditorAgentVerificationPlan = plan
+    }
+
+    func runEditorAgentVerification(_ plan: EditorAgentVerificationPlan) {
+        guard !isEditorAgentVerificationRunning else { return }
+        isEditorAgentVerificationRunning = true
+        editorAgentVerificationTask = Task { @MainActor in
+            let result = await EditorAgentVerificationRunner.run(plan)
+            guard !Task.isCancelled else {
+                isEditorAgentVerificationRunning = false
+                editorAgentVerificationTask = nil
+                return
+            }
+            editorAgentVerificationResult = result
+            isEditorAgentVerificationRunning = false
+            editorAgentVerificationTask = nil
+        }
+    }
+
+    func cancelEditorAgentVerification() {
+        editorAgentVerificationTask?.cancel()
+        editorAgentVerificationTask = nil
+        isEditorAgentVerificationRunning = false
+    }
+
+    var editorAgentVerificationResultSheet: some View {
+        Group {
+            if let result = editorAgentVerificationResult {
+                VStack(alignment: .leading, spacing: 14) {
+                    Label(
+                        result.succeeded ? "Verification Passed" : (result.didTimeOut ? "Verification Timed Out" : "Verification Failed"),
+                        systemImage: result.succeeded ? "checkmark.circle.fill" : "xmark.circle.fill"
+                    )
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(result.succeeded ? .green : .red)
+                    Text(result.plan.displayCommand)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                    ScrollView {
+                        Text(result.output)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(minHeight: 240)
+                    HStack {
+                        Spacer()
+                        Button("Close") { editorAgentVerificationResult = nil }
+                            .keyboardShortcut(.defaultAction)
+                    }
+                }
+                .padding(20)
+                .frame(minWidth: 620, minHeight: 380)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Agent verification result")
+            }
         }
     }
 }

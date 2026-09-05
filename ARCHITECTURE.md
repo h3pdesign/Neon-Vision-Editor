@@ -171,6 +171,15 @@ The language registry treats TeX/LaTeX and Typst as source text rather than rend
 - The sidebar is a presentation surface over the existing editor model. Sending a request must use a captured context snapshot so later tab changes cannot alter an in-flight request, and stale results must not replace newer conversation state.
 - The chat surface uses a compact provider/status header, a single-row composer, a context attachment chip, and a lightweight empty state with suggested prompts. These are shared SwiftUI presentation changes; provider behavior, persistence, disclosure, and response actions remain unchanged.
 
+### macOS 27 Agent Mode
+
+- Agent Mode is available only with Apple Intelligence on macOS 27 or later. It uses a Foundation Models dynamic profile with separate Explore, Edit, and Verify instructions, bounded project-search and file-read tools, token-aware on-device context limits, and a short session history.
+- `EditorAgentWorkspace` captures the open project root and indexed file allowlist for each request. It resolves symlinks, rejects absolute paths and traversal, bounds reads and search results, and treats every path, file, diagnostic, and excerpt as untrusted data rather than instructions.
+- Explore is read-only. Edit may propose a replacement only for the exact captured selection; the editor revalidates the tab, UTF-16 range, and original source before showing the existing diff and apply confirmation. Agent output never writes multiple files directly.
+- Verify may recommend only a fixed syntax, build, test, or selected-file action. `EditorAgentVerificationResolver` constructs the executable and argument array, the UI displays the exact command and working directory for approval, and `EditorAgentVerificationRunner` rejects plans outside its executable and argument allowlist. It never invokes a shell, accepts model-authored arguments, installs packages, or performs Git/network publication. Local command execution is disabled in App Store-sandboxed builds and is available only in the direct macOS build.
+- Processing remains on-device by default. A separate, disabled-by-default setting permits complex Edit and Verify requests to use Apple Private Cloud Compute when the model reports it available; Explore remains on-device and unavailable PCC always falls back locally. The result card reports the actual processing location and bounded activity without logging file contents.
+- Deterministic policy tests cover path containment, bounded search, stale-selection rejection, verification resolution, and executable/argument enforcement. Live Foundation Models quality and latency remain device-dependent and require macOS 27 runtime evaluation before release.
+
 ## Markdown and PDF Project Preview Cards
 
 `UI/MarkdownProjectPreview.swift` and `UI/ContentView+MarkdownProjectPreview.swift` provide an optional project-level Markdown/PDF overview beside the existing Markdown preview. This is a navigation surface, not a second editor or a replacement for the project sidebar.

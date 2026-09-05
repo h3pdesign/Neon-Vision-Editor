@@ -531,6 +531,7 @@ struct ContentView: View {
 
     // Single-document fallback state (used when no tab model is selected)
     @AppStorage("SelectedAIModel") var selectedModelRaw: String = AIModel.appleIntelligence.rawValue
+    @AppStorage(SettingsPreferenceKey.editorAgentAllowPrivateCloudCompute) var editorAgentAllowPrivateCloudCompute: Bool = false
     @State var singleContent: String = ""
     @State var singleLanguage: String = "plain"
     @State var caretStatus: String = "Ln 1, Col 1"
@@ -691,6 +692,10 @@ struct ContentView: View {
     @State var pendingReplaceAllPreview: FindReplaceAllPreview? = nil
     @State var pendingFindInFilesReplacement: FindInFilesReplacementPreview? = nil
     @State var pendingAIChatReplacement: AIChatReplacementPreview? = nil
+    @State var pendingEditorAgentVerificationPlan: EditorAgentVerificationPlan? = nil
+    @State var editorAgentVerificationResult: EditorAgentVerificationResult? = nil
+    @State var editorAgentVerificationTask: Task<Void, Never>? = nil
+    @State var isEditorAgentVerificationRunning: Bool = false
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
     @State var showUnsupportedFileAlert: Bool = false
@@ -3768,6 +3773,40 @@ struct ContentView: View {
                     } else {
                         Text("No pending AI replacement.")
                     }
+                }
+                .confirmationDialog(
+                    "Run agent verification?",
+                    isPresented: Binding<Bool>(
+                        get: { contentView.pendingEditorAgentVerificationPlan != nil },
+                        set: { isPresented in
+                            if !isPresented { contentView.pendingEditorAgentVerificationPlan = nil }
+                        }
+                    ),
+                    titleVisibility: .visible
+                ) {
+                    if let plan = contentView.pendingEditorAgentVerificationPlan {
+                        Button("Run \(plan.action.title)") {
+                            contentView.runEditorAgentVerification(plan)
+                            contentView.pendingEditorAgentVerificationPlan = nil
+                        }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    if let plan = contentView.pendingEditorAgentVerificationPlan {
+                        Text("Neon will run this fixed command without a shell:\n\(plan.displayCommand)\n\nWorking directory:\n\(plan.workingDirectoryURL.path)")
+                    } else {
+                        Text("No pending agent verification.")
+                    }
+                }
+                .sheet(
+                    isPresented: Binding<Bool>(
+                        get: { contentView.editorAgentVerificationResult != nil },
+                        set: { isPresented in
+                            if !isPresented { contentView.editorAgentVerificationResult = nil }
+                        }
+                    )
+                ) {
+                    contentView.editorAgentVerificationResultSheet
                 }
                 .confirmationDialog(
                     "Replace selected project matches?",

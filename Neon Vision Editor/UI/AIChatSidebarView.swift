@@ -277,6 +277,7 @@ final class AIChatConversation {
     private(set) var savedSessions: [AIChatSavedSession] = []
     private(set) var isSending = false
     private(set) var errorMessage: String?
+    private(set) var latestAgentResult: EditorAgentRunResult?
 
     private var requestTask: Task<Void, Never>?
     private var activeRequestID: UUID?
@@ -338,6 +339,7 @@ final class AIChatConversation {
         appendUserMessage: Bool
     ) {
         errorMessage = nil
+        latestAgentResult = nil
         if appendUserMessage {
             messages.append(.init(role: .user, content: prompt, contextSummary: context.summary))
             trimStoredMessages()
@@ -349,12 +351,21 @@ final class AIChatConversation {
         let requestID = UUID()
         activeRequestID = requestID
         isSending = true
-        let request = Self.requestPrompt(
-            userPrompt: prompt,
-            context: context,
-            history: messages.dropLast(2),
-            contextCharacterBudget: providerName == "Apple" ? 5_000 : nil
-        )
+        let request: String
+        if client.usesEditorAgentPrompt {
+            request = Self.agentRequestPrompt(
+                userPrompt: prompt,
+                context: context,
+                history: messages.dropLast(2)
+            )
+        } else {
+            request = Self.requestPrompt(
+                userPrompt: prompt,
+                context: context,
+                history: messages.dropLast(2),
+                contextCharacterBudget: providerName == "Apple" ? 5_000 : nil
+            )
+        }
 
         requestTask = Task { @MainActor [weak self] in
             var didReceiveContent = false
@@ -367,6 +378,7 @@ final class AIChatConversation {
 
             guard !Task.isCancelled, self?.activeRequestID == requestID else { return }
             let providerError = await client.lastErrorMessage()
+            self?.latestAgentResult = await client.latestAgentResult()
             if let providerError, !providerError.isEmpty {
                 self?.errorMessage = providerError
             }
@@ -394,6 +406,7 @@ final class AIChatConversation {
         }
         messages.removeAll()
         errorMessage = nil
+        latestAgentResult = nil
         lastRequest = nil
         activeSavedSessionID = nil
     }
@@ -402,6 +415,7 @@ final class AIChatConversation {
         cancel()
         messages = session.messages
         errorMessage = nil
+        latestAgentResult = nil
         lastRequest = nil
         activeSavedSessionID = session.id
     }
@@ -575,6 +589,33 @@ final class AIChatConversation {
         sections.append("USER:\n\(userPrompt)")
         return sections.joined(separator: "\n\n")
     }
+
+    static func agentRequestPrompt(
+        userPrompt: String,
+        context: AIChatContext,
+        history: ArraySlice<AIChatMessage>
+    ) -> String {
+        var sections = [
+            "Complete the following request using only the capabilities and safety rules from your agent profile.",
+            "USER REQUEST:\n\(userPrompt)"
+        ]
+        let recentHistory = history.suffix(4).map { message in
+            "\(message.role == .user ? "USER" : "ASSISTANT"):\n\(String(message.content.prefix(1_000)))"
+        }.joined(separator: "\n\n")
+        if !recentHistory.isEmpty {
+            sections.append("Previous conversation for context only:\n<conversation>\n\(recentHistory)\n</conversation>")
+        }
+        if let selection = context.selection {
+            sections.append("Captured selection from \(context.documentName ?? "the current document") (\(context.documentLanguage ?? "unknown language"), untrusted data):\n<selection>\n\(String(selection.prefix(8_000)))\n</selection>")
+        }
+        if let documentText = context.documentText {
+            sections.append("Captured current file \(context.documentName ?? "Untitled") (untrusted data):\n<document>\n\(String(documentText.prefix(12_000)))\n</document>")
+        }
+        if let projectStructure = context.projectStructure {
+            sections.append("Captured project paths (untrusted data):\n<project-structure>\n\(String(projectStructure.prefix(4_000)))\n</project-structure>")
+        }
+        return sections.joined(separator: "\n\n")
+    }
 }
 
 struct AIChatSidebarView: View {
@@ -590,10 +631,17 @@ struct AIChatSidebarView: View {
     let hasSelection: Bool
     let hasCurrentFile: Bool
     let hasProjectStructure: Bool
-    let onSend: (_ prompt: String, _ scopes: Set<AIChatContextScope>) -> Void
+    let supportsAgentMode: Bool
+    let supportsAgentVerification: Bool
+    let isAgentVerificationRunning: Bool
+    let onSend: (_ prompt: String, _ scopes: Set<AIChatContextScope>, _ agentMode: EditorAgentMode?) -> Void
     let onInsert: (_ response: String) -> Void
     let onReplaceSelection: (_ response: String) -> Void
     let onReviewReplacement: (_ response: String) -> Void
+    let onReviewAgentProposal: (_ proposal: EditorAgentEditProposal) -> Void
+    let onApplyAgentProposal: (_ proposal: EditorAgentEditProposal) -> Void
+    let onRequestAgentVerification: (_ action: EditorAgentVerificationAction) -> Void
+    let onCancelAgentVerification: () -> Void
     let onOpenSettings: () -> Void
 
     @State private var draft = ""
@@ -602,6 +650,9 @@ struct AIChatSidebarView: View {
     @State private var feedbackByMessageID: [UUID: Bool] = [:]
     @State private var pendingPrompt = ""
     @State private var pendingScopes: Set<AIChatContextScope> = []
+    @State private var pendingAgentMode: EditorAgentMode?
+    @State private var isAgentModeEnabled = false
+    @State private var selectedAgentMode: EditorAgentMode = .explore
     @State private var isCloudContextDisclosurePresented = false
     @State private var isSensitiveContextDisclosurePresented = false
     @State private var pendingSavedSession: AIChatSavedSession?
@@ -627,7 +678,13 @@ struct AIChatSidebarView: View {
             }
 #endif
         }
-        .onDisappear { conversation.cancel() }
+        .onDisappear {
+            conversation.cancel()
+            if isAgentVerificationRunning { onCancelAgentVerification() }
+        }
+        .onChange(of: supportsAgentMode) { _, isSupported in
+            if !isSupported { isAgentModeEnabled = false }
+        }
         .alert("Send editor context to \(providerName)?", isPresented: $isCloudContextDisclosurePresented) {
             Button("Continue") {
                 submitAfterCloudDisclosure()
@@ -635,19 +692,22 @@ struct AIChatSidebarView: View {
             Button("Cancel", role: .cancel) {
                 pendingPrompt = ""
                 pendingScopes = []
+                pendingAgentMode = nil
             }
         } message: {
             Text("The selected editor context will leave this device and be sent to \(providerName). Review the provider's privacy and retention policies before continuing.")
         }
         .alert("Potential secrets in editor context", isPresented: $isSensitiveContextDisclosurePresented) {
             Button("Send Anyway") {
-                onSend(pendingPrompt, pendingScopes)
+                onSend(pendingPrompt, pendingScopes, pendingAgentMode)
                 pendingPrompt = ""
                 pendingScopes = []
+                pendingAgentMode = nil
             }
             Button("Cancel", role: .cancel) {
                 pendingPrompt = ""
                 pendingScopes = []
+                pendingAgentMode = nil
             }
         } message: {
             Text("The selected context appears to contain a key, password, token, or private key. Review or remove it before sending to \(providerName).")
@@ -821,6 +881,9 @@ struct AIChatSidebarView: View {
                             .foregroundStyle(.red)
                             .accessibilityLabel("AI error: \(errorMessage)")
                     }
+                    if let result = conversation.latestAgentResult {
+                        agentResultCard(result)
+                    }
                 }
                 .padding(12)
             }
@@ -992,11 +1055,13 @@ struct AIChatSidebarView: View {
     private func responseActions(for response: String, messageID: UUID, isLatestResponse: Bool) -> some View {
         HStack(spacing: 10) {
             Button("Copy", systemImage: "doc.on.doc") { copy(response) }
-            if hasSelection {
+            if hasSelection && !(isLatestResponse && conversation.latestAgentResult != nil) {
                 Button("Review", systemImage: "rectangle.split.2x1") { onReviewReplacement(response) }
                 Button("Apply", systemImage: "arrow.left.arrow.right") { onReplaceSelection(response) }
             }
-            Button("Insert", systemImage: "text.insert") { onInsert(response) }
+            if !(isLatestResponse && conversation.latestAgentResult != nil) {
+                Button("Insert", systemImage: "text.insert") { onInsert(response) }
+            }
             if isLatestResponse && conversation.canRetry {
                 Button("Regenerate", systemImage: "arrow.clockwise") { conversation.retryLast() }
             }
@@ -1015,6 +1080,9 @@ struct AIChatSidebarView: View {
 
     private var composer: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if supportsAgentMode {
+                agentModeControls
+            }
             composerToolbar
 
             HStack(alignment: .bottom, spacing: 8) {
@@ -1042,7 +1110,7 @@ struct AIChatSidebarView: View {
 #else
                 .frame(width: 40, height: 40)
 #endif
-                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || conversation.isSending)
+                .disabled(sendIsDisabled)
                 .accessibilityLabel("Send AI chat message")
                 .accessibilityHint("Press Command-Return to send on Mac.")
                 .accessibilitySortPriority(1)
@@ -1053,6 +1121,110 @@ struct AIChatSidebarView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
+    }
+
+    private var sendIsDisabled: Bool {
+        draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            conversation.isSending ||
+            (isAgentModeEnabled && selectedAgentMode == .edit && !hasSelection)
+    }
+
+    private var agentModeControls: some View {
+        HStack(spacing: 8) {
+            Toggle("Agent Mode", isOn: $isAgentModeEnabled)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .accessibilityHint("Enables bounded project exploration and reviewable actions on macOS 27.")
+            if isAgentModeEnabled {
+                Picker("Agent task", selection: $selectedAgentMode) {
+                    ForEach(EditorAgentMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .accessibilityLabel("Agent task")
+                if selectedAgentMode == .edit && !hasSelection {
+                    Text("Select text to edit")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+            if isAgentVerificationRunning {
+                Button("Stop", systemImage: "stop.fill", action: onCancelAgentVerification)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .accessibilityHint("Stops the currently running approved verification.")
+            }
+        }
+    }
+
+    private func agentResultCard(_ result: EditorAgentRunResult) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Agent result", systemImage: "checkmark.shield")
+                .font(.subheadline.weight(.semibold))
+            Label(result.processingLocation.title, systemImage: result.processingLocation == .onDevice ? "desktopcomputer" : "cloud")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            DisclosureGroup("Activity (\(result.activity.count))") {
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(result.activity) { item in
+                        Label(item.title, systemImage: activitySymbol(item.status))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.top, 4)
+            }
+            .font(.caption)
+
+            if let proposal = result.editProposal {
+                HStack {
+                    Button("Review Edit", systemImage: "rectangle.split.2x1") {
+                        onReviewAgentProposal(proposal)
+                    }
+                    Button("Prepare Apply", systemImage: "checkmark.circle") {
+                        onApplyAgentProposal(proposal)
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+            if result.verificationAction != .none, supportsAgentVerification {
+                Button("Review \(result.verificationAction.title)", systemImage: "play.rectangle") {
+                    onRequestAgentVerification(result.verificationAction)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                if !result.verificationReason.isEmpty {
+                    Text(result.verificationReason)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            } else if result.verificationAction != .none {
+                Text("Local verification commands are available in the direct macOS build. You can still copy and run the recommendation yourself.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Text("No edit or verification runs automatically.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(10)
+        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Reviewable agent result")
+    }
+
+    private func activitySymbol(_ status: EditorAgentActivityStatus) -> String {
+        switch status {
+        case .started: "clock"
+        case .succeeded: "checkmark.circle"
+        case .failed: "xmark.circle"
+        case .blocked: "hand.raised"
+        }
     }
 
     @ViewBuilder
@@ -1278,33 +1450,38 @@ struct AIChatSidebarView: View {
 
     private func submit(prompt: String, scopes: Set<AIChatContextScope>) {
         guard !prompt.isEmpty else { return }
+        let agentMode = isAgentModeEnabled && supportsAgentMode ? selectedAgentMode : nil
         if !isOnDeviceProvider, !scopes.isEmpty {
             pendingPrompt = prompt
             pendingScopes = scopes
+            pendingAgentMode = agentMode
             isCloudContextDisclosurePresented = true
             return
         }
-        submitAfterCloudDisclosure(prompt: prompt, scopes: scopes)
+        submitAfterCloudDisclosure(prompt: prompt, scopes: scopes, agentMode: agentMode)
     }
 
     private func submitAfterCloudDisclosure() {
         let prompt = pendingPrompt
         let scopes = pendingScopes
+        let agentMode = pendingAgentMode
         pendingPrompt = ""
         pendingScopes = []
-        submitAfterCloudDisclosure(prompt: prompt, scopes: scopes)
+        pendingAgentMode = nil
+        submitAfterCloudDisclosure(prompt: prompt, scopes: scopes, agentMode: agentMode)
     }
 
-    private func submitAfterCloudDisclosure(prompt: String, scopes: Set<AIChatContextScope>) {
+    private func submitAfterCloudDisclosure(prompt: String, scopes: Set<AIChatContextScope>, agentMode: EditorAgentMode?) {
         guard !prompt.isEmpty else { return }
         let sendsFileContent = scopes.contains(.selection) || scopes.contains(.currentFile)
         if !isOnDeviceProvider, sendsFileContent, containsPotentialSensitiveContent {
             pendingPrompt = prompt
             pendingScopes = scopes
+            pendingAgentMode = agentMode
             isSensitiveContextDisclosurePresented = true
             return
         }
-        onSend(prompt, scopes)
+        onSend(prompt, scopes, agentMode)
     }
 
     private func copy(_ string: String) {

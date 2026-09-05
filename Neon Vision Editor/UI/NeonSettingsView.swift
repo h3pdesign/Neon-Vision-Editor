@@ -77,6 +77,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsOpenWithBlankDocument") private var openWithBlankDocument: Bool = true
     @AppStorage("SettingsShowRecentFilesOnEmptyDocuments") private var showRecentFilesOnEmptyDocuments: Bool = true
     @AppStorage(SettingsPreferenceKey.showWelcomeTourAutomatically) private var showWelcomeTourAutomatically: Bool = true
+    @AppStorage(SettingsPreferenceKey.editorAgentAllowPrivateCloudCompute) private var editorAgentAllowPrivateCloudCompute: Bool = false
     @AppStorage("SettingsShareImportsAutoOpen") private var shareImportsAutoOpen: Bool = true
 #if os(macOS)
     @AppStorage("SettingsShowMenuBarIconMac") private var showMenuBarIconMac: Bool = true
@@ -5595,6 +5596,15 @@ struct NeonSettingsView: View {
                     Text("The selected AI model is used for AI-assisted code completion.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
+
+                    if #available(macOS 27.0, *) {
+                        Toggle("Allow Private Cloud Compute for Agent Mode", isOn: $editorAgentAllowPrivateCloudCompute)
+                            .disabled(selectedAIModelBinding.wrappedValue != .appleIntelligence)
+                            .accessibilityHint("Allows complex Edit and Verify requests to use Apple's Private Cloud Compute when available.")
+                        Text("Agent Mode remains on-device by default. When enabled, complex Edit and Verify requests may send the captured project context to Apple Private Cloud Compute when available; otherwise they fall back to the on-device model.")
+                            .font(Typography.footnote)
+                            .foregroundStyle(.secondary)
+                    }
 
                     Button("Data Disclosure") {
                         showDataDisclosureDialog = true

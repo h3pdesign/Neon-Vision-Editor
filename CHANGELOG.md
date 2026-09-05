@@ -4,6 +4,17 @@ All notable changes to **Neon Vision Editor** are documented in this file.
 
 The format follows *Keep a Changelog*. Versions use semantic versioning with prerelease tags.
 
+## [Unreleased]
+
+### Added
+
+- Adds a macOS 27 Agent Mode for bounded project exploration, reviewable selection edits, and, in the direct macOS build, user-approved syntax, build, test, or selected-file verification with Apple Intelligence.
+- Adds an opt-in Private Cloud Compute setting for complex agent requests, with on-device fallback and visible processing-location and activity summaries.
+
+### Security
+
+- Restricts agent file access to the captured project index, rejects path traversal and stale edit targets, and runs only editor-resolved verification commands without a shell or model-authored arguments.
+
 ## [v1.6.1] - 2026-09-04
 
 ### Why Upgrade

@@ -13,6 +13,7 @@ enum SettingsPreferenceKey {
     static let lineHeight = "SettingsLineHeight"
     static let letterSpacing = "SettingsLetterSpacing"
     static let showWelcomeTourAutomatically = "SettingsShowWelcomeTourAutomatically"
+    static let editorAgentAllowPrivateCloudCompute = "EditorAgentAllowPrivateCloudCompute"
     static let lineWrapEnabled = "SettingsLineWrapEnabled"
     static let pythonInterpreterPath = "SettingsPythonInterpreterPath"
     static let showLineNumbers = "SettingsShowLineNumbers"

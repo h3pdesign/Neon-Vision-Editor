@@ -35,7 +35,8 @@ else
 fi
 
 echo "Validating changelog section for ${TAG}..."
-SECTION_FILE="/tmp/release-notes-gate-${TAG}.md"
+SECTION_FILE="$(mktemp "${TMPDIR:-/tmp}/nve-release-notes.XXXXXX")"
+trap 'rm -f "$SECTION_FILE"' EXIT
 scripts/extract_changelog_section.sh CHANGELOG.md "${TAG}" > "${SECTION_FILE}"
 if grep -nEi "\\bTODO\\b" "${SECTION_FILE}" >/dev/null; then
   echo "Release notes for ${TAG} contain unresolved TODO markers." >&2
@@ -64,6 +65,8 @@ if (( why_upgrade_count < 3 )); then
 fi
 
 if [[ "$PREFLIGHT_ONLY" -eq 0 ]]; then
+  CANDIDATE_TAG="$TAG"
+  TAG="$(python3 scripts/prepare_release_docs.py "$TAG" --public-tag)"
   echo "Validating README What's New heading..."
   RELEASE_TAGS=()
   while IFS= read -r release_tag; do
@@ -111,6 +114,9 @@ if [[ "$PREFLIGHT_ONLY" -eq 0 ]]; then
   fi
 fi
 
-bash scripts/ci/release_milestone_preflight.sh "${TAG}"
+TAG="${CANDIDATE_TAG:-$TAG}"
+if [[ "${NVE_RELEASE_OFFLINE:-0}" != "1" ]]; then
+  bash scripts/ci/release_milestone_preflight.sh "${TAG}"
+fi
 
 echo "Release-notes quality gate passed for ${TAG}."

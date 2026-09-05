@@ -79,6 +79,9 @@ jobs:
       - name: Verify performance budget contract
         run: python3 scripts/ci/check_performance_budget.py
 
+      - name: Verify release workflow regressions offline
+        run: python3 scripts/ci/test_release_workflow.py
+
       - name: Check project compatibility on hosted Xcode
         id: project_probe
         run: |

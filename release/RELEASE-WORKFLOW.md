@@ -55,14 +55,22 @@ Retries preserve the allocated number and reject a changed Cloud counter.
 
 Configure these outside the repository:
 
+For first-time setup, see [App Store Connect credentials](../docs/XCODE_CLOUD_RELEASE.md#app-store-connect-credentials).
+
 - `ASC_CLOUD_PRODUCT_ID`: the Cloud **product** ID, not the App Store app ID or workflow ID.
+- For automatic two-minute, read-scoped JWTs, supply `ASC_KEY_ID`, `ASC_ISSUER_ID`,
+  and `ASC_PRIVATE_KEY_PATH` for a team key in secure storage outside Git with
+  owner-only file permissions. This mode requires Python `cryptography` (tested
+  with 50.0.1). The setup guide also supports local Git configuration of these
+  non-secret references; no key contents are stored in Git.
 - `ASC_TOKEN_KEYCHAIN_SERVICE`: a macOS Keychain generic-password service containing
   a valid App Store Connect JWT with read access to that Cloud product. Provision
   it using Keychain Access or your existing secure credential tooling; do not paste
   a token into chat or commit it.
 - Alternatively, inject `ASC_API_TOKEN` through your existing secure CI secret
-  provider. It takes precedence over Keychain. Refresh expired tokens through
-  that provider; this script does not generate JWTs or store private keys.
+  provider. It takes precedence over Keychain; both external-token sources take
+  precedence over `.p8` signing. Refresh external tokens through that provider;
+  only `.p8` signing automatically generates fresh JWTs before each request.
 
 Check the connection without editing files or starting builds:
 

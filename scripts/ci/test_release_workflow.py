@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline regression suite for release preparation; never builds or publishes."""
+import base64
 import copy
 import hashlib
 import importlib.util
@@ -247,6 +248,9 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
 class CloudCounterTests(unittest.TestCase):
     def setUp(self):
+        config = mock.patch.object(cloud_module, "local_setting", return_value="")
+        config.start()
+        self.addCleanup(config.stop)
         self.client = cloud_module.CloudBuildCounter("product-id", "fixture-token")
 
     @staticmethod
@@ -344,6 +348,117 @@ class CloudCounterTests(unittest.TestCase):
             with mock.patch.object(self.client._opener, "open", return_value=response):
                 with self.assertRaises(ValueError):
                     self.client._get(url, 1)
+
+
+class TeamKeyAuthenticationTests(unittest.TestCase):
+    def setUp(self):
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        self.temp = tempfile.TemporaryDirectory(prefix="nve-auth-test-")
+        self.addCleanup(self.temp.cleanup)
+        self.key = ec.generate_private_key(ec.SECP256R1())
+        self.path = Path(self.temp.name) / "AuthKey_TESTKEY123.p8"
+        self.path.write_bytes(self.key.private_bytes(serialization.Encoding.PEM,
+                             serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
+        self.path.chmod(0o600)
+        self.key_id = "TESTKEY123"
+        self.issuer = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+        self.url = cloud_module.ORIGIN + "/v1/ciProducts/product-id/buildRuns?limit=200&fields%5BciBuildRuns%5D=number,executionProgress"
+
+    def signer(self):
+        return cloud_module.TeamKeyToken(self.key_id, self.issuer, str(self.path))
+
+    @staticmethod
+    def decode(value):
+        return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+    def test_signature_scope_and_renewal(self):
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import ec, utils
+        signer = self.signer()
+        for now in (1000, 2000):
+            with mock.patch.object(cloud_module.time, "time", return_value=now):
+                token = signer(self.url)
+            header, payload, signature = token.split(".")
+            self.assertEqual(json.loads(self.decode(header)), {"alg": "ES256", "kid": self.key_id, "typ": "JWT"})
+            claims = json.loads(self.decode(payload))
+            self.assertEqual(claims, {"iss": self.issuer, "iat": now, "exp": now + 120,
+                             "aud": "appstoreconnect-v1", "scope": ["GET " + self.url.removeprefix(cloud_module.ORIGIN)]})
+            raw = self.decode(signature)
+            self.assertEqual(len(raw), 64)
+            der = utils.encode_dss_signature(int.from_bytes(raw[:32], "big"), int.from_bytes(raw[32:], "big"))
+            self.key.public_key().verify(der, (header + "." + payload).encode(), ec.ECDSA(hashes.SHA256()))
+
+    def test_private_key_location_permissions_and_content(self):
+        self.path.chmod(0o644)
+        with self.assertRaisesRegex(ValueError, "permissions"):
+            self.signer()
+        self.path.chmod(0o600)
+        (self.path.parent / ".git").mkdir()
+        with self.assertRaisesRegex(ValueError, "outside Git"):
+            self.signer()
+        (self.path.parent / ".git").rmdir()
+        self.path.write_text("private fixture contents must not appear in errors")
+        with self.assertRaisesRegex(ValueError, "P-256") as error:
+            self.signer()
+        self.assertNotIn("private fixture", str(error.exception))
+        self.path.unlink()
+        with self.assertRaisesRegex(ValueError, "Could not read"):
+            self.signer()
+
+    def test_wrong_curve_and_identifiers_are_rejected(self):
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        self.path.write_bytes(ec.generate_private_key(ec.SECP384R1()).private_bytes(
+            serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
+        with self.assertRaisesRegex(ValueError, "P-256"):
+            self.signer()
+        for key_id, issuer in (("", self.issuer), (self.key_id, "not-an-issuer")):
+            with self.assertRaises(ValueError):
+                cloud_module.TeamKeyToken(key_id, issuer, str(self.path))
+        with self.assertRaisesRegex(ValueError, "absolute"):
+            cloud_module.TeamKeyToken(self.key_id, self.issuer, "relative.p8")
+
+    def test_authentication_precedence_and_local_configuration(self):
+        settings = {"productId": "product-id", "keyId": self.key_id,
+                    "issuerId": self.issuer, "privateKeyPath": str(self.path)}
+        with mock.patch.dict(os.environ, {}, clear=True), mock.patch.object(cloud_module, "local_setting", side_effect=settings.get):
+            client = cloud_module.CloudBuildCounter.from_environment()
+            self.assertIsInstance(client._token, cloud_module.TeamKeyToken)
+        with mock.patch.dict(os.environ, {"ASC_CLOUD_PRODUCT_ID": "override", "ASC_API_TOKEN": "external-token"}, clear=True), mock.patch.object(cloud_module, "local_setting") as config:
+            client = cloud_module.CloudBuildCounter.from_environment()
+            self.assertEqual(client.product_id, "override")
+            self.assertEqual(client._token, "external-token")
+            config.assert_not_called()
+        env = {"ASC_CLOUD_PRODUCT_ID": "product-id", "ASC_KEY_ID": self.key_id,
+               "ASC_ISSUER_ID": self.issuer, "ASC_PRIVATE_KEY_PATH": str(self.path)}
+        with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(cloud_module, "local_setting") as config:
+            self.assertIsInstance(cloud_module.CloudBuildCounter.from_environment()._token, cloud_module.TeamKeyToken)
+            config.assert_not_called()
+
+    def test_generated_tokens_are_refreshed_only_for_valid_requests(self):
+        signer = mock.Mock(return_value="generated-token")
+        client = cloud_module.CloudBuildCounter("product-id", signer)
+        response = mock.MagicMock()
+        response.__enter__.return_value.read.return_value = b'{}'
+        with mock.patch.object(client._opener, "open", return_value=response):
+            client._get(self.url, 1)
+            client._get(self.url, 1)
+            self.assertEqual(signer.call_count, 2)
+            with self.assertRaises(ValueError):
+                client._get("https://evil.invalid/", 1)
+            self.assertEqual(signer.call_count, 2)
+        for url in ("https://evil.invalid/", self.url + "#fragment", self.url.replace("https:", "http:")):
+            with self.assertRaises(ValueError):
+                self.signer()(url)
+
+    def test_local_config_is_never_read_from_global_settings(self):
+        with mock.patch.object(cloud_module.subprocess, "run", return_value=mock.Mock(returncode=0, stdout="fixture\n")) as run:
+            self.assertEqual(cloud_module.local_setting("keyId"), "fixture")
+            self.assertIn("--local", run.call_args.args[0])
+            self.assertIn("nve.asc.keyId", run.call_args.args[0])
+        with mock.patch.object(cloud_module.subprocess, "run", return_value=mock.Mock(returncode=1)):
+            self.assertEqual(cloud_module.local_setting("keyId"), "")
 
 
 if __name__ == "__main__":

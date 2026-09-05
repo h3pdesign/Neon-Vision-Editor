@@ -80,7 +80,10 @@ jobs:
         run: python3 scripts/ci/check_performance_budget.py
 
       - name: Verify release workflow regressions offline
-        run: python3 scripts/ci/test_release_workflow.py
+        run: |
+          python3 -m venv "$RUNNER_TEMP/nve-release-tests"
+          "$RUNNER_TEMP/nve-release-tests/bin/python" -m pip install 'cryptography==50.0.1'
+          "$RUNNER_TEMP/nve-release-tests/bin/python" scripts/ci/test_release_workflow.py
 
       - name: Check project compatibility on hosted Xcode
         id: project_probe

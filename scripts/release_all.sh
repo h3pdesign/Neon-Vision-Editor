@@ -6,7 +6,7 @@ usage() {
 Run end-to-end release flow in one command.
 
 Usage:
-  scripts/release_all.sh <tag> [notarized] [--date YYYY-MM-DD] [--skip-notarized] [--self-hosted] [--github-hosted] [--enterprise-selfhosted] [--autostash] [--dry-run] [--from <step>] [--to <step>] [--retag] [--resume-auto] [--no-auto-approve-environment] [--replace-assets-from-app <path>]
+  scripts/release_all.sh <tag> [notarized] [--date YYYY-MM-DD] [--skip-notarized] [--self-hosted] [--github-hosted] [--enterprise-selfhosted] [--autostash] [--dry-run [--full-gate]] [--from <step>] [--to <step>] [--retag] [--resume-auto] [--no-auto-approve-environment] [--replace-assets-from-app <path>]
 
 Examples:
   scripts/release_all.sh v0.8.9
@@ -26,16 +26,20 @@ Examples:
   scripts/release_all.sh v0.8.9 notarized --retag
 
 What it does:
-  1) Synchronize local develop with origin/develop before release checks; release preparation
-     creates release/<version> and opens a PR into main
-  2) Run release preflight checks (docs + build + icon payload + tests)
-  3) Prepare README/CHANGELOG docs
-  4) Commit docs changes
+  1) Require clean develop aligned with origin/develop; prepare release/<version>
+     in an isolated sibling worktree without switching the source checkout
+  2) Promote reviewed Unreleased notes, allocate a reusable build and generate docs
+  3) Create the signed release metadata commit
+  4) Run release preflight checks (docs + build + icon payload + tests)
   5) Push the signed release-preparation commit to release/<version> and merge its PR into main
   6) Trigger the primary GitHub-hosted release workflow from the merged main commit
   7) Optionally use an explicit fallback workflow for an existing tag and approve its
      protected release environment when the current user is an authorized reviewer
   8) Wait for notarized workflow and verify uploaded release asset payload
+
+Dry run:
+  --dry-run rehearses metadata preparation and publication-state transitions offline
+  in a disposable directory. --full-gate adds local Xcode validation; neither publishes.
 
 Asset replacement mode:
   --replace-assets-from-app packages an existing notarized Neon Vision Editor.app as
@@ -64,6 +68,7 @@ USE_SELF_HOSTED=0
 ENTERPRISE_SELF_HOSTED=0
 AUTOSTASH=0
 DRY_RUN=0
+FULL_GATE=0
 START_FROM="docs"
 STOP_AFTER="notarize"
 STOP_AFTER_SET=0
@@ -330,6 +335,9 @@ while [[ "${1:-}" != "" ]]; do
     --dry-run)
       DRY_RUN=1
       ;;
+    --full-gate)
+      FULL_GATE=1
+      ;;
     --from)
       shift
       if [[ -z "${1:-}" ]]; then
@@ -375,6 +383,17 @@ while [[ "${1:-}" != "" ]]; do
   esac
   shift || true
 done
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  if [[ -n "$REPLACE_ASSETS_APP" || "$RETAG" -eq 1 || "$AUTOSTASH" -eq 1 ]]; then
+    echo "Dry run cannot be combined with asset replacement, retagging or autostash." >&2
+    exit 1
+  fi
+  dry_cmd=(bash "$(dirname "${BASH_SOURCE[0]}")/release_prep.sh" "$TAG" --dry-run)
+  if [[ ${#DATE_ARG[@]} -gt 0 ]]; then dry_cmd+=("${DATE_ARG[@]}"); fi
+  if [[ "$FULL_GATE" -eq 1 ]]; then dry_cmd+=(--full-gate); fi
+  exec "${dry_cmd[@]}"
+fi
 
 if [[ -n "$REPLACE_ASSETS_APP" ]]; then
   scripts/replace_release_assets.sh "$TAG" --app "$REPLACE_ASSETS_APP"
@@ -662,12 +681,16 @@ if [[ "$REQUIRES_CLEAN_TREE" -eq 1 && "$AUTOSTASH" -eq 0 && -n "$(git status --p
   fi
 fi
 
-if step_enabled prep; then
-  sync_develop_with_origin
+VALIDATION_ROOT="$ROOT"
+if step_enabled prep && ! git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1; then
+  preparation=(bash scripts/release_prep.sh "$TAG")
+  if [[ ${#DATE_ARG[@]} -gt 0 ]]; then preparation+=("${DATE_ARG[@]}"); fi
+  "${preparation[@]}"
+  VALIDATION_ROOT="$(dirname "$ROOT")/$(basename "$ROOT")-release-${TAG#v}"
 fi
 print_release_state_summary "before docs/preflight"
 
-echo "README download metrics are maintained separately; release_all will re-sync main before tagging to include any new metrics commits."
+echo "README metrics are maintained separately. The release workflow builds the pinned release SHA."
 
 if step_enabled docs; then
   echo "Verifying release docs are up to date for ${TAG}..."
@@ -675,12 +698,12 @@ if step_enabled docs; then
   if [[ ${#DATE_ARG[@]} -gt 0 ]]; then
     docs_check_cmd+=("${DATE_ARG[@]}")
   fi
-  "${docs_check_cmd[@]}"
+  (cd "$VALIDATION_ROOT"; "${docs_check_cmd[@]}")
 fi
 
 if step_enabled preflight; then
   echo "Running release preflight for ${TAG}..."
-  scripts/ci/release_gate.sh "$TAG"
+  (cd "$VALIDATION_ROOT"; scripts/ci/release_gate.sh "$TAG")
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -788,10 +811,9 @@ if step_enabled prep; then
       echo "Release PR ${RELEASE_BRANCH} did not merge into main; release workflow was not dispatched." >&2
       exit 1
     fi
-    git switch main
     retry_cmd git fetch origin main >/dev/null
-    git merge --ff-only origin/main
-    if ! git merge-base --is-ancestor "${release_head_sha}" origin/main; then
+    RELEASE_SHA="${pr_state#*|}"
+    if [[ ! "$RELEASE_SHA" =~ ^[a-f0-9]{40}$ ]] || ! git merge-base --is-ancestor "$RELEASE_SHA" origin/main; then
       echo "Release PR #${release_pr_number} is marked merged, but origin/main does not contain ${release_head_sha}." >&2
       echo "Release workflow was not dispatched." >&2
       exit 1
@@ -822,6 +844,10 @@ if [[ "$TRIGGER_NOTARIZED" -eq 1 ]] && step_enabled notarize; then
       exit 1
     fi
   else
+    if [[ -z "${RELEASE_SHA:-}" ]]; then
+      retry_cmd git fetch origin main >/dev/null
+      RELEASE_SHA="$(git rev-parse origin/main)"
+    fi
     echo "Primary GitHub-hosted release will create ${TAG} only after remote gates pass."
   fi
 
@@ -850,7 +876,7 @@ if [[ "$TRIGGER_NOTARIZED" -eq 1 ]] && step_enabled notarize; then
     assert_workflow_exists "release-github-only.yml"
     assert_required_actions_secrets
     WORKFLOW_NAME="release-github-only.yml"
-    WORKFLOW_DISPATCH_CMD=(gh workflow run "$WORKFLOW_NAME" -f tag="$TAG" -f ref=main)
+    WORKFLOW_DISPATCH_CMD=(gh workflow run "$WORKFLOW_NAME" --ref main -f tag="$TAG" -f ref="$RELEASE_SHA")
   fi
 
   echo "Dispatching ${WORKFLOW_NAME} for ${TAG}..."

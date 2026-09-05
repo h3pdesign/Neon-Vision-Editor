@@ -14,7 +14,8 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: post-release-documentation-${{ github.event.release.tag_name || inputs.tag }}
+  group: public-documentation-writer
+  queue: max
   cancel-in-progress: false
 
 jobs:
@@ -24,9 +25,6 @@ jobs:
     timeout-minutes: 25
 
     steps:
-      - name: Wait for release publication to settle
-        run: sleep 600
-
       - name: Checkout main
         uses: actions/checkout@v5
         with:
@@ -46,6 +44,12 @@ jobs:
           git fetch origin "${branch}" || true
           git checkout -B "${branch}" origin/main
           echo "DOCS_BRANCH=${branch}" >> "$GITHUB_ENV"
+
+      - name: Wait for verified public release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: python3 scripts/ci/wait_for_public_release.py "$RELEASE_TAG"
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -73,7 +77,8 @@ jobs:
             exit 0
           fi
 
-          build="$(awk '/CURRENT_PROJECT_VERSION = [0-9]+;/{gsub(/[^0-9]/, "", $0); print; exit}' 'Neon Vision Editor.xcodeproj/project.pbxproj')"
+          # Read the build from the immutable release, never a newer main checkout.
+          build="$(git show "${tag}:Neon Vision Editor.xcodeproj/project.pbxproj" | awk '/CURRENT_PROJECT_VERSION = [0-9]+;/{gsub(/[^0-9]/, "", $0); print; exit}')"
           if [[ ! "$build" =~ ^[1-9][0-9]*$ ]]; then
             echo "Could not resolve CURRENT_PROJECT_VERSION." >&2
             exit 1
@@ -91,7 +96,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          scripts/prepare_release_docs.py "$RELEASE_TAG" --build "$RELEASE_BUILD"
+          scripts/prepare_release_docs.py "$RELEASE_TAG" --build "$RELEASE_BUILD" --published
           scripts/prepare_release_docs.py "$RELEASE_TAG" --build "$RELEASE_BUILD" --check
           scripts/ci/validate_release_metadata.sh "$RELEASE_TAG"
           git diff --check
@@ -102,6 +107,7 @@ jobs:
         run: |
           set -euo pipefail
           paths=(
+            release/prepared-release.json
             README.md
             ARCHITECTURE.md
             CHANGELOG.md
@@ -162,6 +168,7 @@ jobs:
           set -euo pipefail
 
           paths=(
+            release/prepared-release.json
             README.md
             ARCHITECTURE.md
             CHANGELOG.md
@@ -176,7 +183,10 @@ jobs:
             "Neon Vision Editor/UI/PanelsAndHelpers.swift"
           )
 
-          git add -- "${paths[@]}"
+          # Older releases predate the allocation manifest.
+          for path in "${paths[@]}"; do
+            if [[ -e "$path" ]]; then git add -- "$path"; fi
+          done
           git commit -S -m "docs: self-heal ${RELEASE_TAG} documentation"
           git push --force-with-lease origin "HEAD:${DOCS_BRANCH}"
 

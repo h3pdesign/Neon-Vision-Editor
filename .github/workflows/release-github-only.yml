@@ -115,7 +115,9 @@ jobs:
           retry_fetch() {
             local attempt
             for attempt in 1 2 3 4 5; do
-              if git fetch --depth=1 "$@"; then
+              # The pinned release SHA may precede main. Retain ancestry so
+              # merge-base can verify it even after newer main commits arrive.
+              if git fetch "$@"; then
                 return 0
               fi
               echo "git fetch failed (attempt ${attempt}/5); retrying..." >&2
@@ -140,8 +142,8 @@ jobs:
             SOURCE_SHA="$(git rev-parse HEAD)"
             retry_fetch origin main
             MAIN_SHA="$(git rev-parse FETCH_HEAD)"
-            if [[ "$ALLOW_NON_MAIN_REF" != "true" && "$SOURCE_SHA" != "$MAIN_SHA" ]]; then
-              echo "Primary releases must tag origin/main unless allow_non_main_ref is true." >&2
+            if [[ "$ALLOW_NON_MAIN_REF" != "true" ]] && ! git merge-base --is-ancestor "$SOURCE_SHA" "$MAIN_SHA"; then
+              echo "Primary releases must use a commit contained in origin/main unless allow_non_main_ref is true." >&2
               echo "Selected ${RELEASE_REF}: ${SOURCE_SHA}" >&2
               echo "origin/main: ${MAIN_SHA}" >&2
               exit 1

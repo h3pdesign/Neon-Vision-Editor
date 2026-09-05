@@ -874,6 +874,7 @@ struct ContentView: View {
 #endif
     @AppStorage("HasSeenWelcomeTourV1") var hasSeenWelcomeTourV1: Bool = false
     @AppStorage("WelcomeTourSeenRelease") var welcomeTourSeenRelease: String = ""
+    @AppStorage(SettingsPreferenceKey.showWelcomeTourAutomatically) var showWelcomeTourAutomatically: Bool = true
     @AppStorage("AppLaunchCountV1") var appLaunchCount: Int = 0
     @AppStorage("HasShownSupportPromptV1") var hasShownSupportPromptV1: Bool = false
     @AppStorage("SharedImportAccessAllowed") var sharedImportAccessAllowed: Bool = false
@@ -2827,7 +2828,12 @@ struct ContentView: View {
                 if ShareImportHandoff.isShareImportURL(url) {
                     handleSharedImportURL(url)
                 } else {
-                    viewModel.openFile(url: url)
+                    viewModel.openFileFromExternalRequest(url: url)
+                }
+            }
+            .onChange(of: viewModel.hasReceivedExternalFileOpenRequest) { _, receivedRequest in
+                if receivedRequest {
+                    showWelcomeTour = false
                 }
             }
 #if os(iOS) || os(visionOS)
@@ -2906,9 +2912,22 @@ struct ContentView: View {
         }
 
         applyWindowTranslucency(enableTranslucentWindow)
-        if !hasSeenWelcomeTourV1 || welcomeTourSeenRelease != WelcomeTourView.releaseID {
+        if WelcomeTourPresentationPolicy.shouldPresentAutomatically(
+            isEnabled: showWelcomeTourAutomatically,
+            isNormalLaunch: startupBehavior == .standard && !viewModel.hasReceivedExternalFileOpenRequest,
+            hasSeenTour: hasSeenWelcomeTourV1,
+            seenRelease: welcomeTourSeenRelease,
+            currentRelease: WelcomeTourView.releaseID
+        ) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                guard canPresentStartupPrompt else { return }
+                guard canPresentStartupPrompt,
+                      WelcomeTourPresentationPolicy.shouldPresentAutomatically(
+                          isEnabled: showWelcomeTourAutomatically,
+                          isNormalLaunch: startupBehavior == .standard && !viewModel.hasReceivedExternalFileOpenRequest,
+                          hasSeenTour: hasSeenWelcomeTourV1,
+                          seenRelease: welcomeTourSeenRelease,
+                          currentRelease: WelcomeTourView.releaseID
+                      ) else { return }
                 showWelcomeTour = true
             }
         }

@@ -115,7 +115,8 @@
   <a href="#features">Features</a>
 </p>
 <p align="center">
-  <a href="#release-spotlight">Release Spotlight</a> ·
+  <a href="#established-workflows-since-v140">Established Workflows</a> ·
+  <a href="#architecture-at-a-glance">Architecture At A Glance</a> ·
   <a href="#platform-matrix">Platform Matrix</a> ·
   <a href="#roadmap-near-term">Roadmap (Near Term)</a> ·
   <a href="#troubleshooting">Troubleshooting</a> ·
@@ -420,7 +421,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - Markdown preview body text follows the editor's resolved base font size and zoom. Ordered lists continue with the next number, and an explicit language selection stays a tab-level override.
 - One opt-in toolbar control opens and closes Markdown, HTML, and SVG previews. PDF and PNG documents open native previews automatically from toolbar, macOS context-menu/Launch Services, paste/drop, and restored tabs; macOS plus regular-width iPad and visionOS use inline panes while iPhone uses a preview sheet.
 - PDF text highlighting stores lightweight page geometry and selected text separately from the source PDF. Notes use the existing editor on the left and may reuse the existing Markdown preview beside the PDF; note preview is off by default and empty notes create no file or Save As dialog.
-- Markdown previews provide 23 templates and GitHub Flavored Markdown support on macOS, iPhone, and iPad. Apple Vision Pro uses dedicated System Glass, Paper, Slate, and Ink reader surfaces.
+- Markdown previews provide 20 templates and GitHub Flavored Markdown support on macOS, iPhone, and iPad. Apple Vision Pro uses dedicated System Glass, Paper, Slate, and Ink reader surfaces.
 - `.svg` files support XML editing, bracket help, and rendered SVG Preview on all platforms.
 - Markdown and Swift source exports declare their content types correctly on iOS and iPadOS.
 - Markdown-to-PDF export offers paginated and one-page output. Finder Quick Look previews supported Markdown and source files on macOS.
@@ -848,7 +849,7 @@ The recent release arc is about continuity: files that change outside the app, w
 - API keys are stored in Keychain (`SecureTokenStore`), not `UserDefaults`.
 - Network traffic uses HTTPS.
 - No telemetry.
-- External AI requests only occur when code completion is enabled and a provider is selected.
+- External AI requests use the configured provider for enabled completion or explicit chat/document-transform actions, with the applicable context disclosures.
 - Remote Sessions are opt-in and user-triggered; when enabled, broker payloads are encrypted and SSH-key bookmarks stay in Keychain.
 - Security policy and reporting details: [`SECURITY.md`](SECURITY.md).
 - New repository commits are SSH-signed; older historical commits may still predate commit signing.

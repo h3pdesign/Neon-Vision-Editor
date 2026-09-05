@@ -881,7 +881,19 @@ open "Neon Vision Editor.xcodeproj"
 
 Contributor guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
-1. Fork the repo and create a focused branch.
+### Branches and PR targets
+
+| Branch | Purpose | Use for contributions |
+| --- | --- | --- |
+| `main` | Production-ready code and published release state | Do not develop directly on this branch. Target it only for a maintainer-requested production fix or standalone documentation/maintenance change. |
+| `develop` | Integration branch for the next release | Start normal feature, bug-fix, and code-related documentation work here, then open the PR back into `develop`. |
+| `release/<version>` | Short-lived release stabilization branch created from `develop` | Maintainer-managed; do not use it for regular contributions or new features. Its release PR targets `main`. |
+| `archive/legacy-branches` | Preserved historical branch tips | Read-only history; do not branch from it or target it with a PR. |
+| `automation/*` | Generated metadata, metrics, appcast, or Store synchronization | Bot-managed; do not use these branches for manual contributions. |
+
+Both `main` and `develop` are protected, so contribute from a branch in your fork. Unless a maintainer asks for another target, branch from the latest `develop` and open your PR into `develop`. Focused names such as `fix/...`, `feature/...`, or `docs/...` make the change easy to identify.
+
+1. Fork the repo and create a focused branch from `develop`.
 2. Implement the smallest safe diff for your change.
 3. Build on macOS first.
 4. Run cross-platform verification script.

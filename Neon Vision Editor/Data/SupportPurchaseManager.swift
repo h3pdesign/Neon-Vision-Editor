@@ -126,7 +126,9 @@ final class SupportPurchaseManager: ObservableObject {
                 if let product = products.first(where: { $0.id == Self.supportProductID }) {
                     supportProduct = product
                     lastSuccessfulPriceRefreshAt = Date()
-                    statusMessage = nil
+                    // Metadata refresh does not acknowledge purchase feedback.
+                    // A purchase may have completed while this lookup awaited
+                    // StoreKit. Explicit retry/dismissal owns status clearing.
                     return
                 }
             } catch is CancellationError {

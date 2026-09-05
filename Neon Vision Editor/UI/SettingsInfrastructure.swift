@@ -2,6 +2,38 @@ import SwiftUI
 import Foundation
 import UniformTypeIdentifiers
 
+/// Presentation is view-local: framework dismissal must never publish through
+/// the purchase manager. A replacement waits until the visible alert closes.
+struct SupportStatusAlertPresentation {
+    var isPresented = false
+    private(set) var message: String?
+    private var pendingMessage: String?
+
+    mutating func receive(_ value: String?) {
+        guard let value else {
+            message = nil
+            pendingMessage = nil
+            isPresented = false
+            return
+        }
+        if isPresented {
+            pendingMessage = value == message ? nil : value
+        } else {
+            message = value
+            pendingMessage = nil
+            isPresented = true
+        }
+    }
+
+    mutating func didDismiss() {
+        guard !isPresented else { return }
+        message = nil
+        if let pendingMessage {
+            receive(pendingMessage)
+        }
+    }
+}
+
 // MARK: - Settings Preference Schema
 
 /// Preference keys shared by Settings, the editor shell, and native editor bridges.
@@ -12,6 +44,7 @@ enum SettingsPreferenceKey {
     static let editorFontSize = "SettingsEditorFontSize"
     static let lineHeight = "SettingsLineHeight"
     static let letterSpacing = "SettingsLetterSpacing"
+    static let showWelcomeTourAutomatically = "SettingsShowWelcomeTourAutomatically"
     static let lineWrapEnabled = "SettingsLineWrapEnabled"
     static let pythonInterpreterPath = "SettingsPythonInterpreterPath"
     static let showLineNumbers = "SettingsShowLineNumbers"
@@ -35,6 +68,18 @@ enum SettingsPreferenceKey {
     static let markdownProjectPreviewPlacement = "MarkdownProjectPreviewPlacementV1"
     static let markdownProjectPreviewSortOrder = "MarkdownProjectPreviewSortOrderV1"
     static let markdownPreviewSynchronousScroll = "MarkdownPreviewSynchronousScrollV1"
+}
+
+enum WelcomeTourPresentationPolicy {
+    static func shouldPresentAutomatically(
+        isEnabled: Bool,
+        isNormalLaunch: Bool,
+        hasSeenTour: Bool,
+        seenRelease: String,
+        currentRelease: String
+    ) -> Bool {
+        isEnabled && isNormalLaunch && (!hasSeenTour || seenRelease != currentRelease)
+    }
 }
 
 enum EditorWritingAssistanceMode: String, CaseIterable, Identifiable {

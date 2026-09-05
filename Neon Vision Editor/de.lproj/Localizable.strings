@@ -66,6 +66,8 @@
 "Open with Blank Document" = "Mit leerem Dokument öffnen";
 "Reopen Last Session" = "Letzte Sitzung wiederherstellen";
 "Show Recent Files on Empty Documents" = "Zuletzt verwendete Dateien in leeren Dokumenten anzeigen";
+"Show Welcome Tour Automatically" = "Willkommens-Tour automatisch anzeigen";
+"When disabled, the Welcome Tour remains available from the Help menu and toolbar." = "Wenn deaktiviert, bleibt die Willkommens-Tour über das Hilfe-Menü und die Symbolleiste verfügbar.";
 "Automatically Open Shared Imports" = "Geteilte Importe automatisch öffnen";
 "When disabled, shared files are saved to the import history without opening editor tabs immediately." = "Wenn deaktiviert, werden geteilte Dateien im Importverlauf gespeichert, ohne sofort Editor-Tabs zu öffnen.";
 "Translucency" = "Transluzenz";

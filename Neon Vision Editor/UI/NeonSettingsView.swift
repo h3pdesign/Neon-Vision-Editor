@@ -76,6 +76,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsReopenLastSession") private var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") private var openWithBlankDocument: Bool = true
     @AppStorage("SettingsShowRecentFilesOnEmptyDocuments") private var showRecentFilesOnEmptyDocuments: Bool = true
+    @AppStorage(SettingsPreferenceKey.showWelcomeTourAutomatically) private var showWelcomeTourAutomatically: Bool = true
     @AppStorage("SettingsShareImportsAutoOpen") private var shareImportsAutoOpen: Bool = true
 #if os(macOS)
     @AppStorage("SettingsShowMenuBarIconMac") private var showMenuBarIconMac: Bool = true
@@ -209,6 +210,7 @@ struct NeonSettingsView: View {
     @State private var commandLineHelperCopyStatus: String = ""
 #endif
     @State private var supportRefreshTask: Task<Void, Never>?
+    @State private var supportStatusAlert = SupportStatusAlertPresentation()
     @State private var isDiscoveringFonts: Bool = false
     private let privacyPolicyURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md")
     private let termsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
@@ -1389,10 +1391,22 @@ struct NeonSettingsView: View {
             Text("Neon Vision Editor will ask macOS to open its supported text and source-code file types. macOS may request your confirmation.")
         }
 #endif
-        .alert("App Store", isPresented: supportStatusAlertBinding) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(supportPurchaseManager.statusMessage ?? "")
+        .onChange(of: supportPurchaseManager.statusMessage, initial: true) { _, message in
+            supportStatusAlert.receive(message)
+        }
+        .onChange(of: supportStatusAlert.isPresented) { _, isPresented in
+            if !isPresented { supportStatusAlert.didDismiss() }
+        }
+        .alert("App Store", isPresented: $supportStatusAlert.isPresented, presenting: supportStatusAlert.message) { message in
+            Button("OK", role: .cancel) {
+                // A user action acknowledges feedback. SwiftUI's presentation
+                // binding only changes local state, never the observed manager.
+                if supportPurchaseManager.statusMessage == message {
+                    supportPurchaseManager.statusMessage = nil
+                }
+            }
+        } message: { message in
+            Text(message)
         }
         .sheet(isPresented: $showDataDisclosureDialog) {
             dataDisclosureDialog
@@ -1407,17 +1421,6 @@ struct NeonSettingsView: View {
     }
 
     // MARK: - Lifecycle Helpers
-
-    private var supportStatusAlertBinding: Binding<Bool> {
-        Binding(
-            get: { supportPurchaseManager.statusMessage != nil },
-            set: { isPresented in
-                if !isPresented {
-                    supportPurchaseManager.statusMessage = nil
-                }
-            }
-        )
-    }
 
     private func cancelSupportRefreshTask() {
         supportRefreshTask?.cancel()
@@ -1784,6 +1787,8 @@ struct NeonSettingsView: View {
                     .disabled(reopenLastSession)
                 Toggle(localized("Reopen Last Session"), isOn: $reopenLastSession)
                 Toggle(localized("Show Recent Files on Empty Documents"), isOn: $showRecentFilesOnEmptyDocuments)
+                Toggle(localized("Show Welcome Tour Automatically"), isOn: $showWelcomeTourAutomatically)
+                    .accessibilityHint(localized("When disabled, the Welcome Tour remains available from the Help menu and toolbar."))
                 Toggle(localized("Automatically Open Shared Imports"), isOn: $shareImportsAutoOpen)
                     .accessibilityHint(localized("When disabled, shared files are saved to the import history without opening editor tabs immediately."))
                 Toggle(localized("Confirm Before Closing Dirty Tab"), isOn: $confirmCloseDirtyTab)
@@ -2454,6 +2459,8 @@ struct NeonSettingsView: View {
                 .disabled(reopenLastSession)
             Toggle(localized("Reopen Last Session"), isOn: $reopenLastSession)
             Toggle(localized("Show Recent Files on Empty Documents"), isOn: $showRecentFilesOnEmptyDocuments)
+            Toggle(localized("Show Welcome Tour Automatically"), isOn: $showWelcomeTourAutomatically)
+                .accessibilityHint(localized("When disabled, the Welcome Tour remains available from the Help menu and toolbar."))
             Toggle(localized("Automatically Open Shared Imports"), isOn: $shareImportsAutoOpen)
                 .accessibilityHint(localized("When disabled, shared files are saved to the import history without opening editor tabs immediately."))
             Toggle(localized("Confirm Before Closing Dirty Tab"), isOn: $confirmCloseDirtyTab)

@@ -37,6 +37,8 @@
 "Open with Blank Document" = "以空白文档启动";
 "Reopen Last Session" = "重新打开上次会话";
 "Show Recent Files on Empty Documents" = "在空白文档中显示最近使用的文件";
+"Show Welcome Tour Automatically" = "自动显示欢迎导览";
+"When disabled, the Welcome Tour remains available from the Help menu and toolbar." = "关闭后，仍可从“帮助”菜单和工具栏打开欢迎导览。";
 "Automatically Open Shared Imports" = "自动打开共享导入";
 "When disabled, shared files are saved to the import history without opening editor tabs immediately." = "停用后，共享文件会保存到导入历史记录，而不会立即打开编辑器标签页。";
 "Default New File Language" = "新文件默认语言";

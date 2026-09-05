@@ -885,7 +885,7 @@ Contributor guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 | Branch | Purpose | Use for contributions |
 | --- | --- | --- |
-| `main` | Production-ready code and published release state | Do not develop directly on this branch. Target it only for a maintainer-requested production fix or standalone documentation/maintenance change. |
+| `main` | Production-ready code and published release state | Do not target this branch for contributions. All contributions, including standalone documentation and maintenance changes, must target `develop` unless a maintainer explicitly requests `main`. |
 | `develop` | Integration branch for the next release | Start normal feature, bug-fix, and code-related documentation work here, then open the PR back into `develop`. |
 | `release/<version>` | Short-lived release stabilization branch created from `develop` | Maintainer-managed; do not use it for regular contributions or new features. Its release PR targets `main`. |
 | `archive/legacy-branches` | Preserved historical branch tips | Read-only history; do not branch from it or target it with a PR. |

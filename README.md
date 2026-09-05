@@ -57,7 +57,7 @@
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.6.1** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-09-04** for latest release **v1.6.1**
+> Last updated (README): **2026-09-05** for latest release **v1.6.1**
 
 ## What's New in v1.6.0 and v1.6.1
 
@@ -163,7 +163,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=9839&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=9982&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -178,12 +178,12 @@
 
 <p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>
 <p align="center">
-  <img alt="Unique cloners (14d)" src="https://img.shields.io/static/v1?label=Unique+cloners+%2814d%29&message=229&color=7C3AED&style=for-the-badge">
-  <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=157&color=0EA5E9&style=for-the-badge">
+  <img alt="Unique cloners (14d)" src="https://img.shields.io/static/v1?label=Unique+cloners+%2814d%29&message=236&color=7C3AED&style=for-the-badge">
+  <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=163&color=0EA5E9&style=for-the-badge">
 </p>
 <p align="center">
-  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-09-04&color=334155&style=flat-square">
-  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-09-04&color=334155&style=flat-square">
+  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-09-05&color=334155&style=flat-square">
+  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-09-05&color=334155&style=flat-square">
 </p>
 
 ## Project Documentation
@@ -881,7 +881,19 @@ open "Neon Vision Editor.xcodeproj"
 
 Contributor guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
-1. Fork the repo and create a focused branch.
+### Branches and PR targets
+
+| Branch | Purpose | Use for contributions |
+| --- | --- | --- |
+| `main` | Production-ready code and published release state | Do not target this branch for contributions. All contributions, including standalone documentation and maintenance changes, must target `develop` unless a maintainer explicitly requests `main`. |
+| `develop` | Integration branch for the next release | Start normal feature, bug-fix, and code-related documentation work here, then open the PR back into `develop`. |
+| `release/<version>` | Short-lived release stabilization branch created from `develop` | Maintainer-managed; do not use it for regular contributions or new features. Its release PR targets `main`. |
+| `archive/legacy-branches` | Preserved historical branch tips | Read-only history; do not branch from it or target it with a PR. |
+| `automation/*` | Generated metadata, metrics, appcast, or Store synchronization | Bot-managed; do not use these branches for manual contributions. |
+
+Both `main` and `develop` are protected, so contribute from a branch in your fork. Unless a maintainer asks for another target, branch from the latest `develop` and open your PR into `develop`. Focused names such as `fix/...`, `feature/...`, or `docs/...` make the change easy to identify.
+
+1. Fork the repo and create a focused branch from `develop`.
 2. Implement the smallest safe diff for your change.
 3. Build on macOS first.
 4. Run cross-platform verification script.

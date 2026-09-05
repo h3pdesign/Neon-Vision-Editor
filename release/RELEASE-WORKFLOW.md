@@ -48,8 +48,14 @@ It reads every page of the selected product's Cloud build runs and chooses
 `max(project build, published GitHub build, highest Cloud run number) + 1`.
 With project build 1028 and Cloud's last allocated run 1028, the candidate is 1029.
 It records the product ID and observed counter in the release manifest, never the
-credential. Active/queued runs, unknown states, missing history, malformed
+credential. Active/queued builds, unknown states, missing history, malformed
 responses, authentication errors and incomplete pagination stop preparation.
+An older RUNNING run is nonblocking only when a newer run is COMPLETE and its
+action history proves successful completed archives, successful other completed
+actions, and only standard-named TestFlight distribution actions still RUNNING
+after archiving. Renamed/ambiguous actions and the latest unfinished run still
+block. Every run number is counted, including distribution-only runs. This does
+not cancel actions or change Apple's recorded status.
 The counter is checked again before committing and immediately before pushing.
 Retries preserve the allocated number and reject a changed Cloud counter.
 

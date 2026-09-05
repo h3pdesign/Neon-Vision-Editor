@@ -163,6 +163,10 @@ The successful output
 contains only `product_id` and `max_number`. Missing credentials, denied/expired
 authentication, or active/queued builds must be resolved before release prep.
 This check starts no builds, allocates no number, and publishes nothing.
+Older runs held open solely by recognized TestFlight distribution actions can
+be nonblocking after successful archives and a newer completed run; see the
+[exact preflight rules](../release/RELEASE-WORKFLOW.md#cloud-build-number-preflight).
+Do not cancel TestFlight distribution just to satisfy the counter check.
 
 Finally, verify the configured next Cloud build number in App Store Connect and
 coordinate automatic triggers before release prep. A history read cannot reserve

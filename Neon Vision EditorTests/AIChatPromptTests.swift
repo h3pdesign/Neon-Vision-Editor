@@ -3,7 +3,57 @@ import XCTest
 
 @MainActor
 final class AIChatPromptTests: XCTestCase {
+    private final class DelayedMetadataClient: AIClient {
+        var enteredMetadata = false
+        var resume: CheckedContinuation<Void, Never>?
+
+        func streamSuggestions(prompt: String) -> AsyncStream<String> {
+            AsyncStream { continuation in
+                continuation.yield("Old response")
+                continuation.finish()
+            }
+        }
+
+        func lastErrorMessage() async -> String? {
+            await withCheckedContinuation { continuation in
+                resume = continuation
+                enteredMetadata = true
+            }
+            return "Stale error"
+        }
+    }
+
+    func testCancelledRequestCannotPublishDelayedMetadata() async throws {
+        let conversation = AIChatConversation()
+        let client = DelayedMetadataClient()
+        conversation.start(
+            prompt: "Old request",
+            context: .init(selection: nil, documentName: nil, documentLanguage: nil, documentText: nil, projectStructure: nil),
+            providerName: "Test", client: client
+        )
+        for _ in 0..<200 where !client.enteredMetadata {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(client.enteredMetadata)
+        conversation.clear()
+        client.resume?.resume()
+        client.resume = nil
+        for _ in 0..<10 { await Task.yield() }
+        XCTAssertNil(conversation.errorMessage)
+        XCTAssertNil(conversation.latestAgentResult)
+        XCTAssertTrue(conversation.messages.isEmpty)
+    }
+
+    func testAgentPromptPreservesWholeSelection() {
+        let selection = "    " + String(repeating: "x", count: 9_000) + "\nTAIL\n"
+        let prompt = AIChatConversation.agentRequestPrompt(
+            userPrompt: "Edit this", context: .init(selection: selection, documentName: "Test", documentLanguage: "text", documentText: nil, projectStructure: nil), history: []
+        )
+        XCTAssertTrue(prompt.contains(selection))
+        XCTAssertTrue(prompt.contains("USER REQUEST:\nEdit this"))
+    }
     private struct AgentResultClient: AIClient {
+        let usesEditorAgentPrompt = true
         let result: EditorAgentRunResult
 
         func streamSuggestions(prompt: String) -> AsyncStream<String> {
@@ -138,6 +188,12 @@ final class AIChatPromptTests: XCTestCase {
 
         XCTAssertEqual(conversation.latestAgentResult?.verificationAction, .syntax)
         XCTAssertEqual(conversation.latestAgentResult?.processingLocation, .onDevice)
+        let agentMessage = try XCTUnwrap(conversation.messages.last)
+        XCTAssertFalse(agentMessage.allowsGenericEdits)
+        let restored = try JSONDecoder().decode(AIChatMessage.self, from: JSONEncoder().encode(agentMessage))
+        XCTAssertFalse(restored.allowsGenericEdits)
+        conversation.restore(.init(id: UUID(), title: "Saved agent", savedAt: Date(), messages: [restored]))
+        XCTAssertFalse(try XCTUnwrap(conversation.messages.last).allowsGenericEdits)
         conversation.clear()
         XCTAssertNil(conversation.latestAgentResult)
     }

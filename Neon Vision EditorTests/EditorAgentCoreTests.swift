@@ -3,6 +3,20 @@ import XCTest
 @testable import Neon_Vision_Editor
 
 final class EditorAgentCoreTests: XCTestCase {
+    func testWorkspaceExcludesSecretFilesAndCredentialContent() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let environment = root.appendingPathComponent(".env")
+        let source = root.appendingPathComponent("config.swift")
+        try "PRIVATE=needle".write(to: environment, atomically: true, encoding: .utf8)
+        try "api_key = 'secret-needle-1234567890'".write(to: source, atomically: true, encoding: .utf8)
+        let workspace = EditorAgentWorkspace(rootURL: root, allowedFileURLs: [environment, source])
+        await XCTAssertThrowsErrorAsync { _ = try await workspace.readFile(relativePath: ".env") }
+        await XCTAssertThrowsErrorAsync { _ = try await workspace.readFile(relativePath: "config.swift") }
+        let matches = try await workspace.searchProject(query: "needle")
+        XCTAssertTrue(matches.isEmpty)
+    }
     private var temporaryDirectoryURL: URL!
 
     override func setUpWithError() throws {
@@ -70,6 +84,80 @@ final class EditorAgentCoreTests: XCTestCase {
         XCTAssertTrue(proposal.matches(tabID: tabID, range: proposal.range, currentSource: "old"))
         XCTAssertFalse(proposal.matches(tabID: tabID, range: proposal.range, currentSource: "changed"))
         XCTAssertFalse(proposal.matches(tabID: UUID(), range: proposal.range, currentSource: "old"))
+    }
+
+    func testEditPromptIncludesExactSelectionAndPreservesReplacementWhitespace() throws {
+        let source = "    print(\"before\")\n\n"
+        let target = EditorAgentEditTarget(tabID: UUID(), range: NSRange(location: 20, length: source.utf16.count), source: source)
+        let prompt = try EditorAgentPromptPolicy.prompt("USER: change the message", mode: .edit, target: target)
+        XCTAssertTrue(prompt.hasPrefix("USER: change the message"))
+        let encodedSource = try XCTUnwrap(prompt.components(separatedBy: "source; replace this entire selection only):\n").last)
+        XCTAssertEqual(try JSONDecoder().decode(String.self, from: Data(encodedSource.utf8)), source)
+        let replacement = "    print(\"after\")\n\n"
+        let proposal = EditorAgentPromptPolicy.editProposal(target: target, replacement: replacement, summary: "Changed message", mode: .edit)
+        XCTAssertEqual(proposal?.replacement, replacement)
+        XCTAssertEqual(proposal?.source, source)
+    }
+
+    func testEditPromptRejectsMissingOrOversizedSelectionAndExcessContext() {
+        XCTAssertThrowsError(try EditorAgentPromptPolicy.prompt("change it", mode: .edit, target: nil))
+        let source = String(repeating: "x", count: 32_001)
+        let target = EditorAgentEditTarget(tabID: UUID(), range: NSRange(location: 0, length: source.count), source: source)
+        XCTAssertThrowsError(try EditorAgentPromptPolicy.prompt("change it", mode: .edit, target: target))
+        XCTAssertNoThrow(try EditorAgentPromptPolicy.validateBudget(inputTokens: 2_000, contextSize: 4_096, reservedTokens: 2_096))
+        XCTAssertThrowsError(try EditorAgentPromptPolicy.validateBudget(inputTokens: 2_001, contextSize: 4_096, reservedTokens: 2_096))
+    }
+
+    func testWorkspaceRejectsFileReplacedWithSymlinkDuringSearchAndRead() async throws {
+        let source = temporaryDirectoryURL.appendingPathComponent("Source.swift")
+        let secret = temporaryDirectoryURL.appendingPathComponent("Secret.txt")
+        try "original".write(to: source, atomically: true, encoding: .utf8)
+        try "needle private".write(to: secret, atomically: true, encoding: .utf8)
+        let workspace = EditorAgentWorkspace(rootURL: temporaryDirectoryURL, allowedFileURLs: [source])
+        try FileManager.default.removeItem(at: source)
+        try FileManager.default.createSymbolicLink(at: source, withDestinationURL: secret)
+        await XCTAssertThrowsErrorAsync { _ = try await workspace.readFile(relativePath: "Source.swift") }
+        let results = try await workspace.searchProject(query: "needle")
+        XCTAssertTrue(results.isEmpty)
+    }
+
+    func testWorkspaceRejectsAncestorSymlinkAndNonregularFiles() async throws {
+        let directory = temporaryDirectoryURL.appendingPathComponent("Sources")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let source = directory.appendingPathComponent("Source.swift")
+        try "needle".write(to: source, atomically: true, encoding: .utf8)
+        let workspace = EditorAgentWorkspace(rootURL: temporaryDirectoryURL, allowedFileURLs: [source])
+        let movedDirectory = temporaryDirectoryURL.appendingPathComponent("Moved")
+        try FileManager.default.moveItem(at: directory, to: movedDirectory)
+        try FileManager.default.createSymbolicLink(at: directory, withDestinationURL: movedDirectory)
+        await XCTAssertThrowsErrorAsync { _ = try await workspace.readFile(relativePath: "Sources/Source.swift") }
+        let results = try await workspace.searchProject(query: "needle")
+        XCTAssertTrue(results.isEmpty)
+
+        let specialFile = temporaryDirectoryURL.appendingPathComponent("Directory.swift")
+        try FileManager.default.createDirectory(at: specialFile, withIntermediateDirectories: true)
+        let specialWorkspace = EditorAgentWorkspace(rootURL: temporaryDirectoryURL, allowedFileURLs: [specialFile])
+        await XCTAssertThrowsErrorAsync { _ = try await specialWorkspace.readFile(relativePath: "Directory.swift") }
+    }
+
+    func testWorkspaceEnforcesRunToolBudgetAndCancellation() async throws {
+        let source = temporaryDirectoryURL.appendingPathComponent("Source.swift")
+        try "needle".write(to: source, atomically: true, encoding: .utf8)
+        let workspace = EditorAgentWorkspace(rootURL: temporaryDirectoryURL, allowedFileURLs: [source])
+        for _ in 0..<12 { _ = try await workspace.readFile(relativePath: "Source.swift") }
+        await XCTAssertThrowsErrorAsync { _ = try await workspace.searchProject(query: "needle") }
+
+        let freshWorkspace = EditorAgentWorkspace(rootURL: temporaryDirectoryURL, allowedFileURLs: [source])
+        let cancelled = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await freshWorkspace.readFile(relativePath: "Source.swift")
+        }
+        do {
+            _ = try await cancelled.value
+            XCTFail("Cancelled tool read must fail")
+        } catch is CancellationError {
+            // Cancellation must be preserved rather than treated as an empty result.
+        }
     }
 
     func testVerificationResolverProducesArgumentOnlyPlans() throws {

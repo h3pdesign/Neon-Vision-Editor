@@ -3793,7 +3793,7 @@ struct ContentView: View {
                     Button("Cancel", role: .cancel) {}
                 } message: {
                     if let plan = contentView.pendingEditorAgentVerificationPlan {
-                        Text("Neon will run this fixed command without a shell:\n\(plan.displayCommand)\n\nWorking directory:\n\(plan.workingDirectoryURL.path)")
+                        Text("Run this command against files saved on disk:\n\(plan.displayCommand)\n\nWorking directory:\n\(plan.workingDirectoryURL.path)\n\nProject builds, tests, and scripts can modify files and access the network. Only run projects you trust. Stop terminates the launched process; independently detached subprocesses may continue.")
                     } else {
                         Text("No pending agent verification.")
                     }

@@ -33,6 +33,7 @@ extension ContentView {
             hasCurrentFile: viewModel.selectedTab != nil || !singleContent.isEmpty,
             hasProjectStructure: aiChatProjectStructure != nil,
             supportsAgentMode: supportsEditorAgentMode,
+            allowsAgentCloudProcessing: editorAgentAllowPrivateCloudCompute,
             supportsAgentVerification: EditorAgentVerificationRunner.executionIsSupported,
             isAgentVerificationRunning: isEditorAgentVerificationRunning,
             onSend: { prompt, scopes, agentMode in
@@ -88,6 +89,13 @@ extension ContentView {
         agentMode: EditorAgentMode?
     ) {
         var scopes = requestedScopes
+        if agentMode == .edit {
+            guard editorAgentEditTarget(for: .edit) != nil else {
+                aiChatConversation.reportError(EditorAgentPromptError.missingSelection.localizedDescription)
+                return
+            }
+            scopes.insert(.selection)
+        }
         if agentMode != nil, aiChatProjectStructure != nil {
             scopes.insert(.projectStructure)
         }
@@ -122,7 +130,7 @@ extension ContentView {
     private var supportsEditorAgentMode: Bool {
 #if os(macOS) && USE_FOUNDATION_MODELS && canImport(FoundationModels)
         if #available(macOS 27.0, *) {
-            return selectedModel == .appleIntelligence &&
+            return selectedModel == .appleIntelligence && appleModelAvailable &&
                 projectRootFolderURL != nil &&
                 (!projectFileIndexSnapshot.entries.isEmpty || viewModel.selectedTab?.fileURL != nil)
         }
@@ -176,6 +184,7 @@ extension ContentView {
 #if os(macOS) && USE_FOUNDATION_MODELS && canImport(FoundationModels)
             if #available(macOS 27.0, *),
                selectedModel == .appleIntelligence,
+               appleModelAvailable,
                let rootURL = projectRootFolderURL {
                 var allowedURLs = projectFileIndexSnapshot.fileURLs
                 if let selectedURL = viewModel.selectedTab?.fileURL,
@@ -187,7 +196,8 @@ extension ContentView {
                     mode: agentMode,
                     workspace: workspace,
                     editTarget: editorAgentEditTarget(for: agentMode),
-                    allowPrivateCloudCompute: editorAgentAllowPrivateCloudCompute
+                    allowPrivateCloudCompute: editorAgentAllowPrivateCloudCompute,
+                    selectedFileURL: viewModel.selectedTab?.fileURL
                 )
             }
 #endif
@@ -385,11 +395,18 @@ extension ContentView {
             aiChatConversation.reportError("Local verification commands are unavailable in the App Store sandbox. Use the direct macOS build or run the recommendation yourself.")
             return
         }
-        guard let rootURL = projectRootFolderURL,
-              let plan = EditorAgentVerificationResolver.plan(
+        guard let result = aiChatConversation.latestAgentResult,
+              result.verificationAction == action,
+              let rootURL = result.verificationRootURL,
+              rootURL.standardizedFileURL == projectRootFolderURL?.standardizedFileURL,
+              result.verificationFileURL == viewModel.selectedTab?.fileURL?.standardizedFileURL else {
+            aiChatConversation.reportError("The project or selected file changed after this recommendation. Ask the agent to verify the current selection again.")
+            return
+        }
+        guard let plan = EditorAgentVerificationResolver.plan(
                 for: action,
                 rootURL: rootURL,
-                selectedFileURL: viewModel.selectedTab?.fileURL
+                selectedFileURL: result.verificationFileURL
               ) else {
             aiChatConversation.reportError("That verification is unavailable for the current project or selected file.")
             return
@@ -402,11 +419,6 @@ extension ContentView {
         isEditorAgentVerificationRunning = true
         editorAgentVerificationTask = Task { @MainActor in
             let result = await EditorAgentVerificationRunner.run(plan)
-            guard !Task.isCancelled else {
-                isEditorAgentVerificationRunning = false
-                editorAgentVerificationTask = nil
-                return
-            }
             editorAgentVerificationResult = result
             isEditorAgentVerificationRunning = false
             editorAgentVerificationTask = nil
@@ -415,8 +427,6 @@ extension ContentView {
 
     func cancelEditorAgentVerification() {
         editorAgentVerificationTask?.cancel()
-        editorAgentVerificationTask = nil
-        isEditorAgentVerificationRunning = false
     }
 
     var editorAgentVerificationResultSheet: some View {
@@ -424,7 +434,7 @@ extension ContentView {
             if let result = editorAgentVerificationResult {
                 VStack(alignment: .leading, spacing: 14) {
                     Label(
-                        result.succeeded ? "Verification Passed" : (result.didTimeOut ? "Verification Timed Out" : "Verification Failed"),
+                        result.wasCancelled ? "Verification Cancelled" : (result.succeeded ? "Verification Passed" : (result.didTimeOut ? "Verification Timed Out" : "Verification Failed")),
                         systemImage: result.succeeded ? "checkmark.circle.fill" : "xmark.circle.fill"
                     )
                     .font(.title2.weight(.semibold))

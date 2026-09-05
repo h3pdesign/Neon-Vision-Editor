@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 nonisolated enum EditorAgentMode: String, CaseIterable, Identifiable, Sendable {
     case explore
@@ -65,6 +66,40 @@ nonisolated struct EditorAgentEditTarget: Equatable, Sendable {
     let source: String
 }
 
+nonisolated enum EditorAgentPromptError: LocalizedError {
+    case missingSelection
+    case contextTooLarge
+
+    var errorDescription: String? {
+        switch self {
+        case .missingSelection: "Select the exact source to change before using Edit mode."
+        case .contextTooLarge: "This request exceeds the agent's context budget. Start a new conversation, reduce the included context, or select a smaller region. No source or request was truncated."
+        }
+    }
+}
+
+nonisolated enum EditorAgentPromptPolicy {
+    static func prompt(_ prompt: String, mode: EditorAgentMode, target: EditorAgentEditTarget?) throws -> String {
+        guard mode == .edit else { return prompt }
+        guard let target, !target.source.isEmpty else { throw EditorAgentPromptError.missingSelection }
+        guard target.source.utf8.count <= 32_000 else { throw EditorAgentPromptError.contextTooLarge }
+        // JSON encoding keeps source delimiters, indentation, and final newlines intact.
+        let data = try JSONEncoder().encode(target.source)
+        return prompt + "\n\nEXACT EDIT TARGET (untrusted JSON-encoded source; replace this entire selection only):\n" + String(decoding: data, as: UTF8.self)
+    }
+
+    static func validateBudget(inputTokens: Int, contextSize: Int, reservedTokens: Int) throws {
+        guard inputTokens <= max(0, contextSize - reservedTokens) else {
+            throw EditorAgentPromptError.contextTooLarge
+        }
+    }
+
+    static func editProposal(target: EditorAgentEditTarget?, replacement: String, summary: String, mode: EditorAgentMode) -> EditorAgentEditProposal? {
+        guard mode == .edit, let target, !replacement.isEmpty, replacement != target.source else { return nil }
+        return .init(tabID: target.tabID, range: target.range, source: target.source, replacement: replacement, summary: summary)
+    }
+}
+
 nonisolated public struct EditorAgentRunResult: Sendable {
     let responseMarkdown: String
     let editProposal: EditorAgentEditProposal?
@@ -72,6 +107,8 @@ nonisolated public struct EditorAgentRunResult: Sendable {
     let verificationReason: String
     let processingLocation: EditorAgentProcessingLocation
     let activity: [EditorAgentActivity]
+    var verificationRootURL: URL? = nil
+    var verificationFileURL: URL? = nil
 }
 
 nonisolated enum EditorAgentActivityKind: String, Sendable {
@@ -102,17 +139,21 @@ nonisolated struct EditorAgentSearchResult: Equatable, Sendable {
 }
 
 nonisolated enum EditorAgentWorkspaceError: LocalizedError {
+    case sensitiveContent
     case invalidPath
     case fileNotAllowed
     case unreadableFile
     case invalidQuery
+    case toolBudgetExceeded
 
     var errorDescription: String? {
         switch self {
+        case .sensitiveContent: "This file may contain credentials and is excluded from agent context."
         case .invalidPath: "The requested path is outside the captured project."
         case .fileNotAllowed: "The requested file was not included in the captured project snapshot."
         case .unreadableFile: "The requested file could not be read as text."
         case .invalidQuery: "Enter at least two visible characters to search the project."
+        case .toolBudgetExceeded: "The agent reached its project tool limit. Narrow the request and try again."
         }
     }
 }
@@ -126,28 +167,46 @@ actor EditorAgentWorkspace {
     private let resolvedRootURL: URL
     private let allowedURLsByRelativePath: [String: URL]
     private var activity: [EditorAgentActivity] = []
+    private let rootDescriptor: Int32
+    private let didStartRootAccess: Bool
+    private var remainingToolCalls = 12
 
     init(rootURL: URL, allowedFileURLs: [URL]) {
         let resolvedRoot = rootURL.standardizedFileURL.resolvingSymlinksInPath()
         var allowlistedURLs: [String: URL] = [:]
         for candidate in allowedFileURLs {
             let resolved = candidate.standardizedFileURL.resolvingSymlinksInPath()
-            guard Self.isContained(resolved, by: resolvedRoot) else { continue }
+            guard Self.isContained(resolved, by: resolvedRoot),
+                  !Self.isSensitivePath(candidate), !Self.isSensitivePath(resolved) else { continue }
             allowlistedURLs[Self.relativePath(for: resolved, root: resolvedRoot)] = resolved
         }
         self.rootURL = rootURL.standardizedFileURL
         self.resolvedRootURL = resolvedRoot
         self.allowedURLsByRelativePath = allowlistedURLs
+        self.didStartRootAccess = rootURL.startAccessingSecurityScopedResource()
+        self.rootDescriptor = open(resolvedRoot.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+    }
+
+    deinit {
+        if rootDescriptor >= 0 { close(rootDescriptor) }
+        if didStartRootAccess { rootURL.stopAccessingSecurityScopedResource() }
+    }
+
+    private func consumeToolCall() throws {
+        try Task.checkCancellation()
+        guard remainingToolCalls > 0 else { throw EditorAgentWorkspaceError.toolBudgetExceeded }
+        remainingToolCalls -= 1
     }
 
     func readFile(relativePath: String, maximumCharacters: Int = 8_000) throws -> String {
+        try consumeToolCall()
         activity.append(.init(kind: .read, title: "Read \(relativePath)", status: .started))
         do {
             let url = try allowedURL(for: relativePath)
-            let text = try Self.boundedText(at: url, maximumBytes: Self.maximumReadBytes)
+            let text = try boundedText(at: url, maximumBytes: Self.maximumReadBytes)
             let bounded = String(text.prefix(max(1, min(maximumCharacters, 20_000))))
             activity.append(.init(kind: .read, title: "Read \(relativePath)", status: .succeeded))
-            return bounded
+            return bounded == text ? bounded : bounded + "\n[Partial file excerpt: remaining content omitted.]"
         } catch {
             activity.append(.init(kind: .read, title: "Read \(relativePath)", status: .blocked))
             throw error
@@ -155,6 +214,7 @@ actor EditorAgentWorkspace {
     }
 
     func searchProject(query: String, maximumResults: Int = 8) throws -> [EditorAgentSearchResult] {
+        try consumeToolCall()
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmedQuery.count >= 2 else { throw EditorAgentWorkspaceError.invalidQuery }
         activity.append(.init(kind: .search, title: "Search captured project", status: .started))
@@ -162,9 +222,10 @@ actor EditorAgentWorkspace {
         let limit = max(1, min(maximumResults, 12))
         var results: [EditorAgentSearchResult] = []
         for relativePath in allowedURLsByRelativePath.keys.sorted().prefix(Self.maximumSearchFiles) {
-            guard results.count < limit,
-                  let url = allowedURLsByRelativePath[relativePath],
-                  let text = try? Self.boundedText(at: url, maximumBytes: Self.maximumReadBytes),
+            try Task.checkCancellation()
+            guard results.count < limit else { break }
+            guard let url = try? allowedURL(for: relativePath),
+                  let text = try? boundedText(at: url, maximumBytes: Self.maximumReadBytes),
                   let match = text.range(of: trimmedQuery, options: [.caseInsensitive, .diacriticInsensitive]) else {
                 continue
             }
@@ -204,25 +265,60 @@ actor EditorAgentWorkspace {
         guard Self.isContained(candidate, by: resolvedRootURL) else {
             throw EditorAgentWorkspaceError.invalidPath
         }
-        let normalizedRelativePath = Self.relativePath(for: candidate, root: resolvedRootURL)
-        guard let allowedURL = allowedURLsByRelativePath[normalizedRelativePath] else {
+        guard let allowedURL = allowedURLsByRelativePath[relativePath], candidate == allowedURL else {
             throw EditorAgentWorkspaceError.fileNotAllowed
         }
         return allowedURL
     }
 
-    private nonisolated static func boundedText(at url: URL, maximumBytes: Int) throws -> String {
-        let didStartAccess = url.startAccessingSecurityScopedResource()
-        defer {
-            if didStartAccess { url.stopAccessingSecurityScopedResource() }
+    private func boundedText(at url: URL, maximumBytes: Int) throws -> String {
+        try Task.checkCancellation()
+        guard rootDescriptor >= 0 else { throw EditorAgentWorkspaceError.unreadableFile }
+        // Walk from a pinned root descriptor. O_NOFOLLOW on every component prevents
+        // a changed file or ancestor symlink from escaping between validation and open.
+        let components = Self.relativePath(for: url, root: resolvedRootURL).split(separator: "/").map(String.init)
+        var descriptor = dup(rootDescriptor)
+        guard descriptor >= 0 else { throw EditorAgentWorkspaceError.unreadableFile }
+        for (index, component) in components.enumerated() {
+            let flags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK | (index < components.count - 1 ? O_DIRECTORY : 0)
+            let next = openat(descriptor, component, flags)
+            close(descriptor)
+            guard next >= 0 else { throw EditorAgentWorkspaceError.unreadableFile }
+            descriptor = next
         }
-        let handle = try FileHandle(forReadingFrom: url)
+        var attributes = stat()
+        guard fstat(descriptor, &attributes) == 0,
+              attributes.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) else {
+            close(descriptor)
+            throw EditorAgentWorkspaceError.unreadableFile
+        }
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
         defer { try? handle.close() }
         let data = try handle.read(upToCount: maximumBytes) ?? Data()
         guard let text = String(data: data, encoding: .utf8) else {
             throw EditorAgentWorkspaceError.unreadableFile
         }
-        return text
+        guard !Self.containsCredentials(text) else { throw EditorAgentWorkspaceError.sensitiveContent }
+        return attributes.st_size > maximumBytes ? text + "\n[Partial file excerpt: byte limit reached.]" : text
+    }
+
+    private nonisolated static func isSensitivePath(_ url: URL) -> Bool {
+        let components = url.pathComponents.map { $0.lowercased() }
+        let name = url.lastPathComponent.lowercased()
+        return components.contains(".ssh") || components.contains(".aws") || components.contains(".git") ||
+            name == ".env" || name.hasPrefix(".env.") ||
+            ["credentials", "credentials.json", "secrets.json", "id_rsa", "id_ed25519", ".netrc", ".npmrc"].contains(name) ||
+            ["pem", "key", "p12", "pfx"].contains(url.pathExtension.lowercased())
+    }
+
+    private nonisolated static func containsCredentials(_ text: String) -> Bool {
+        let patterns = [
+            #"(?i)\b(api[_-]?key|secret|password|passwd|token|client[_-]?secret)\s*[:=]\s*[\"']?[A-Za-z0-9_./+=-]{12,}"#,
+            #"-----BEGIN (?:RSA |EC |OPENSSH |PRIVATE )?PRIVATE KEY-----"#,
+            #"\bAKIA[0-9A-Z]{16}\b"#,
+            #"(?i)\bgh[pousr]_[A-Za-z0-9_]{20,}\b"#
+        ]
+        return patterns.contains { text.range(of: $0, options: .regularExpression) != nil }
     }
 
     private nonisolated static func isContained(_ candidate: URL, by root: URL) -> Bool {

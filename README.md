@@ -115,7 +115,8 @@
   <a href="#features">Features</a>
 </p>
 <p align="center">
-  <a href="#release-spotlight">Release Spotlight</a> ·
+  <a href="#established-workflows-since-v140">Established Workflows</a> ·
+  <a href="#architecture-at-a-glance">Architecture At A Glance</a> ·
   <a href="#platform-matrix">Platform Matrix</a> ·
   <a href="#roadmap-near-term">Roadmap (Near Term)</a> ·
   <a href="#troubleshooting">Troubleshooting</a> ·
@@ -300,7 +301,7 @@ Permission model: the helper is optional and user-linked. It calls macOS Launch 
   <img alt="Code Minimap" src="https://img.shields.io/badge/Code%20Minimap-Optional%20Navigation-9333EA?style=for-the-badge">
   <img alt="Quick Open" src="https://img.shields.io/badge/Quick%20Open-Fast%20File%20Jump-7C3AED?style=for-the-badge">
 </p>
-<p align="center"><sub>Project Sidebar keeps Files, Search, Git, and Terminal in one stable surface. Remote Sessions stay opt-in and user-triggered. Markdown formatting, preview, and export stay in one contextual flow.</sub></p>
+<p align="center"><sub>The macOS Project Sidebar brings files, search, and Git together, with Terminal available in the direct build. Remote Sessions are opt-in. Markdown formatting, preview, and export stay in one contextual flow.</sub></p>
 
 ## Features
 
@@ -341,7 +342,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
   <img alt="Cross Platform" src="https://img.shields.io/badge/Cross--Platform-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-2563EB?style=for-the-badge">
   <img alt="Text Export" src="https://img.shields.io/badge/Text%20Export-Markdown%20%2B%20Swift%20Types-0A84FF?style=for-the-badge">
   <img alt="Code Snapshot" src="https://img.shields.io/badge/Code%20Snapshot-Share%20Images-F97316?style=for-the-badge">
-  <img alt="Themes" src="https://img.shields.io/badge/Themes-25%20Palettes%20%2B%20Custom-DB2777?style=for-the-badge">
+  <img alt="Themes" src="https://img.shields.io/badge/Themes-30%20Palettes%20%2B%20Custom-DB2777?style=for-the-badge">
   <img alt="Shared File Sync" src="https://img.shields.io/badge/Shared%20Files-Open%20Tab%20Sync-14B8A6?style=for-the-badge">
   <img alt="iCloud Settings Sync" src="https://img.shields.io/badge/iCloud-Appearance%20%2B%20Themes-0EA5E9?style=for-the-badge">
 </p>
@@ -367,13 +368,14 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ### Editing Core
 
 - Fast loading for regular and large text files with tabbed editing.
-- Files below 100 MB remain editable. The app starts a lightweight file-loading profile at 2 MB and can enable Large File Mode earlier for documents with high character or line counts.
+- Supported text files below 100 MB remain editable; unsupported large-file encodings can fall back to a read-only preview. The app starts a lightweight file-loading profile at 2 MB and can enable Large File Mode earlier for documents with high character or line counts.
 - Large File Mode favors responsive opening, scrolling, and typing: full-document syntax analysis, minimap, preview, symbols, word count, and diff can be deferred or temporarily unavailable. The active mode and file size are shown in the editor status UI.
 - Choose **Standard** for normal processing, **Responsive** for chunked installation and deferred work, or **Plain Text** when an unstyled editor is the safest choice for an unusually large document.
-- The v1.4.0 text-rendering core uses a backend-neutral `EditorDocument` contract and a virtualized bounded viewport on macOS. The renderer draws the active window, requests new windows around the scroll anchor, preserves caret/selection positions, and rejects stale viewport generations instead of rebuilding the entire text buffer.
-- macOS uses a native-free virtual renderer for every editable file. It draws only the bounded viewport with Core Text `CTLine` objects, caches visible line layouts, applies syntax colors only to visible lines, and swaps bounded windows around the scroll anchor. File-backed documents finish indexing before this renderer activates, so scrolling never grows an index or projects a complete document string. iOS/iPadOS/visionOS retain their separate `UITextView` editor path.
+- Every editable macOS document uses the native AppKit/Core Text virtual renderer. It draws bounded visual rows, caches line layouts, and preserves caret and selection positions as the viewport moves. Eligible large local files use disk-backed storage with indexing prepared in the background before the editor takes ownership. iOS/iPadOS/visionOS use a separate `UITextView` input and rendering path over the shared tab/document model.
 - Files at **100 MB or more** open as a clearly marked, read-only **Partial Open**. Neon reads only the first 4 MB, ending at a line boundary where possible; it never loads the full file into the editor buffer or permits saving the partial content over the source.
 - Broad Swift 6-ready syntax highlighting (including TeX/LaTeX and Typst/CeTZ), official Emmet 2 abbreviation expansion for markup and stylesheets, inline completion with Tab-to-accept, and regex Find/Replace with Replace All.
+- On macOS, clickable gutter swatches for HEX colors in CSS, HTML, XML, and SVG open a native color picker. Changes update the source through the normal edit/undo path, preserving short and alpha forms when representable.
+- On supported iPads and Apple Pencil hardware, hover previews the caret and Pencil dragging selects text. Double-tap/squeeze undo follows the system's Pencil preferences.
 - Optional Code Minimap gives a compact file overview, click-to-jump navigation, and a draggable viewport marker without changing the default editor surface.
 - Invisible-character markers on iPhone and iPad render in a lightweight overlay so spaces, tabs, and newlines stay aligned while scrolling.
 - Scrolling the iPhone editor dismisses the software keyboard; iPad keeps the keyboard available while scrolling for its pointer and hardware-keyboard workflows.
@@ -383,8 +385,10 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 ### Navigation & Workflow
 
 - Quick Open (`Cmd+P`), project sidebar navigation, and recursive project tree rendering.
+- Focus Mode hides secondary panes, preview, minimap, and macOS toolbar chrome without changing the open document. Its enabled state belongs to the current scene.
 - The macOS Project Sidebar uses a single Files/Search/Git/Terminal glass rail with clearer active and inactive states, visible Git change counts, compact file-status rows, and a 450 pt default width. The Terminal tab is available only in the direct macOS build.
 - The direct macOS project sidebar includes a Terminal tab that keeps output while switching tabs, offers project/home working-directory choices, and provides clear/restart controls. The App Store macOS build omits the PTY terminal and Python project runner.
+- The terminal provides a persistent PTY shell, bounded scrollback, and ANSI colors. Its display is currently append-only: cursor-based progress rewrites and full-screen/alternate-screen programs are not supported. Remaining emulator and readiness work is tracked in [#318](https://github.com/h3pdesign/Neon-Vision-Editor/issues/318).
 - `scripts/nve` opens files from the terminal and supports `--wait`, `--new-window`, and `--line` compatibility flags.
 - Find in Files keeps results visible on Mac and iPad when a match opens, while replacement targets start unselected by default.
 - Remote Sessions are opt-in: macOS owns SSH-key login and can publish an attach code so iPhone, iPad, and Apple Vision Pro can browse, open, edit, and explicitly save supported remote text files through the Mac-hosted broker.
@@ -403,23 +407,33 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - Cross-platform `Save As…` and Close All Tabs with confirmation.
 - Remote saves are explicit and conflict-aware; if the remote revision changes, the app offers a compare-before-reload path instead of overwriting silently.
 
+### AI Assistance
+
+- Saved chat conversations support questions about an explicitly selected snippet, the current file, project structure, or no document context. Responses retain Markdown and code formatting; request cancellation and retry stay within the conversation.
+- Whole-file chat context is currently unavailable for large disk-backed documents; selection and project-structure context remain separate options.
+- Apple Intelligence is the default provider selection on supported systems. Other providers are opt-in, including OpenAI, Anthropic, Gemini, Grok, OpenCode Go, and a configurable OpenAI-compatible endpoint. Availability depends on the selected provider and device; core editing works offline.
+- Provider credentials stay in Keychain. Cloud-context disclosures and sensitive-content checks let you review what will be sent; restoring a saved chat does not silently attach fresh editor content.
+- Plain-text-to-Markdown and plain-text-to-JSON actions produce proposals for review. JSON output must validate before it can be applied. These workflows and inline completion use the existing provider layer.
+
 ### Preview, Platform, and Safety
 
 - Contextual Markdown formatting provides inline actions, five heading levels, lists, quote/code tools, and structural insertion; iPhone presents the full set from a compact `Aa` control.
+- Markdown preview body text follows the editor's resolved base font size and zoom. Ordered lists continue with the next number, and an explicit language selection stays a tab-level override.
 - One opt-in toolbar control opens and closes Markdown, HTML, and SVG previews. PDF and PNG documents open native previews automatically from toolbar, macOS context-menu/Launch Services, paste/drop, and restored tabs; macOS plus regular-width iPad and visionOS use inline panes while iPhone uses a preview sheet.
 - PDF text highlighting stores lightweight page geometry and selected text separately from the source PDF. Notes use the existing editor on the left and may reuse the existing Markdown preview beside the PDF; note preview is off by default and empty notes create no file or Save As dialog.
-- Markdown previews provide 23 templates and GitHub Flavored Markdown support on macOS, iPhone, and iPad. Apple Vision Pro uses dedicated System Glass, Paper, Slate, and Ink reader surfaces.
+- Markdown previews provide 20 templates and GitHub Flavored Markdown support on macOS, iPhone, and iPad. Apple Vision Pro uses dedicated System Glass, Paper, Slate, and Ink reader surfaces.
 - `.svg` files support XML editing, bracket help, and rendered SVG Preview on all platforms.
 - Markdown and Swift source exports declare their content types correctly on iOS and iPadOS.
+- Markdown-to-PDF export offers paginated and one-page output. Finder Quick Look previews supported Markdown and source files on macOS.
 - Unsupported-file open/import safety guards, remote text-file limits, and session restore for previously opened project folder.
 
 ### Customization & Diagnostics
 
-- Built-in editor palettes include Neon Glow, Neon Flow, Neon Voltage, Laserwave, Cyber Lime, Prism Daylight, Dracula, One Dark Pro, Nord, Tokyo Night, Gruvbox, Arc, Aurora, Horizon, Midnight, Mono, Paper, Solar, Pulse, and Mocha, plus Custom colors.
+- Choose from 30 built-in editor palettes plus Custom colors, including Neon Glow, Plasma Storm, AMOLED Neon, Dracula, Monokai, GitHub Dark, Nord, Tokyo Night, Gruvbox, and Mocha. The canonical palette list lives in [ThemeSettings.swift](Neon%20Vision%20Editor/UI/ThemeSettings.swift).
 - Grouped settings include theme and formatting controls, optional iCloud appearance sync, shortcut customization, and platform-specific preview presentation.
 - Code Snapshot exports styled editor captures; AI Activity Log diagnostics remain available on macOS.
 
-## Release Spotlight
+## Established Workflows Since v1.4.0
 
 <p align="center">
   <img alt="Release Spotlight" src="https://img.shields.io/badge/RELEASE%20SPOTLIGHT-v1.4.0-22C55E?style=for-the-badge">
@@ -440,47 +454,57 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 ## Architecture At A Glance
 
+The current stable editor separates scene presentation, document ownership, native rendering, and optional services. Arrows below show ownership or data exchange; they are not a claim that every operation runs on a background thread.
+
 ```mermaid
 flowchart TB
-  subgraph PLATFORM[Platform shells]
+  subgraph PLATFORM[Platform and scene presentation]
     MAC["macOS: SwiftUI + AppKit"]
     TOUCH["iPhone/iPad/visionOS: SwiftUI + UIKit"]
+    SCENE["ContentView: panes, focus mode, selection context"]
   end
 
-  ACTIONS["User actions: toolbar, menu, shortcuts"]
-  VM["EditorViewModel (@MainActor, per window)"]
-  COMMANDS["Serialized tab commands + resource identity"]
-  REVISIONS["Targeted tab revisions: structure, content, metadata, persistence"]
-
-  subgraph DOCUMENTS[Document lifecycle]
-    DOC["EditorDocument: load, save, conflict pipeline"]
-    FBD["FileBackedTextDocument: disk bytes + replacement pieces"]
-    INDEX["Complete line index before activation"]
-    OBS["NSFilePresenter: external-change observation"]
+  subgraph DOCUMENTS[Per-window document ownership]
+    VM["EditorViewModel: load, save, refresh and conflicts"]
+    TABS["TabCommandQueue + TabData: resource IDs and revisions"]
+    DOC["EditorDocument: bounded reads and edits"]
+    STORAGE["FileBackedTextDocument: disk source or memory pieces"]
   end
 
-  subgraph RENDERING[Editor rendering]
-    MACVIEW["macOS VirtualEditorView: Core Text bounded viewport"]
-    VIEWPORT["Bounded read/decode around scroll anchor"]
-    UIKITTEXT["UIKit CustomTextEditor: UITextView input"]
+  subgraph RENDERING[Native editing and previews]
+    MACVIEW["VirtualEditorView: NSView + Core Text + text input"]
+    UIKITTEXT["CustomTextEditor: UITextView"]
+    EDITING["Syntax, Emmet 2, completion and navigation helpers"]
+    PREVIEW["WebKit previews, PDFKit and structured views"]
   end
 
-  SERVICES["Highlighting, minimap, TOC/preview, structured data, navigation"]
-  INFRA["Session store, preferences, Keychain, runtime policy"]
-  DIST["App Store target / direct macOS target with Sparkle"]
+  OBS["OpenDocumentObservationCenter: NSFilePresenter events"]
+  PROJECT["Project index, search, comparisons and macOS Git"]
+  AI["AIChatConversation + AIClient: explicit context and providers"]
+  REMOTE["RemoteSessionStore: macOS SSH host and attach clients"]
+  INFRA["Session recovery, preferences, Keychain and PDF annotations"]
+  POLICY["ReleaseRuntimePolicy: platform and distribution gates"]
+  DIRECT["Direct macOS: Sparkle, PTY terminal, Python and CLI"]
+  STORE["App Store: Apple updates; no PTY/Python workflow"]
 
-  MAC --> ACTIONS
-  TOUCH --> ACTIONS
-  ACTIONS --> VM --> COMMANDS --> REVISIONS
-  REVISIONS --> DOC
-  REVISIONS --> MACVIEW
-  REVISIONS --> UIKITTEXT
-  DOC --> FBD --> INDEX --> MACVIEW --> VIEWPORT
-  DOC --> OBS
-  VM --> SERVICES
+  MAC --> SCENE
+  TOUCH --> SCENE
+  SCENE --> VM --> TABS --> DOC --> STORAGE
+  OBS --> VM
+  TABS --> MACVIEW
+  TABS --> UIKITTEXT
+  MACVIEW <-->|bounded windows and edits| DOC
+  MACVIEW --> EDITING
+  UIKITTEXT --> EDITING
+  SCENE --> PREVIEW
+  SCENE --> PROJECT
+  SCENE --> AI
+  VM <--> REMOTE
   VM --> INFRA
-  MAC --> DIST
-  TOUCH --> DIST
+  AI --> INFRA
+  SCENE --> POLICY
+  POLICY --> DIRECT
+  POLICY --> STORE
 
   classDef platform stroke:#2563EB,stroke-width:3px,fill:transparent;
   classDef app stroke:#059669,stroke-width:3px,fill:transparent;
@@ -488,26 +512,26 @@ flowchart TB
   classDef infra stroke:#9333EA,stroke-width:3px,fill:transparent;
   classDef distribution stroke:#DB2777,stroke-width:3px,fill:transparent;
 
-  class MAC,TOUCH platform;
-  class ACTIONS,VM,COMMANDS,REVISIONS app;
-  class DOC,FBD,INDEX,OBS,MACVIEW,VIEWPORT,UIKITTEXT,SERVICES core;
+  class MAC,TOUCH,SCENE platform;
+  class VM,TABS app;
+  class DOC,STORAGE,OBS,MACVIEW,UIKITTEXT,EDITING,PREVIEW,PROJECT,AI,REMOTE core;
   class INFRA infra;
-  class DIST distribution;
+  class POLICY,DIRECT,STORE distribution;
 ```
 
-- `EditorViewModel` is the single UI-facing orchestration point per window/scene.
-- Serialized tab commands separate a UI tab from the document resource it represents, preserving per-document cursor and viewport state across asynchronous loads and refreshes.
-- `EditorDocument` and the file-backed viewport layer form the document/rendering core for large editable files. The line index completes before `VirtualEditorView` activates; its Core Text renderer then consumes bounded windows, preserves selection across replacements, and rejects stale generations before applying edits or rendering work.
-- Open local documents use `NSFilePresenter` events and bounded metadata/content checks. Clean buffers refresh in place; dirty buffers enter Keep Local, Reload from Disk, or Compare.
-- The macOS renderer owns Core Text allocation, input, selection, and virtual scrolling. The iOS/iPadOS/visionOS bridge owns UIKit text input. SwiftUI owns pane allocation, including the macOS wrapped source/preview split.
-- File access, parsing, diffing, structured snapshots, and other heavy work stay off the main actor; UI state mutations return to `@MainActor`.
-- Platform shells stay thin. visionOS shares the UIKit-family editor while adapting presentation for spatial layouts.
-- Remote sessions stay opt-in; macOS owns SSH and broker hosting while iPhone, iPad, and Apple Vision Pro attach as clients.
-- App Store builds are updater-free. The separate direct macOS target links Sparkle and consumes the signed GitHub Pages appcast.
-- Security-sensitive credentials and SSH-key bookmarks remain in Keychain (`SecureTokenStore`), not plain prefs.
+- **Ownership:** `ContentView` owns scene presentation; each window has an `@MainActor` `EditorViewModel`. `TabCommandQueue` serializes asynchronous tab mutations, while `TabData` keeps UI identity, document resource identity, and content revisions distinct.
+- **Storage:** `EditorDocument` is the bounded read/edit contract, not the load/save controller. `TabData` currently uses `FileBackedTextDocument` for both URL-backed files and content initialized in memory. Eligible large local files retain disk source ranges plus replacement pieces; the loader completes their line index before transferring ownership to the main actor. Saves preserve encoding and line endings and use the existing conflict and atomic-replacement flow.
+- **Rendering:** `VirtualEditorView` wraps an AppKit scroll view and a Core Text canvas implementing `NSTextInputClient`. It consumes bounded windows and UTF-16 ranges, uses generation/revision checks, and owns drawing, hit testing, selection, undo and input. `CustomTextEditor` wraps `UITextView` on iOS/iPadOS/visionOS. SwiftUI allocates panes; neither preview nor structured views create a second document store.
+- **Editing services:** shared syntax helpers, completion policy and `EmmetExpander` support both native paths. Emmet 2 runs locally from the bundled JavaScript through JavaScriptCore; it is separate from provider-backed AI. The macOS HEX picker edits through the canvas's existing mutation path.
+- **External changes:** `OpenDocumentObservationCenter` uses `NSFilePresenter` events to refresh clean local tabs and offer Keep Local, Reload from Disk, or Compare for dirty tabs. iCloud Drive/network folders supply document transport; appearance sync is a separate preferences service. Peer-to-peer document handoff remains proposed in [#164](https://github.com/h3pdesign/Neon-Vision-Editor/issues/164).
+- **Work scheduling:** loading/index preparation, non-trivial diff/structured snapshots and other asynchronous services use background work. UI state and native input stay on the main actor, including bounded interactive edits and Emmet expansion. The current terminal still parses output on the main actor; moving it behind a bounded screen model is unfinished work in [#318](https://github.com/h3pdesign/Neon-Vision-Editor/issues/318).
+- **Optional services:** project navigation/search reuse `ProjectFileIndex`; chat captures explicit context before calling `AIClient`; remote sessions use macOS SSH/broker hosting with mobile/spatial attach clients. Provider credentials and SSH-key bookmarks remain in Keychain, while document recovery, saved conversations, preferences and PDF annotations use their respective stores.
+- **Distribution:** App Store builds use Apple updates. The separate direct macOS product adds Sparkle with a signed appcast, the PTY terminal, Python workflow and `nve` helper. `ReleaseRuntimePolicy` gates distribution-specific behavior.
 - Color key: blue = platform shell, green = app orchestration, orange = core services, purple = infrastructure, pink = distribution products.
 
 Full architecture reference: [`ARCHITECTURE.md`](ARCHITECTURE.md). The reference tracks the current Swift 6 cross-platform structure, platform guards, editor rendering paths, performance rules, distribution boundaries, and release verification workflow.
+
+Implementation entry points: [tab/document orchestration](Neon%20Vision%20Editor/Data/EditorViewModel.swift), [document contract](Neon%20Vision%20Editor/Data/EditorDocument.swift), [storage](Neon%20Vision%20Editor/Data/FileBackedTextDocument.swift), [macOS canvas](Neon%20Vision%20Editor/UI/VirtualEditorView+macOS.swift), [UIKit editor](Neon%20Vision%20Editor/UI/EditorTextView+iOS.swift), and [distribution policy](Neon%20Vision%20Editor/Core/ReleaseRuntimePolicy.swift).
 
 ### Architecture principles
 
@@ -538,6 +562,10 @@ Neon Vision Editor shares its editor core across macOS, iPhone, iPad, and Apple 
 
 | Capability | macOS | iPhone | iPad | Apple Vision Pro | Notes |
 |---|---|---|---|---|---|
+| Emmet 2 | Native editor | Native editor | Native editor | Native editor | Local abbreviation expansion in supported markup/stylesheet contexts; uses configured indentation. |
+| HEX color picker | Gutter swatch and native picker | -- | -- | -- | CSS/HTML/XML/SVG; source edits preserve representable short and alpha formats. |
+| Apple Pencil editing | -- | -- | Hover caret, drag selection, preference-aware undo | -- | Requires compatible iPad/Pencil hardware and enabled system preferences. |
+| Saved AI chats | Sidebar | Compact presentation | Sidebar | Adaptive presentation | Explicit context; optional providers; credentials in Keychain. |
 | Quick Open<br><sub>`Cmd+P`</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Keyboard and menu</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>Hardware keyboard</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Keyboard and menu</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Hardware keyboard</sub> | Keyboard-first navigation remains available whenever a hardware keyboard is connected. |
 | Project workspace | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Files/Search/Git rail; Terminal in direct build</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>File workflow</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Files/Search workflow</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Spatial workspace</sub> | Git review is macOS-only; the PTY Terminal is direct-macOS-only. |
 | Find in Files | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Sidebar</sub> | ![Compact](https://img.shields.io/badge/Compact-7C3AED?style=flat-square)<br><sub>Sheet</sub> | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square)<br><sub>Sidebar</sub> | ![Adaptive](https://img.shields.io/badge/Adaptive-0A84FF?style=flat-square)<br><sub>Panel</sub> | On Mac and iPad, results remain visible while opening a match. |
@@ -560,6 +588,7 @@ Neon Vision Editor shares its editor core across macOS, iPhone, iPad, and Apple 
 - Primary notarized release pipeline: [release-github-only.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-github-only.yml). The other release workflows are manual fallbacks for an already-created tag.
 - Pre-release verification gate: [pre-release-ci.yml](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/pre-release-ci.yml)
 - Security scanning: [CodeQL workflow](https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/codeql.yml)
+- Performance coverage includes four 100,000-line editor interaction benchmarks, versioned latency/retained-data budgets, and CI result export. A complete workload/platform profiling matrix and dedicated end-to-end UI jobs remain tracked in [#318](https://github.com/h3pdesign/Neon-Vision-Editor/issues/318); platform builds and unit tests do not establish that runtime coverage.
 
 More release integrity details: [Release Integrity](#release-integrity)
 
@@ -820,7 +849,7 @@ The recent release arc is about continuity: files that change outside the app, w
 - API keys are stored in Keychain (`SecureTokenStore`), not `UserDefaults`.
 - Network traffic uses HTTPS.
 - No telemetry.
-- External AI requests only occur when code completion is enabled and a provider is selected.
+- External AI requests use the configured provider for enabled completion or explicit chat/document-transform actions, with the applicable context disclosures.
 - Remote Sessions are opt-in and user-triggered; when enabled, broker payloads are encrypted and SSH-key bookmarks stay in Keychain.
 - Security policy and reporting details: [`SECURITY.md`](SECURITY.md).
 - New repository commits are SSH-signed; older historical commits may still predate commit signing.

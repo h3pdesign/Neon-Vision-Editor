@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.6.2] - 2026-09-05
+
 ### Why Upgrade
 
 - Detects external edits on network volumes even when filesystem change notifications are missed.

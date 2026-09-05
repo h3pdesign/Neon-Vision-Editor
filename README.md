@@ -54,12 +54,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.6.1**
+> Latest release: **v1.6.2**
 > Next release target: **v1.6.2**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.6.1** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-09-05** for latest release **v1.6.1**
+> Last updated (README): **2026-09-05** for latest release **v1.6.2**
 
 ## What's New in v1.6.0 and v1.6.1
 
@@ -166,7 +166,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=10014&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=10043&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -836,7 +836,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.5.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.5.6) | **A more deliberate workflow** — Makes the iPhone and iPad editor toolbar more compact and language-aware without hiding full menu names or accessibility context. | Makes Settings and Help toolbar visibility follow their configured switches in standard, all-actions, and custom presets. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.6.1**
+- Latest release: **v1.6.2**
 - Compare recent changes: [v1.6.0...v1.6.1](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.6.0...v1.6.1)
 
 ## Known Limitations

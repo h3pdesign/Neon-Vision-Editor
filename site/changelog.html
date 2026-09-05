@@ -118,7 +118,25 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.6.1</h2><span class="date">4 September 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.6.2</h2><span class="date">5 September 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds a background metadata polling fallback for open network-volume files, reusing the existing external-change conflict handling.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds an automatic Welcome Tour preference; Finder file launches suppress the tour, including after app updates.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Presents purchase alerts using local SwiftUI presentation state and preserves the latest queued purchase message.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Retains a complete local recovery copy of external-document save payloads on iOS/iPadOS and visionOS.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Avoids duplicate network-file checks and skips tabs that are still loading or already reviewing an external change.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Rechecks launch intent before presenting a delayed Welcome Tour.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents purchase-alert state publication during SwiftUI view updates and stops successful product metadata refreshes from clearing purchase feedback.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Coordinates external file access and saves large-file snapshots in the background without discarding newer edits.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves queued encoding changes and refreshes cached metadata after atomic replacement to avoid false save conflicts.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves ANSI escape sequences, tabs, and Unicode formatting when loading text instead of treating them as pasted display markers.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps failed-open placeholders read-only and retains unsaved buffers when files become unavailable or conflict.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Waits for saves before closing tabs or projects; failed or conflicted documents remain open.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.6.1</h2><span class="date">4 September 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Expands complex HTML, JSX, CSS, SCSS, Less, Sass, and related Emmet abbreviations with configured indentation.</p></div>
           <div class="item"><span class="badge new">New</span><p>Restores Tab-to-accept inline completion, Vim navigation, Markdown shortcuts, drag and drop, rich-text paste, code snapshots, and whitespace inspection in the macOS virtual editor.</p></div>

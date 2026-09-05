@@ -211,6 +211,7 @@ struct NeonSettingsView: View {
     @State private var commandLineHelperCopyStatus: String = ""
 #endif
     @State private var supportRefreshTask: Task<Void, Never>?
+    @State private var supportStatusAlert = SupportStatusAlertPresentation()
     @State private var isDiscoveringFonts: Bool = false
     private let privacyPolicyURL = URL(string: "https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/PRIVACY.md")
     private let termsOfUseURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
@@ -1391,10 +1392,22 @@ struct NeonSettingsView: View {
             Text("Neon Vision Editor will ask macOS to open its supported text and source-code file types. macOS may request your confirmation.")
         }
 #endif
-        .alert("App Store", isPresented: supportStatusAlertBinding) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(supportPurchaseManager.statusMessage ?? "")
+        .onChange(of: supportPurchaseManager.statusMessage, initial: true) { _, message in
+            supportStatusAlert.receive(message)
+        }
+        .onChange(of: supportStatusAlert.isPresented) { _, isPresented in
+            if !isPresented { supportStatusAlert.didDismiss() }
+        }
+        .alert("App Store", isPresented: $supportStatusAlert.isPresented, presenting: supportStatusAlert.message) { message in
+            Button("OK", role: .cancel) {
+                // A user action acknowledges feedback. SwiftUI's presentation
+                // binding only changes local state, never the observed manager.
+                if supportPurchaseManager.statusMessage == message {
+                    supportPurchaseManager.statusMessage = nil
+                }
+            }
+        } message: { message in
+            Text(message)
         }
         .sheet(isPresented: $showDataDisclosureDialog) {
             dataDisclosureDialog
@@ -1409,17 +1422,6 @@ struct NeonSettingsView: View {
     }
 
     // MARK: - Lifecycle Helpers
-
-    private var supportStatusAlertBinding: Binding<Bool> {
-        Binding(
-            get: { supportPurchaseManager.statusMessage != nil },
-            set: { isPresented in
-                if !isPresented {
-                    supportPurchaseManager.statusMessage = nil
-                }
-            }
-        )
-    }
 
     private func cancelSupportRefreshTask() {
         supportRefreshTask?.cancel()

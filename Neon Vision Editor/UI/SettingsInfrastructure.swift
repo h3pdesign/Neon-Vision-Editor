@@ -2,6 +2,38 @@ import SwiftUI
 import Foundation
 import UniformTypeIdentifiers
 
+/// Presentation is view-local: framework dismissal must never publish through
+/// the purchase manager. A replacement waits until the visible alert closes.
+struct SupportStatusAlertPresentation {
+    var isPresented = false
+    private(set) var message: String?
+    private var pendingMessage: String?
+
+    mutating func receive(_ value: String?) {
+        guard let value else {
+            message = nil
+            pendingMessage = nil
+            isPresented = false
+            return
+        }
+        if isPresented {
+            pendingMessage = value == message ? nil : value
+        } else {
+            message = value
+            pendingMessage = nil
+            isPresented = true
+        }
+    }
+
+    mutating func didDismiss() {
+        guard !isPresented else { return }
+        message = nil
+        if let pendingMessage {
+            receive(pendingMessage)
+        }
+    }
+}
+
 // MARK: - Settings Preference Schema
 
 /// Preference keys shared by Settings, the editor shell, and native editor bridges.

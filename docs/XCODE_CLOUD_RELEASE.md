@@ -86,6 +86,89 @@ Use this path only on a Mac that has the latest public GM Xcode installed.
 
 If App Store Connect says the build was made with beta Xcode, discard that archive and rebuild with public GM Xcode or Xcode Cloud.
 
+## App Store Connect credentials
+
+### What you need to provide
+
+The Cloud counter check needs an App Store Connect API key (`.p8`). A signing
+certificate export (`.p12`) cannot authenticate this API; do not convert, replace,
+upload, or share your signing certificates for this setup.
+
+1. Open App Store Connect > Users and Access > Integrations > App Store Connect API.
+   If API access is unavailable, the Account Holder must request it first.
+2. Reuse a suitable existing API key if available. Otherwise an Account Holder or
+   Admin can create a Team Key named `Neon release counter`. Select the least
+   privileged role that permits the needed Cloud reads; do not grant Admin merely
+   to avoid checking permissions. Team keys apply across the team's apps.
+3. Download the `.p8` once and keep it in your existing secure credential storage,
+   outside this repository and its worktrees. Record its Key ID and Issuer ID.
+   Individual keys do not use an Issuer ID; the built-in signer supports team
+   keys only. Individual keys need an externally generated JWT instead.
+4. Provide only the local key-file path, Key ID, key type, and (for a team key)
+   Issuer ID to the person configuring the tooling. Do not paste the private key,
+   JWT, password, or `.p12` contents into chat, Git, or logs.
+
+See Apple's [API access and key setup](https://developer.apple.com/help/app-store-connect/get-started/app-store-connect-api/)
+and [private-key storage guidance](https://developer.apple.com/documentation/appstoreconnectapi/creating-api-keys-for-app-store-connect-api).
+
+### Configuration handoff and read-only test
+
+`scripts/cloud_build_number.py` can generate a fresh two-minute JWT in memory for
+each counter request, using a team `.p8` key. Each token is scoped to that exact
+GET request. No JWT or private-key contents are saved in Git or printed. The
+signer requires Python's `cryptography` library (tested with 50.0.1); external-JWT
+and offline dry-run paths do not require it. To use an isolated Python environment:
+
+```bash
+nve_auth_env="$(mktemp -d "${TMPDIR:-/tmp}/nve-cloud-auth.XXXXXX")"
+python3 -m venv "$nve_auth_env"
+"$nve_auth_env/bin/python" -m pip install 'cryptography==50.0.1'
+export PATH="$nve_auth_env/bin:$PATH"
+```
+
+Use that Python environment for the preflight and release scripts. The API key
+must remain in secure storage outside any Git checkout, with owner-only access
+(`chmod 600` on the specific key file). A downloaded iCloud file still follows
+your iCloud synchronization policy; file permissions do not remove cloud copies.
+The script rejects keys stored inside Git and does not import or relocate keys.
+See Apple's [JWT requirements](https://developer.apple.com/documentation/appstoreconnectapi/generating-tokens-for-api-requests).
+
+With authentication configured, resolve Neon's Cloud product using Apple's
+[`GET /v1/ciProducts`](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-ciproducts)
+and confirm its associated app. This product ID is distinct from the App Store
+app ID and the Cloud workflow ID.
+
+Configure these non-secret references once from the repository root. Do not
+commit a shell script containing your machine's settings:
+
+```bash
+git config --local nve.asc.productId "REPLACE_WITH_CONFIRMED_CLOUD_PRODUCT_ID"
+git config --local nve.asc.keyId "REPLACE_WITH_KEY_ID"
+git config --local nve.asc.issuerId "REPLACE_WITH_ISSUER_ID"
+git config --local nve.asc.privateKeyPath "/absolute/secure/path/AuthKey_KEY_ID.p8"
+python3 scripts/cloud_build_number.py
+```
+
+These references are local to the Git repository (normally shared by linked
+worktrees); other clones need their own setup. Environment variables
+`ASC_CLOUD_PRODUCT_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, and `ASC_PRIVATE_KEY_PATH`
+override the respective local settings.
+
+An existing `ASC_API_TOKEN` takes precedence over a token from the Keychain
+generic-password service named by `ASC_TOKEN_KEYCHAIN_SERVICE`; either token
+source takes precedence over `.p8` signing. Externally supplied tokens are not
+refreshed by this script, so remove stale token overrides when using `.p8` signing.
+Most Apple API requests reject token lifetimes above 20 minutes.
+The successful output
+contains only `product_id` and `max_number`. Missing credentials, denied/expired
+authentication, or active/queued builds must be resolved before release prep.
+This check starts no builds, allocates no number, and publishes nothing.
+
+Finally, verify the configured next Cloud build number in App Store Connect and
+coordinate automatic triggers before release prep. A history read cannot reserve
+a number or detect a manually configured next counter. Do not assume 1029 remains
+available if Cloud has since allocated another build.
+
 ## Xcode Cloud Archive
 
 For shared local/GitHub/Cloud build numbering, use the authenticated counter

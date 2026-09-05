@@ -130,19 +130,12 @@ private enum EditorLoadHelper {
     nonisolated static let skipFingerprintByteThreshold = 1_000_000
     nonisolated static let streamChunkBytes = 262_144
 
-    nonisolated static func sanitizeTextForFileLoad(_ input: String, useFastPath: Bool) -> String {
-        if useFastPath {
-            // Fast path for large files: preserve visible content, normalize line endings,
-            // and only strip NUL which frequently breaks text system behavior.
-            if !input.contains("\0") && !input.contains("\r") {
-                return input
-            }
-            return input
-                .replacingOccurrences(of: "\0", with: "")
-                .replacingOccurrences(of: "\r\n", with: "\n")
-                .replacingOccurrences(of: "\r", with: "\n")
-        }
-        return EditorTextSanitizer.sanitize(input)
+    nonisolated static func sanitizeTextForFileLoad(_ input: String, useFastPath _: Bool) -> String {
+        // File contents are not pasted display markers: preserve tabs, ANSI
+        // escapes and Unicode formatting. Only normalize the editor's newlines.
+        guard input.contains("\r") else { return input }
+        return input.replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
     }
 
     nonisolated static func decodeFileText(
@@ -735,6 +728,7 @@ class EditorViewModel {
     private static let deferredLanguageDetectionUTF16Length = 180_000
     private static let deferredLanguageDetectionDelayNanos: UInt64 = 220_000_000
     private static let deferredLanguageDetectionSampleUTF16Length = 180_000
+    private static let networkVolumePollingIntervalNanos: UInt64 = 3_000_000_000
 
     // MARK: - Observable State and Indexes
 
@@ -744,6 +738,7 @@ class EditorViewModel {
     private(set) var pendingEncodingReopen: PendingEncodingReopen?
     private(set) var externalFileRefreshStatus: ExternalFileRefreshStatus?
     private(set) var recentExternalSyncChanges: [ExternalSyncChange] = []
+    private(set) var hasReceivedExternalFileOpenRequest: Bool = false
     var pendingRemoteSaveIssue: RemoteSaveIssueState?
     var fileEncodingErrorMessage: String?
     var showSidebar: Bool = true
@@ -753,11 +748,14 @@ class EditorViewModel {
     var isLineWrapEnabled: Bool = true
     @ObservationIgnored private let tabCommandQueue = TabCommandQueue()
     @ObservationIgnored private var pendingLanguageDetectionTasks: [UUID: Task<Void, Never>] = [:]
+    @ObservationIgnored private var localSaveTasks: [UUID: (id: UUID, task: Task<Void, Never>)] = [:]
     @ObservationIgnored private var pendingExternalFileRefreshTasks: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored private var pendingExternalRefreshTabIDs: Set<UUID> = []
     @ObservationIgnored private var refreshedExternalTabIDs: Set<UUID> = []
     @ObservationIgnored private var reviewExternalTabIDs: Set<UUID> = []
     @ObservationIgnored private var externalRefreshStatusClearTask: Task<Void, Never>?
+    @ObservationIgnored private var networkVolumePollingTask: Task<Void, Never>?
+    @ObservationIgnored private var networkVolumePollingCandidatePaths: Set<String> = []
     @ObservationIgnored private lazy var openDocumentObservationCenter = OpenDocumentObservationCenter { [weak self] url in
         Task { @MainActor [weak self] in
             self?.handleObservedLocalFileChange(at: url)
@@ -838,14 +836,14 @@ class EditorViewModel {
     ) {
         if rebuildIndexes {
             rebuildTabIndexes()
-            openDocumentObservationCenter.updateObservedURLs(
-                tabs.compactMap { tab in
-                    guard !tab.isRemoteDocument,
-                          let fileURL = tab.fileURL,
-                          fileURL.isFileURL else { return nil }
-                    return fileURL
-                }
-            )
+            let observedURLs: [URL] = tabs.compactMap { tab -> URL? in
+                guard !tab.isRemoteDocument,
+                      let fileURL = tab.fileURL,
+                      fileURL.isFileURL else { return nil }
+                return fileURL
+            }
+            openDocumentObservationCenter.updateObservedURLs(observedURLs)
+            updateNetworkVolumePolling(for: observedURLs)
         }
         if rebuildIndexes || change == .structure {
             tabStructureVersion &+= 1
@@ -1670,6 +1668,28 @@ class EditorViewModel {
         closeTab(tabID: tab.id)
     }
 
+    /// Closing must wait for local writes, including writes queued while an
+    /// earlier snapshot was saving. Failed saves and newer edits stay open.
+    @discardableResult
+    func saveAndCloseTabs(tabIDs: [UUID]) async -> Bool {
+        for tabID in tabIDs {
+            if let tab = tabs.first(where: { $0.id == tabID }), tab.isDirty {
+                saveFile(tabID: tabID)
+            }
+        }
+        for tabID in tabIDs {
+            while let pending = localSaveTasks[tabID]?.task { await pending.value }
+            guard let tab = tabs.first(where: { $0.id == tabID }),
+                  !tab.isDirty, !tab.isLoadingContent else { continue }
+            closeTab(tabID: tabID)
+        }
+        let closed = !tabs.contains(where: { tabIDs.contains($0.id) })
+        if !closed, fileEncodingErrorMessage == nil, pendingExternalFileConflict == nil {
+            fileEncodingErrorMessage = "Unsaved tabs were left open. Finish saving or resolve any conflicts before closing them."
+        }
+        return closed
+    }
+
     // MARK: - Saving and Conflict Resolution
 
     // Saves tab content to the existing file URL or falls back to Save As.
@@ -1680,37 +1700,19 @@ class EditorViewModel {
             enqueueRemoteSave(tabID: tabID, remotePath: remotePath, signpostName: "save_remote_file")
             return
         }
-        if !allowExternalOverwrite,
+        if !tabs[index].usesFileBackedStorage, !allowExternalOverwrite, localSaveTasks[tabID] == nil,
            let conflict = detectExternalConflict(for: tabs[index]) {
             pendingExternalFileConflict = conflict
             return
         }
         if let fileBackedDocument = tabs[index].fileBackedDocument,
            let url = tabs[index].fileURL {
-            do {
-                try fileBackedDocument.saveAtomically(allowExternalOverwrite: allowExternalOverwrite)
-                let metadata = try url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
-                _ = applyTabCommand(
-                    .markSaved(
-                        tabID: tabID,
-                        fileURL: nil,
-                        fingerprint: nil,
-                        fileModificationDate: metadata.contentModificationDate,
-                        fileEncodingRawValue: fileBackedDocument.encodingDescriptor.encodingRawValue,
-                        fileByteCount: metadata.fileSize
-                    )
-                )
-            } catch FileBackedTextDocument.Error.externalConflict {
-                if let conflict = detectExternalConflict(for: tabs[index]) {
-                    pendingExternalFileConflict = conflict
-                }
-            } catch {
-                fileEncodingErrorMessage = "Couldn’t save \(tabs[index].name). \(error.localizedDescription)"
-            }
+            enqueueFileBackedSave(tabID: tabID, document: fileBackedDocument, to: url,
+                                  saveAs: false, allowExternalOverwrite: allowExternalOverwrite)
             return
         }
         if let url = tabs[index].fileURL {
-            enqueueSave(tabID: tabID, to: url, updateFileURLOnSuccess: nil, signpostName: "save_file")
+            enqueueSave(tabID: tabID, to: url, updateFileURLOnSuccess: nil, signpostName: "save_file", allowExternalOverwrite: allowExternalOverwrite)
         } else {
             saveFileAs(tabID: tabID)
         }
@@ -2053,30 +2055,50 @@ class EditorViewModel {
     }
 
     private func saveFileBackedAs(tabID: UUID, document: FileBackedTextDocument, to destinationURL: URL) {
+        enqueueFileBackedSave(tabID: tabID, document: document, to: destinationURL, saveAs: true)
+    }
+
+    private func enqueueFileBackedSave(tabID: UUID, document: FileBackedTextDocument, to destinationURL: URL,
+                                      saveAs: Bool, allowExternalOverwrite: Bool = false) {
         guard let index = tabIndex(for: tabID), tabs[index].fileBackedDocument === document else { return }
-        do {
-            try document.saveAtomically(to: destinationURL)
-            let replacement = try FileBackedTextDocument(
-                url: destinationURL,
-                knownUTF8Encoding: document.encodingDescriptor
-            )
-            try replacement.prepareViewportIndex()
-            let metadata = try destinationURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
-            _ = tabs[index].installLoadedFileBackedDocument(replacement)
-            _ = applyTabCommand(
-                .markSaved(
-                    tabID: tabID,
-                    fileURL: destinationURL,
-                    fingerprint: nil,
-                    fileModificationDate: metadata.contentModificationDate,
-                    fileEncodingRawValue: replacement.encodingDescriptor.encodingRawValue,
-                    fileByteCount: metadata.fileSize
-                )
-            )
-            pendingExternalFileConflict = nil
-        } catch {
-            fileEncodingErrorMessage = "Couldn’t save \(destinationURL.lastPathComponent). The document was left unchanged. \(error.localizedDescription)"
+        let predecessor = localSaveTasks[tabID]?.task
+        let saveID = UUID()
+        let task = Task { [weak self] in
+            await predecessor?.value
+            guard let self else { return }
+            defer { if self.localSaveTasks[tabID]?.id == saveID { self.localSaveTasks[tabID] = nil } }
+            guard let index = self.tabIndex(for: tabID), let document = self.tabs[index].fileBackedDocument else { return }
+            let revision = self.tabs[index].contentRevision
+            let snapshot = document.makeSaveSnapshot()
+            do {
+                let receipt = try await Task.detached(priority: .utility) {
+                    try snapshot.write(to: saveAs ? destinationURL : nil, allowExternalOverwrite: allowExternalOverwrite)
+                }.value
+                guard let finalIndex = self.tabIndex(for: tabID), self.tabs[finalIndex].fileBackedDocument === document else { return }
+                if !saveAs {
+                    document.acceptSave(receipt)
+                    self.tabs[finalIndex].lastKnownFileModificationDate = receipt.modificationDate
+                    self.tabs[finalIndex].updateFileByteCount(receipt.byteCount)
+                }
+                guard self.tabs[finalIndex].contentRevision == revision else {
+                    if saveAs { self.fileEncodingErrorMessage = "A copy was saved, but newer edits remain in the original tab. Save again to include them." }
+                    return
+                }
+                if let replacement = receipt.replacement {
+                    _ = self.tabs[finalIndex].installLoadedFileBackedDocument(replacement)
+                }
+                _ = self.applyTabCommand(.markSaved(tabID: tabID, fileURL: saveAs ? destinationURL : nil,
+                                                   fingerprint: nil, fileModificationDate: receipt.modificationDate,
+                                                   fileEncodingRawValue: document.encodingDescriptor.encodingRawValue,
+                                                   fileByteCount: receipt.byteCount))
+                self.pendingExternalFileConflict = nil
+            } catch FileBackedTextDocument.Error.externalConflict {
+                self.pendingExternalFileConflict = ExternalFileConflictState(tabID: tabID, fileURL: destinationURL, diskModifiedAt: nil)
+            } catch {
+                self.fileEncodingErrorMessage = "Couldn’t save \(destinationURL.lastPathComponent). \(error.localizedDescription)"
+            }
         }
+        localSaveTasks[tabID] = (saveID, task)
     }
 
     func saveFileAs(tab: TabData) {
@@ -2140,22 +2162,23 @@ class EditorViewModel {
         to destinationURL: URL,
         updateFileURLOnSuccess: URL?,
         signpostName: StaticString,
-        encodingOverride: TextEncodingDescriptor? = nil
+        encodingOverride: TextEncodingDescriptor? = nil,
+        allowExternalOverwrite: Bool = false
     ) {
         guard let index = tabIndex(for: tabID) else { return }
         let snapshotContent = tabs[index].document.string()
         let snapshotRevision = tabs[index].contentRevision
-        let snapshotLastSavedFingerprint = tabs[index].lastSavedFingerprint
-        let previousEncoding = tabs[index].fileEncoding
-        let previousEncodingWasAutomatic = tabs[index].usesAutomaticFileEncoding
-        let snapshotEncoding = encodingOverride ?? previousEncoding
         let snapshotLineEnding = tabs[index].lineEnding
         let trimTrailingWhitespace = UserDefaults.standard.bool(forKey: "SettingsTrimTrailingWhitespace")
-        let requiresTranscoding = encodingOverride != nil
-            && (snapshotEncoding != previousEncoding || previousEncodingWasAutomatic)
 
-        Task { [weak self] in
+        let predecessor = localSaveTasks[tabID]?.task
+        let saveID = UUID()
+        let task = Task { [weak self] in
+            await predecessor?.value
             guard let self else { return }
+            defer {
+                if self.localSaveTasks[tabID]?.id == saveID { self.localSaveTasks[tabID] = nil }
+            }
             let saveInterval = Self.saveSignposter.beginInterval(signpostName)
             defer { Self.saveSignposter.endInterval(signpostName, saveInterval) }
 
@@ -2165,9 +2188,14 @@ class EditorViewModel {
             )
 
             guard let preflightIndex = self.tabIndex(for: tabID),
-                  self.tabs[preflightIndex].contentRevision == snapshotRevision else {
+                  self.tabs[preflightIndex].contentRevision == snapshotRevision
+                    || self.tabs[preflightIndex].document.string() == payload.content else {
                 return
             }
+            let expectedMetadata = updateFileURLOnSuccess == nil && !allowExternalOverwrite
+                ? LocalFileMetadata(modificationDate: self.tabs[preflightIndex].lastKnownFileModificationDate,
+                                    byteCount: self.tabs[preflightIndex].fileByteCount) : nil
+            let snapshotEncoding = encodingOverride ?? self.tabs[preflightIndex].fileEncoding
 
             let normalizationOutcome = self.applyTabCommand(
                 .updateContent(
@@ -2175,66 +2203,40 @@ class EditorViewModel {
                     mutation: .replaceAll(
                         text: payload.content,
                         markDirty: false,
-                        compareIfLengthAtMost: Self.deferredLanguageDetectionUTF16Length
+                        compareIfLengthAtMost: Int.max
                     )
                 )
             )
-            let expectedRevision = normalizationOutcome.contentRevision ?? snapshotRevision
-
-            if !requiresTranscoding,
-               snapshotLastSavedFingerprint == payload.fingerprint,
-               FileManager.default.fileExists(atPath: destinationURL.path) {
-                if let finalIndex = self.tabIndex(for: tabID),
-                   self.tabs[finalIndex].contentRevision == expectedRevision {
-                    let fileMetadata = try? destinationURL.resourceValues(
-                        forKeys: [.contentModificationDateKey, .fileSizeKey]
-                    )
-                    _ = self.applyTabCommand(
-                        .markSaved(
-                            tabID: tabID,
-                            fileURL: updateFileURLOnSuccess,
-                            fingerprint: payload.fingerprint,
-                            fileModificationDate: fileMetadata?.contentModificationDate,
-                            fileEncodingRawValue: snapshotEncoding.encodingRawValue,
-                            fileByteCount: fileMetadata?.fileSize
-                        )
-                    )
-                    if encodingOverride != nil {
-                        self.setFileEncoding(
-                            tabID: tabID,
-                            encoding: snapshotEncoding,
-                            usesAutomatic: false
-                        )
-                    }
-                    self.pendingExternalFileConflict = nil
-                    self.completePendingEncodingReopenAfterSave(tabID: tabID)
-                }
-                return
-            }
+            let expectedRevision = normalizationOutcome.contentRevision ?? self.tabs[preflightIndex].contentRevision
 
             do {
-                let actualEncoding = try await Self.writeFileContent(
+                let (actualEncoding, fileMetadata) = try await Self.writeFileContent(
                     payload.content,
                     to: destinationURL,
                     encoding: snapshotEncoding,
-                    lineEnding: snapshotLineEnding
+                    lineEnding: snapshotLineEnding,
+                    expectedMetadata: expectedMetadata
                 )
+                if let writtenIndex = self.tabIndex(for: tabID),
+                   self.tabs[writtenIndex].fileURL?.standardizedFileURL == destinationURL.standardizedFileURL {
+                    // A later edit remains dirty, but the next queued save must
+                    // compare against our just-completed write, not the old file.
+                    self.tabs[writtenIndex].lastKnownFileModificationDate = fileMetadata.modificationDate
+                    self.tabs[writtenIndex].updateFileByteCount(fileMetadata.byteCount)
+                }
                 guard let finalIndex = self.tabIndex(for: tabID),
                       self.tabs[finalIndex].contentRevision == expectedRevision else {
                     return
                 }
 
-                let fileMetadata = try? destinationURL.resourceValues(
-                    forKeys: [.contentModificationDateKey, .fileSizeKey]
-                )
                 _ = self.applyTabCommand(
                     .markSaved(
                         tabID: tabID,
                         fileURL: updateFileURLOnSuccess,
                         fingerprint: payload.fingerprint,
-                        fileModificationDate: fileMetadata?.contentModificationDate,
+                        fileModificationDate: fileMetadata.modificationDate,
                         fileEncodingRawValue: actualEncoding.encodingRawValue,
-                        fileByteCount: fileMetadata?.fileSize
+                        fileByteCount: fileMetadata.byteCount
                     )
                 )
                 if encodingOverride != nil {
@@ -2257,11 +2259,16 @@ class EditorViewModel {
                 } else {
                     message = "Couldn’t save \(destinationURL.lastPathComponent). The document was left unchanged. \(error.localizedDescription)"
                 }
+                if (error as? CocoaError)?.code == .fileWriteFileExists {
+                    self.pendingExternalFileConflict = ExternalFileConflictState(
+                        tabID: tabID, fileURL: destinationURL, diskModifiedAt: nil)
+                }
                 self.fileEncodingErrorMessage = message
                 self.debugLog(message)
                 return
             }
         }
+        localSaveTasks[tabID] = (saveID, task)
     }
 
     private func completePendingEncodingReopenAfterSave(tabID: UUID) {
@@ -2366,9 +2373,10 @@ class EditorViewModel {
     }
 
     private func detectExternalConflict(for tab: TabData) -> ExternalFileConflictState? {
-        guard tab.isDirty, let fileURL = tab.fileURL else { return nil }
+        guard tab.isDirty, var fileURL = tab.fileURL else { return nil }
+        fileURL.removeAllCachedResourceValues()
         guard let values = try? fileURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey]) else {
-            return nil
+            return ExternalFileConflictState(tabID: tab.id, fileURL: fileURL, diskModifiedAt: nil)
         }
         let metadata = LocalFileMetadata(
             modificationDate: values.contentModificationDate,
@@ -2523,6 +2531,75 @@ class EditorViewModel {
         }
     }
 
+    private func updateNetworkVolumePolling(for urls: [URL]) {
+        let uniqueURLs = Dictionary(
+            urls.compactMap { url in
+                Self.normalizedFilePathKey(for: url).map { ($0, url.standardizedFileURL) }
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let candidatePaths = Set(uniqueURLs.keys)
+        guard candidatePaths != networkVolumePollingCandidatePaths else { return }
+
+        networkVolumePollingCandidatePaths = candidatePaths
+        networkVolumePollingTask?.cancel()
+        networkVolumePollingTask = nil
+        guard !uniqueURLs.isEmpty else { return }
+
+        let candidates = Array(uniqueURLs.values)
+        networkVolumePollingTask = Task { @MainActor [weak self] in
+            let polledURLs = await Task.detached(priority: .utility) {
+                candidates.filter { Self.requiresExternalChangePolling(at: $0) }
+            }.value
+            guard !Task.isCancelled, !polledURLs.isEmpty else { return }
+
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(nanoseconds: Self.networkVolumePollingIntervalNanos)
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
+                _ = await self?.pollOpenDocumentsForExternalChanges(at: polledURLs)
+            }
+        }
+    }
+
+    @discardableResult
+    func pollOpenDocumentsForExternalChanges(at urls: [URL]) async -> [UUID] {
+        let uniqueURLs = Dictionary(
+            urls.compactMap { url in
+                Self.normalizedFilePathKey(for: url).map { ($0, url.standardizedFileURL) }
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let metadataByPath = await Task.detached(priority: .utility) {
+            uniqueURLs.reduce(into: [String: LocalFileMetadata]()) { result, entry in
+                if let metadata = Self.readLocalFileMetadata(at: entry.value) {
+                    result[entry.key] = metadata
+                }
+            }
+        }.value
+        guard !Task.isCancelled else { return [] }
+
+        var detectedTabIDs: [UUID] = []
+        for (path, metadata) in metadataByPath {
+            guard let tabID = tabIDByStandardizedFilePath[path],
+                  let index = tabIndex(for: tabID),
+                  !tabs[index].isLoadingContent,
+                  !reviewExternalTabIDs.contains(tabID),
+                  Self.hasLocalFileMetadataChanged(
+                      knownModificationDate: tabs[index].lastKnownFileModificationDate,
+                      knownByteCount: tabs[index].fileByteCount,
+                      current: metadata
+                  ),
+                  let fileURL = tabs[index].fileURL else { continue }
+            detectedTabIDs.append(tabID)
+            handleObservedLocalFileChange(at: fileURL)
+        }
+        return detectedTabIDs
+    }
+
     private func refreshObservedLocalFile(tabID: UUID, expectedURL: URL) async {
         guard !Task.isCancelled else { return }
         guard let initialIndex = tabIndex(for: tabID),
@@ -2642,6 +2719,17 @@ class EditorViewModel {
         )
     }
 
+    private nonisolated static func requiresExternalChangePolling(at url: URL) -> Bool {
+        let didStartScopedAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if didStartScopedAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        let values = try? url.resourceValues(forKeys: [.volumeIsLocalKey])
+        return values?.volumeIsLocal != true
+    }
+
     private nonisolated static func hasLocalFileMetadataChanged(
         knownModificationDate: Date?,
         knownByteCount: Int,
@@ -2654,6 +2742,12 @@ class EditorViewModel {
     }
 
     // MARK: - File Opening
+
+    @discardableResult
+    func openFileFromExternalRequest(url: URL) -> Bool {
+        hasReceivedExternalFileOpenRequest = true
+        return openFile(url: url)
+    }
 
     // Opens file-picker UI on macOS.
     func openFile() {
@@ -2862,7 +2956,7 @@ class EditorViewModel {
             let fileHandle = try? FileHandle(forReadingFrom: url)
             defer { try? fileHandle?.close() }
             if let prefix = try? fileHandle?.read(upToCount: 4_096),
-               prefix.contains(0) {
+               !CoordinatedDocumentAccess.isText(prefix) {
                 return false
             }
         }
@@ -2873,12 +2967,7 @@ class EditorViewModel {
         }
 
         if ext.isEmpty {
-            let supportedDotfiles: Set<String> = [
-                ".zshrc", ".zprofile", ".zlogin", ".zlogout",
-                ".bashrc", ".bash_profile", ".bash_login", ".bash_logout",
-                ".profile", ".vimrc", ".env", ".envrc", ".gitconfig"
-            ]
-            return supportedDotfiles.contains(fileName) || fileName.hasPrefix(".env")
+            return true // Unknown dotfiles and extensionless text are valid documents.
         }
 
         let knownSupportedExtensions: Set<String> = [
@@ -2895,11 +2984,11 @@ class EditorViewModel {
             return true
         }
 
-        guard let type = UTType(filenameExtension: ext) else { return false }
+        guard let type = UTType(filenameExtension: ext) else { return true }
         if type.conforms(to: .text) || type.conforms(to: .plainText) || type.conforms(to: .sourceCode) {
             return true
         }
-        return false
+        return true // Type hints choose syntax; content validation happens during load.
     }
 
     /// Preview-only assets must be non-editable from the moment their placeholder
@@ -2991,6 +3080,7 @@ class EditorViewModel {
         priority: TaskPriority = .userInitiated
     ) async throws -> EditorFileLoadResult {
         try await Task.detached(priority: priority) {
+            try CoordinatedDocumentAccess.read(at: url) { url in
             let didStartScopedAccess = url.startAccessingSecurityScopedResource()
             defer {
                 if didStartScopedAccess {
@@ -3017,6 +3107,10 @@ class EditorViewModel {
                     fileBackedDocument: nil
                 )
             }
+            let textProbe = try EditorLoadHelper.partialFileData(from: url, maximumByteCount: 64_000)
+            guard CoordinatedDocumentAccess.isText(textProbe, encoding: preferredEncoding) else {
+                throw CocoaError(.fileReadInapplicableStringEncoding)
+            }
             let boundedPreviewLimit = EditorLoadHelper.boundedPreviewLimit(
                 forExtension: previewOnlyExtension,
                 byteCount: totalByteCount
@@ -3024,7 +3118,7 @@ class EditorViewModel {
             let isPartialPreview = totalByteCount >= EditorLoadHelper.partialOpenByteThreshold || boundedPreviewLimit != nil
 
             if isLargeCandidate, !isPartialPreview {
-                let prefix = try EditorLoadHelper.partialFileData(from: url, maximumByteCount: 64_000)
+                let prefix = textProbe
                 let encoding = preferredEncoding ?? FileBackedTextDocument.boundedEncoding(from: prefix, allowsIncompleteUTF8Sequence: totalByteCount > prefix.count)
                 if let encoding,
                    Self.isFileBackedEligible(
@@ -3134,6 +3228,7 @@ class EditorViewModel {
                 fileBackedEncoding: nil,
                 fileBackedDocument: fileBackedDocument
             )
+            }
         }.value
     }
 
@@ -3184,14 +3279,43 @@ class EditorViewModel {
         _ content: String,
         to url: URL,
         encoding: TextEncodingDescriptor,
-        lineEnding: TextLineEnding
-    ) async throws -> TextEncodingDescriptor {
+        lineEnding: TextLineEnding,
+        expectedMetadata: LocalFileMetadata? = nil
+    ) async throws -> (TextEncodingDescriptor, LocalFileMetadata) {
         try await Task.detached(priority: .utility) {
             guard let data = encoding.encodedData(for: lineEnding.applying(to: content)) else {
                 throw CocoaError(.fileWriteInapplicableStringEncoding)
             }
-            try data.write(to: url, options: .atomic)
-            return encoding
+            try CoordinatedDocumentAccess.preserveRecovery(data, for: url)
+            return try CoordinatedDocumentAccess.write(at: url) { coordinatedURL in
+                var coordinatedURL = coordinatedURL
+                coordinatedURL.removeAllCachedResourceValues()
+                if let expectedMetadata {
+                    let metadata = try coordinatedURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+                    guard let expectedDate = expectedMetadata.modificationDate,
+                          let actualDate = metadata.contentModificationDate,
+                          let actualSize = metadata.fileSize,
+                          actualSize == expectedMetadata.byteCount,
+                          abs(actualDate.timeIntervalSince(expectedDate)) <= 0.001 else {
+                        throw CocoaError(.fileWriteFileExists)
+                    }
+                }
+                let existingData: Data?
+                if expectedMetadata != nil {
+                    existingData = try Data(contentsOf: coordinatedURL, options: .mappedIfSafe)
+                } else {
+                    existingData = try? Data(contentsOf: coordinatedURL, options: .mappedIfSafe)
+                }
+                if existingData != data {
+                    try data.write(to: coordinatedURL, options: .atomic)
+                }
+                // URL caches metadata read before the atomic replacement.
+                // The next queued save needs the new inode's revision.
+                coordinatedURL.removeAllCachedResourceValues()
+                let metadata = try coordinatedURL.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+                return (encoding, LocalFileMetadata(modificationDate: metadata.contentModificationDate,
+                                                     byteCount: metadata.fileSize ?? data.count))
+            }
         }.value
     }
 
@@ -3236,7 +3360,13 @@ class EditorViewModel {
     }
 
     private func markTabLoadFailed(tabID: UUID) async {
+        if let index = tabIndex(for: tabID), tabs[index].lastKnownFileModificationDate == nil,
+           !tabs[index].isDirty {
+            tabs[index].isReadOnlyPreview = true
+            recordTabStateMutation()
+        }
         _ = await dispatchTabCommandSerialized(.setLoading(tabID: tabID, isLoading: false))
+        fileEncodingErrorMessage = "Couldn’t read the document safely. No changes were saved. Try opening it again or download a local copy first."
         EditorPerformanceMonitor.shared.endFileOpen(tabID: tabID, success: false, byteCount: nil)
         debugLog("Failed to open file.")
     }

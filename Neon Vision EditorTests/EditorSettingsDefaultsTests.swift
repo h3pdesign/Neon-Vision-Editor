@@ -3,6 +3,100 @@ import XCTest
 
 @MainActor
 final class EditorSettingsDefaultsTests: XCTestCase {
+    func testSupportAlertQueuesReplacementUntilFrameworkDismissal() {
+        var state = SupportStatusAlertPresentation()
+        state.receive("First")
+        XCTAssertTrue(state.isPresented)
+        state.receive("Second")
+        XCTAssertEqual(state.message, "First")
+        state.isPresented = false
+        state.didDismiss()
+        XCTAssertTrue(state.isPresented)
+        XCTAssertEqual(state.message, "Second")
+        state.receive(nil)
+        state.didDismiss()
+        XCTAssertFalse(state.isPresented)
+        XCTAssertNil(state.message)
+    }
+
+    func testSupportAlertCoalescesLatestStatusAndDoesNotReopenAcknowledgedMessage() {
+        var state = SupportStatusAlertPresentation()
+        state.receive("First")
+        state.receive("Second")
+        state.receive("Latest")
+        state.isPresented = false
+        state.didDismiss()
+        XCTAssertEqual(state.message, "Latest")
+        state.receive("Latest")
+        state.isPresented = false
+        state.didDismiss()
+        XCTAssertFalse(state.isPresented)
+        XCTAssertNil(state.message)
+        state.didDismiss()
+        XCTAssertFalse(state.isPresented)
+    }
+
+    func testSupportAlertClearDiscardsPendingStatus() {
+        var state = SupportStatusAlertPresentation()
+        state.receive("First")
+        state.receive("Pending")
+        state.receive(nil)
+        state.didDismiss()
+        XCTAssertFalse(state.isPresented)
+        XCTAssertNil(state.message)
+        state.receive("Fresh")
+        XCTAssertTrue(state.isPresented)
+        XCTAssertEqual(state.message, "Fresh")
+    }
+
+    func testWelcomeTourAutomaticPresentationCanBeDisabledPermanently() {
+        XCTAssertFalse(
+            WelcomeTourPresentationPolicy.shouldPresentAutomatically(
+                isEnabled: false,
+                isNormalLaunch: true,
+                hasSeenTour: false,
+                seenRelease: "",
+                currentRelease: "1.7.0"
+            )
+        )
+        XCTAssertFalse(
+            WelcomeTourPresentationPolicy.shouldPresentAutomatically(
+                isEnabled: false,
+                isNormalLaunch: true,
+                hasSeenTour: true,
+                seenRelease: "1.6.1",
+                currentRelease: "1.7.0"
+            )
+        )
+        XCTAssertTrue(
+            WelcomeTourPresentationPolicy.shouldPresentAutomatically(
+                isEnabled: true,
+                isNormalLaunch: true,
+                hasSeenTour: true,
+                seenRelease: "1.6.1",
+                currentRelease: "1.7.0"
+            )
+        )
+        XCTAssertFalse(
+            WelcomeTourPresentationPolicy.shouldPresentAutomatically(
+                isEnabled: true,
+                isNormalLaunch: true,
+                hasSeenTour: true,
+                seenRelease: "1.7.0",
+                currentRelease: "1.7.0"
+            )
+        )
+        XCTAssertFalse(
+            WelcomeTourPresentationPolicy.shouldPresentAutomatically(
+                isEnabled: true,
+                isNormalLaunch: false,
+                hasSeenTour: false,
+                seenRelease: "",
+                currentRelease: "1.7.0"
+            )
+        )
+    }
+
     func testFocusedObservationSnapshotsOnlyCompareOwnedState() {
         XCTAssertEqual(
             ContentView.TabChromeObservationSnapshot(structureRevision: 3, metadataRevision: 7),

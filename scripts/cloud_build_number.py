@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import datetime as dt
 import json
 import os
 from pathlib import Path
@@ -72,7 +73,8 @@ class TeamKeyToken:
         from cryptography.hazmat.primitives.asymmetric import ec, utils
         parsed = urllib.parse.urlsplit(url)
         if (parsed.scheme != "https" or parsed.netloc != "api.appstoreconnect.apple.com"
-                or parsed.fragment or not re.fullmatch(r"/v1/ciProducts/[A-Za-z0-9-]+/buildRuns", parsed.path)):
+                or parsed.fragment or not re.fullmatch(
+                    r"/v1/(?:ciProducts/[A-Za-z0-9-]+/buildRuns|ciBuildRuns/[A-Za-z0-9-]+/actions)", parsed.path)):
             raise ValueError("Refusing to sign an unexpected Cloud request.")
         now = int(time.time())
         header = {"alg": "ES256", "kid": self._key_id, "typ": "JWT"}
@@ -125,9 +127,13 @@ class CloudBuildCounter:
                                  setting("ASC_PRIVATE_KEY_PATH", "privateKeyPath"))
         return cls(product, token)
 
-    def _get(self, url: str, timeout: float) -> dict:
+    def _get(self, url: str, timeout: float, *, action_run_id: str | None = None) -> dict:
         parsed = urllib.parse.urlsplit(url)
         expected_path = f"/v1/ciProducts/{self.product_id}/buildRuns"
+        if action_run_id is not None:
+            if not re.fullmatch(r"[A-Za-z0-9-]+", action_run_id):
+                raise ValueError("Invalid Cloud run ID.")
+            expected_path = f"/v1/ciBuildRuns/{action_run_id}/actions"
         if parsed.scheme != "https" or parsed.netloc != "api.appstoreconnect.apple.com" or parsed.path != expected_path or parsed.fragment:
             raise ValueError("Refusing an unexpected App Store Connect pagination URL.")
         token = self._token(url) if callable(self._token) else self._token
@@ -148,11 +154,79 @@ class CloudBuildCounter:
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError):
             raise ValueError("App Store Connect could not be read safely; no build number was allocated.") from None
 
+    def _only_lingering_distribution(self, run_id: str, deadline: float) -> bool:
+        """Do not mistake a historical TestFlight post-action for active compilation.
+
+        Names alone are not enough: require successful completed archives, all
+        other actions successful, and distribution starting after all archives.
+        Unknown/renamed actions fail closed. The caller also requires a newer
+        completed run; never exempt the latest allocated run.
+        """
+        if not re.fullmatch(r"[A-Za-z0-9-]+", run_id):
+            return False
+        url = ORIGIN + f"/v1/ciBuildRuns/{run_id}/actions?limit=200"
+        seen_urls, seen_ids, archives, distribution = set(), set(), [], []
+
+        def timestamp(value):
+            if not isinstance(value, str):
+                raise ValueError("Missing action timestamp")
+            result = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if result.tzinfo is None:
+                raise ValueError("Missing action timezone")
+            return result
+
+        while url:
+            remaining = deadline - time.monotonic()
+            if url in seen_urls or len(seen_urls) >= 100 or remaining <= 0:
+                return False
+            seen_urls.add(url)
+            data = self._get(url, min(20, remaining), action_run_id=run_id)
+            if not isinstance(data.get("data"), list) or not isinstance(data.get("links"), dict):
+                return False
+            for item in data["data"]:
+                if (not isinstance(item, dict) or item.get("type") != "ciBuildActions"
+                        or not isinstance(item.get("id"), str) or not item["id"] or item["id"] in seen_ids):
+                    return False
+                seen_ids.add(item["id"])
+                attrs = item.get("attributes")
+                if not isinstance(attrs, dict):
+                    return False
+                try:
+                    if attrs.get("executionProgress") == "COMPLETE":
+                        if attrs.get("completionStatus") != "SUCCEEDED":
+                            return False
+                        finished = timestamp(attrs.get("finishedDate"))
+                        if attrs.get("actionType") == "ARCHIVE":
+                            # Apple also reports notarization as ARCHIVE. It may
+                            # run alongside TestFlight distribution, after the
+                            # actual archives; require success but not ordering.
+                            if attrs.get("name") == "Notarize - macOS":
+                                continue
+                            if not isinstance(attrs.get("name"), str) or not re.fullmatch(
+                                    r"Archive - (?:macOS|iOS|visionOS|tvOS)", attrs["name"]):
+                                return False
+                            archives.append(finished)
+                    elif (attrs.get("executionProgress") == "RUNNING" and attrs.get("actionType") == "TEST"
+                          and attrs.get("completionStatus") is None and attrs.get("finishedDate") is None
+                          and isinstance(attrs.get("name"), str) and re.fullmatch(
+                              r"TestFlight (?:Internal|External) Testing - (?:macOS|iOS|visionOS|tvOS)", attrs["name"])):
+                        distribution.append(timestamp(attrs.get("startedDate")))
+                    else:
+                        return False
+                except (ValueError, OverflowError):
+                    return False
+            url = data["links"].get("next")
+            if url is not None and (not isinstance(url, str) or not url):
+                return False
+        return bool(archives and distribution and min(distribution) >= max(archives))
+
     def snapshot(self) -> dict:
         url = ORIGIN + f"/v1/ciProducts/{self.product_id}/buildRuns?limit=200&fields%5BciBuildRuns%5D=number,executionProgress"
         deadline = time.monotonic() + 90
         seen_urls, seen_ids = set(), set()
         maximum = 0
+        completed_maximum = 0
+        unfinished = []
         while url:
             if url in seen_urls or len(seen_urls) >= 100 or time.monotonic() >= deadline:
                 raise ValueError("Cloud build history is incomplete or changing; retry preflight.")
@@ -169,14 +243,22 @@ class CloudBuildCounter:
                 attrs = item.get("attributes")
                 if not isinstance(attrs, dict) or type(attrs.get("number")) is not int or attrs["number"] < 1:
                     raise ValueError("Cloud build number is missing or invalid.")
-                if attrs.get("executionProgress") != "COMPLETE":
+                progress = attrs.get("executionProgress")
+                if progress not in ("COMPLETE", "RUNNING"):
                     raise ValueError("Cloud has an active, queued or unknown-state build. Wait for it to finish before allocating a release number.")
+                if progress == "RUNNING":
+                    unfinished.append((item["id"], attrs["number"]))
+                else:
+                    completed_maximum = max(completed_maximum, attrs["number"])
                 maximum = max(maximum, attrs["number"])
             url = data["links"].get("next")
             if url is not None and (not isinstance(url, str) or not url):
                 raise ValueError("Malformed Cloud pagination link.")
         if not maximum:
             raise ValueError("No Cloud build history exists; configure the initial counter explicitly.")
+        for run_id, number in unfinished:
+            if number >= completed_maximum or not self._only_lingering_distribution(run_id, deadline):
+                raise ValueError(f"Cloud has an active, queued or unknown-state build ({number}). Wait for it to finish before allocating a release number.")
         return {"product_id": self.product_id, "max_number": maximum}
 
     def assert_unchanged(self, expected: dict, candidate: int) -> None:

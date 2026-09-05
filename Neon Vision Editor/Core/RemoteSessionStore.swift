@@ -1721,7 +1721,11 @@ final class RemoteSessionStore {
                     return
                 }
 
-                let content = String(decoding: payloadData, as: UTF8.self)
+                guard let content = String(data: payloadData, encoding: .utf8),
+                      CoordinatedDocumentAccess.isText(Data(payloadData), encoding: .utf8) else {
+                    continuation.resume(returning: .failure("Remote file is not valid UTF-8 text; it was not opened for editing."))
+                    return
+                }
                 let name = URL(fileURLWithPath: remotePath).lastPathComponent
                 continuation.resume(
                     returning: .success(

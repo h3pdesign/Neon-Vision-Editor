@@ -1,5 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
+> Prepared release: **v1.6.2** — not published. See [candidate notes](CHANGELOG.md).
+
 <p align="center">
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.6.1-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
@@ -712,7 +714,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 ### Next (v1.6.2)
 
-- ![v1.6.2](https://img.shields.io/badge/v1.6.2-F59E0B?style=flat-square) targets post-1.6.1 stabilization: App Store review follow-up, README/release metadata freshness, preview polish, and small cross-platform editor fixes.
+- ![v1.6.2](https://img.shields.io/badge/v1.6.2-F59E0B?style=flat-square) targets the reviewed changes listed under Unreleased in CHANGELOG.md; scope is not final until release preparation.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v1.5+)

@@ -88,6 +88,11 @@ If App Store Connect says the build was made with beta Xcode, discard that archi
 
 ## Xcode Cloud Archive
 
+For shared local/GitHub/Cloud build numbering, use the authenticated counter
+preflight in [the release workflow](../release/RELEASE-WORKFLOW.md#cloud-build-number-preflight).
+It stops on active Cloud runs or stale allocations; changing the project build
+number alone does not change Xcode Cloud's configured next build number.
+
 Use this path when the local Mac is on beta macOS or beta Xcode.
 
 1. Push the release-ready branch:

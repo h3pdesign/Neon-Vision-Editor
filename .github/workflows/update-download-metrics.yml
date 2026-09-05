@@ -13,7 +13,8 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     concurrency:
-      group: daily-metrics
+      group: public-documentation-writer
+      queue: max
       cancel-in-progress: false
 
     steps:

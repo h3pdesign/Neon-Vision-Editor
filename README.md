@@ -191,6 +191,7 @@
 | Document | Purpose |
 |---|---|
 | [`CHANGELOG.md`](CHANGELOG.md) | Full release history and milestone issue coverage |
+| [`release/RELEASE-WORKFLOW.md`](release/RELEASE-WORKFLOW.md) | Isolated release preparation, changelog/README generation, offline dry runs, and publication checks |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Current cross-platform architecture, ownership boundaries, performance rules, and verification model |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Local setup, build, and contribution workflow |
 | [`PRIVACY.md`](PRIVACY.md) | Privacy guarantees and data-handling policy |

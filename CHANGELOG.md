@@ -15,6 +15,37 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - Restricts agent file access to the captured project index, rejects path traversal and stale edit targets, and runs only editor-resolved verification commands without a shell or model-authored arguments.
 
+### Why Upgrade
+
+- Detects external edits on network volumes even when filesystem change notifications are missed.
+- Lets you disable the automatic Welcome Tour and opens Finder documents without interrupting them with a tour.
+- Keeps purchase feedback stable while Settings updates and product information refreshes.
+
+### Highlights
+
+- Adds a background metadata polling fallback for open network-volume files, reusing the existing external-change conflict handling.
+- Adds an automatic Welcome Tour preference; Finder file launches suppress the tour, including after app updates.
+- Presents purchase alerts using local SwiftUI presentation state and preserves the latest queued purchase message.
+
+### Fixes
+
+- Avoids duplicate network-file checks and skips tabs that are still loading or already reviewing an external change.
+- Rechecks launch intent before presenting a delayed Welcome Tour.
+- Prevents purchase-alert state publication during SwiftUI view updates and stops successful product metadata refreshes from clearing purchase feedback.
+
+### Maintenance
+
+- Isolates release preparation from develop, reuses allocated build numbers, and verifies generated documentation in a disposable dry run.
+- Keeps public download references on the published version until release verification succeeds.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.6.1] - 2026-09-04
 
 ### Why Upgrade

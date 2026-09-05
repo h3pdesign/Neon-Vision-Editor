@@ -14,12 +14,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 EXPECTED_VERSION="${TAG#v}"
+PUBLIC_TAG="$(python3 scripts/prepare_release_docs.py "$TAG" --public-tag)"
+PUBLIC_VERSION="${PUBLIC_TAG#v}"
 PBXPROJ_FILE="Neon Vision Editor.xcodeproj/project.pbxproj"
 WELCOME_TOUR_FILE="Neon Vision Editor/UI/PanelsAndHelpers.swift"
 WEBSITE_FILE="site/index.html"
 CHANGELOG_PAGE_FILE="site/changelog.html"
 SAFE_TAG="$(printf '%s' "$TAG" | tr -c 'A-Za-z0-9_' '_')"
-CHANGELOG_SECTION_FILE="/tmp/release-metadata-${SAFE_TAG}.md"
+CHANGELOG_SECTION_FILE="$(mktemp "${TMPDIR:-/tmp}/nve-release-metadata.XXXXXX")"
 trap 'rm -f "$CHANGELOG_SECTION_FILE"' EXIT
 
 fail() {
@@ -50,13 +52,13 @@ if grep -nEi "\bTODO\b" "$CHANGELOG_SECTION_FILE" >/dev/null; then
   fail "CHANGELOG.md section for ${TAG} still contains TODO markers" "Replace TODOs in CHANGELOG.md, then rerun scripts/ci/release_preflight.sh ${TAG}."
 fi
 
-grep -nE "^> Latest release: \\*\\*${TAG}\\*\\*\\r?$" README.md >/dev/null || \
+grep -nE "^> Latest release: \\*\\*${PUBLIC_TAG}\\*\\*\\r?$" README.md >/dev/null || \
   fail "README.md latest-release badge does not point to ${TAG}" "Run scripts/release_prep.sh ${TAG}."
 
-grep -nE "^- Latest release: \\*\\*${TAG}\\*\\*\\r?$" README.md >/dev/null || \
+grep -nE "^- Latest release: \\*\\*${PUBLIC_TAG}\\*\\*\\r?$" README.md >/dev/null || \
   fail "README.md latest-release bullet does not point to ${TAG}" "Run scripts/release_prep.sh ${TAG}."
 
-grep -nE "^\\| .*\\(https://github\\.com/h3pdesign/Neon-Vision-Editor/releases/tag/${TAG}\\) \\|" README.md >/dev/null || \
+grep -nE "^\\| .*\\(https://github\\.com/h3pdesign/Neon-Vision-Editor/releases/tag/${PUBLIC_TAG}\\) \\|" README.md >/dev/null || \
   fail "README.md release table has no row for ${TAG}" "Run scripts/release_prep.sh ${TAG}."
 
 grep -F "title: \"What’s New in ${TAG}\"" "$WELCOME_TOUR_FILE" >/dev/null || \
@@ -65,22 +67,22 @@ grep -F "title: \"What’s New in ${TAG}\"" "$WELCOME_TOUR_FILE" >/dev/null || \
 grep -F '<!-- RELEASE_TIMELINE:START -->' "$WEBSITE_FILE" >/dev/null || \
   fail "GitHub Pages release timeline markers are missing" "Restore the release timeline markers in site/index.html, then run scripts/release_prep.sh ${TAG}."
 
-grep -F "releases/tag/${TAG}" "$WEBSITE_FILE" >/dev/null || \
+grep -F "releases/tag/${PUBLIC_TAG}" "$WEBSITE_FILE" >/dev/null || \
   fail "GitHub Pages release timeline has no card for ${TAG}" "Run scripts/release_prep.sh ${TAG}; it updates the Pages timeline from CHANGELOG.md."
 
-grep -F "data-static-release-version=\"${TAG}\"" "$WEBSITE_FILE" >/dev/null || \
+grep -F "data-static-release-version=\"${PUBLIC_TAG}\"" "$WEBSITE_FILE" >/dev/null || \
   fail "GitHub Pages static release fallback does not identify ${TAG}" "Run scripts/release_prep.sh ${TAG}; it updates download fallbacks with the release tag."
 
-grep -F "\"softwareVersion\": \"${EXPECTED_VERSION}\"" "$WEBSITE_FILE" >/dev/null || \
+grep -F "\"softwareVersion\": \"${PUBLIC_VERSION}\"" "$WEBSITE_FILE" >/dev/null || \
   fail "GitHub Pages JSON-LD software version is not ${EXPECTED_VERSION}" "Run scripts/release_prep.sh ${TAG}; it updates website release metadata."
 
-grep -F "data-latest-version>${TAG}</span>" "$WEBSITE_FILE" >/dev/null || \
+grep -F "data-latest-version>${PUBLIC_TAG}</span>" "$WEBSITE_FILE" >/dev/null || \
   fail "GitHub Pages download fallback does not identify ${TAG}" "Run scripts/release_prep.sh ${TAG}; it updates website download fallbacks."
 
 grep -F '<!-- CHANGELOG_ENTRIES:START -->' "$CHANGELOG_PAGE_FILE" >/dev/null || \
   fail "GitHub Pages changelog entry markers are missing" "Restore the markers in site/changelog.html, then run scripts/release_prep.sh ${TAG}."
 
-grep -F "<h2>${TAG}</h2>" "$CHANGELOG_PAGE_FILE" >/dev/null || \
+grep -F "<h2>${PUBLIC_TAG}</h2>" "$CHANGELOG_PAGE_FILE" >/dev/null || \
   fail "GitHub Pages changelog has no entry for ${TAG}" "Run scripts/release_prep.sh ${TAG}; it updates site/changelog.html from CHANGELOG.md."
 
 MARKETING_VERSIONS="$(

@@ -48,6 +48,12 @@ def fixture(root):
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_ref_inventory_accepts_no_named_refs(self):
+        with tempfile.TemporaryDirectory(prefix="nve-empty-refs-") as temp:
+            root = Path(temp)
+            prep.run("git", "init", "-q", cwd=root)
+            self.assertEqual("", prep.git("for-each-ref", "--format=%(refname) %(objectname)", cwd=root))
+
     def test_promoted_unreleased_stays_above_release(self):
         content = "# Changelog\n\n## [Unreleased]\n\n### Highlights\n\n- A real fix.\n\n## [v1.6.1] - 2026-09-04\n"
         result = docs.promote_unreleased_section(content, "v1.6.2", "2026-09-05")
@@ -95,7 +101,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
             gh_wrapper = directory / "gh"
             gh_wrapper.write_text('#!/bin/sh\necho "Forbidden GitHub call in dry run" >&2\nexit 99\n')
             gh_wrapper.chmod(0o755)
-            before = (prep.git("status", "--porcelain"), prep.git("show-ref"), prep.git("branch", "--show-current"))
+            before = (prep.git("status", "--porcelain"), prep.git("for-each-ref", "--format=%(refname) %(objectname)"), prep.git("branch", "--show-current"))
             fixture_before = prep.snapshot(root)
             env = dict(os.environ, PATH=str(directory) + os.pathsep + os.environ["PATH"])
             result = subprocess.run(["bash", "scripts/release_all.sh", "v1.6.2", "--dry-run"],
@@ -103,7 +109,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("PASS:", result.stdout)
             self.assertEqual(fixture_before, prep.snapshot(root))
-            self.assertEqual(before, (prep.git("status", "--porcelain"), prep.git("show-ref"), prep.git("branch", "--show-current")))
+            self.assertEqual(before, (prep.git("status", "--porcelain"), prep.git("for-each-ref", "--format=%(refname) %(objectname)"), prep.git("branch", "--show-current")))
 
     def test_generation_is_repeatable_and_publication_is_separate(self):
         with tempfile.TemporaryDirectory(prefix="nve-docs-test-") as temp:

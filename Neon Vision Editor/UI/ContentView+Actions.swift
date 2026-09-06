@@ -2225,10 +2225,14 @@ extension ContentView {
         candidateFiles: [URL]?,
         query: String,
         caseSensitive: Bool,
-        maxResults: Int
+        maxResults: Int,
+        ignoredFolderNames: Set<String> = Set(ProjectIgnoredFolders.defaultNames)
     ) async -> [FindInFilesMatch] {
         await Task.detached(priority: .userInitiated) {
-            let searchFiles = searchCandidateFiles(root: root, candidateFiles: candidateFiles)
+            guard maxResults > 0, !query.isEmpty else { return [] }
+            let rules = ProjectSearchIgnoreRules(root: root, excludedFolders: ignoredFolderNames)
+            let searchFiles = searchCandidateFiles(root: root, candidateFiles: candidateFiles, rules: rules)
+            guard !searchFiles.isEmpty else { return [] }
             #if os(macOS)
             if let ripgrepMatches = findInFilesWithRipgrep(
                 root: root,
@@ -2280,12 +2284,15 @@ extension ContentView {
             "--max-count",
             String(maxResults),
             caseSensitive ? "-s" : "-i",
+            "--fixed-strings",
+            "--",
             query
         ]
         if let ripgrepFileArguments = ripgrepPathArguments(root: root, candidateFiles: candidateFiles) {
             arguments.append(contentsOf: ripgrepFileArguments)
         } else {
-            arguments.append(root.path)
+            // Never widen the search when the explicit file list exceeds argv limits.
+            return nil
         }
         process.arguments = arguments
 
@@ -2330,7 +2337,7 @@ extension ContentView {
             let column = max(1, start + 1)
             let length = max(1, end - start)
             let snippet = lineText.trimmingCharacters(in: .newlines)
-            let fileURL = URL(fileURLWithPath: path)
+            let fileURL = (path.hasPrefix("/") ? URL(fileURLWithPath: path) : root.appendingPathComponent(path)).standardizedFileURL
             let lineStarts: [Int] = {
                 if let cached = lineStartsByPath[path] {
                     return cached
@@ -2358,11 +2365,17 @@ extension ContentView {
 
 #endif
 
-    private nonisolated static func searchCandidateFiles(root: URL, candidateFiles: [URL]?) -> [URL] {
-        if let candidateFiles, !candidateFiles.isEmpty {
-            return candidateFiles
+    private nonisolated static func searchCandidateFiles(root: URL, candidateFiles: [URL]?, rules: ProjectSearchIgnoreRules) -> [URL] {
+        if let candidateFiles {
+            return candidateFiles.filter {
+                guard !rules.excludes($0, isDirectory: false),
+                      let values = try? $0.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey]),
+                      values.isRegularFile == true, values.isSymbolicLink != true,
+                      let size = values.fileSize, size > 0, size <= 2_000_000 else { return false }
+                return true
+            }
         }
-        return searchableProjectFiles(at: root)
+        return searchableProjectFiles(at: root, rules: rules)
     }
 
 #if os(macOS)
@@ -2394,9 +2407,9 @@ extension ContentView {
     }
 #endif
 
-    private nonisolated static func searchableProjectFiles(at root: URL) -> [URL] {
+    private nonisolated static func searchableProjectFiles(at root: URL, rules: ProjectSearchIgnoreRules) -> [URL] {
         let fm = FileManager.default
-        let keys: Set<URLResourceKey> = [.isRegularFileKey, .isHiddenKey, .fileSizeKey]
+        let keys: Set<URLResourceKey> = [.isRegularFileKey, .isDirectoryKey, .isSymbolicLinkKey, .isHiddenKey, .fileSizeKey]
         guard let enumerator = fm.enumerator(
             at: root,
             includingPropertiesForKeys: Array(keys),
@@ -2410,6 +2423,10 @@ extension ContentView {
         for case let url as URL in enumerator {
             if Task.isCancelled { break }
             guard let values = try? url.resourceValues(forKeys: keys) else { continue }
+            if values.isSymbolicLink == true || rules.excludes(url, isDirectory: values.isDirectory == true) {
+                if values.isDirectory == true { enumerator.skipDescendants() }
+                continue
+            }
             guard values.isHidden != true, values.isRegularFile == true else { continue }
             let size = values.fileSize ?? 0
             if size <= 0 || size > 2_000_000 { continue }

@@ -8,6 +8,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Fixes
 
+- Find in Files now applies root and nested .gitignore rules and the sidebar's Ignored Folders settings consistently, pruning excluded directories while retaining text files with unknown extensions.
 - Corrects mobile line-number updates while typing and scrolling, and removes the fixed width ceiling that clipped long unwrapped lines.
 - Adds three lines of bottom editing space and keeps context below the active caret on iOS/iPadOS and visionOS.
 - Adds triple-tap logical-line selection and an accessible Select Line action in the mobile editor.

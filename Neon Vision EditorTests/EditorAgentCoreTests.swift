@@ -3,6 +3,94 @@ import XCTest
 @testable import Neon_Vision_Editor
 
 final class EditorAgentCoreTests: XCTestCase {
+    func testEditTargetUsesUTF8ByteLimitAndRoundTripsUnicode() throws {
+        let source = String(repeating: "🧪", count: 8_000)
+        let target = EditorAgentEditTarget(tabID: UUID(), range: NSRange(location: 3, length: source.utf16.count), source: source)
+        let prompt = try EditorAgentPromptPolicy.prompt("Keep Unicode", mode: .edit, target: target)
+        let encoded = try XCTUnwrap(prompt.components(separatedBy: "selection only):\n").last)
+        let decoded = try JSONDecoder().decode(String.self, from: Data(encoded.utf8))
+        XCTAssertEqual(Array(decoded.utf8), Array(source.utf8))
+        let oversized = EditorAgentEditTarget(tabID: target.tabID, range: target.range, source: source + "x")
+        XCTAssertThrowsError(try EditorAgentPromptPolicy.prompt("Keep Unicode", mode: .edit, target: oversized))
+    }
+
+    func testProposalRejectsNonEditModesAndNoOpOutputs() {
+        let target = EditorAgentEditTarget(tabID: UUID(), range: NSRange(location: 0, length: 3), source: "old")
+        for mode in [EditorAgentMode.explore, .verify] {
+            XCTAssertNil(EditorAgentPromptPolicy.editProposal(target: target, replacement: "new", summary: "", mode: mode))
+        }
+        for replacement in ["", "old"] {
+            XCTAssertNil(EditorAgentPromptPolicy.editProposal(target: target, replacement: replacement, summary: "", mode: .edit))
+        }
+        let replacement = "\t \r\n"
+        let proposal = EditorAgentPromptPolicy.editProposal(target: target, replacement: replacement, summary: "", mode: .edit)
+        XCTAssertEqual(proposal?.replacement.utf8.map { $0 }, Array(replacement.utf8))
+        XCTAssertFalse(proposal?.matches(tabID: target.tabID, range: NSRange(location: 1, length: 3), currentSource: "old") == true)
+    }
+
+    func testStaleEditRejectsUnicodeNormalizationChanges() {
+        let tab = UUID()
+        let original = "e\u{0301}\u{0323}"
+        let changed = "e\u{0323}\u{0301}"
+        let range = NSRange(location: 0, length: original.utf16.count)
+        XCTAssertEqual(original.utf16.count, changed.utf16.count)
+        XCTAssertNotEqual(Array(original.utf8), Array(changed.utf8))
+        let proposal = EditorAgentEditProposal(tabID: tab, range: range, source: original, replacement: "new", summary: "")
+        XCTExpectFailure("Review finding: Swift String equality accepts canonically equivalent but byte-different source; exact-source validation must reject it.") {
+            XCTAssertFalse(proposal.matches(tabID: tab, range: range, currentSource: changed))
+        }
+    }
+
+    func testWorkspaceRejectsUnindexedAndDeletedFilesAndDeduplicatesAllowlist() async throws {
+        let indexed = temporaryDirectoryURL.appendingPathComponent("Indexed.swift")
+        let unindexed = temporaryDirectoryURL.appendingPathComponent("Unindexed.swift")
+        try "needle".write(to: indexed, atomically: true, encoding: .utf8)
+        try "needle".write(to: unindexed, atomically: true, encoding: .utf8)
+        let workspace = EditorAgentWorkspace(rootURL: temporaryDirectoryURL, allowedFileURLs: [indexed, indexed])
+        let matches = try await workspace.searchProject(query: "needle")
+        XCTAssertEqual(matches.map(\.relativePath), ["Indexed.swift"])
+        await XCTAssertThrowsErrorAsync { _ = try await workspace.readFile(relativePath: "Unindexed.swift") }
+        try FileManager.default.removeItem(at: indexed)
+        await XCTAssertThrowsErrorAsync { _ = try await workspace.readFile(relativePath: "Indexed.swift") }
+        let afterDeletion = try await workspace.searchProject(query: "needle")
+        XCTAssertTrue(afterDeletion.isEmpty)
+    }
+
+    func testReadTruncationIsDisclosedAndInvalidUTF8IsRejected() async throws {
+        let source = temporaryDirectoryURL.appendingPathComponent("Long.txt")
+        let invalid = temporaryDirectoryURL.appendingPathComponent("Invalid.txt")
+        try "abcdefghij".write(to: source, atomically: true, encoding: .utf8)
+        try Data([0xff, 0xfe, 0x61]).write(to: invalid)
+        let workspace = EditorAgentWorkspace(rootURL: temporaryDirectoryURL, allowedFileURLs: [source, invalid])
+        let excerpt = try await workspace.readFile(relativePath: "Long.txt", maximumCharacters: 4)
+        XCTAssertEqual(excerpt, "abcd\n[Partial file excerpt: remaining content omitted.]")
+        let complete = try await workspace.readFile(relativePath: "Long.txt", maximumCharacters: 10)
+        XCTAssertEqual(complete, "abcdefghij")
+        await XCTAssertThrowsErrorAsync { _ = try await workspace.readFile(relativePath: "Invalid.txt") }
+        let activity = await workspace.activitySnapshot()
+        XCTAssertEqual(activity.last?.status, .blocked)
+    }
+
+    func testSearchRejectsEmptyQueriesAndNormalizesCaseAndAccents() async throws {
+        let source = temporaryDirectoryURL.appendingPathComponent("Source.txt")
+        try "A CAFÉ example".write(to: source, atomically: true, encoding: .utf8)
+        let workspace = EditorAgentWorkspace(rootURL: temporaryDirectoryURL, allowedFileURLs: [source])
+        for query in ["", "  ", "x"] {
+            await XCTAssertThrowsErrorAsync { _ = try await workspace.searchProject(query: query) }
+        }
+        let matches = try await workspace.searchProject(query: " cafe ", maximumResults: 0)
+        XCTAssertEqual(matches.count, 1)
+        XCTAssertTrue(matches[0].snippet.contains("CAFÉ"))
+    }
+
+    func testVerificationResultNeverReportsCancelledOrTimedOutAsSuccess() {
+        let plan = EditorAgentVerificationPlan(action: .build, executableURL: URL(fileURLWithPath: "/usr/bin/swift"), arguments: ["build"], workingDirectoryURL: temporaryDirectoryURL)
+        XCTAssertTrue(EditorAgentVerificationResult(plan: plan, terminationStatus: 0, output: "", didTimeOut: false).succeeded)
+        XCTAssertFalse(EditorAgentVerificationResult(plan: plan, terminationStatus: 0, output: "", didTimeOut: true).succeeded)
+        XCTAssertFalse(EditorAgentVerificationResult(plan: plan, terminationStatus: 0, output: "", didTimeOut: false, wasCancelled: true).succeeded)
+        XCTAssertFalse(EditorAgentVerificationResult(plan: plan, terminationStatus: 7, output: "", didTimeOut: false).succeeded)
+    }
+
     func testWorkspaceExcludesSecretFilesAndCredentialContent() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

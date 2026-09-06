@@ -52,6 +52,37 @@ final class AIChatPromptTests: XCTestCase {
         XCTAssertTrue(prompt.contains(selection))
         XCTAssertTrue(prompt.contains("USER REQUEST:\nEdit this"))
     }
+
+    func testNewRequestCannotBeOverwrittenByCancelledRequestMetadata() async throws {
+        let conversation = AIChatConversation()
+        let oldClient = DelayedMetadataClient()
+        let context = AIChatContext(selection: nil, documentName: nil, documentLanguage: nil, documentText: nil, projectStructure: nil)
+        conversation.start(prompt: "Old", context: context, providerName: "Test", client: oldClient)
+        for _ in 0..<200 where !oldClient.enteredMetadata { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertTrue(oldClient.enteredMetadata)
+        defer { oldClient.resume?.resume(); oldClient.resume = nil }
+        conversation.cancel()
+        let result = EditorAgentRunResult(responseMarkdown: "New result", editProposal: nil, verificationAction: .none, verificationReason: "", processingLocation: .onDevice, activity: [])
+        conversation.start(prompt: "New", context: context, providerName: "Test", client: AgentResultClient(result: result))
+        for _ in 0..<200 where conversation.isSending { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertFalse(conversation.isSending)
+        oldClient.resume?.resume()
+        oldClient.resume = nil
+        // Give the old request's remaining metadata awaits a chance to complete.
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertNil(conversation.errorMessage)
+        XCTAssertEqual(conversation.latestAgentResult?.responseMarkdown, "New result")
+        XCTAssertEqual(conversation.messages.last?.content, "New result")
+    }
+
+    func testLegacyChatMessageDecodesWithoutAgentFlag() throws {
+        let ordinary = AIChatMessage(role: .assistant, content: "Ordinary chat")
+        var payload = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(ordinary)) as? [String: Any])
+        payload.removeValue(forKey: "isAgentResponse")
+        let restored = try JSONDecoder().decode(AIChatMessage.self, from: JSONSerialization.data(withJSONObject: payload))
+        XCTAssertTrue(restored.allowsGenericEdits)
+        XCTAssertEqual(restored.content, ordinary.content)
+    }
     private struct AgentResultClient: AIClient {
         let usesEditorAgentPrompt = true
         let result: EditorAgentRunResult

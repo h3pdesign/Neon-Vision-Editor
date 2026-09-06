@@ -93,4 +93,10 @@ Level 2 verification with Xcode 27 beta: macOS, iOS Simulator, iPad Simulator, a
 
 Still required before release: runtime UI/VoiceOver/keyboard checks, representative live-model evaluations including prompt injection and accumulated tool context, and PCC entitlement/quota/device validation. Credential filtering is defense in depth, not a guarantee that arbitrary confidential text is detected. Deliberately detached subprocesses can escape the owned process group; verification remains restricted to explicitly approved trusted projects.
 
+### Additional regression review — 2026-09-05
+
+Added nine tests for Unicode byte limits and round-tripping, proposal modes/no-op outputs, exact-source staleness, duplicate/unindexed/deleted files, excerpt disclosure, invalid UTF-8, search normalization, verification result states, delayed metadata after a new request, and legacy chat decoding. Focused macOS verification: 29 passed, one expected failure, four sandbox-host skips, zero unexpected failures (34 tests total). Production code was not changed in this review pass.
+
+**Open P2 finding:** `EditorAgentEditProposal.matches` and the final `applyAIChatReplacement` guard compare Swift strings using canonical equivalence instead of exact source bytes. Reordering combining characters can change source bytes while preserving UTF-16 length and string equality, allowing a stale proposal through both guards. `testStaleEditRejectsUnicodeNormalizationChanges` reproduces this with equal-length combining sequences and records a strict expected failure. Fix the exact-source checks in both paths and remove the expectation before treating EDIT-02 as satisfied. Proposal no-op comparison uses the same equality and should be included in that fix's impact review. This finding supersedes the earlier source-review clearance.
+
 Out of scope for this release: autonomous multi-file writes, shell generation, package installation as an agent tool, Git publication, multi-agent orchestration in the shipped app, image attachments, and App Intents that act on an uncaptured selection. Reconsider these only with a concrete user flow and independent evaluation.

@@ -116,6 +116,7 @@ final class EditorInputTextView: UITextView {
         let tabWidth: Int
         let fontName: String
         let fontSize: CGFloat
+        let letterSpacing: CGFloat
         let width: CGFloat
     }
 
@@ -323,13 +324,14 @@ final class EditorInputTextView: UITextView {
         return offsets
     }
 
-    func cachedNoWrapWidth(visibleWidth: CGFloat, tabWidth: Int, font: UIFont, compute: () -> CGFloat) -> CGFloat {
+    func cachedNoWrapWidth(visibleWidth: CGFloat, tabWidth: Int, font: UIFont, letterSpacing: CGFloat = 0, compute: () -> CGFloat) -> CGFloat {
         if let cache = noWrapWidthCache,
            cache.revision == textMetricsRevision,
            abs(cache.visibleWidth - visibleWidth) < 0.5,
            cache.tabWidth == tabWidth,
            cache.fontName == font.fontName,
-           abs(cache.fontSize - font.pointSize) < 0.01 {
+           abs(cache.fontSize - font.pointSize) < 0.01,
+           cache.letterSpacing == letterSpacing {
             return cache.width
         }
         let width = compute()
@@ -339,6 +341,7 @@ final class EditorInputTextView: UITextView {
             tabWidth: tabWidth,
             fontName: font.fontName,
             fontSize: font.pointSize,
+            letterSpacing: letterSpacing,
             width: width
         )
         return width
@@ -493,6 +496,7 @@ final class EditorInputTextView: UITextView {
 
     override init(frame: CGRect, textContainer: NSTextContainer?) {
         super.init(frame: frame, textContainer: textContainer)
+        installLineSelectionGesture()
         #if !os(visionOS)
         inputAccessoryView = makeKeyboardAccessoryView()
         #endif
@@ -507,6 +511,7 @@ final class EditorInputTextView: UITextView {
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
+        installLineSelectionGesture()
         #if !os(visionOS)
         inputAccessoryView = makeKeyboardAccessoryView()
         #endif
@@ -521,6 +526,76 @@ final class EditorInputTextView: UITextView {
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+    }
+
+    private func installLineSelectionGesture() {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(selectTappedLine(_:)))
+        tap.numberOfTapsRequired = 3
+        tap.delaysTouchesBegan = false
+        tap.delaysTouchesEnded = false
+        addGestureRecognizer(tap)
+        accessibilityCustomActions = [UIAccessibilityCustomAction(
+            name: "Select Line", target: self, selector: #selector(selectCurrentLogicalLine))]
+    }
+
+    @objc private func selectTappedLine(_ gesture: UITapGestureRecognizer) {
+        guard gesture.state == .ended, isSelectable,
+              let position = closestPosition(to: gesture.location(in: self)) else { return }
+        selectLogicalLine(at: offset(from: beginningOfDocument, to: position))
+    }
+
+    @objc private func selectCurrentLogicalLine() -> Bool {
+        guard isSelectable else { return false }
+        selectLogicalLine(at: selectedRange.location)
+        return true
+    }
+
+    func selectLogicalLine(at location: Int) {
+        guard isSelectable else { return }
+        let source = textStorage.string as NSString
+        let caret = min(max(0, location), source.length)
+        selectedRange = source.lineRange(for: NSRange(location: caret, length: 0))
+        delegate?.textViewDidChangeSelection?(self)
+    }
+
+    var editingLineHeight: CGFloat {
+        let paragraph = typingAttributes[.paragraphStyle] as? NSParagraphStyle
+        return (font?.lineHeight ?? 20) * max(1, paragraph?.lineHeightMultiple ?? 1)
+    }
+
+    func revealCaretWithContext() {
+        guard isFirstResponder, selectedRange.length == 0,
+              let position = selectedTextRange?.end else { return }
+        var rect = caretRect(for: position)
+        rect.size.height += editingLineHeight * 3
+        // Commit the viewport before syntax styling captures/restores its anchor.
+        // UITextView's deferred scroll-to-rect can otherwise be lost to that restore.
+        let inset = adjustedContentInset
+        var target = contentOffset
+        if rect.maxY > bounds.maxY - inset.bottom {
+            target.y = rect.maxY - bounds.height + inset.bottom
+        } else if rect.minY < bounds.minY + inset.top {
+            target.y = rect.minY - inset.top
+        }
+        if rect.maxX > bounds.maxX - inset.right {
+            target.x = rect.maxX - bounds.width + inset.right
+        } else if rect.minX < bounds.minX + inset.left {
+            target.x = rect.minX - inset.left
+        }
+        target.y = min(max(-inset.top, target.y), max(-inset.top, contentSize.height - bounds.height + inset.bottom))
+        target.x = min(max(-inset.left, target.x), max(-inset.left, contentSize.width - bounds.width + inset.right))
+        if target != contentOffset { setContentOffset(target, animated: false) }
+    }
+
+    func expandUnwrappedEditingLineIfNeeded() {
+        guard !preferredShouldWrapText else { return }
+        let source = textStorage.string as NSString
+        let line = source.lineRange(for: NSRange(location: min(selectedRange.location, source.length), length: 0))
+        let width = (source.substring(with: line) as NSString).size(withAttributes: typingAttributes).width + 32
+        if width > preferredTextContainerWidth {
+            preferredTextContainerWidth = width
+            enforcePreferredWrapLayout()
+        }
     }
 
     func setBracketAccessoryVisible(_ visible: Bool) {
@@ -727,6 +802,7 @@ final class EditorInputTextView: UITextView {
     override func layoutSubviews() {
         super.layoutSubviews()
         enforcePreferredWrapLayout()
+        (superview as? LineNumberedTextViewContainer)?.lineNumberView.setNeedsDisplay()
         if rendersInvisibleCharacters || rendersIndentationGuides {
             invisibleCharactersOverlayView?.requestRedraw()
         }
@@ -1448,9 +1524,11 @@ final class LineNumberGutterView: UIView {
         let layoutManager = textView.layoutManager
         guard !lineStarts.isEmpty else { return }
 
-        let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size).insetBy(dx: 0, dy: -80)
+        // TextKit rectangles are in text-container coordinates, not scroll-view coordinates.
+        let visibleRect = CGRect(
+            x: 0, y: textView.contentOffset.y - textView.textContainerInset.top - 80,
+            width: textView.textContainer.size.width, height: textView.bounds.height + 160)
         let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)
-        if glyphRange.length == 0 { return }
 
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .right
@@ -1462,6 +1540,15 @@ final class LineNumberGutterView: UIView {
         let rightPadding: CGFloat = 6
         let textContainerTop = textView.textContainerInset.top
         let contentOffsetY = textView.contentOffset.y
+        if glyphRange.length == 0 {
+            // Empty documents and the final empty paragraph have no glyphs.
+            let extra = layoutManager.extraLineFragmentRect
+            let y = (extra.isEmpty ? 0 : extra.minY) + textContainerTop - contentOffsetY
+            NSString(string: String(lineStarts.count)).draw(
+                in: CGRect(x: 0, y: y, width: bounds.width - rightPadding, height: font.lineHeight),
+                withAttributes: attrs)
+            return
+        }
         let stickyTopY = textContainerTop + 1
         let visibleStartChar = layoutManager.characterIndexForGlyph(at: glyphRange.location)
         let stickyLineIndex = lineNumberForCharacterIndex(visibleStartChar)
@@ -1490,6 +1577,13 @@ final class LineNumberGutterView: UIView {
             let lineNumber = stickyLineIndex + 1
             let drawRect = CGRect(x: 0, y: stickyTopY, width: bounds.width - rightPadding, height: font.lineHeight)
             NSString(string: String(lineNumber)).draw(in: drawRect, withAttributes: attrs)
+        }
+        if !layoutManager.extraLineFragmentRect.isEmpty,
+           !drawnLineIndices.contains(lineStarts.count - 1) {
+            let y = layoutManager.extraLineFragmentRect.minY + textContainerTop - contentOffsetY
+            NSString(string: String(lineStarts.count)).draw(
+                in: CGRect(x: 0, y: y, width: bounds.width - rightPadding, height: font.lineHeight),
+                withAttributes: attrs)
         }
     }
 
@@ -1608,11 +1702,12 @@ final class LineNumberedTextViewContainer: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         syncEditorInsets()
+        lineNumberView.setNeedsDisplay()
         currentLineHighlightOverlayView.setNeedsDisplay()
     }
 
     private func syncEditorInsets() {
-        let desiredTextInsets = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        let desiredTextInsets = UIEdgeInsets(top: 8, left: 8, bottom: 8 + textView.editingLineHeight * 3, right: 8)
         if textView.textContainerInset != desiredTextInsets {
             textView.textContainerInset = desiredTextInsets
         }
@@ -1880,26 +1975,14 @@ struct CustomTextEditor: UIViewRepresentable {
         let tabWidth = max(1, indentWidth)
         let font = textView.font ?? resolvedUIFont()
         guard let editorTextView = textView as? EditorInputTextView else { return minimumScrollableWidth }
-        return editorTextView.cachedNoWrapWidth(visibleWidth: visibleWidth, tabWidth: tabWidth, font: font) {
-            let nsText = text as NSString
-            let sampleLimit = min(nsText.length, 120_000)
-            var maxColumns = 0
-            var currentColumns = 0
-            for index in 0..<sampleLimit {
-                let unit = nsText.character(at: index)
-                if unit == 10 || unit == 13 {
-                    maxColumns = max(maxColumns, currentColumns)
-                    currentColumns = 0
-                } else if unit == 9 {
-                    currentColumns += tabWidth
-                } else {
-                    currentColumns += 1
-                }
-            }
-            maxColumns = max(maxColumns, currentColumns)
-            let columnWidth = NSString(string: "W").size(withAttributes: [.font: font]).width
-            let measuredWidth = ceil(CGFloat(maxColumns) * max(1, columnWidth)) + textView.textContainerInset.left + textView.textContainerInset.right + 32
-            return max(minimumScrollableWidth, min(measuredWidth, 20_000))
+        return editorTextView.cachedNoWrapWidth(visibleWidth: visibleWidth, tabWidth: tabWidth, font: font, letterSpacing: letterSpacing) {
+            // Measure actual glyph advances, including fallback fonts, tabs and kerning.
+            // Character counts cannot bound CJK/emoji or proportional-font line widths.
+            var attributes = textView.typingAttributes
+            attributes[.font] = font
+            attributes[.kern] = letterSpacing
+            let measuredWidth = ceil((text as NSString).size(withAttributes: attributes).width) + 32
+            return max(minimumScrollableWidth, measuredWidth)
         }
     }
 
@@ -3047,6 +3130,7 @@ struct CustomTextEditor: UIViewRepresentable {
 
             var coloredRanges: [(NSRange, UIColor)] = []
             var emphasizedRanges: [(NSRange, SyntaxFontEmphasis)] = []
+            let markdownFonts = isMarkdownSyntaxLanguage(language) ? markdownSourceFontRanges(text) : []
 
             if let fastRanges = fastSyntaxColorRanges(
                 language: language,
@@ -3154,6 +3238,17 @@ struct CustomTextEditor: UIViewRepresentable {
                         font = italicCommentFont
                     }
                     textView.textStorage.addAttribute(.font, value: font, range: range)
+                }
+                for span in markdownFonts {
+                    let range = NSIntersectionRange(span.range, applyRange)
+                    guard range.length > 0 else { continue }
+                    var traits: UIFontDescriptor.SymbolicTraits = []
+                    if span.bold { traits.insert(.traitBold) }
+                    if span.italic { traits.insert(.traitItalic) }
+                    if let descriptor = baseFont.fontDescriptor.withSymbolicTraits(traits) {
+                        textView.textStorage.addAttribute(.font,
+                            value: UIFont(descriptor: descriptor, size: baseFont.pointSize), range: range)
+                    }
                 }
                 let suppressLargeFileExtras = self.parent.isLargeFileMode
                 let scopeGuideVisualsSupported = supportsScopeGuideVisuals(language: self.parent.language)
@@ -3276,9 +3371,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 }
             }
             if shouldRenderLineNumbers() {
-                if UIDevice.current.userInterfaceIdiom == .phone, textView.isFirstResponder {
-                    container?.lineNumberView.setNeedsDisplay()
-                } else if didApplyIncrementalMutation, let lineNumberMutation {
+                if let lineNumberMutation {
                     container?.updateLineNumbers(
                         afterReplacing: lineNumberMutation.range,
                         with: lineNumberMutation.replacement,
@@ -3286,7 +3379,8 @@ struct CustomTextEditor: UIViewRepresentable {
                         fontSize: parent.fontSize
                     )
                 } else {
-                    container?.updateLineNumbersAfterInteractiveEdit(for: textView.text, fontSize: parent.fontSize)
+                    // Undo, IME, and programmatic replacements may not supply a delta.
+                    container?.updateLineNumbers(for: textView.text, fontSize: parent.fontSize)
                 }
             }
             let nsText = (textView.text ?? "") as NSString
@@ -3294,6 +3388,8 @@ struct CustomTextEditor: UIViewRepresentable {
             pendingEditedRange = nsText.lineRange(for: NSRange(location: caretLocation, length: 0))
             updateCaretStatus()
             scheduleHighlightIfNeeded(currentText: textView.text)
+            (textView as? EditorInputTextView)?.expandUnwrappedEditingLineIfNeeded()
+            (textView as? EditorInputTextView)?.revealCaretWithContext()
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
@@ -3305,6 +3401,7 @@ struct CustomTextEditor: UIViewRepresentable {
             let generation = selectionUpdateGeneration
             guard textView.selectedRange.length > 0 else {
                 publishSelectionState(for: textView)
+                editorTextView?.revealCaretWithContext()
                 return
             }
 

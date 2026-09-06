@@ -609,30 +609,23 @@ extension ContentView {
 #endif
 
         findInFilesTask?.cancel()
-        let indexedProjectFileURLs = projectFileIndexSnapshot.fileURLs
-        let candidateFiles = indexedProjectFileURLs.isEmpty ? nil : indexedProjectFileURLs
-        let searchSourceMessage: String
-        if candidateFiles == nil, isProjectFileIndexing {
-            findInFilesStatusMessage = "Searching while project index updates…"
-            searchSourceMessage = "Live filesystem scan while the project index refreshes."
-        } else {
-            findInFilesStatusMessage = "Searching…"
-            if let candidateFiles {
-                searchSourceMessage = "Searching \(candidateFiles.count) indexed project files."
-            } else {
-                searchSourceMessage = "Searching the live project tree because no index is available yet."
-            }
-        }
+        // Sidebar indexes may omit unknown extensions or reflect older ignore rules.
+        // Search the live tree off the main actor with current folder exclusions.
+        let candidateFiles: [URL]? = nil
+        let searchSourceMessage = "Searching the live project tree with .gitignore and Ignored Folders exclusions."
+        findInFilesStatusMessage = "Searching…"
         findInFilesSourceMessage = searchSourceMessage
 
         let caseSensitive = findInFilesCaseSensitive
+        let ignoredFolderNames = ProjectIgnoredFolders.names(from: projectIgnoredFolderNamesRaw)
         findInFilesTask = Task {
             let results = await ContentView.findInFiles(
                 root: root,
                 candidateFiles: candidateFiles,
                 query: query,
                 caseSensitive: caseSensitive,
-                maxResults: 500
+                maxResults: 500,
+                ignoredFolderNames: ignoredFolderNames
             )
             guard !Task.isCancelled else { return }
             findInFilesResults = results

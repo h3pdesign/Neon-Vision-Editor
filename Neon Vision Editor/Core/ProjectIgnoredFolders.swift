@@ -4,7 +4,7 @@ enum ProjectIgnoredFolders {
     nonisolated static let defaultsKey = "SettingsProjectSidebarIgnoredFolderNames"
     nonisolated static let defaultNames = [".git", ".build", "build", "node_modules", "DerivedData"]
     private nonisolated static let legacyDefaultNames = [".git", ".build", "node_modules", "DerivedData"]
-    nonisolated static let knownNames = defaultNames + [".swiftpm", ".derivedData", "build", "dist"]
+    nonisolated static let knownNames = defaultNames + [".swiftpm", ".derivedData", "dist"]
 
     nonisolated static var defaultRawValue: String {
         defaultNames.joined(separator: ",")

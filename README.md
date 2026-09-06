@@ -165,7 +165,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=10135&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=10167&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -392,6 +392,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - The terminal provides a persistent PTY shell, bounded scrollback, and ANSI colors. Its display is currently append-only: cursor-based progress rewrites and full-screen/alternate-screen programs are not supported. Remaining emulator and readiness work is tracked in [#318](https://github.com/h3pdesign/Neon-Vision-Editor/issues/318).
 - `scripts/nve` opens files from the terminal and supports `--wait`, `--new-window`, and `--line` compatibility flags.
 - Find in Files keeps results visible on Mac and iPad when a match opens, while replacement targets start unselected by default.
+- In the next release, Find in Files respects project and nested `.gitignore` files. Use the project sidebar's **Ignored Folders** menu to exclude `node_modules`, `build`, `dist`, and other listed output folders; custom paths and patterns belong in `.gitignore`. Unknown text-file extensions remain searchable. Git global excludes and tracked-file exceptions are not applied.
 - Remote Sessions are opt-in: macOS owns SSH-key login and can publish an attach code so iPhone, iPad, and Apple Vision Pro can browse, open, edit, and explicitly save supported remote text files through the Mac-hosted broker.
 - Project quick actions (`Expand All` / `Collapse All`), recent project folders, file filters for All Files, Modified, Images, PNG, PDF, and Markdown, and default ignored heavy folders (`.git`, `.build`, `node_modules`, `DerivedData`).
 

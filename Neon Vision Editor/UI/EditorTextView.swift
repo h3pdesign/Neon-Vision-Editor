@@ -681,6 +681,20 @@ func isValidRange(_ range: NSRange, utf16Length: Int) -> Bool {
     isSyntaxHighlightRangeValid(range, utf16Length: utf16Length)
 }
 
+/// Font-only ranges in the original source; markup and escaped/code text stay intact.
+nonisolated func markdownSourceFontRanges(_ source: String) -> [(range: NSRange, bold: Bool, italic: Bool)] {
+    let options = AttributedString.MarkdownParsingOptions(appliesSourcePositionAttributes: true)
+    guard let parsed = try? AttributedString(markdown: source, options: options) else { return [] }
+    return parsed.runs.compactMap { run in
+        guard let intent = run.inlinePresentationIntent,
+              !intent.contains(.code),
+              intent.contains(.stronglyEmphasized) || intent.contains(.emphasized),
+              let position = run.markdownSourcePosition,
+              let range = Range(position, in: source) else { return nil }
+        return (NSRange(range, in: source), intent.contains(.stronglyEmphasized), intent.contains(.emphasized))
+    }
+}
+
 nonisolated func fastSyntaxColorRanges(
     language: String,
     profile: SyntaxPatternProfile,

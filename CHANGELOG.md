@@ -6,6 +6,13 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixes
+
+- Corrects mobile line-number updates while typing and scrolling, and removes the fixed width ceiling that clipped long unwrapped lines.
+- Adds three lines of bottom editing space and keeps context below the active caret on iOS/iPadOS and visionOS.
+- Adds triple-tap logical-line selection and an accessible Select Line action in the mobile editor.
+- Displays Markdown bold and italic source text using font styling while preserving markup, escapes, and code blocks.
+
 ## [v1.6.2] - 2026-09-05
 
 ### Why Upgrade

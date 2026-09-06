@@ -8,6 +8,26 @@ import SwiftUI
 
 @MainActor
 final class MarkdownSyntaxHighlightingTests: XCTestCase {
+    func testSourceEmphasisPreservesUnicodeAndExcludesEscapesAndCode() {
+        let source = "é **bold** *italic* ***both*** `**code**` \\*plain\\*\n\n```\n**fenced**\n```"
+        let spans = markdownSourceFontRanges(source)
+        let ns = source as NSString
+        XCTAssertTrue(spans.contains { ns.substring(with: $0.range) == "bold" && $0.bold && !$0.italic })
+        XCTAssertTrue(spans.contains { ns.substring(with: $0.range) == "italic" && !$0.bold && $0.italic })
+        XCTAssertTrue(spans.contains { ns.substring(with: $0.range) == "both" && $0.bold && $0.italic })
+        XCTAssertFalse(spans.contains { ns.substring(with: $0.range).contains("code") || ns.substring(with: $0.range).contains("fenced") })
+        XCTAssertEqual(markdownSourceFontRanges("").count, 0)
+        XCTAssertEqual(markdownSourceFontRanges("unclosed **text").count, 0)
+    }
+
+    func testSourceEmphasisLargeDocumentBudget() {
+        let source = String(repeating: "Paragraph **bold** and *italic*.\n\n", count: 2_000)
+        let start = ProcessInfo.processInfo.systemUptime
+        XCTAssertEqual(markdownSourceFontRanges(source).count, 4_000)
+        let elapsed = ProcessInfo.processInfo.systemUptime - start
+        print("Markdown source emphasis (64 KB): \(elapsed) seconds")
+        XCTAssertLessThan(elapsed, 2)
+    }
     private func markdownPatterns() -> [String: Color] {
         getSyntaxPatterns(
             for: "markdown",

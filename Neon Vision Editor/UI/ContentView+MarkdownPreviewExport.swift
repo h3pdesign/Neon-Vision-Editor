@@ -3311,6 +3311,19 @@ extension ContentView {
           border-color: #d1d5db !important;
           -webkit-text-fill-color: #111827 !important;
         }
+        /* PDF capture uses screen media too: never export scrolling controls
+           or rely on a horizontal scrollbar to reveal document content. */
+        body.pdf-export .code-block-copy,
+        body.pdf-export .code-block-language-control {
+          display: none !important;
+        }
+        body.pdf-export pre,
+        body.pdf-export pre code {
+          white-space: pre-wrap !important;
+          overflow-wrap: anywhere !important;
+          word-break: normal !important;
+          overflow: visible !important;
+        }
         @media print {
           :root {
             color-scheme: light;

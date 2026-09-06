@@ -35,8 +35,6 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
     private static let exportTimeoutNanoseconds: UInt64 = 30_000_000_000
     private static let exportMeasurementPadding: CGFloat = 28
     private static let onePageExportPadding: CGFloat = 8
-    private static let exportBottomSafetyMargin: CGFloat = 1024
-    private static let onePageBottomSafetyMargin: CGFloat = 24
     private static let onePageMinimumHeight: CGFloat = 120
     private static let a4PaperRect = CGRect(x: 0, y: 0, width: 595, height: 842)
 
@@ -95,8 +93,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
           const root = document.querySelector('.content') || body;
           const scrolling = document.scrollingElement || html;
           const exportPadding = \(Int(exportMode == .onePageFit ? Self.onePageExportPadding : Self.exportMeasurementPadding));
-          const bottomSafetyMargin = \(Int(exportMode == .onePageFit ? Self.onePageBottomSafetyMargin : Self.exportBottomSafetyMargin));
-          const minimumHeight = \(Int(exportMode == .onePageFit ? Self.onePageMinimumHeight : 900));
+          const minimumHeight = \(Int(Self.onePageMinimumHeight));
           body.style.margin = '0';
           body.style.padding = `${exportPadding}px`;
           body.style.overflow = 'visible';
@@ -122,24 +119,33 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
             rangeRect.bottom,
             lastElementRect.bottom
           );
-          const width = Math.max(
-            Math.ceil(body.scrollWidth),
-            Math.ceil(html.scrollWidth),
-            Math.ceil(scrolling.scrollWidth),
-            Math.ceil(root.scrollWidth),
-            Math.ceil(root.getBoundingClientRect().width) + exportPadding * 2,
-            \(Int(Self.a4PaperRect.width))
-          );
+          // Measure at the same width used for capture. Scroll heights include
+          // the initial viewport, which otherwise manufactures blank pages.
+          const width = window.innerWidth;
           const height = Math.max(
-            Math.ceil(body.scrollHeight),
-            Math.ceil(html.scrollHeight),
-            Math.ceil(scrolling.scrollHeight),
-            Math.ceil(scrolling.offsetHeight),
-            Math.ceil(root.scrollHeight),
-            Math.ceil(root.getBoundingClientRect().height) + exportPadding * 2,
-            Math.ceil(measuredBottom - Math.min(bodyRect.top, rootRect.top)) + exportPadding * 2 + bottomSafetyMargin,
+            Math.ceil(measuredBottom + window.scrollY) + exportPadding,
             minimumHeight
           );
+          // A code block can be taller than a page. Its rendered line boxes
+          // provide safe break positions even when no whole block fits.
+          root.querySelectorAll('pre').forEach(pre => {
+            const textWalker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
+            const lineRects = [];
+            while (textWalker.nextNode()) {
+              const lineRange = document.createRange();
+              lineRange.selectNodeContents(textWalker.currentNode);
+              for (const rect of lineRange.getClientRects()) {
+                if (rect.height > 0 && rect.width > 0) lineRects.push({top: rect.top, bottom: rect.bottom});
+              }
+            }
+            lineRects.sort((a, b) => a.top - b.top);
+            let bottom = null;
+            for (const rect of lineRects) {
+              if (bottom !== null && rect.top >= bottom) blockBottoms.push(Math.ceil(bottom + window.scrollY));
+              bottom = bottom === null ? rect.bottom : Math.max(bottom, rect.bottom);
+            }
+            if (bottom !== null) blockBottoms.push(Math.ceil(bottom + window.scrollY));
+          });
           return [width, height, blockBottoms];
         })();
         """
@@ -180,8 +186,8 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         guard let values = javaScriptValue as? [Any], values.count >= 2,
               let widthNumber = values[0] as? NSNumber,
               let heightNumber = values[1] as? NSNumber else { return nil }
-        let width = max(640.0, min(8192.0, widthNumber.doubleValue))
-        let minimumHeight = exportMode == .onePageFit ? Self.onePageMinimumHeight : 900.0
+        let width = max(1.0, min(8192.0, widthNumber.doubleValue))
+        let minimumHeight = Self.onePageMinimumHeight
         let height = max(minimumHeight, heightNumber.doubleValue)
         return CGRect(x: 0, y: 0, width: width, height: height)
     }
@@ -194,6 +200,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
 
     private func bestEffortPDFRect(javaScriptValue: Any?, webView: WKWebView, error: Error?) -> CGRect {
         let jsRect = pdfRect(from: javaScriptValue)
+        if let jsRect, error == nil { return jsRect }
         let contentSize: CGSize
 #if os(macOS)
         contentSize = webView.enclosingScrollView?.documentView?.frame.size ?? .zero
@@ -368,7 +375,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
             return nil
         }
 
-        let mediaBoxInfo: [CFString: Any] = [kCGPDFContextMediaBox: paperRect]
+        let mediaBoxInfo = Self.pageInfo(for: paperRect)
         for range in pageRanges {
             let captureHeight = max(range.bottom - range.top, 1.0)
             let captureRect = CGRect(
@@ -453,7 +460,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         let paperRect = Self.a4PaperRect
         let printableRect = paperRect.insetBy(dx: 36, dy: 36)
         let textFrameRect = printableRect.insetBy(dx: 0, dy: 14)
-        let pageInfo: [CFString: Any] = [kCGPDFContextMediaBox: paperRect]
+        let pageInfo = Self.pageInfo(for: paperRect)
         var currentRange = CFRange(location: 0, length: 0)
 
         repeat {
@@ -575,7 +582,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
             return nil
         }
 
-        let mediaBoxInfo: [CFString: Any] = [kCGPDFContextMediaBox: paperRect]
+        let mediaBoxInfo = Self.pageInfo(for: paperRect)
         for range in pageRanges {
             let sliceBottomY = max(sourceRect.minY, min(sourceRect.maxY, sourceRect.maxY - range.bottom))
             let sliceHeight = max((range.bottom - range.top) * scale, 1.0)
@@ -609,6 +616,8 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
         preferredBlockBottoms: [CGFloat],
         sliceHeight: CGFloat
     ) -> [(top: CGFloat, bottom: CGFloat)] {
+        guard sourceHeight.isFinite, sourceHeight > 0,
+              sliceHeight.isFinite, sliceHeight > 0 else { return [] }
         let sortedBottoms = preferredBlockBottoms
             .filter { $0 > 0 && $0 < sourceHeight }
             .sorted()
@@ -621,7 +630,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
             let tentativeBottom = min(pageTop + sliceHeight, sourceHeight)
             let minimumBottom = min(sourceHeight, pageTop + minimumFill)
             let preferredBottom = sortedBottoms.last(where: { $0 >= minimumBottom && $0 <= tentativeBottom }) ?? tentativeBottom
-            let pageBottom = max(preferredBottom, min(tentativeBottom, sourceHeight))
+            let pageBottom = tentativeBottom == sourceHeight ? sourceHeight : preferredBottom
 
             ranges.append((top: pageTop, bottom: pageBottom))
 
@@ -639,6 +648,11 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
     }
 
     // MARK: - Single Page PDF Fallbacks
+
+    private static func pageInfo(for rect: CGRect) -> [CFString: Any] {
+        var rect = rect
+        return [kCGPDFContextMediaBox: Data(bytes: &rect, count: MemoryLayout<CGRect>.size)]
+    }
 
     private func flexibleSinglePagePDFData(from data: Data) -> Data {
         stitchedSinglePagePDFDataIfNeeded(from: data) ?? data
@@ -679,7 +693,7 @@ final class MarkdownPreviewPDFRenderer: NSObject, WKNavigationDelegate {
             return nil
         }
 
-        let pageInfo: [CFString: Any] = [kCGPDFContextMediaBox: outputRect]
+        let pageInfo = Self.pageInfo(for: outputRect)
         context.beginPDFPage(pageInfo as CFDictionary)
 
         var currentTop = outputRect.maxY

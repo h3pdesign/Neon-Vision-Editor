@@ -15,28 +15,45 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - Restricts agent file access to the captured project index, rejects path traversal and stale edit targets, and runs only editor-resolved verification commands without a shell or model-authored arguments.
 
+### Fixes
+
+- Corrects mobile line-number updates while typing and scrolling, and removes the fixed width ceiling that clipped long unwrapped lines.
+- Adds three lines of bottom editing space and keeps context below the active caret on iOS/iPadOS and visionOS.
+- Adds triple-tap logical-line selection and an accessible Select Line action in the mobile editor.
+- Displays Markdown bold and italic source text using font styling while preserving markup, escapes, and code blocks.
+
+## [v1.6.2] - 2026-09-05
+
 ### Why Upgrade
 
 - Detects external edits on network volumes even when filesystem change notifications are missed.
 - Lets you disable the automatic Welcome Tour and opens Finder documents without interrupting them with a tour.
 - Keeps purchase feedback stable while Settings updates and product information refreshes.
+- Improves external-document save safety and opens text files with unknown extensions or no extension.
 
 ### Highlights
 
 - Adds a background metadata polling fallback for open network-volume files, reusing the existing external-change conflict handling.
 - Adds an automatic Welcome Tour preference; Finder file launches suppress the tour, including after app updates.
 - Presents purchase alerts using local SwiftUI presentation state and preserves the latest queued purchase message.
+- Retains a complete local recovery copy of external-document save payloads on iOS/iPadOS and visionOS.
 
 ### Fixes
 
 - Avoids duplicate network-file checks and skips tabs that are still loading or already reviewing an external change.
 - Rechecks launch intent before presenting a delayed Welcome Tour.
 - Prevents purchase-alert state publication during SwiftUI view updates and stops successful product metadata refreshes from clearing purchase feedback.
+- Coordinates external file access and saves large-file snapshots in the background without discarding newer edits.
+- Preserves queued encoding changes and refreshes cached metadata after atomic replacement to avoid false save conflicts.
+- Preserves ANSI escape sequences, tabs, and Unicode formatting when loading text instead of treating them as pasted display markers.
+- Keeps failed-open placeholders read-only and retains unsaved buffers when files become unavailable or conflict.
+- Waits for saves before closing tabs or projects; failed or conflicted documents remain open.
 
 ### Maintenance
 
 - Isolates release preparation from develop, reuses allocated build numbers, and verifies generated documentation in a disposable dry run.
 - Keeps public download references on the published version until release verification succeeds.
+- Distinguishes proven historical TestFlight distribution-only actions from active Xcode Cloud builds during release-number preflight.
 
 ### Breaking changes
 

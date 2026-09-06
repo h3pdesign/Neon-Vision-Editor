@@ -765,17 +765,8 @@ extension ContentView {
     }
 
     func closeAllTabsFromToolbar() {
-        let dirtyTabIDs = viewModel.tabs.filter(\.isDirty).map(\.id)
-        for tabID in dirtyTabIDs {
-            guard viewModel.tabs.contains(where: { $0.id == tabID }) else { continue }
-            viewModel.saveFile(tabID: tabID)
-        }
-
         let tabIDsToClose = viewModel.tabs.map(\.id)
-        for tabID in tabIDsToClose {
-            guard viewModel.tabs.contains(where: { $0.id == tabID }) else { continue }
-            viewModel.closeTab(tabID: tabID)
-        }
+        Task { await viewModel.saveAndCloseTabs(tabIDs: tabIDsToClose) }
     }
 
     func requestCloseAllTabsFromToolbar() {
@@ -811,14 +802,9 @@ extension ContentView {
             return
         }
 
-        viewModel.saveFile(tabID: pendingCloseTabID)
-
-        if let updated = viewModel.tabs.first(where: { $0.id == pendingCloseTabID }),
-           !updated.isDirty {
-            viewModel.closeTab(tabID: pendingCloseTabID)
-            self.pendingCloseTabID = nil
-        } else {
-            self.pendingCloseTabID = nil
+        Task {
+            await viewModel.saveAndCloseTabs(tabIDs: [pendingCloseTabID])
+            if self.pendingCloseTabID == pendingCloseTabID { self.pendingCloseTabID = nil }
         }
     }
 
@@ -1311,25 +1297,12 @@ extension ContentView {
             return path == rootPath || path.hasPrefix(rootPath + "/")
         }
 
-        for tab in projectTabs where tab.isDirty {
-            viewModel.saveFile(tabID: tab.id)
-        }
-
-        let nonProjectTabs = viewModel.tabs.filter { tab in
-            !projectTabs.contains(where: { $0.id == tab.id })
-        }
-        if nonProjectTabs.isEmpty {
-            viewModel.resetTabsForSessionRestore()
-            viewModel.addNewTab()
-        } else {
-            for tab in projectTabs {
-                guard viewModel.tabs.contains(where: { $0.id == tab.id }) else { continue }
-                viewModel.closeTab(tabID: tab.id)
-            }
-        }
-
         showCloseProjectFolderAndTabsDialog = false
-        closeProjectFolder()
+        Task {
+            guard await viewModel.saveAndCloseTabs(tabIDs: projectTabs.map(\.id)),
+                  projectRootFolderURL?.standardizedFileURL == rootURL else { return }
+            closeProjectFolder()
+        }
     }
 
     func refreshProjectTree() {

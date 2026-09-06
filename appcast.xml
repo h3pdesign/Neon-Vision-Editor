@@ -3,12 +3,12 @@
     <channel>
         <title>Neon Vision Editor</title>
         <item>
-            <title>1.6.1</title>
-            <pubDate>Fri, 04 Sep 2026 10:45:11 +0000</pubDate>
-            <sparkle:version>1017</sparkle:version>
-            <sparkle:shortVersionString>1.6.1</sparkle:shortVersionString>
+            <title>1.6.2</title>
+            <pubDate>Sat, 05 Sep 2026 18:55:48 +0000</pubDate>
+            <sparkle:version>1029</sparkle:version>
+            <sparkle:shortVersionString>1.6.2</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.6</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v1.6.1/Neon.Vision.Editor.app.zip" length="12404699" type="application/octet-stream" sparkle:edSignature="hbAJVOtPmmV9XMAimlZf3+mZpn2DdRT8IMSk3ASMiTqkc2mOCWsvQnNpH0OC1Kc3Jo8YioiW1hxzlhGVOjLAAw=="/>
+            <enclosure url="https://github.com/h3pdesign/Neon-Vision-Editor/releases/download/v1.6.2/Neon.Vision.Editor.app.zip" length="12517645" type="application/octet-stream" sparkle:edSignature="r38U4wnSNPpNtWfG6AWg2h00QzoRBfheFHvvFUM25pbmIsTK5zkQEV3xn9SieBqndBR6gUvtpTNs00jNUwTqDQ=="/>
         </item>
     </channel>
 </rss>

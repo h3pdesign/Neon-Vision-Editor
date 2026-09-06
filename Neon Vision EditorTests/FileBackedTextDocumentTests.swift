@@ -585,6 +585,65 @@ final class FileBackedTextDocumentTests: XCTestCase {
         }
     }
 
+    func testMissingSourceIsAnExternalConflict() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".txt")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data("original\n".utf8).write(to: url)
+        let document = try FileBackedTextDocument(url: url)
+        try FileManager.default.removeItem(at: url)
+        XCTAssertTrue(document.hasExternalConflict())
+    }
+
+    func testBackgroundSaveSnapshotPreservesLaterEditsAndRecoveryLog() async throws {
+        let url = directory.appendingPathComponent("snapshot.txt")
+        try Data("original\n".utf8).write(to: url)
+        let document = try FileBackedTextDocument(url: url)
+        try document.replace(utf16Range: NSRange(location: 0, length: 8), with: "first")
+        let snapshot = document.makeSaveSnapshot()
+        try document.replace(utf16Range: NSRange(location: 0, length: 5), with: "newest")
+        let receipt = try await Task.detached { try snapshot.write() }.value
+        document.acceptSave(receipt)
+        XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "first\n")
+        XCTAssertTrue(document.isDirty)
+        let restored = try FileBackedTextDocument(restoring: document.sessionState)
+        XCTAssertEqual(try restored.text(inByteRange: NSRange(location: 0, length: restored.byteCount)), "newest\n")
+        let newest = document.makeSaveSnapshot()
+        let finalReceipt = try await Task.detached { try newest.write() }.value
+        document.acceptSave(finalReceipt)
+        XCTAssertFalse(document.isDirty)
+        XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "newest\n")
+    }
+
+    func testLazySaveAsSnapshotLeavesOriginalAndLiveEditsUntouched() async throws {
+        let url = directory.appendingPathComponent("source.txt")
+        let destination = directory.appendingPathComponent("copy.txt")
+        try Data("original\n".utf8).write(to: url)
+        let document = try FileBackedTextDocument(url: url, knownUTF8Encoding: .utf8)
+        let snapshot = document.makeSaveSnapshot()
+        try document.replace(utf16Range: NSRange(location: 0, length: 8), with: "newest")
+        let receipt = try await Task.detached { try snapshot.write(to: destination) }.value
+        XCTAssertNotNil(receipt.replacement)
+        XCTAssertTrue(document.isDirty)
+        XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "original\n")
+        XCTAssertEqual(try String(contentsOf: destination, encoding: .utf8), "original\n")
+    }
+
+    func testLazySaveAsSnapshotRefusesChangedSource() async throws {
+        let url = directory.appendingPathComponent("changed-source.txt")
+        let destination = directory.appendingPathComponent("not-created.txt")
+        try Data("original\n".utf8).write(to: url)
+        let document = try FileBackedTextDocument(url: url, knownUTF8Encoding: .utf8)
+        let snapshot = document.makeSaveSnapshot()
+        try Data("different source\n".utf8).write(to: url, options: .atomic)
+        do {
+            _ = try await Task.detached { try snapshot.write(to: destination) }.value
+            XCTFail("Must not copy a different source revision")
+        } catch {
+            XCTAssertEqual(error as? FileBackedTextDocument.Error, .externalConflict)
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
+    }
+
     func testAtomicSaveRefusesAnExternalChangeAfterOpening() throws {
         let url = directory.appendingPathComponent("save-conflict.txt")
         try "local\n".write(to: url, atomically: true, encoding: .utf8)

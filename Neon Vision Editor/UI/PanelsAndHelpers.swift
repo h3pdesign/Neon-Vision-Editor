@@ -2722,15 +2722,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.6.1",
-            subtitle: "Release highlights for v1.6.1.",
+            title: "What’s New in v1.6.2",
+            subtitle: "Release highlights for v1.6.2.",
             bullets: [
-                "Editor Improvements: Brings official Emmet 2 abbreviation expansion to markup and stylesheet editing across the native editors.",
-                "Workflow Refinements: Restores the established macOS editor commands and interactions after the move to bounded virtual rendering.",
-                "Editor Performance: Improves large-document responsiveness while correcting HTML/CSS colors and App Store support-purchase handling.",
-                "Usability Updates: Expands complex HTML, JSX, CSS, SCSS, Less, Sass, and related Emmet abbreviations with configured indentation.",
-                "Editor Navigation: Restores Tab-to-accept inline completion, Vim navigation, Markdown shortcuts, drag and drop, rich-text paste, code…",
-                "Workflow Refinements: Caches generation-safe bounded viewports and enforces median latency budgets for typing, scrolling, selection, and viewport…"
+                "Editor Improvements: Detects external edits on network volumes even when filesystem change notifications are missed.",
+                "Workflow Refinements: Lets you disable the automatic Welcome Tour and opens Finder documents without interrupting them with a tour.",
+                "Performance Updates: Keeps purchase feedback stable while Settings updates and product information refreshes.",
+                "Reliable Saves: Improves external-document save safety and opens text files with unknown extensions or no extension.",
+                "Editor Improvements: Adds a background metadata polling fallback for open network-volume files, reusing the existing external-change conflict…",
+                "Workflow Refinements: Adds an automatic Welcome Tour preference; Finder file launches suppress the tour, including after app updates."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

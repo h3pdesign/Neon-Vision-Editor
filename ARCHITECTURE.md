@@ -1,11 +1,20 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-09-04 (v1.6.1 release-aligned architecture)
+Last updated: 2026-09-05 (v1.6.2 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v1.6.2 (2026-09-05)
+
+- Adds a background metadata polling fallback for open network-volume files, reusing the existing external-change conflict handling.
+- Adds an automatic Welcome Tour preference; Finder file launches suppress the tour, including after app updates.
+- Presents purchase alerts using local SwiftUI presentation state and preserves the latest queued purchase message.
+- Retains a complete local recovery copy of external-document save payloads on iOS/iPadOS and visionOS.
+- Avoids duplicate network-file checks and skips tabs that are still loading or already reviewing an external change.
+- Rechecks launch intent before presenting a delayed Welcome Tour.
 
 ### v1.6.1 (2026-09-04)
 
@@ -15,15 +24,6 @@ Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and vision
 - Colors HTML tags, attributes, strings, embedded CSS properties, and numbers as separate syntax tokens instead of treating complete attribute or style values as one string.
 - Reads offscreen selections and edits through bounded UTF-16 document ranges instead of materializing an entire file-backed document.
 - Preserves tab selection, preview, structured-data, AI completion, toolbar, and persistence behavior when switching to the virtual editor.
-
-### v1.6.0 (2026-09-03)
-
-- Prepares large-file indexes in the background and limits rendering to visible rows and bounded document windows.
-- Shows color swatches for supported HEX literals and preserves their format when editing colors.
-- Coalesces recent-file and performance-history persistence so repeated editor actions do not queue obsolete preference writes.
-- Prevents blank scrolling after editor-width changes and preserves forward content in bounded viewports.
-- Refreshes edit coordinates before consecutive keystrokes, preserving typed text and accurate caret positions.
-- Keeps independent document views valid until the underlying content changes.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

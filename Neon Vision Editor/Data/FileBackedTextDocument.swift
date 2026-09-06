@@ -118,6 +118,77 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
     private var cachedViewport: (key: ViewportCacheKey, value: EditorDocumentViewport)?
     private(set) var viewportIndexPreparedOnMainThread: Bool?
 
+    /// The worker owns this copy exclusively. Arrays/Data use value semantics;
+    /// the live document and its seekable file handle never cross actors.
+    struct SaveSnapshot: Sendable {
+        fileprivate let copy: FileBackedTextDocument
+        fileprivate let needsSourceRead: Bool
+        fileprivate let generation: UInt64
+        fileprivate let editCount: Int
+
+        func write(to destination: URL? = nil, allowExternalOverwrite: Bool = false) throws -> SaveReceipt {
+            if needsSourceRead, let source = copy.url {
+                try CoordinatedDocumentAccess.read(at: source) { coordinatedURL in
+                    let current = try coordinatedURL.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+                    guard let expected = copy.savedFileMetadata,
+                          current.fileSize == expected.byteCount,
+                          current.contentModificationDate == expected.modificationDate else { throw Error.externalConflict }
+                    copy.lazyFileHandle = try FileHandle(forReadingFrom: coordinatedURL)
+                    try copy.materializeLazyStorageIfNeeded()
+                }
+            }
+            if let destination {
+                try copy.saveAtomically(to: destination)
+                let replacement = try CoordinatedDocumentAccess.read(at: destination) { url in
+                    let document = try FileBackedTextDocument(url: url, knownUTF8Encoding: copy.encodingDescriptor)
+                    try document.prepareViewportIndex()
+                    return document
+                }
+                guard let metadata = replacement.savedFileMetadata else { throw Error.externalConflict }
+                return SaveReceipt(metadata: metadata, generation: generation,
+                                   editCount: editCount, replacement: replacement)
+            }
+            try copy.saveAtomically(allowExternalOverwrite: allowExternalOverwrite)
+            guard let metadata = copy.savedFileMetadata else { throw Error.externalConflict }
+            return SaveReceipt(metadata: metadata, generation: generation, editCount: editCount, replacement: nil)
+        }
+
+    }
+
+    struct SaveReceipt: Sendable {
+        fileprivate let metadata: FileMetadata
+        fileprivate let generation: UInt64
+        fileprivate let editCount: Int
+        let replacement: FileBackedTextDocument?
+        var modificationDate: Date? { metadata.modificationDate }
+        var byteCount: Int { metadata.byteCount }
+    }
+
+    private init(saveCopy source: FileBackedTextDocument) {
+        url = source.url
+        originalData = source.originalData
+        pieces = source.pieces
+        lineStarts = source.lineStarts
+        cachedUTF16Length = source.cachedUTF16Length
+        encodingDescriptor = source.encodingDescriptor
+        savedFileMetadata = source.savedFileMetadata
+        dirty = source.dirty
+        lazyFileByteCount = source.lazyFileByteCount
+    }
+
+    func makeSaveSnapshot() -> SaveSnapshot {
+        SaveSnapshot(copy: FileBackedTextDocument(saveCopy: self), needsSourceRead: lazyFileHandle != nil,
+                     generation: viewportGeneration, editCount: edits.count)
+    }
+
+    /// Called on the live document's owner after the worker completes. Newer
+    /// edits remain dirty and their recovery log is relative to the saved copy.
+    func acceptSave(_ receipt: SaveReceipt) {
+        savedFileMetadata = receipt.metadata
+        edits.removeFirst(min(receipt.editCount, edits.count))
+        dirty = viewportGeneration != receipt.generation
+    }
+
     convenience init(url: URL) throws {
         let prefix = try Self.readPrefix(from: url, maximumByteCount: 64 * 1024)
         let byteCount = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? prefix.count
@@ -678,10 +749,16 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
     func saveAtomically(allowExternalOverwrite: Bool = false) throws {
         guard dirty else { return }
         guard let url, savedFileMetadata != nil else { throw Error.externalConflict }
+        try CoordinatedDocumentAccess.write(at: url) { coordinatedURL in
+            try saveCoordinated(at: coordinatedURL, allowExternalOverwrite: allowExternalOverwrite)
+        }
+    }
+
+    private func saveCoordinated(at url: URL, allowExternalOverwrite: Bool) throws {
         let didAccess = url.startAccessingSecurityScopedResource()
         defer { if didAccess { url.stopAccessingSecurityScopedResource() } }
         try materializeLazyStorageIfNeeded()
-        guard allowExternalOverwrite || !hasExternalConflict() else { throw Error.externalConflict }
+        guard allowExternalOverwrite || !hasExternalConflict(at: url) else { throw Error.externalConflict }
         let replacementDirectory = try FileManager.default.url(
             for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: url, create: true)
         defer { try? FileManager.default.removeItem(at: replacementDirectory) }
@@ -694,11 +771,12 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
             }
             try output.synchronize()
             try output.close()
+            try CoordinatedDocumentAccess.preserveRecovery(from: temporaryURL, for: url)
             _ = try FileManager.default.replaceItemAt(url, withItemAt: temporaryURL)
-            dirty = false
             lineStarts = lineStartsFromPieceMetadata()
             let savedData = try Data(contentsOf: url, options: [.alwaysMapped])
             self.savedFileMetadata = try Self.fileMetadata(at: url, fingerprint: Self.fingerprint(of: savedData))
+            dirty = false
             edits.removeAll(keepingCapacity: true)
         } catch {
             try? output.close()
@@ -711,6 +789,12 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
     /// a whole-document string. Transcoding and normalization are intentionally
     /// unavailable on this virtual-document path.
     func saveAtomically(to destinationURL: URL) throws {
+        try CoordinatedDocumentAccess.write(at: destinationURL) { coordinatedURL in
+            try saveCoordinated(to: coordinatedURL)
+        }
+    }
+
+    private func saveCoordinated(to destinationURL: URL) throws {
         let didAccess = destinationURL.startAccessingSecurityScopedResource()
         defer { if didAccess { destinationURL.stopAccessingSecurityScopedResource() } }
         try materializeLazyStorageIfNeeded()
@@ -726,6 +810,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
             }
             try output.synchronize()
             try output.close()
+            try CoordinatedDocumentAccess.preserveRecovery(from: temporaryURL, for: destinationURL)
             if FileManager.default.fileExists(atPath: destinationURL.path) {
                 _ = try FileManager.default.replaceItemAt(destinationURL, withItemAt: temporaryURL)
             } else {
@@ -1083,11 +1168,11 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
                 .map { $0 - range.lowerBound })
     }
 
-    func hasExternalConflict() -> Bool {
+    func hasExternalConflict(at coordinatedURL: URL? = nil) -> Bool {
         try? materializeLazyStorageIfNeeded()
-        guard let url,
+        guard let url = coordinatedURL ?? url,
               let currentValues = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey]),
-              let savedFileMetadata else { return false }
+              let savedFileMetadata else { return true }
         guard (currentValues.fileSize ?? 0) == savedFileMetadata.byteCount,
               currentValues.contentModificationDate == savedFileMetadata.modificationDate else {
             return true
@@ -1397,13 +1482,15 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         }
     }
 
-    private struct FileMetadata: Equatable {
+    fileprivate struct FileMetadata: Equatable, Sendable {
         let byteCount: Int
         let modificationDate: Date?
         let fingerprint: UInt64
     }
 
     private static func fileMetadata(at url: URL, fingerprint: UInt64) throws -> FileMetadata {
+        var url = url
+        url.removeAllCachedResourceValues()
         let values = try url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
         return FileMetadata(
             byteCount: values.fileSize ?? 0,

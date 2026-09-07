@@ -191,21 +191,21 @@ final class VirtualEditorLayoutTests: XCTestCase {
     func testWhitespaceInspectionReadsTheVisibleLine() {
         let (_, canvas, _) = makeCanvas(source: "value\t  \nnext", language: "plain", caret: 6)
         let result = expectation(description: "whitespace result")
-        var message = ""
+        let observedMessage = WhitespaceInspectionMessage()
         let token = NotificationCenter.default.addObserver(
             forName: .whitespaceScalarInspectionResult,
             object: nil,
             queue: .main
         ) { notification in
-            message = notification.userInfo?[EditorCommandUserInfo.inspectionMessage] as? String ?? ""
+            observedMessage.set(notification.userInfo?[EditorCommandUserInfo.inspectionMessage] as? String ?? "")
             result.fulfill()
         }
         defer { NotificationCenter.default.removeObserver(token) }
         canvas.inspectWhitespaceScalars(Notification(name: .inspectWhitespaceScalarsRequested))
         wait(for: [result], timeout: 1)
         withExtendedLifetime(canvas) {}
-        XCTAssertTrue(message.contains("TAB x1"))
-        XCTAssertTrue(message.contains("SPACE x2"))
+        XCTAssertTrue(observedMessage.value.contains("TAB x1"))
+        XCTAssertTrue(observedMessage.value.contains("SPACE x2"))
     }
 
     func testSelectionContextMenuRestoresCodeSnapshotAction() throws {
@@ -1164,6 +1164,23 @@ private final class CountingEditorDocument: EditorDocument {
     }
     func replace(in viewport: EditorDocumentViewport, utf16Range: NSRange, with replacement: String) throws {
         try backing.replace(in: viewport, utf16Range: utf16Range, with: replacement)
+    }
+}
+
+private nonisolated final class WhitespaceInspectionMessage: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedValue = ""
+
+    func set(_ value: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        storedValue = value
+    }
+
+    var value: String {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedValue
     }
 }
 #endif

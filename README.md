@@ -454,10 +454,11 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 ## Architecture At A Glance
 
-The current stable editor separates scene presentation, document ownership, native rendering, and optional services. The diagram is also available as a [scalable SVG](docs/images/architecture-at-a-glance.svg); Mermaid remains below as an accessible, editable source. Arrows show ownership or data exchange; they are not a claim that every operation runs on a background thread.
+The current stable editor separates scene presentation, document ownership, native rendering, and optional services. The [scalable SVG](docs/images/architecture-at-a-glance.svg) is the canonical rendered diagram; its Mermaid source is retained in a non-rendered comment for accessible editing. Arrows show ownership or data exchange; they are not a claim that every operation runs on a background thread.
 
 ![Neon Vision Editor architecture at a glance](docs/images/architecture-at-a-glance.svg)
 
+<!--
 ```mermaid
 flowchart TB
   subgraph PLATFORM[Platform and scene presentation]
@@ -522,6 +523,7 @@ flowchart TB
   class INFRA infra;
   class POLICY,DIRECT,STORE distribution;
 ```
+-->
 
 - **Ownership:** `ContentView` owns scene presentation; each window has an `@MainActor` `EditorViewModel`. `TabCommandQueue` serializes asynchronous tab mutations, while `TabData` keeps UI identity, document resource identity, and content revisions distinct.
 - **Storage:** `EditorDocument` is the bounded read/edit contract, not the load/save controller. `TabData` currently uses `FileBackedTextDocument` for both URL-backed files and content initialized in memory. Eligible large local files retain disk source ranges plus replacement pieces; the loader completes their line index before transferring ownership to the main actor. Saves preserve encoding and line endings and use the existing conflict and atomic-replacement flow.

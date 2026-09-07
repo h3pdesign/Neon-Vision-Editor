@@ -6,6 +6,10 @@
     <style>.bg{fill:#0d1117}.group{fill:#161d27;stroke:#334155;stroke-width:2}.title{fill:#f8fafc;font:700 26px -apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif}.label{fill:#cbd5e1;font:600 14px -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}.body{fill:#e2e8f0;font:14px -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}.small{fill:#94a3b8;font:12px -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}.box{rx:10;stroke-width:2}.platform{fill:#172554;stroke:#3b82f6}.app{fill:#052e2b;stroke:#10b981}.core{fill:#431407;stroke:#f97316}.infra{fill:#2e1065;stroke:#a855f7}.dist{fill:#500724;stroke:#ec4899}.edge{stroke:#94a3b8;stroke-width:2;fill:none;marker-end:url(#arrow)}</style>
   </defs>
   <rect class="bg" width="1400" height="900"/>
+  <!-- Connectors are painted first so cards remain legible above them. -->
+  <g>
+    <path class="edge" d="M300 203 H650"/><path class="edge" d="M595 203 H650"/><path class="edge" d="M800 242 V376 H320"/><path class="edge" d="M800 242 V376 H730"/><path class="edge" d="M320 415 H350"/><path class="edge" d="M195 454 V478"/><path class="edge" d="M475 454 V478"/><path class="edge" d="M600 510 H730"/><path class="edge" d="M1010 415 H1040"/><path class="edge" d="M800 242 V666 H310"/><path class="edge" d="M800 242 V666 H630"/><path class="edge" d="M1155 242 V666 H1190"/>
+  </g>
   <text class="title" x="56" y="58">Neon Vision Editor — Architecture At A Glance</text>
   <text class="small" x="56" y="84">Stable v1.6.3 · arrows show ownership or data exchange, not thread guarantees</text>
   <rect class="group" x="40" y="110" width="1320" height="170" rx="14"/><text class="label" x="64" y="138">PLATFORM AND SCENE PRESENTATION</text>
@@ -29,6 +33,5 @@
   <rect class="box infra" x="630" y="666" width="240" height="72"/><text class="body" x="750" y="694" text-anchor="middle">AI Chat and providers</text><text class="small" x="750" y="716" text-anchor="middle">explicit context · Keychain</text>
   <rect class="box infra" x="910" y="666" width="240" height="72"/><text class="body" x="1030" y="694" text-anchor="middle">Recovery and annotations</text><text class="small" x="1030" y="716" text-anchor="middle">drafts · PDF notes · preferences</text>
   <rect class="box dist" x="1190" y="666" width="130" height="72"/><text class="body" x="1255" y="694" text-anchor="middle">Distribution</text><text class="small" x="1255" y="716" text-anchor="middle">App Store / Sparkle</text>
-  <path class="edge" d="M300 203 H650"/><path class="edge" d="M595 203 H650"/><path class="edge" d="M800 242 V376 H320"/><path class="edge" d="M800 242 V376 H730"/><path class="edge" d="M320 415 H350"/><path class="edge" d="M195 454 V478"/><path class="edge" d="M475 454 V478"/><path class="edge" d="M600 510 H730"/><path class="edge" d="M1010 415 H1040"/><path class="edge" d="M800 242 V666 H310"/><path class="edge" d="M800 242 V666 H630"/><path class="edge" d="M1155 242 V666 H1190"/>
   <text class="small" x="64" y="862">Fast tab activation: select → bind existing bounded viewport → draw first frame; layout, preview, indexing, and metadata work are cancellable and deferred.</text>
 </svg>

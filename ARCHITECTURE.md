@@ -4,6 +4,8 @@ Last updated: 2026-09-07 (v1.6.3 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
+The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/architecture-at-a-glance.svg) is the stable architecture snapshot for the README and release documentation. The Mermaid block in `README.md` is its accessible, editable companion; update both when ownership boundaries or platform services change.
+
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
@@ -73,6 +75,24 @@ The following ownership boundaries are intentional. Preserve them when adding a 
 - Notifications carry window-scoped editor commands only when they include a window number. Broadcast notifications are reserved for process-wide updates such as preference changes.
 
 When tracing a change, follow this path: user action or system callback -> `ContentView`/native coordinator -> `EditorViewModel` command -> tab-state mutation -> SwiftUI/native editor update. File presenters and asynchronous loads re-enter through the same command path so indexes, dirty state, and observation registrations remain consistent.
+
+### Fast tab activation path
+
+Tab activation has an explicit critical path: select the destination tab, bind its
+already-available bounded viewport to the existing native editor, and draw the
+first frame. It must not synchronously scan the document, write preferences,
+rebuild a project index, parse Markdown, or measure hundreds of wrapped Core Text
+rows. Those jobs are cancellable and generation-checked, and begin after the
+first frame so they cannot block selection feedback. Preview rendering follows
+the same rule: a Markdown/WebKit update is debounced and replaced when a newer
+tab or content revision arrives. This keeps a tab switch an in-place view update,
+not a document reload or SwiftUI identity change.
+
+Performance changes in this path are verified with `EditorPerformanceMonitor`
+signposts and a cross-language switch matrix (plain text, Markdown, and source
+files). A build or unit-test pass proves correctness of the contracts, but only
+an Instruments/Cpu sampler capture on a running macOS build can establish a
+latency improvement.
 
 ### ContentView Extension Boundaries
 

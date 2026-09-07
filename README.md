@@ -454,76 +454,9 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 ## Architecture At A Glance
 
-The current stable editor separates scene presentation, document ownership, native rendering, and optional services. The [scalable SVG](docs/images/architecture-at-a-glance.svg) is the canonical rendered diagram. The editable [Mermaid source](docs/images/architecture-at-a-glance.mmd) is kept beside it; arrows show ownership or data exchange, not thread guarantees.
+The current stable editor separates scene presentation, document ownership, native rendering, and optional services. Arrows show ownership or data exchange, not thread guarantees.
 
 ![Neon Vision Editor architecture at a glance](docs/images/architecture-at-a-glance.svg)
-
-<details hidden>
-```mermaid
-flowchart TB
-  subgraph PLATFORM[Platform and scene presentation]
-    MAC["macOS: SwiftUI + AppKit"]
-    TOUCH["iPhone/iPad/visionOS: SwiftUI + UIKit"]
-    SCENE["ContentView: panes, focus mode, selection context"]
-  end
-
-  subgraph DOCUMENTS[Per-window document ownership]
-    VM["EditorViewModel: load, save, refresh and conflicts"]
-    TABS["TabCommandQueue + TabData: resource IDs and revisions"]
-    DOC["EditorDocument: bounded reads and edits"]
-    STORAGE["FileBackedTextDocument: disk source or memory pieces"]
-  end
-
-  subgraph RENDERING[Native editing and previews]
-    MACVIEW["VirtualEditorView: NSView + Core Text + text input"]
-    UIKITTEXT["CustomTextEditor: UITextView"]
-    EDITING["Syntax, Emmet 2, completion and navigation helpers"]
-    PREVIEW["WebKit previews, PDFKit and structured views"]
-    FAST["Fast activation: bind viewport, draw first frame, defer work"]
-  end
-
-  OBS["OpenDocumentObservationCenter: NSFilePresenter + metadata polling"]
-  PROJECT["Project index, search, .gitignore and macOS Git"]
-  AI["AIChatConversation + AIClient: explicit context and providers"]
-  REMOTE["RemoteSessionStore: macOS SSH host and attach clients"]
-  INFRA["Session recovery, preferences, Keychain and PDF annotations"]
-  POLICY["ReleaseRuntimePolicy: platform and distribution gates"]
-  DIRECT["Direct macOS: Sparkle, PTY terminal, Python and CLI"]
-  STORE["App Store: Apple updates; no PTY/Python workflow"]
-
-  MAC --> SCENE
-  TOUCH --> SCENE
-  SCENE --> VM --> TABS --> DOC --> STORAGE
-  OBS --> VM
-  TABS --> MACVIEW
-  TABS --> UIKITTEXT
-  TABS --> FAST
-  MACVIEW <-->|bounded windows and edits| DOC
-  MACVIEW --> EDITING
-  UIKITTEXT --> EDITING
-  SCENE --> PREVIEW
-  SCENE --> PROJECT
-  SCENE --> AI
-  VM <--> REMOTE
-  VM --> INFRA
-  AI --> INFRA
-  SCENE --> POLICY
-  POLICY --> DIRECT
-  POLICY --> STORE
-
-  classDef platform stroke:#2563EB,stroke-width:3px,fill:transparent;
-  classDef app stroke:#059669,stroke-width:3px,fill:transparent;
-  classDef core stroke:#EA580C,stroke-width:3px,fill:transparent;
-  classDef infra stroke:#9333EA,stroke-width:3px,fill:transparent;
-  classDef distribution stroke:#DB2777,stroke-width:3px,fill:transparent;
-
-  class MAC,TOUCH,SCENE platform;
-  class VM,TABS app;
-  class DOC,STORAGE,OBS,MACVIEW,UIKITTEXT,EDITING,PREVIEW,FAST,PROJECT,AI,REMOTE core;
-  class INFRA infra;
-  class POLICY,DIRECT,STORE distribution;
-```
-</details>
 
 - **Ownership:** `ContentView` owns scene presentation; each window has an `@MainActor` `EditorViewModel`. `TabCommandQueue` serializes asynchronous tab mutations, while `TabData` keeps UI identity, document resource identity, and content revisions distinct.
 - **Storage:** `EditorDocument` is the bounded read/edit contract, not the load/save controller. `TabData` currently uses `FileBackedTextDocument` for both URL-backed files and content initialized in memory. Eligible large local files retain disk source ranges plus replacement pieces; the loader completes their line index before transferring ownership to the main actor. Saves preserve encoding and line endings and use the existing conflict and atomic-replacement flow.

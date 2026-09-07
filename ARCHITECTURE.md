@@ -74,6 +74,24 @@ The following ownership boundaries are intentional. Preserve them when adding a 
 
 When tracing a change, follow this path: user action or system callback -> `ContentView`/native coordinator -> `EditorViewModel` command -> tab-state mutation -> SwiftUI/native editor update. File presenters and asynchronous loads re-enter through the same command path so indexes, dirty state, and observation registrations remain consistent.
 
+### Fast tab activation path
+
+Tab activation has an explicit critical path: select the destination tab, bind its
+already-available bounded viewport to the existing native editor, and draw the
+first frame. It must not synchronously scan the document, write preferences,
+rebuild a project index, parse Markdown, or measure hundreds of wrapped Core Text
+rows. Those jobs are cancellable and generation-checked, and begin after the
+first frame so they cannot block selection feedback. Preview rendering follows
+the same rule: a Markdown/WebKit update is debounced and replaced when a newer
+tab or content revision arrives. This keeps a tab switch an in-place view update,
+not a document reload or SwiftUI identity change.
+
+Performance changes in this path are verified with `EditorPerformanceMonitor`
+signposts and a cross-language switch matrix (plain text, Markdown, and source
+files). A build or unit-test pass proves correctness of the contracts, but only
+an Instruments/Cpu sampler capture on a running macOS build can establish a
+latency improvement.
+
 ### ContentView Extension Boundaries
 
 The existing `ContentView` extensions are the seams for future focused work. They share scene-local state through `ContentView`; do not move that state into a second model solely to split a file.

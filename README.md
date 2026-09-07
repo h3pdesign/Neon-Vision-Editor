@@ -1,9 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
-> Prepared release: **v1.6.3** — not published. See [candidate notes](CHANGELOG.md).
-
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.6.2-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.6.3-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-github-only.yml"><img alt="Primary Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-github-only.yml?branch=main&label=Primary%20Release"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md"><img alt="Security Policy" src="https://img.shields.io/badge/security-policy-22C55E"></a>
@@ -55,15 +53,25 @@
 
 > Status: **active release**  
 > Latest release: **v1.6.3**
-> Next release target: **v1.6.3**
+> Next release target: **v1.6.4**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v1.6.2** / App Store and TestFlight availability varies by platform and review status
+> Direct GitHub release: **v1.6.3** / App Store and TestFlight availability varies by platform and review status
 > Last updated (README): **2026-09-07** for latest release **v1.6.3**
 
-## What's New in v1.6.1 and v1.6.2
+## What's New in v1.6.2 and v1.6.3
 
 ### Why Upgrade
+
+- v1.6.3: Switch between open documents with less visible delay, including when changing between Markdown and source files.
+- v1.6.3: Keep local development builds usable without requiring a Developer ID certificate for Quick Look.
+- v1.6.3: Preserve a responsive first frame while deferred rendering catches up in the background.
+
+### v1.6.3 Highlights
+
+- The selected editor publishes its first frame before deferred layout and preview work begins.
+
+### v1.6.2 Context
 
 - v1.6.2: Detects external edits on network volumes even when filesystem change notifications are missed.
 - v1.6.2: Lets you disable the automatic Welcome Tour and opens Finder documents without interrupting them with a tour.
@@ -75,18 +83,6 @@
 - Adds an automatic Welcome Tour preference; Finder file launches suppress the tour, including after app updates.
 - Presents purchase alerts using local SwiftUI presentation state and preserves the latest queued purchase message.
 - Retains a complete local recovery copy of external-document save payloads on iOS/iPadOS and visionOS.
-
-### v1.6.1 Context
-
-- v1.6.1: Brings official Emmet 2 abbreviation expansion to markup and stylesheet editing across the native editors.
-- v1.6.1: Restores the established macOS editor commands and interactions after the move to bounded virtual rendering.
-- v1.6.1: Improves large-document responsiveness while correcting HTML/CSS colors and App Store support-purchase handling.
-
-### v1.6.1 Highlights
-
-- Expands complex HTML, JSX, CSS, SCSS, Less, Sass, and related Emmet abbreviations with configured indentation.
-- Restores Tab-to-accept inline completion, Vim navigation, Markdown shortcuts, drag and drop, rich-text paste, code snapshots, and whitespace inspection in the macOS virtual editor.
-- Caches generation-safe bounded viewports and enforces median latency budgets for typing, scrolling, selection, and viewport reloads.
 
 ## Start Here
 
@@ -146,7 +142,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v1.6.2 release docs current; v1.6.2 direct download current</td>
+        <td>v1.6.3 release docs current; v1.6.3 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -226,7 +222,7 @@ The direct GitHub release is currently ahead of the iOS/iPadOS App Store version
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.6.2** | Current direct download |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.6.3** | Current direct download |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.6.1** | Current public App Store listing |
 | **Store Review** | macOS | Corrected App Store update | App Store Connect review | **v1.6.2** | In Apple review |
 | **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.5.0** | Current recorded visionOS listing |
@@ -365,7 +361,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - **Languages and structured documents:** Swift 6-ready highlighting includes TeX/LaTeX and Typst/CeTZ-aware editing; CSV/TSV, property lists, Apple crash reports, and recognized logs can switch between structured and raw-text views, and plain text can be transformed into validated JSON through an explicit AI-assisted action.
 - **Project and preview workflows:** project-level Markdown/PDF cards reuse the project index for bounded excerpts and thumbnails, while Markdown, HTML, SVG, PDF, and PNG previews remain integrated with the editor.
 - **macOS integration:** the embedded Quick Look extension previews supported Markdown and source files in Finder, and detached Markdown previews can use the same glass treatment without changing editor content.
-- **Latest stable additions (v1.6.2):** Adds a background metadata polling fallback for open network-volume files, reusing the existing external-change conflict handling; Adds an automatic Welcome Tour preference; Finder file launches suppress the tour, including after app updates; Presents purchase alerts using local SwiftUI presentation state and preserves the latest queued purchase message; Retains a complete local recovery copy of external-document save payloads on iOS/iPadOS and visionOS.
+- **Latest stable additions (v1.6.3):** The selected editor publishes its first frame before deferred layout and preview work begins.
 <!-- FEATURE_COVERAGE:END -->
 
 ### Editing Core
@@ -696,7 +692,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v1.6.2` notarized GitHub release | Current |
+| Stable direct download | `v1.6.3` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
 | Post-1.4 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v1.5+` work |
@@ -704,19 +700,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.6.2-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.6.3-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.6.3-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.6.4-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v1.5%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v1.6.2)
+### Now (v1.6.3)
 
 - ![v1.4.0](https://img.shields.io/badge/v1.4.0-22C55E?style=flat-square) delivers file-backed large-document editing, bounded live viewport virtualization, reliable ordinary-file installation, and the release workflow hardening shipped alongside the release.
-  Tracking: [Release v1.6.2](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.6.2)
+  Tracking: [Release v1.6.3](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.6.3)
 
-### Next (v1.6.3)
+### Next (v1.6.4)
 
-- ![v1.6.3](https://img.shields.io/badge/v1.6.3-F59E0B?style=flat-square) targets the reviewed changes listed under Unreleased in CHANGELOG.md; scope is not final until release preparation.
+- ![v1.6.4](https://img.shields.io/badge/v1.6.4-F59E0B?style=flat-square) targets the reviewed changes listed under Unreleased in CHANGELOG.md; scope is not final until release preparation.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v1.5+)
@@ -806,7 +802,7 @@ Vim navigation is also available on iPad with a hardware keyboard after enabling
 
 ## Changelog
 
-Latest stable: **v1.6.2** (2026-09-05)
+Latest stable: **v1.6.3** (2026-09-07)
 
 ### Editor Evolution
 
@@ -814,8 +810,6 @@ Latest stable: **v1.6.2** (2026-09-05)
 ```mermaid
 timeline
     title Neon Vision Editor — recent release story
-    29 August 2026 : v1.5.5 · Safer document transitions
-                : Prevents AppKit and Core Text drawing from leaking text state between macOS virtual-editor rows and producing mirrored or upside-down glyphs.
     29 August 2026 : v1.5.6 · A more deliberate workflow
                 : Makes the iPhone and iPad editor toolbar more compact and language-aware without hiding full menu names or accessibility context.
     3 September 2026 : v1.6.0 · A more deliberate workflow
@@ -824,6 +818,8 @@ timeline
                 : Brings official Emmet 2 abbreviation expansion to markup and stylesheet editing across the native editors.
     5 September 2026 : v1.6.2 · Release highlights
                 : Detects external edits on network volumes even when filesystem change notifications are missed.
+    7 September 2026 : v1.6.3 · A more deliberate workflow
+                : Switch between open documents with less visible delay, including when changing between Markdown and source files.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -833,13 +829,13 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
+| [`v1.6.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.6.3) | **A more deliberate workflow** — Switch between open documents with less visible delay, including when changing between Markdown and source files. | Makes macOS tab switching responsive by publishing the selected editor before deferred Core Text layout and Markdown preview work runs. |
 | [`v1.6.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.6.2) | **Release highlights** — Detects external edits on network volumes even when filesystem change notifications are missed. | Avoids duplicate network-file checks and skips tabs that are still loading or already reviewing an external change. |
 | [`v1.6.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.6.1) | **A more deliberate workflow** — Brings official Emmet 2 abbreviation expansion to markup and stylesheet editing across the native editors. | Colors HTML tags, attributes, strings, embedded CSS properties, and numbers as separate syntax tokens instead of treating complete attribute or… |
-| [`v1.6.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.6.0) | **A more deliberate workflow** — Opens and edits large Markdown and source files with less blocking work and bounded viewport rendering. | Prevents blank scrolling after editor-width changes and preserves forward content in bounded viewports. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
 - Latest release: **v1.6.3**
-- Compare recent changes: [v1.6.1...v1.6.2](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.6.1...v1.6.2)
+- Compare recent changes: [v1.6.2...v1.6.3](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.6.2...v1.6.3)
 
 ## Known Limitations
 
@@ -861,12 +857,12 @@ The recent release arc is about continuity: files that change outside the app, w
 
 ## Release Integrity
 
-- Tag: `v1.6.2`
+- Tag: `v1.6.3`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v1.6.2
+git rev-parse --verify v1.6.3
 ```
 
 - Verify downloaded artifact checksum locally:

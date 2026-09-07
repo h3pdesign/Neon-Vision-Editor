@@ -279,6 +279,8 @@ jobs:
             -destination "generic/platform=macOS" \
             -archivePath "$ARCHIVE_PATH" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            CODE_SIGN_STYLE=Manual \
             archive
 
       - name: Export app

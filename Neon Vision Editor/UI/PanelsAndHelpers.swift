@@ -4499,7 +4499,7 @@ extension NSRange {
 enum EditorCommandUserInfo {
     nonisolated static let windowNumber = "targetWindowNumber"
     nonisolated static let documentID = "documentID"
-    static let inspectionMessage = "inspectionMessage"
+    nonisolated static let inspectionMessage = "inspectionMessage"
     nonisolated static let rangeLocation = "rangeLocation"
     nonisolated static let rangeLength = "rangeLength"
     nonisolated static let viewportTopFraction = "viewportTopFraction"

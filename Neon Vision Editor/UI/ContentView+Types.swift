@@ -1,6 +1,38 @@
 import Foundation
 
 extension ContentView {
+    struct SecondaryContentContext: Equatable {
+        let tabID: UUID?
+        let fileURL: URL?
+        let language: String
+    }
+
+    struct SecondaryContentRequest: Equatable {
+        let context: SecondaryContentContext
+        let revision: Int
+        let delimitedMode: DelimitedViewMode
+        let plistMode: PlistViewMode
+        let crashMode: CrashReportViewMode
+        let logMode: LogViewMode
+        var fallbackContent: String? = nil
+    }
+
+    var secondaryContentRequest: SecondaryContentRequest {
+        SecondaryContentRequest(
+            context: SecondaryContentContext(
+                tabID: viewModel.selectedTabID,
+                fileURL: viewModel.selectedTab?.fileURL,
+                language: currentLanguage
+            ),
+            revision: viewModel.selectedTab?.contentRevision ?? editorExternalMutationRevision,
+            delimitedMode: delimitedViewMode,
+            plistMode: plistViewMode,
+            crashMode: crashReportViewMode,
+            logMode: logViewMode,
+            fallbackContent: viewModel.selectedTab == nil ? singleContent : nil
+        )
+    }
+
     struct TabChromeObservationSnapshot: Equatable {
         let structureRevision: Int
         let metadataRevision: Int

@@ -1788,8 +1788,11 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = "Neon Vision Editor Quick Look/Neon Vision Editor Quick Look.entitlements";
-				CODE_SIGN_IDENTITY = "Developer ID Application";
-				CODE_SIGN_STYLE = Manual;
+				// Local/Xcode Cloud development builds must not require a locally
+				// installed Developer ID certificate. Distribution workflows pass
+				// their explicit Developer ID signing settings at archive time.
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1029;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;

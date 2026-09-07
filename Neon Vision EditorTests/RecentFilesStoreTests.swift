@@ -150,6 +150,62 @@ final class RecentFilesStoreTests: XCTestCase {
         XCTAssertLessThanOrEqual(counter.count, 2)
     }
 
+    @MainActor
+    func testSessionPreferencesStayReadableWhileNotificationDeliveryIsBlocked() async {
+        let writer = EditorPreferenceWriter()
+        let counter = PreferenceWriteCounter()
+        let release = DispatchSemaphore(value: 0)
+        let observer = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: defaults, queue: nil
+        ) { _ in
+            XCTAssertFalse(Thread.isMainThread, "Session writes must not run synchronous preference observers on the UI thread.")
+            counter.increment()
+            if counter.count == 1 {
+                XCTAssertEqual(release.wait(timeout: .now() + 2), .success)
+            }
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        writer.set(.string("file:///first.txt"), forKey: "selection", defaults: defaults)
+        writer.set(.string("file:///second.txt"), forKey: "selection", defaults: defaults)
+        writer.set(.flag(true), forKey: "sidebar", defaults: defaults)
+        writer.set(.integers(["file:///second.txt": 42]), forKey: "carets", defaults: defaults)
+        writer.set(.strings(["file:///second.txt": "utf8"]), forKey: "encodings", defaults: defaults)
+        writer.set(.flags(["file:///second.txt": true]), forKey: "automatic", defaults: defaults)
+        let bookmarks = [Data([1, 2, 3])]
+        writer.set(.dataList(bookmarks), forKey: "bookmarks", defaults: defaults)
+        XCTAssertEqual(writer.object(forKey: "selection", defaults: defaults) as? String, "file:///second.txt")
+        XCTAssertEqual(writer.object(forKey: "carets", defaults: defaults) as? [String: Int], ["file:///second.txt": 42])
+        release.signal()
+        await writer.flush()
+        XCTAssertGreaterThan(counter.count, 0)
+        XCTAssertEqual(defaults.string(forKey: "selection"), "file:///second.txt")
+        XCTAssertTrue(defaults.bool(forKey: "sidebar"))
+        XCTAssertEqual(defaults.dictionary(forKey: "carets") as? [String: Int], ["file:///second.txt": 42])
+        XCTAssertEqual(defaults.dictionary(forKey: "encodings") as? [String: String], ["file:///second.txt": "utf8"])
+        XCTAssertEqual(defaults.dictionary(forKey: "automatic") as? [String: Bool], ["file:///second.txt": true])
+        XCTAssertEqual(defaults.array(forKey: "bookmarks") as? [Data], bookmarks)
+        writer.set(.removed, forKey: "selection", defaults: defaults)
+        XCTAssertNil(writer.object(forKey: "selection", defaults: defaults))
+        await writer.flush()
+        XCTAssertNil(defaults.object(forKey: "selection"))
+    }
+
+    @MainActor
+    func testUnchangedSessionSnapshotsDoNotNotifyPreferenceObservers() async {
+        let writer = EditorPreferenceWriter()
+        writer.set(.strings(["file:///a": "utf8"]), forKey: "encoding", defaults: defaults)
+        await writer.flush()
+        let counter = PreferenceWriteCounter()
+        let observer = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: defaults, queue: nil
+        ) { _ in counter.increment() }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        writer.set(.strings(["file:///a": "utf8"]), forKey: "encoding", defaults: defaults)
+        writer.set(.removed, forKey: "alreadyAbsent", defaults: defaults)
+        await writer.flush()
+        XCTAssertEqual(counter.count, 0)
+    }
+
     private func makeFile(named name: String) throws -> URL {
         let url = temporaryDirectoryURL.appendingPathComponent(name)
         try "sample".write(to: url, atomically: true, encoding: .utf8)

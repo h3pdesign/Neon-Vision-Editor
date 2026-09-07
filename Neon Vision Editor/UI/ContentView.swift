@@ -565,7 +565,6 @@ struct ContentView: View {
     @AppStorage("ToolbarCollapsed") var startsWithToolbarCollapsed: Bool = false
     @State var isToolbarCollapsed: Bool = false
     @AppStorage("SettingsAppearance") var appearance: String = "system"
-    @AppStorage("SettingsTemplateLanguage") private var settingsTemplateLanguage: String = "swift"
     @AppStorage(SettingsPreferenceKey.themeName) private var settingsThemeName: String = "Neon Glow"
     @AppStorage(SettingsPreferenceKey.themeBoldKeywords) private var settingsThemeBoldKeywords: Bool = false
     @AppStorage(SettingsPreferenceKey.themeItalicComments) private var settingsThemeItalicComments: Bool = false
@@ -576,6 +575,7 @@ struct ContentView: View {
     @State var lastProviderUsed: String = "Apple"
     @State private var highlightRefreshToken: Int = 0
     @State var editorExternalMutationRevision: Int = 0
+    @State private var secondaryContentContext: SecondaryContentContext?
 
     // Persisted API tokens for external providers
     @State var grokAPIToken: String = ""
@@ -1081,33 +1081,41 @@ struct ContentView: View {
     }
 
     func syncSecondaryViewModesForCurrentTab() {
+        // Selection and language observers can both reach this method. Avoid
+        // assigning an unchanged mode: each assignment invalidates SwiftUI and
+        // can restart the corresponding parser during a tab transition.
+        func assignIfChanged<Value: Equatable>(_ value: Value, to binding: Binding<Value>) {
+            guard binding.wrappedValue != value else { return }
+            binding.wrappedValue = value
+        }
+
         if isDelimitedFileLanguage {
             if let key = selectedDelimitedViewModePersistenceKey,
                let persisted = persistedDelimitedViewMode(for: key) {
-                delimitedViewMode = persisted
+                assignIfChanged(persisted, to: $delimitedViewMode)
             } else {
-                delimitedViewMode = .table
+                assignIfChanged(.table, to: $delimitedViewMode)
             }
         } else {
-            delimitedViewMode = .text
+            assignIfChanged(.text, to: $delimitedViewMode)
         }
 
         if isPlistDocument {
-            plistViewMode = .structure
+            assignIfChanged(.structure, to: $plistViewMode)
         } else {
-            plistViewMode = .text
+            assignIfChanged(.text, to: $plistViewMode)
         }
 
         if isAppleCrashReportDocument {
-            crashReportViewMode = .structure
+            assignIfChanged(.structure, to: $crashReportViewMode)
         } else {
-            crashReportViewMode = .text
+            assignIfChanged(.text, to: $crashReportViewMode)
         }
 
         if isLogDocument {
-            logViewMode = .summary
+            assignIfChanged(.summary, to: $logViewMode)
         } else {
-            logViewMode = .text
+            assignIfChanged(.text, to: $logViewMode)
         }
     }
 #if os(macOS)
@@ -1321,6 +1329,9 @@ struct ContentView: View {
 
     private func updateWindowRegistration(_ window: NSWindow?) {
         let number = window?.windowNumber
+        // WindowAccessor updates whenever its SwiftUI parent updates. Registration
+        // and initial window styling belong to attachment, not document selection.
+        guard hostWindowNumber != number else { return }
         if hostWindowNumber != number, let old = hostWindowNumber {
             WindowViewModelRegistry.shared.unregister(windowNumber: old)
         }
@@ -1659,7 +1670,10 @@ struct ContentView: View {
             viewWithDroppedFileLoadEvents
             .onChange(of: viewModel.selectedTab?.id) { _, _ in
                 editorExternalMutationRevision &+= 1
-                updateLargeFileModeForCurrentContext()
+                // Do not scan the selected document synchronously while the
+                // editor representable is being swapped. The bounded delayed
+                // reevaluation below preserves large-file detection without
+                // blocking the tab's first draw.
                 scheduleLargeFileModeReevaluation(after: 0.9)
                 scheduleSessionPersistence()
             }
@@ -1676,8 +1690,8 @@ struct ContentView: View {
                 }
                 scheduleHighlightRefresh()
             }
-            .onChange(of: currentLanguage) { _, newValue in
-                settingsTemplateLanguage = newValue
+            .onChange(of: currentLanguage) { _, language in
+                EditorPreferenceWriter.shared.set(.string(language), forKey: "SettingsTemplateLanguage")
             }
             .onChange(of: viewModel.pendingExternalFileConflict?.tabID) { _, conflictTabID in
                 if conflictTabID != nil {
@@ -2731,12 +2745,8 @@ struct ContentView: View {
                 if let automaticPreviewMode = automaticPreviewModeForCurrentDocument {
                     previewMode = automaticPreviewMode
                 }
-                // Keep this interaction cheap. Full session persistence creates
-                // security-scoped bookmarks for every open tab; doing that on the
-                // selection path blocks the main thread and makes tab switching
-                // visibly lag. Store the lightweight selection now, then let the
-                // debounced/lifecycle pass refresh bookmarks and the remaining
-                // session state.
+                // Keep the selection immediately available in memory; the serial
+                // writer delivers preference notifications off the main thread.
                 persistSelectedSessionFileURLImmediately()
                 scheduleSessionPersistence()
 #if os(macOS)
@@ -2810,6 +2820,9 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                 handleAppWillResignActive()
+                // Flush after this window has enqueued its final session state;
+                // the app delegate's termination observer may run before ours.
+                EditorPreferenceWriter.shared.flushBeforeTermination()
             }
 #endif
     }
@@ -2840,6 +2853,7 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
                 persistSessionIfReady()
                 persistUnsavedDraftSnapshotIfNeeded()
+                EditorPreferenceWriter.shared.flushBeforeTermination()
             }
 #endif
             .modifier(ModalPresentationModifier(contentView: self))
@@ -5139,23 +5153,27 @@ struct ContentView: View {
             liveContainerWidth = newValue
         }
         .onAppear {
-            syncSecondaryViewModesForCurrentTab()
-            refreshSecondaryContentViewsIfNeeded()
             refreshMarkdownProjectPreview()
             if shouldAutomaticallyPresentMarkdownProjectPreview {
                 presentMarkdownProjectPreviewIfAvailable()
             }
         }
-        .onChange(of: editorObservationSnapshot) { _, _ in
+        .task(id: secondaryContentRequest) {
+            let request = secondaryContentRequest
+            if secondaryContentContext != request.context {
+                secondaryContentContext = request.context
+                activeDelimitedCell = nil
+                syncSecondaryViewModesForCurrentTab()
+                // Normalizing the mode changes the request. Its replacement task
+                // owns the refresh, so no parser starts with the previous tab's mode.
+                guard secondaryContentRequest == request else { return }
+            }
+            guard !Task.isCancelled else { return }
+            clearSecondaryContentViews()
             refreshSecondaryContentViewsIfNeeded()
             if let tabID = viewModel.selectedTabID {
                 EditorPerformanceMonitor.shared.markTOCUpdated(tabID: tabID)
             }
-        }
-        .onChange(of: viewModel.selectedTab?.id) { _, _ in
-            activeDelimitedCell = nil
-            syncSecondaryViewModesForCurrentTab()
-            refreshSecondaryContentViewsIfNeeded()
         }
         .onChange(of: viewModel.selectedTab?.fileURL) { _, _ in
             openAutomaticPreviewIfNeeded()
@@ -5171,26 +5189,6 @@ struct ContentView: View {
                 isMarkdownProjectPreviewPresented = false
             }
             refreshMarkdownProjectPreview()
-        }
-        .onChange(of: delimitedViewMode) { _, newValue in
-            handleDelimitedViewModeChange(newValue)
-        }
-        .onChange(of: plistViewMode) { _, newValue in
-            handlePlistViewModeChange(newValue)
-        }
-        .onChange(of: crashReportViewMode) { _, newValue in
-            handleCrashReportViewModeChange(newValue)
-        }
-        .onChange(of: logViewMode) { _, newValue in
-            handleLogViewModeChange(newValue)
-        }
-        .onChange(of: currentLanguage) { _, _ in
-            syncSecondaryViewModesForCurrentTab()
-            if shouldShowDelimitedTable || shouldShowPlistStructure || shouldShowCrashReportStructure || shouldShowLogSummary {
-                refreshSecondaryContentViewsIfNeeded()
-            } else {
-                clearSecondaryContentViews()
-            }
         }
         .onDisappear {
             cancelSecondaryContentTasks()

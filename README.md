@@ -55,11 +55,11 @@
 
 > Status: **active release**  
 > Latest release: **v1.6.2**
-> Next release target: **v1.6.3**
+> Next release target: **v1.6.4**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
-> Direct GitHub release: **v1.6.2** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-09-07** for latest release **v1.6.2**
+> Direct GitHub release: **v1.6.3** / App Store and TestFlight availability varies by platform and review status
+> Last updated (README): **2026-09-07** for latest release **v1.6.3**
 
 ## What's New in v1.6.1 and v1.6.2
 
@@ -226,11 +226,11 @@ The direct GitHub release is currently ahead of the iOS/iPadOS App Store version
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.6.2** | Current direct download |
-| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.6.1** | Current public App Store listing |
-| **Store Review** | macOS | Corrected App Store update | App Store Connect review | **v1.6.2** | In Apple review |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.6.3** | Current direct download |
+| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.6.2** | Current public App Store listing |
+| **Store Review** | macOS | Corrected App Store update | App Store Connect review | **v1.6.3** | In Apple review |
 | **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.5.0** | Current recorded visionOS listing |
-| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v1.6.2** | Early access builds for feedback; availability may vary by review state |
+| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v1.6.3** | Early access builds for feedback; availability may vary by review state |
 
 ## Install
 

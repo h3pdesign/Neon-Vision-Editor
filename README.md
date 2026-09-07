@@ -54,12 +54,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.6.2**
+> Latest release: **v1.6.3**
 > Next release target: **v1.6.3**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.6.2** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-09-07** for latest release **v1.6.2**
+> Last updated (README): **2026-09-07** for latest release **v1.6.3**
 
 ## What's New in v1.6.1 and v1.6.2
 
@@ -167,7 +167,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=10343&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=10353&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -838,7 +838,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.6.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.6.0) | **A more deliberate workflow** — Opens and edits large Markdown and source files with less blocking work and bounded viewport rendering. | Prevents blank scrolling after editor-width changes and preserves forward content in bounded viewports. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.6.2**
+- Latest release: **v1.6.3**
 - Compare recent changes: [v1.6.1...v1.6.2](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.6.1...v1.6.2)
 
 ## Known Limitations

@@ -940,6 +940,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var hasValidVisualMetrics = false
     private var configuredContentRevision: Int?
     private var configuredExternalContentRevision: Int?
+    private var visualMetricsGeneration = 0
     private let viewportMaximumByteCount = 256_000
     private let editRefreshMaximumByteCount = 128_000
     private let visualMetricSampleLineLimit = 512
@@ -993,6 +994,21 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         }
         contentWidth = max(viewportSize.width, 1)
         invalidateIntrinsicContentSize()
+    }
+
+    /// Visual-row measurement can touch hundreds of Core Text lines. Defer it
+    /// until after the representable update has returned so selecting a tab can
+    /// publish its already-loaded viewport in the current run loop.
+    private func scheduleVisualMetricsRecalculation() {
+        visualMetricsGeneration &+= 1
+        let generation = visualMetricsGeneration
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.visualMetricsGeneration == generation else { return }
+            self.recalculateVisualMetrics()
+            self.setFrameSize(NSSize(width: self.contentWidth, height: self.logicalHeight))
+            self.needsLayout = true
+            self.needsDisplay = true
+        }
     }
 
     private func measuredRowsPerLogicalLine() -> (rowsPerLogicalLine: CGFloat, isComplete: Bool) {
@@ -1310,8 +1326,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             guard contentChanged else { return }
             clearInlineSuggestion()
             reloadViewport(anchorLine: lineForAbsoluteOffset(absoluteCaret), maximumByteCount: editRefreshMaximumByteCount)
-            recalculateVisualMetrics()
             setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
+            scheduleVisualMetricsRecalculation()
             needsLayout = true
             needsDisplay = true
             return
@@ -1341,8 +1357,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             selection = NSRange(location: selectionLocation, length: selectionLength)
         }
         reloadViewport(anchorLine: lineForAbsoluteOffset(absoluteCaret))
-        recalculateVisualMetrics()
         setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
+        scheduleVisualMetricsRecalculation()
         needsDisplay = true
         if isNewDocument {
             // Publish after the representable update so the status bar reflects

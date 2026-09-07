@@ -2722,15 +2722,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.6.2",
-            subtitle: "Release highlights for v1.6.2.",
+            title: "What’s New in v1.6.3",
+            subtitle: "Release highlights for v1.6.3.",
             bullets: [
-                "Editor Improvements: Detects external edits on network volumes even when filesystem change notifications are missed.",
-                "Workflow Refinements: Lets you disable the automatic Welcome Tour and opens Finder documents without interrupting them with a tour.",
-                "Performance Updates: Keeps purchase feedback stable while Settings updates and product information refreshes.",
-                "Reliable Saves: Improves external-document save safety and opens text files with unknown extensions or no extension.",
-                "Editor Improvements: Adds a background metadata polling fallback for open network-volume files, reusing the existing external-change conflict…",
-                "Workflow Refinements: Adds an automatic Welcome Tour preference; Finder file launches suppress the tour, including after app updates."
+                "Editor Improvements: Switch between open documents with less visible delay, including when changing between Markdown and source files.",
+                "Workflow Refinements: Keep local development builds usable without requiring a Developer ID certificate for Quick Look.",
+                "Editor Performance: Preserve a responsive first frame while deferred rendering catches up in the background.",
+                "Usability Updates: The selected editor publishes its first frame before deferred layout and preview work begins.",
+                "Editor Performance: Makes macOS tab switching responsive by publishing the selected editor before deferred Core Text layout and Markdown…",
+                "Workflow Refinements: Avoids synchronous large-file inspection and preview parsing while selecting a tab, including when switching between…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4499,7 +4499,7 @@ extension NSRange {
 enum EditorCommandUserInfo {
     nonisolated static let windowNumber = "targetWindowNumber"
     nonisolated static let documentID = "documentID"
-    static let inspectionMessage = "inspectionMessage"
+    nonisolated static let inspectionMessage = "inspectionMessage"
     nonisolated static let rangeLocation = "rangeLocation"
     nonisolated static let rangeLength = "rangeLength"
     nonisolated static let viewportTopFraction = "viewportTopFraction"

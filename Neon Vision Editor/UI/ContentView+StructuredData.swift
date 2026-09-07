@@ -114,9 +114,14 @@ extension ContentView {
     private var delimitedModePicker: some View {
         Picker(
             "CSV/TSV View Mode",
-            selection: structuredModeBinding(
-                $delimitedViewMode,
-                onChange: handleDelimitedViewModeChange
+            selection: Binding(
+                get: { delimitedViewMode },
+                set: { mode in
+                    delimitedViewMode = mode
+                    if let key = selectedDelimitedViewModePersistenceKey {
+                        persistDelimitedViewMode(mode, for: key)
+                    }
+                }
             )
         ) {
             Text("Table").tag(DelimitedViewMode.table)
@@ -153,10 +158,7 @@ extension ContentView {
     private var plistModePicker: some View {
         Picker(
             "Plist View Mode",
-            selection: structuredModeBinding(
-                $plistViewMode,
-                onChange: handlePlistViewModeChange
-            )
+            selection: $plistViewMode
         ) {
             Text("Structure").tag(PlistViewMode.structure)
             Text("Text").tag(PlistViewMode.text)
@@ -170,10 +172,7 @@ extension ContentView {
     private var crashReportModePicker: some View {
         Picker(
             "Crash Report View Mode",
-            selection: structuredModeBinding(
-                $crashReportViewMode,
-                onChange: handleCrashReportViewModeChange
-            )
+            selection: $crashReportViewMode
         ) {
             Text("Summary").tag(CrashReportViewMode.structure)
             Text("Text").tag(CrashReportViewMode.text)
@@ -187,10 +186,7 @@ extension ContentView {
     private var logModePicker: some View {
         Picker(
             "Log View Mode",
-            selection: structuredModeBinding(
-                $logViewMode,
-                onChange: handleLogViewModeChange
-            )
+            selection: $logViewMode
         ) {
             Text("Summary").tag(LogViewMode.summary)
             Text("Text").tag(LogViewMode.text)
@@ -199,24 +195,6 @@ extension ContentView {
         .frame(maxWidth: 240)
         .accessibilityLabel("Log view mode")
         .accessibilityHint("Switch between a severity summary and raw log text")
-    }
-
-    private func structuredModeBinding<Value: Equatable>(
-        _ binding: Binding<Value>,
-        onChange: @escaping (Value) -> Void
-    ) -> Binding<Value> {
-        Binding(
-            get: { binding.wrappedValue },
-            set: { newValue in
-                guard binding.wrappedValue != newValue else { return }
-                binding.wrappedValue = newValue
-                // Run after the new @State value is committed, but independently
-                // of the editor branch's lifetime during the mode replacement.
-                Task { @MainActor in
-                    onChange(newValue)
-                }
-            }
-        )
     }
 
     @ViewBuilder

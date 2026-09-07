@@ -1,10 +1,106 @@
 import XCTest
 import SwiftUI
 import PDFKit
+import WebKit
 @testable import Neon_Vision_Editor
 
 @MainActor
 final class MarkdownPreviewPDFRendererTests: XCTestCase {
+    // Use the production Markdown converter and export CSS without invoking
+    // ContentView's document environment (these fixtures have no local images).
+    private func exportFixtureHTML(_ markdown: String, mode: ContentView.MarkdownPDFExportMode) -> String {
+        let css = ContentView().markdownPreviewCSS(template: "default", preferDarkMode: false, backgroundStyle: .template, translucentBackgroundEnabled: false)
+        let body = ContentView.markdownPreviewBodyHTML(from: markdown, dialect: .gfm, useRenderLimits: false)
+        let onePage = mode == .onePageFit ? " pdf-one-page" : ""
+        return "<!doctype html><html><head><meta charset=\"utf-8\"><style>\(css)</style></head><body class=\"default pdf-export\(onePage)\"><main class=\"content\">\(body)</main></body></html>"
+    }
+    func testPaginationUsesPreferredBlockBottomInsteadOfCuttingThroughNextBlock() {
+        let ranges = MarkdownPreviewPDFRenderer.paginatedSourceRanges(
+            sourceHeight: 2_000, preferredBlockBottoms: [800, 1_600], sliceHeight: 1_000
+        )
+        XCTAssertEqual(ranges.first?.bottom, 800, "The eligible block boundary must win over the fixed slice height.")
+        XCTAssertEqual(ranges.last?.bottom, 2_000)
+        for (previous, next) in zip(ranges, ranges.dropFirst()) {
+            XCTAssertEqual(previous.bottom, next.top)
+        }
+    }
+
+    func testPaginationRejectsInvalidDimensionsAndKeepsFinalBlockOnLastPage() {
+        for height in [CGFloat.zero, -1, .infinity, .nan] {
+            XCTAssertTrue(MarkdownPreviewPDFRenderer.paginatedSourceRanges(sourceHeight: height, preferredBlockBottoms: [], sliceHeight: 100).isEmpty)
+            XCTAssertTrue(MarkdownPreviewPDFRenderer.paginatedSourceRanges(sourceHeight: 100, preferredBlockBottoms: [], sliceHeight: height).isEmpty)
+        }
+        let ranges = MarkdownPreviewPDFRenderer.paginatedSourceRanges(sourceHeight: 900, preferredBlockBottoms: [600, 850], sliceHeight: 1_000)
+        XCTAssertEqual(ranges.count, 1)
+        XCTAssertEqual(ranges.last?.bottom, 900)
+    }
+
+    func testShortPDFDoesNotPadToBlankPages() async throws {
+        for markdown in ["", "# Short document\n\nENDMARKER"] {
+            let data = try await MarkdownPreviewPDFRenderer.render(html: exportFixtureHTML(markdown, mode: .paginatedFit), mode: .paginatedFit)
+            let document = try XCTUnwrap(PDFDocument(data: data))
+            XCTAssertEqual(document.pageCount, 1)
+            if !markdown.isEmpty { XCTAssertTrue(document.string?.contains("ENDMARKER") == true) }
+        }
+    }
+
+    func testExportCodeBlocksFitWithoutHorizontalScrollingOrInteractiveControls() async throws {
+        let markdown = "# Export fixture\n\n```text\n" + String(repeating: "long-token-", count: 30) + "END_OF_LINE\n```"
+        for mode in [ContentView.MarkdownPDFExportMode.paginatedFit, .onePageFit] {
+            let html = exportFixtureHTML(markdown, mode: mode)
+            let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 595, height: 1800))
+            let loaded = expectation(description: "Export HTML loaded")
+            let waiter = PDFExportNavigationWaiter(loaded: loaded)
+            webView.navigationDelegate = waiter
+            webView.loadHTMLString(html, baseURL: nil)
+            await fulfillment(of: [loaded], timeout: 30)
+            defer { webView.navigationDelegate = nil; webView.stopLoading() }
+            let measurements = try await webView.evaluateJavaScript("""
+            (() => {
+              const pre = document.querySelector('pre');
+              const code = pre.querySelector('code');
+              const controls = Array.from(document.querySelectorAll('.code-block-copy, .code-block-language-picker'));
+              return { overflow: Math.max(pre.scrollWidth - pre.clientWidth, code.scrollWidth - code.clientWidth),
+                       visibleControls: controls.filter(node => node.getClientRects().length > 0).length };
+            })()
+            """) as? [String: NSNumber]
+            let values = try XCTUnwrap(measurements)
+            XCTAssertLessThanOrEqual(try XCTUnwrap(values["overflow"]).doubleValue, 1, "PDF code cannot rely on an interactive horizontal scrollbar (\(mode)).")
+            XCTAssertEqual(values["visibleControls"]?.intValue, 0, "Copy buttons and language pickers must not be captured in the PDF (\(mode)).")
+            withExtendedLifetime(waiter) {}
+        }
+    }
+
+    func testExportedPDFContainsLastCodeLineAndNoCopyButton() async throws {
+        let lines = (0..<90).map { "ROW_\($0) " + String(repeating: "sample ", count: 20) + "TAIL_\($0)" }.joined(separator: "\n")
+        let markdown = "# PDF regression\n\n```text\n\(lines)\n```\n\nFINALDOCUMENTMARKER"
+        for mode in [ContentView.MarkdownPDFExportMode.paginatedFit, .onePageFit] {
+            let data = try await MarkdownPreviewPDFRenderer.render(
+                html: exportFixtureHTML(markdown, mode: mode),
+                mode: mode == .paginatedFit ? .paginatedFit : .onePageFit
+            )
+            let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "com.adobe.pdf")
+            attachment.name = "pdf-export-\(mode.rawValue)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            let document = try XCTUnwrap(PDFDocument(data: data))
+            let text = document.string ?? ""
+            XCTAssertTrue(text.contains("FINALDOCUMENTMARKER"))
+            XCTAssertTrue(text.contains("TAIL_89"), "The right edge of the final code line must survive export.")
+            XCTAssertFalse(text.contains("Copy"), "Interactive preview buttons do not belong in a PDF.")
+            if mode == .onePageFit {
+                XCTAssertEqual(document.pageCount, 1)
+            } else {
+                XCTAssertGreaterThan(document.pageCount, 1)
+                for index in 0..<document.pageCount {
+                    let page = try XCTUnwrap(document.page(at: index))
+                    XCTAssertFalse((page.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "This flowing-text fixture must not produce blank trailing pages.")
+                    XCTAssertEqual(page.bounds(for: .mediaBox).width, 595, accuracy: 1)
+                    XCTAssertEqual(page.bounds(for: .mediaBox).height, 842, accuracy: 1)
+                }
+            }
+        }
+    }
 #if os(macOS)
     func testDetachedPreviewUsesEditorBackgroundInsteadOfPreviewWhite() {
         let html = "<html><head><style>body { background: white; }</style></head><body><main class=\"content\">Preview</main></body></html>"
@@ -434,5 +530,16 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
                 XCTAssertLessThan(html.utf8.count, 150_000)
             }
         }
+    }
+}
+
+@MainActor
+private final class PDFExportNavigationWaiter: NSObject, WKNavigationDelegate {
+    let loaded: XCTestExpectation
+    init(loaded: XCTestExpectation) { self.loaded = loaded }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { loaded.fulfill() }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        XCTFail(error.localizedDescription)
+        loaded.fulfill()
     }
 }

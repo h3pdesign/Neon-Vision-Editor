@@ -32,7 +32,11 @@ extension ContentView {
             scheduleMarkdownPreviewRender()
         }
         .onChange(of: viewModel.selectedTab?.id) { _, _ in
-            scheduleMarkdownPreviewRender(immediate: true)
+            // Let the newly selected editor publish its first frame before
+            // starting Markdown parsing/WebKit updates. The render task is
+            // cancelled and replaced on subsequent content changes, so the
+            // short debounce does not produce stale preview output.
+            scheduleMarkdownPreviewRender()
         }
         .onChange(of: markdownPreviewTemplateRaw) { _, _ in
             scheduleMarkdownPreviewRender(immediate: true)

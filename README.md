@@ -1,5 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
+> Prepared release: **v1.6.3** — not published. See [candidate notes](CHANGELOG.md).
+
 <p align="center">
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.6.2-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
@@ -392,6 +394,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - The terminal provides a persistent PTY shell, bounded scrollback, and ANSI colors. Its display is currently append-only: cursor-based progress rewrites and full-screen/alternate-screen programs are not supported. Remaining emulator and readiness work is tracked in [#318](https://github.com/h3pdesign/Neon-Vision-Editor/issues/318).
 - `scripts/nve` opens files from the terminal and supports `--wait`, `--new-window`, and `--line` compatibility flags.
 - Find in Files keeps results visible on Mac and iPad when a match opens, while replacement targets start unselected by default.
+- In the next release, Find in Files respects project and nested `.gitignore` files. Use the project sidebar's **Ignored Folders** menu to exclude `node_modules`, `build`, `dist`, and other listed output folders; custom paths and patterns belong in `.gitignore`. Unknown text-file extensions remain searchable. Git global excludes and tracked-file exceptions are not applied.
 - Remote Sessions are opt-in: macOS owns SSH-key login and can publish an attach code so iPhone, iPad, and Apple Vision Pro can browse, open, edit, and explicitly save supported remote text files through the Mac-hosted broker.
 - Project quick actions (`Expand All` / `Collapse All`), recent project folders, file filters for All Files, Modified, Images, PNG, PDF, and Markdown, and default ignored heavy folders (`.git`, `.build`, `node_modules`, `DerivedData`).
 

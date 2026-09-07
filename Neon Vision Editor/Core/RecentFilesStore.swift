@@ -238,6 +238,12 @@ final class EditorPreferenceWriter {
         case paths([String])
         case bookmarks([String: Data])
         case data(Data)
+        case string(String)
+        case flag(Bool)
+        case strings([String: String])
+        case flags([String: Bool])
+        case integers([String: Int])
+        case dataList([Data])
         case removed
 
         var object: Any? {
@@ -245,6 +251,12 @@ final class EditorPreferenceWriter {
             case .paths(let value): return value
             case .bookmarks(let value): return value
             case .data(let value): return value
+            case .string(let value): return value
+            case .flag(let value): return value
+            case .strings(let value): return value
+            case .flags(let value): return value
+            case .integers(let value): return value
+            case .dataList(let value): return value
             case .removed: return nil
             }
         }
@@ -309,8 +321,14 @@ final class EditorPreferenceWriter {
         queue.async {
             guard let write = pendingWrites.take(key) else { return }
             if let object = write.value.object {
-                write.store.defaults.set(object, forKey: name)
-            } else {
+                // A session snapshot contains many unchanged preferences. Rewriting
+                // them still invokes synchronous observers and contends with UI
+                // preference reads, even on this background queue.
+                let existing = write.store.defaults.object(forKey: name) as? NSObject
+                if existing?.isEqual(object) != true {
+                    write.store.defaults.set(object, forKey: name)
+                }
+            } else if write.store.defaults.object(forKey: name) != nil {
                 write.store.defaults.removeObject(forKey: name)
             }
             Task { @MainActor [self] in

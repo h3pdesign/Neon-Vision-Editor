@@ -1,11 +1,19 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-09-05 (v1.6.2 release-aligned architecture)
+Last updated: 2026-09-07 (v1.6.3 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v1.6.3 (2026-09-07)
+
+- The selected editor publishes its first frame before deferred layout and preview work begins.
+- Makes macOS tab switching responsive by publishing the selected editor before deferred Core Text layout and Markdown preview work runs.
+- Avoids synchronous large-file inspection and preview parsing while selecting a tab, including when switching between Markdown and source files.
+- Fixes Markdown PDF export clipping, removes interactive code controls from exports, preserves A4 page dimensions, and uses content and code-line boundaries for pagination without blank trailing pages.
+- Find in Files now applies root and nested .gitignore rules and the sidebar's Ignored Folders settings consistently, pruning excluded directories while retaining text files with unknown extensions.
 
 ### v1.6.2 (2026-09-05)
 
@@ -15,15 +23,6 @@ Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and vision
 - Retains a complete local recovery copy of external-document save payloads on iOS/iPadOS and visionOS.
 - Avoids duplicate network-file checks and skips tabs that are still loading or already reviewing an external change.
 - Rechecks launch intent before presenting a delayed Welcome Tour.
-
-### v1.6.1 (2026-09-04)
-
-- Expands complex HTML, JSX, CSS, SCSS, Less, Sass, and related Emmet abbreviations with configured indentation.
-- Restores Tab-to-accept inline completion, Vim navigation, Markdown shortcuts, drag and drop, rich-text paste, code snapshots, and whitespace inspection in the macOS virtual editor.
-- Caches generation-safe bounded viewports and enforces median latency budgets for typing, scrolling, selection, and viewport reloads.
-- Colors HTML tags, attributes, strings, embedded CSS properties, and numbers as separate syntax tokens instead of treating complete attribute or style values as one string.
-- Reads offscreen selections and edits through bounded UTF-16 document ranges instead of materializing an entire file-backed document.
-- Preserves tab selection, preview, structured-data, AI completion, toolbar, and persistence behavior when switching to the virtual editor.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

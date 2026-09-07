@@ -6,6 +6,37 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.6.3] - 2026-09-07
+
+### Why Upgrade
+
+- Switch between open documents with less visible delay, including when changing between Markdown and source files.
+- Keep local development builds usable without requiring a Developer ID certificate for Quick Look.
+- Preserve a responsive first frame while deferred rendering catches up in the background.
+
+### Highlights
+
+- The selected editor publishes its first frame before deferred layout and preview work begins.
+
+### Fixes
+
+- Makes macOS tab switching responsive by publishing the selected editor before deferred Core Text layout and Markdown preview work runs.
+- Avoids synchronous large-file inspection and preview parsing while selecting a tab, including when switching between Markdown and source files.
+- Fixes Markdown PDF export clipping, removes interactive code controls from exports, preserves A4 page dimensions, and uses content and code-line boundaries for pagination without blank trailing pages.
+- Find in Files now applies root and nested .gitignore rules and the sidebar's Ignored Folders settings consistently, pruning excluded directories while retaining text files with unknown extensions.
+- Corrects mobile line-number updates while typing and scrolling, and removes the fixed width ceiling that clipped long unwrapped lines.
+- Adds three lines of bottom editing space and keeps context below the active caret on iOS/iPadOS and visionOS.
+- Adds triple-tap logical-line selection and an accessible Select Line action in the mobile editor.
+- Displays Markdown bold and italic source text using font styling while preserving markup, escapes, and code blocks.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.6.2] - 2026-09-05
 
 ### Why Upgrade

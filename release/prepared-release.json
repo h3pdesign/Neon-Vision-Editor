@@ -1,13 +1,13 @@
 {
-  "tag": "v1.6.2",
-  "source": "b343e5ddc752386f3fbed84b55e4bfd5fa9432a7",
-  "date": "2026-09-05",
-  "build": 1029,
-  "published_tag": "v1.6.1",
-  "published_build": 1017,
-  "status": "published",
+  "tag": "v1.6.3",
+  "source": "d6f85e1678696bd58cdbe5c4255deffff00530c7",
+  "date": "2026-09-07",
+  "build": 1031,
+  "published_tag": "v1.6.2",
+  "published_build": 1029,
+  "status": "prepared",
   "cloud": {
     "product_id": "6BA578EC-8F26-47BC-81A9-94246EAF48E0",
-    "max_number": 1028
+    "max_number": 1030
   }
 }

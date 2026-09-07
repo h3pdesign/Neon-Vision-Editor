@@ -183,6 +183,14 @@ extension ContentView {
 
     // MARK: - Last Session Files
 
+    private var sessionPreferences: EditorPreferenceWriter { .shared }
+
+    func persistSelectedSessionFileURLImmediately() {
+        guard didApplyStartupBehavior, startupBehavior != .safeMode else { return }
+        let value = viewModel.selectedTab?.fileURL.map { EditorPreferenceWriter.Value.string($0.absoluteString) } ?? .removed
+        sessionPreferences.set(value, forKey: "LastSessionSelectedFileURL")
+    }
+
     func scheduleSessionPersistence(delay: TimeInterval = 0.5) {
         pendingSessionPersistenceWorkItem?.cancel()
         let work = DispatchWorkItem {
@@ -191,19 +199,6 @@ extension ContentView {
         }
         pendingSessionPersistenceWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
-    }
-
-    /// Keep the selected document available for the next launch without doing
-    /// bookmark generation while the user is changing tabs. Creating
-    /// security-scoped bookmarks walks every open URL and is deliberately left
-    /// to the debounced persistence pass (and the app/window lifecycle hooks).
-    func persistSelectedSessionFileURLImmediately() {
-        guard didApplyStartupBehavior, startupBehavior != .safeMode else { return }
-        if let selectedURL = viewModel.selectedTab?.fileURL?.absoluteString {
-            UserDefaults.standard.set(selectedURL, forKey: "LastSessionSelectedFileURL")
-        } else {
-            UserDefaults.standard.removeObject(forKey: "LastSessionSelectedFileURL")
-        }
     }
 
     func scheduleUnsavedDraftSnapshotPersistence(delay: TimeInterval = 0.7) {
@@ -243,8 +238,8 @@ extension ContentView {
         ]).joined(separator: "\n")
         guard signature != lastPersistedSessionSignature else { return }
         lastPersistedSessionSignature = signature
-        UserDefaults.standard.set(fileURLs.map(\.absoluteString), forKey: "LastSessionFileURLs")
-        UserDefaults.standard.set(viewModel.selectedTab?.fileURL?.absoluteString, forKey: "LastSessionSelectedFileURL")
+        sessionPreferences.set(.paths(fileURLs.map(\.absoluteString)), forKey: "LastSessionFileURLs")
+        persistSelectedSessionFileURLImmediately()
         persistLastSessionEncodingPreferences()
         persistLastSessionViewContext()
         persistLastSessionProjectFolderReference(projectRootFolderURL)
@@ -276,7 +271,7 @@ extension ContentView {
             return bookmarked
         }
 #endif
-        let stored = UserDefaults.standard.stringArray(forKey: "LastSessionFileURLs") ?? []
+        let stored = sessionPreferences.object(forKey: "LastSessionFileURLs") as? [String] ?? []
         var urls: [URL] = []
         var seen: Set<String> = []
         for raw in stored {
@@ -302,7 +297,7 @@ extension ContentView {
             return bookmarked
         }
 #endif
-        guard let selectedPath = UserDefaults.standard.string(forKey: "LastSessionSelectedFileURL"),
+        guard let selectedPath = sessionPreferences.object(forKey: "LastSessionSelectedFileURL") as? String,
               let selectedURL = restoredSessionURL(from: selectedPath) else {
             return nil
         }
@@ -345,14 +340,13 @@ extension ContentView {
             identifiers[key] = tab.fileEncoding.identifier.rawValue
             automaticModes[key] = tab.usesAutomaticFileEncoding
         }
-        UserDefaults.standard.set(identifiers, forKey: lastSessionEncodingByFileURLKey)
-        UserDefaults.standard.set(automaticModes, forKey: lastSessionAutomaticEncodingByFileURLKey)
+        sessionPreferences.set(.strings(identifiers), forKey: lastSessionEncodingByFileURLKey)
+        sessionPreferences.set(.flags(automaticModes), forKey: lastSessionAutomaticEncodingByFileURLKey)
     }
 
     func restoredLastSessionEncodingPreferences() -> [String: RestoredEncodingPreference] {
-        let defaults = UserDefaults.standard
-        let identifiers = defaults.dictionary(forKey: lastSessionEncodingByFileURLKey) as? [String: String] ?? [:]
-        let automaticModes = defaults.dictionary(forKey: lastSessionAutomaticEncodingByFileURLKey) as? [String: Bool] ?? [:]
+        let identifiers = sessionPreferences.object(forKey: lastSessionEncodingByFileURLKey) as? [String: String] ?? [:]
+        let automaticModes = sessionPreferences.object(forKey: lastSessionAutomaticEncodingByFileURLKey) as? [String: Bool] ?? [:]
         return identifiers.reduce(into: [:]) { result, pair in
             guard let identifier = TextEncodingDescriptor.Identifier(rawValue: pair.value) else { return }
             result[pair.key] = RestoredEncodingPreference(
@@ -365,10 +359,9 @@ extension ContentView {
     // MARK: - Last Session View Context
 
     func persistLastSessionViewContext() {
-        let defaults = UserDefaults.standard
-        defaults.set(viewModel.showSidebar, forKey: lastSessionShowSidebarKey)
-        defaults.set(showProjectStructureSidebar, forKey: lastSessionShowProjectSidebarKey)
-        defaults.set(previewMode.rawValue, forKey: lastSessionPreviewModeKey)
+        sessionPreferences.set(.flag(viewModel.showSidebar), forKey: lastSessionShowSidebarKey)
+        sessionPreferences.set(.flag(showProjectStructureSidebar), forKey: lastSessionShowProjectSidebarKey)
+        sessionPreferences.set(.string(previewMode.rawValue), forKey: lastSessionPreviewModeKey)
 
         if let selectedURL = viewModel.selectedTab?.fileURL {
             let key = selectedURL.standardizedFileURL.absoluteString
@@ -376,57 +369,57 @@ extension ContentView {
                 sessionCaretByFileURL[key] = max(0, lastCaretLocation)
             }
         }
-        defaults.set(sessionCaretByFileURL, forKey: lastSessionCaretByFileURLKey)
+        sessionPreferences.set(.integers(sessionCaretByFileURL), forKey: lastSessionCaretByFileURLKey)
     }
 
     func restoreLastSessionViewContextIfAvailable() {
-        let defaults = UserDefaults.standard
-        if defaults.object(forKey: lastSessionShowSidebarKey) != nil {
-            viewModel.showSidebar = defaults.bool(forKey: lastSessionShowSidebarKey)
+        let defaults = sessionPreferences
+        if let visible = defaults.object(forKey: lastSessionShowSidebarKey) as? Bool {
+            viewModel.showSidebar = visible
         }
 #if !os(macOS)
-        if defaults.object(forKey: lastSessionShowProjectSidebarKey) != nil {
-            showProjectStructureSidebar = defaults.bool(forKey: lastSessionShowProjectSidebarKey)
+        if let visible = defaults.object(forKey: lastSessionShowProjectSidebarKey) as? Bool {
+            showProjectStructureSidebar = visible
         }
 #endif
-        if let rawPreviewMode = defaults.string(forKey: lastSessionPreviewModeKey),
+        if let rawPreviewMode = defaults.object(forKey: lastSessionPreviewModeKey) as? String,
            let restoredPreviewMode = PreviewMode(rawValue: rawPreviewMode) {
             previewMode = restoredPreviewMode
-        } else if defaults.object(forKey: lastSessionShowMarkdownPreviewKey) != nil {
-            showMarkdownPreviewPane = defaults.bool(forKey: lastSessionShowMarkdownPreviewKey)
+        } else if let visible = defaults.object(forKey: lastSessionShowMarkdownPreviewKey) as? Bool {
+            showMarkdownPreviewPane = visible
         }
-        sessionCaretByFileURL = defaults.dictionary(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]
+        sessionCaretByFileURL = defaults.object(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]
     }
 
     func persistLastSessionProjectFolderReference(_ folderURL: URL?) {
         guard let folderURL else {
-            UserDefaults.standard.removeObject(forKey: lastSessionProjectFolderURLKey)
+            sessionPreferences.set(.removed, forKey: lastSessionProjectFolderURLKey)
             return
         }
-        UserDefaults.standard.set(folderURL.absoluteString, forKey: lastSessionProjectFolderURLKey)
+        sessionPreferences.set(.string(folderURL.absoluteString), forKey: lastSessionProjectFolderURLKey)
     }
 
     func persistLastSessionProjectFolderSecurityScopedBookmark(_ folderURL: URL?) {
         guard let folderURL else {
 #if os(macOS)
-            UserDefaults.standard.removeObject(forKey: macLastSessionProjectFolderBookmarkKey)
+            sessionPreferences.set(.removed, forKey: macLastSessionProjectFolderBookmarkKey)
 #elseif os(iOS) || os(visionOS)
-            UserDefaults.standard.removeObject(forKey: lastSessionProjectFolderBookmarkKey)
+            sessionPreferences.set(.removed, forKey: lastSessionProjectFolderBookmarkKey)
 #endif
             return
         }
 
 #if os(macOS)
         if let bookmark = makeSecurityScopedBookmarkDataMac(for: folderURL) {
-            UserDefaults.standard.set(bookmark, forKey: macLastSessionProjectFolderBookmarkKey)
+            sessionPreferences.set(.data(bookmark), forKey: macLastSessionProjectFolderBookmarkKey)
         } else {
-            UserDefaults.standard.removeObject(forKey: macLastSessionProjectFolderBookmarkKey)
+            sessionPreferences.set(.removed, forKey: macLastSessionProjectFolderBookmarkKey)
         }
 #elseif os(iOS) || os(visionOS)
         if let bookmark = makeSecurityScopedBookmarkData(for: folderURL) {
-            UserDefaults.standard.set(bookmark, forKey: lastSessionProjectFolderBookmarkKey)
+            sessionPreferences.set(.data(bookmark), forKey: lastSessionProjectFolderBookmarkKey)
         } else {
-            UserDefaults.standard.removeObject(forKey: lastSessionProjectFolderBookmarkKey)
+            sessionPreferences.set(.removed, forKey: lastSessionProjectFolderBookmarkKey)
         }
 #endif
     }
@@ -441,7 +434,7 @@ extension ContentView {
             return bookmarked
         }
 #endif
-        guard let raw = UserDefaults.standard.string(forKey: lastSessionProjectFolderURLKey),
+        guard let raw = sessionPreferences.object(forKey: lastSessionProjectFolderURLKey) as? String,
               let parsed = restoredSessionURL(from: raw) else {
             return nil
         }
@@ -458,16 +451,16 @@ extension ContentView {
 
     func persistLastSessionSecurityScopedBookmarksMac(fileURLs: [URL], selectedURL: URL?) {
         let bookmarkData = fileURLs.compactMap { makeSecurityScopedBookmarkDataMac(for: $0) }
-        UserDefaults.standard.set(bookmarkData, forKey: macLastSessionBookmarksKey)
+        sessionPreferences.set(.dataList(bookmarkData), forKey: macLastSessionBookmarksKey)
         if let selectedURL, let selectedData = makeSecurityScopedBookmarkDataMac(for: selectedURL) {
-            UserDefaults.standard.set(selectedData, forKey: macLastSessionSelectedBookmarkKey)
+            sessionPreferences.set(.data(selectedData), forKey: macLastSessionSelectedBookmarkKey)
         } else {
-            UserDefaults.standard.removeObject(forKey: macLastSessionSelectedBookmarkKey)
+            sessionPreferences.set(.removed, forKey: macLastSessionSelectedBookmarkKey)
         }
     }
 
     func restoreSessionURLsFromSecurityScopedBookmarksMac() -> [URL] {
-        guard let saved = UserDefaults.standard.array(forKey: macLastSessionBookmarksKey) as? [Data], !saved.isEmpty else {
+        guard let saved = sessionPreferences.object(forKey: macLastSessionBookmarksKey) as? [Data], !saved.isEmpty else {
             return []
         }
         var urls: [URL] = []
@@ -485,7 +478,7 @@ extension ContentView {
     }
 
     func restoreSelectedURLFromSecurityScopedBookmarkMac() -> URL? {
-        guard let data = UserDefaults.standard.data(forKey: macLastSessionSelectedBookmarkKey),
+        guard let data = sessionPreferences.object(forKey: macLastSessionSelectedBookmarkKey) as? Data,
               let resolved = resolveSecurityScopedBookmarkMac(data) else {
             return nil
         }
@@ -494,7 +487,7 @@ extension ContentView {
     }
 
     func restoreProjectFolderURLFromSecurityScopedBookmarkMac() -> URL? {
-        guard let data = UserDefaults.standard.data(forKey: macLastSessionProjectFolderBookmarkKey),
+        guard let data = sessionPreferences.object(forKey: macLastSessionProjectFolderBookmarkKey) as? Data,
               let resolved = resolveSecurityScopedBookmarkMac(data) else {
             return nil
         }
@@ -701,16 +694,16 @@ extension ContentView {
 
     func persistLastSessionSecurityScopedBookmarks(fileURLs: [URL], selectedURL: URL?) {
         let bookmarkData = fileURLs.compactMap { makeSecurityScopedBookmarkData(for: $0) }
-        UserDefaults.standard.set(bookmarkData, forKey: lastSessionBookmarksKey)
+        sessionPreferences.set(.dataList(bookmarkData), forKey: lastSessionBookmarksKey)
         if let selectedURL, let selectedData = makeSecurityScopedBookmarkData(for: selectedURL) {
-            UserDefaults.standard.set(selectedData, forKey: lastSessionSelectedBookmarkKey)
+            sessionPreferences.set(.data(selectedData), forKey: lastSessionSelectedBookmarkKey)
         } else {
-            UserDefaults.standard.removeObject(forKey: lastSessionSelectedBookmarkKey)
+            sessionPreferences.set(.removed, forKey: lastSessionSelectedBookmarkKey)
         }
     }
 
     func restoreSessionURLsFromSecurityScopedBookmarks() -> [URL] {
-        guard let saved = UserDefaults.standard.array(forKey: lastSessionBookmarksKey) as? [Data], !saved.isEmpty else {
+        guard let saved = sessionPreferences.object(forKey: lastSessionBookmarksKey) as? [Data], !saved.isEmpty else {
             return []
         }
         var urls: [URL] = []
@@ -726,12 +719,12 @@ extension ContentView {
     }
 
     func restoreSelectedURLFromSecurityScopedBookmark() -> URL? {
-        guard let data = UserDefaults.standard.data(forKey: lastSessionSelectedBookmarkKey) else { return nil }
+        guard let data = sessionPreferences.object(forKey: lastSessionSelectedBookmarkKey) as? Data else { return nil }
         return resolveSecurityScopedBookmark(data)
     }
 
     func restoreProjectFolderURLFromSecurityScopedBookmark() -> URL? {
-        guard let data = UserDefaults.standard.data(forKey: lastSessionProjectFolderBookmarkKey),
+        guard let data = sessionPreferences.object(forKey: lastSessionProjectFolderBookmarkKey) as? Data,
               let resolved = resolveSecurityScopedBookmark(data) else { return nil }
         let standardized = resolved.standardizedFileURL
         return FileManager.default.fileExists(atPath: standardized.path) ? standardized : nil

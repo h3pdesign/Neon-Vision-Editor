@@ -588,6 +588,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v1.6.3": ("Sofortiger Tabwechsel und reibungsloser Editor", "Beschleunigt den Wechsel zwischen Markdown- und Quelldateien und verschiebt Vorschau- sowie Layoutarbeit aus dem ersten Anzeigeframe.", ["Editor", "Leistung", "Tabs"]),
         "v1.6.2": ("Sichereres Speichern und zuverlässigere App-Starts", "Verbessert das Speichern externer Dokumente und erkennt Änderungen auf Netzlaufwerken, öffnet Textdateien mit unbekannten Endungen und macht die automatische Willkommenstour abschaltbar.", ["Dateisicherheit", "Textdateien", "Start"]),
         "v1.6.1": ("Vollständiges Emmet und vertraute Editorbefehle", "Erweitert Emmet-Abkürzungen in Markup und Stylesheets, stellt macOS-Editoraktionen wieder her und verbessert Syntaxfarben sowie die Leistung großer Dateien.", ["Emmet", "Editor", "Leistung"]),
         "v1.6.0": ("Große Dateien schneller und zuverlässiger bearbeiten", "Beschleunigt das Öffnen und Scrollen großer Markdown-Dateien, verbessert Eingabe und Speichern und ergänzt native HEX-Farbvorschauen unter macOS.", ["Editor", "Leistung", "Farben"]),
@@ -608,6 +609,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v1.6.3": ("Øjeblikkeligt faneskift og mere flydende editor", "Gør skift mellem Markdown- og kildefiler hurtigere og flytter forhåndsvisnings- og layoutarbejde efter den første visning.", ["Editor", "Ydeevne", "Faner"]),
         "v1.6.2": ("Sikrere lagring og mere pålidelig opstart", "Forbedrer lagring af eksterne dokumenter og registrering af ændringer på netværksdrev, åbner tekstfiler med ukendte filendelser og gør den automatiske velkomst valgfri.", ["Filsikkerhed", "Tekstfiler", "Opstart"]),
         "v1.6.1": ("Fuld Emmet og velkendte editorhandlinger", "Udvider Emmet-forkortelser i markup og stylesheets, gendanner macOS-editorhandlinger og forbedrer syntaksfarver samt ydeevnen i store filer.", ["Emmet", "Editor", "Ydeevne"]),
         "v1.6.0": ("Hurtigere og mere pålidelig redigering af store filer", "Åbner og ruller hurtigere i store Markdown-filer, forbedrer indtastning og lagring og tilføjer native HEX-farvevisninger på macOS.", ["Editor", "Ydeevne", "Farver"]),
@@ -628,6 +630,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v1.6.3": ("Changement d’onglet instantané et éditeur plus fluide", "Accélère le passage entre fichiers Markdown et source et reporte le travail d’aperçu et de mise en page après le premier affichage.", ["Éditeur", "Performances", "Onglets"]),
         "v1.6.2": ("Enregistrement plus sûr et démarrage plus fiable", "Améliore l’enregistrement des documents externes et la détection des modifications réseau, ouvre les fichiers texte aux extensions inconnues et rend l’accueil automatique facultatif.", ["Sécurité des fichiers", "Fichiers texte", "Démarrage"]),
         "v1.6.1": ("Emmet complet et commandes d’édition familières", "Développe les abréviations Emmet dans le balisage et les feuilles de style, restaure les actions de l’éditeur macOS et améliore les couleurs syntaxiques ainsi que les performances des grands fichiers.", ["Emmet", "Éditeur", "Performances"]),
         "v1.6.0": ("Une édition plus rapide et fiable des fichiers volumineux", "Accélère l’ouverture et le défilement des grands fichiers Markdown, fiabilise la saisie et l’enregistrement et ajoute des aperçus de couleurs HEX natifs sur macOS.", ["Éditeur", "Performances", "Couleurs"]),
@@ -648,6 +651,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v1.6.3": ("Cambio de pestaña instantáneo y editor más fluido", "Acelera el cambio entre archivos Markdown y de código y pospone el trabajo de vista previa y diseño tras el primer dibujo.", ["Editor", "Rendimiento", "Pestañas"]),
         "v1.6.2": ("Guardado más seguro e inicio más fiable", "Mejora el guardado de documentos externos y la detección de cambios en red, abre archivos de texto con extensiones desconocidas y permite desactivar la bienvenida automática.", ["Seguridad de archivos", "Archivos de texto", "Inicio"]),
         "v1.6.1": ("Emmet completo y acciones de edición habituales", "Expande abreviaturas Emmet en marcado y hojas de estilo, restaura las acciones del editor de macOS y mejora los colores de sintaxis y el rendimiento de archivos grandes.", ["Emmet", "Editor", "Rendimiento"]),
         "v1.6.0": ("Edición más rápida y fiable de archivos grandes", "Acelera la apertura y el desplazamiento de archivos Markdown grandes, mejora la escritura y el guardado y añade vistas previas nativas de colores HEX en macOS.", ["Editor", "Rendimiento", "Colores"]),
@@ -668,6 +672,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v1.6.3": ("瞬時のタブ切り替えとより滑らかなエディタ", "Markdown とソースファイルの切り替えを高速化し、プレビューとレイアウト処理を初回表示後に行います。", ["エディタ", "パフォーマンス", "タブ"]),
         "v1.6.2": ("より安全な保存と安定した起動", "外部ドキュメントの保存とネットワーク上の変更検出を改善し、未知の拡張子のテキストファイルを開けるようにしました。自動ウェルカム画面も無効にできます。", ["ファイルの安全性", "テキストファイル", "起動"]),
         "v1.6.1": ("完全な Emmet と使い慣れた編集操作", "マークアップとスタイルシートの Emmet 略語を展開し、macOS エディタの操作を復元して、構文カラーと大きなファイルの性能を改善します。", ["Emmet", "エディタ", "パフォーマンス"]),
         "v1.6.0": ("大きなファイルをより速く確実に編集", "大きな Markdown ファイルの表示とスクロールを高速化し、入力と保存の安定性を向上。macOS ではネイティブの HEX カラープレビューを追加しました。", ["エディタ", "パフォーマンス", "カラー"]),
@@ -688,6 +693,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v1.6.3": ("即时标签页切换与更流畅的编辑器", "加快 Markdown 与源文件之间的切换，并将预览和布局工作延后到首帧显示之后。", ["编辑器", "性能", "标签页"]),
         "v1.6.2": ("更安全的保存与更可靠的启动", "改进外部文档保存和网络文件变更检测，支持打开未知扩展名的文本文件，并允许关闭自动欢迎界面。", ["文件安全", "文本文件", "启动"]),
         "v1.6.1": ("完整 Emmet 与熟悉的编辑操作", "扩展标记和样式表中的 Emmet 缩写，恢复 macOS 编辑器操作，并改进语法颜色和大型文件性能。", ["Emmet", "编辑器", "性能"]),
         "v1.6.0": ("更快速、更可靠的大文件编辑", "加快大型 Markdown 文件的打开和滚动，提升输入与保存的可靠性，并在 macOS 上新增原生 HEX 颜色预览。", ["编辑器", "性能", "颜色"]),

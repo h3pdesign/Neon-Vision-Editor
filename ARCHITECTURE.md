@@ -4,7 +4,7 @@ Last updated: 2026-09-07 (v1.6.3 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
-The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/architecture-at-a-glance.svg) is the stable architecture snapshot for the README and release documentation. The Mermaid block in `README.md` is its accessible, editable companion; update both when ownership boundaries or platform services change.
+The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/architecture-at-a-glance.svg) is the stable architecture snapshot for the README and release documentation. Its editable Mermaid source is [`docs/images/architecture-at-a-glance.mmd`](docs/images/architecture-at-a-glance.mmd); update both when ownership boundaries or platform services change.
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment

@@ -1670,7 +1670,10 @@ struct ContentView: View {
             viewWithDroppedFileLoadEvents
             .onChange(of: viewModel.selectedTab?.id) { _, _ in
                 editorExternalMutationRevision &+= 1
-                updateLargeFileModeForCurrentContext()
+                // Do not scan the selected document synchronously while the
+                // editor representable is being swapped. The bounded delayed
+                // reevaluation below preserves large-file detection without
+                // blocking the tab's first draw.
                 scheduleLargeFileModeReevaluation(after: 0.9)
                 scheduleSessionPersistence()
             }

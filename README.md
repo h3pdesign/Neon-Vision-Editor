@@ -454,7 +454,9 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 ## Architecture At A Glance
 
-The current stable editor separates scene presentation, document ownership, native rendering, and optional services. Arrows below show ownership or data exchange; they are not a claim that every operation runs on a background thread.
+The current stable editor separates scene presentation, document ownership, native rendering, and optional services. The diagram is also available as a [scalable SVG](docs/images/architecture-at-a-glance.svg); Mermaid remains below as an accessible, editable source. Arrows show ownership or data exchange; they are not a claim that every operation runs on a background thread.
+
+![Neon Vision Editor architecture at a glance](docs/images/architecture-at-a-glance.svg)
 
 ```mermaid
 flowchart TB
@@ -476,10 +478,11 @@ flowchart TB
     UIKITTEXT["CustomTextEditor: UITextView"]
     EDITING["Syntax, Emmet 2, completion and navigation helpers"]
     PREVIEW["WebKit previews, PDFKit and structured views"]
+    FAST["Fast activation: bind viewport, draw first frame, defer work"]
   end
 
-  OBS["OpenDocumentObservationCenter: NSFilePresenter events"]
-  PROJECT["Project index, search, comparisons and macOS Git"]
+  OBS["OpenDocumentObservationCenter: NSFilePresenter + metadata polling"]
+  PROJECT["Project index, search, .gitignore and macOS Git"]
   AI["AIChatConversation + AIClient: explicit context and providers"]
   REMOTE["RemoteSessionStore: macOS SSH host and attach clients"]
   INFRA["Session recovery, preferences, Keychain and PDF annotations"]
@@ -493,6 +496,7 @@ flowchart TB
   OBS --> VM
   TABS --> MACVIEW
   TABS --> UIKITTEXT
+  TABS --> FAST
   MACVIEW <-->|bounded windows and edits| DOC
   MACVIEW --> EDITING
   UIKITTEXT --> EDITING
@@ -514,7 +518,7 @@ flowchart TB
 
   class MAC,TOUCH,SCENE platform;
   class VM,TABS app;
-  class DOC,STORAGE,OBS,MACVIEW,UIKITTEXT,EDITING,PREVIEW,PROJECT,AI,REMOTE core;
+  class DOC,STORAGE,OBS,MACVIEW,UIKITTEXT,EDITING,PREVIEW,FAST,PROJECT,AI,REMOTE core;
   class INFRA infra;
   class POLICY,DIRECT,STORE distribution;
 ```

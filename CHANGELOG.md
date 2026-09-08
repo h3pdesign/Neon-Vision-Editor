@@ -10,6 +10,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - Keeps macOS typing visually stable while preserving the native editor viewport.
 - Makes empty native titlebar space usable for window movement without sacrificing toolbar actions.
+- Keeps the editor’s native tab and viewport lifecycle intact while these macOS chrome fixes are applied.
 
 ### Highlights
 

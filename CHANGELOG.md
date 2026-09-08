@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.7.0] - 2026-09-09
+
 ### Why Upgrade
 
 - Keeps native document tabs, sidebars, editor surfaces, and Settings visually consistent across macOS, iOS, and iPadOS window modes.

@@ -2761,12 +2761,8 @@ struct WelcomeTourView: View {
             title: "What’s New in v1.7.0",
             subtitle: "Release highlights for v1.7.0.",
             bullets: [
-                "Editor Improvements: Keeps native document tabs, sidebars, editor surfaces, and Settings visually consistent across macOS, iOS, and iPadOS…",
-                "Workflow Refinements: Applies appearance and layout changes immediately when switching Light, Dark, or System mode.",
-                "Editor Navigation: Makes tab switching and Settings navigation feel immediate while preserving the native platform controls.",
-                "Usability Updates: Replaces the remaining legacy tab-bar paths with native platform tab implementations.",
-                "Editor Improvements: Preserves complete tab borders, spacing, and translucent surfaces across hover, selection, and appearance changes.",
-                "iPhone TOC: Aligns tab, TOC sidebar, project sidebar, line-number, and editor backgrounds in opaque and translucent modes."
+                "Editor Improvements: Replaces the remaining legacy tab-bar paths with native platform tab implementations.",
+                "Workflow Refinements: Preserves complete tab borders, spacing, and translucent surfaces across hover, selection, and appearance changes."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -118,7 +118,16 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.6.3</h2><span class="date">7 September 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.6.4</h2><span class="date">8 September 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Stops per-character document length and dirty-state changes from rebuilding the macOS editor configuration.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves toolbar button hit-testing while supporting window dragging in the middle of the native toolbar.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.6.3</h2><span class="date">7 September 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>The selected editor publishes its first frame before deferred layout and preview work begins.</p></div>
           <div class="item"><span class="badge fixed">Fixed</span><p>Makes macOS tab switching responsive by publishing the selected editor before deferred Core Text layout and Markdown preview work runs.</p></div>

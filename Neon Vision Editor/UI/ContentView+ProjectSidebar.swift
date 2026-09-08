@@ -14,7 +14,7 @@ extension ContentView {
                 idealWidth: clampedProjectSidebarWidth,
                 maxWidth: clampedProjectSidebarWidth
             )
-            .background(editorSurfaceBackgroundStyle)
+            .background(macSidebarColumnBackground)
 #else
         projectStructureSidebarBody
             .frame(
@@ -60,6 +60,7 @@ extension ContentView {
             accentWidth: projectSidebarResizeHandleAccentWidth,
             accentColor: projectSidebarHandleAccentColor,
             surfaceStyle: projectSidebarHandleSurfaceStyle,
+            topSurfaceStyle: macToolbarBackgroundStyle,
             isActive: projectSidebarResizeHandleIsActive,
             isDragging: projectSidebarResizeStartWidth != nil,
             isHovered: $isProjectSidebarResizeHandleHovered,
@@ -313,6 +314,7 @@ struct MacSidebarResizeDivider<ResizeGesture: Gesture>: View where ResizeGesture
     let accentWidth: CGFloat
     let accentColor: Color
     let surfaceStyle: AnyShapeStyle
+    let topSurfaceStyle: AnyShapeStyle
     let isActive: Bool
     let isDragging: Bool
     @Binding var isHovered: Bool
@@ -324,7 +326,14 @@ struct MacSidebarResizeDivider<ResizeGesture: Gesture>: View where ResizeGesture
     var body: some View {
         ZStack {
             Rectangle()
-                .fill(Color.clear)
+                .fill(surfaceStyle)
+
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(topSurfaceStyle)
+                    .frame(height: 42)
+                Spacer(minLength: 0)
+            }
 
             Rectangle()
                 .fill(accentColor)
@@ -334,10 +343,6 @@ struct MacSidebarResizeDivider<ResizeGesture: Gesture>: View where ResizeGesture
                 .frame(maxWidth: .infinity, alignment: .center)
         }
         .frame(width: visibleWidth)
-        // The divider is part of the editor pane, not an independent visual
-        // effect surface. Reuse the adjacent pane style in every appearance
-        // mode so toggling translucency cannot introduce a different strip.
-        .background(Rectangle().fill(surfaceStyle))
         .overlay {
             MacSidebarResizeCursorTrackingView(
                 isHovered: $isHovered,

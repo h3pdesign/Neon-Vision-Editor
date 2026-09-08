@@ -1202,6 +1202,7 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
 struct DetachedPreviewWindowPresenter: NSViewRepresentable {
     @Binding var isPresented: Bool
     let title: String
+    let metadata: String?
     let html: String
     let baseURL: URL?
     @Environment(\.colorScheme) private var colorScheme
@@ -1246,6 +1247,7 @@ struct DetachedPreviewWindowPresenter: NSViewRepresentable {
         func content() -> DetachedPreviewWindowView {
             DetachedPreviewWindowView(
                 title: self.parent.title,
+                metadata: self.parent.metadata,
                 html: self.parent.html,
                 baseURL: self.parent.baseURL,
                 editorBackground: self.parent.editorBackground,
@@ -1335,8 +1337,10 @@ struct DetachedPreviewWindowPresenter: NSViewRepresentable {
 @MainActor
 struct DetachedPreviewWindowView: View {
     static let quickLookGlassTintOpacity = 0.08
+    private static let windowCornerRadius: CGFloat = 14
 
     let title: String
+    let metadata: String?
     let html: String
     let baseURL: URL?
     let editorBackground: Color
@@ -1374,6 +1378,13 @@ struct DetachedPreviewWindowView: View {
                 Text(title)
                     .font(.headline)
                 Spacer()
+                if let metadata {
+                    Text(metadata)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                }
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                 }
@@ -1389,14 +1400,15 @@ struct DetachedPreviewWindowView: View {
         }
         .background {
             if usesQuickLookTransparency {
-                Rectangle()
+                RoundedRectangle(cornerRadius: Self.windowCornerRadius, style: .continuous)
                     .fill(.thinMaterial)
                     .overlay(quickLookGlassTint)
             } else {
-                Rectangle()
+                RoundedRectangle(cornerRadius: Self.windowCornerRadius, style: .continuous)
                     .fill(surfaceBackground)
             }
         }
+        .clipShape(RoundedRectangle(cornerRadius: Self.windowCornerRadius, style: .continuous))
     }
 
     private var quickLookGlassTint: Color {
@@ -2746,15 +2758,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.6.4",
-            subtitle: "Release highlights for v1.6.4.",
+            title: "What’s New in v1.7.0",
+            subtitle: "Release highlights for v1.7.0.",
             bullets: [
-                "Editor Improvements: Type continuously on macOS without editor flicker.",
-                "Accessible Controls: Move the window from unused titlebar and toolbar space while keeping toolbar controls usable.",
-                "Performance Updates: Switch between open documents while the editor preserves the current frame and loads previews in the background.",
-                "Usability Updates: Keep long, unwrapped iPhone lines visible and stable while typing and scrolling.",
-                "Editor Improvements: Improve hardware-keyboard word and logical-line selection on iPhone and iPad.",
-                "Workflow Refinements: Match current-line highlighting to the selected editor theme."
+                "Editor Improvements: Keeps native document tabs, sidebars, editor surfaces, and Settings visually consistent across macOS, iOS, and iPadOS…",
+                "Workflow Refinements: Applies appearance and layout changes immediately when switching Light, Dark, or System mode.",
+                "Editor Navigation: Makes tab switching and Settings navigation feel immediate while preserving the native platform controls.",
+                "Usability Updates: Replaces the remaining legacy tab-bar paths with native platform tab implementations.",
+                "Editor Improvements: Preserves complete tab borders, spacing, and translucent surfaces across hover, selection, and appearance changes.",
+                "iPhone TOC: Aligns tab, TOC sidebar, project sidebar, line-number, and editor backgrounds in opaque and translucent modes."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -3224,16 +3236,6 @@ struct WelcomeTourView: View {
 
             if isWhatsNewPage(page) {
                 whatsNewRows(bullets: displayBullets, compactLayout: compactLayout)
-                Button {
-                    guard let url = URL(string: "https://h3pdesign.github.io/Neon-Vision-Editor/changelog.html") else { return }
-                    openURL(url)
-                } label: {
-                    Label("Read the full changelog", systemImage: "arrow.up.right.square")
-                        .font(.system(size: compactLayout ? 13 : 14, weight: .semibold))
-                }
-                .buttonStyle(.link)
-                .padding(.top, 2)
-                .accessibilityHint("Opens the complete release history in your browser")
             } else if page.title == "Editor Essentials" {
                 recommendedEditorSettings(compactLayout: compactLayout)
             } else {

@@ -102,9 +102,10 @@ enum MarkdownFormattingChromePolicy {
 
     nonisolated static func usesTranslucentControlSurface(
         isCollapsed: Bool,
-        liquidGlassEnabled: Bool
+        liquidGlassEnabled: Bool,
+        windowTranslucent: Bool
     ) -> Bool {
-        liquidGlassEnabled && !isCollapsed
+        liquidGlassEnabled || windowTranslucent
     }
 }
 
@@ -150,9 +151,10 @@ extension ContentView {
         GlassSurface(
             enabled: MarkdownFormattingChromePolicy.usesTranslucentControlSurface(
                 isCollapsed: markdownFormattingToolbarCollapsed,
-                liquidGlassEnabled: shouldUseLiquidGlass
+                liquidGlassEnabled: shouldUseLiquidGlass,
+                windowTranslucent: enableTranslucentWindow
             ),
-            material: primaryGlassMaterial,
+            material: .ultraThinMaterial,
             fallbackColor: markdownFormattingToolbarCollapsed
                 ? Color(uiColor: .secondarySystemBackground)
                 : toolbarFallbackColor,
@@ -162,6 +164,7 @@ extension ContentView {
             markdownFormattingToolbar
         }
         .tint(iOSToolbarForegroundColor)
+        .padding(.trailing, 12)
         .accessibilityLabel("Markdown Formatting")
     }
 #endif
@@ -246,6 +249,7 @@ extension ContentView {
             .padding(2)
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
+            .frame(minWidth: 72, minHeight: 32)
         } else {
             markdownFormattingCapsule
         }

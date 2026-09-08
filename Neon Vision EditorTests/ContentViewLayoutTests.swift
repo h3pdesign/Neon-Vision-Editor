@@ -153,23 +153,26 @@ final class ContentViewLayoutTests: XCTestCase {
         )
     }
 
-    func testCollapsedFormattingControlUsesOpaqueSurfaceWhileExpandedControlMayUseGlass() {
-        XCTAssertFalse(
+    func testFormattingControlUsesGlassWhenEitherWindowOrToolbarTranslucencyIsEnabled() {
+        XCTAssertTrue(
             MarkdownFormattingChromePolicy.usesTranslucentControlSurface(
                 isCollapsed: true,
-                liquidGlassEnabled: true
+                liquidGlassEnabled: false,
+                windowTranslucent: true
             )
         )
         XCTAssertTrue(
             MarkdownFormattingChromePolicy.usesTranslucentControlSurface(
                 isCollapsed: false,
-                liquidGlassEnabled: true
+                liquidGlassEnabled: true,
+                windowTranslucent: false
             )
         )
         XCTAssertFalse(
             MarkdownFormattingChromePolicy.usesTranslucentControlSurface(
                 isCollapsed: false,
-                liquidGlassEnabled: false
+                liquidGlassEnabled: false,
+                windowTranslucent: false
             )
         )
     }

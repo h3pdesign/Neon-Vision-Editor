@@ -13,7 +13,7 @@ import UIKit
 extension ContentView {
     @ViewBuilder
     var imagePreviewPane: some View {
-        documentPreviewContainer(title: "PNG Preview", iconName: "photo") {
+        documentPreviewContainer(title: "PNG Preview", iconName: "photo", metadata: previewFileSizeText(for: viewModel.selectedTab?.fileURL)) {
             if let url = viewModel.selectedTab?.fileURL {
                 ImagePreviewDocumentView(url: url)
             } else {
@@ -24,7 +24,7 @@ extension ContentView {
 
     @ViewBuilder
     var pdfPreviewPane: some View {
-        documentPreviewContainer(title: "PDF Preview", iconName: "doc.richtext") {
+        documentPreviewContainer(title: "PDF Preview", iconName: "doc.richtext", metadata: previewFileSizeText(for: pdfPreviewURL)) {
             if let url = pdfPreviewURL {
                 PDFAnnotationWorkspaceView(
                     url: url,
@@ -43,6 +43,7 @@ extension ContentView {
     private func documentPreviewContainer<Content: View>(
         title: String,
         iconName: String,
+        metadata: String?,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -53,6 +54,13 @@ extension ContentView {
                 Text(title)
                     .font(.headline)
                 Spacer(minLength: 0)
+                if let metadata {
+                    Text(metadata)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                }
                 Button(action: closeCurrentPreview) {
                     Image(systemName: "xmark")
                 }
@@ -90,6 +98,14 @@ extension ContentView {
 #else
         Color(.systemBackground)
 #endif
+    }
+
+    func previewFileSizeText(for url: URL?) -> String? {
+        let byteCount = viewModel.selectedTab?.fileByteCount ?? url.flatMap {
+            try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize
+        }
+        guard let byteCount else { return nil }
+        return ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file)
     }
 }
 

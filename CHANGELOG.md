@@ -19,11 +19,17 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Type continuously on macOS without editor flicker.
 - Move the window from unused titlebar and toolbar space while keeping toolbar controls usable.
 - Switch between open documents while the editor preserves the current frame and loads previews in the background.
+- Keep long, unwrapped iPhone lines visible and stable while typing and scrolling.
+- Improve hardware-keyboard word and logical-line selection on iPhone and iPad.
+- Match current-line highlighting to the selected editor theme.
 
 ### Fixes
 
 - Stops per-character document length and dirty-state changes from rebuilding the macOS editor configuration.
 - Preserves toolbar button hit-testing while supporting window dragging in the middle of the native toolbar.
+- Resolves the line-wrap and scrolling regressions tracked in issues #361 and #362, including per-character viewport jumps.
+- Resolves issue #364 by keeping double-click word selection and triple-click logical-line selection visible after the gesture.
+- Defers Markdown preview work during tab activation so switching documents is not blocked by preview rendering.
 
 ### Breaking changes
 

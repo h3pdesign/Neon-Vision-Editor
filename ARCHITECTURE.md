@@ -14,6 +14,7 @@ The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/a
 - Type continuously on macOS without editor flicker.
 - Move the window from unused titlebar and toolbar space while keeping toolbar controls usable.
 - Switch between open documents while the editor preserves the current frame and loads previews in the background.
+- Keep long, unwrapped iPhone lines visible and stable while typing and scrolling.
 - Stops per-character document length and dirty-state changes from rebuilding the macOS editor configuration.
 - Preserves toolbar button hit-testing while supporting window dragging in the middle of the native toolbar.
 

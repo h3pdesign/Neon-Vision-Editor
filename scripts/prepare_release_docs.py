@@ -1093,6 +1093,8 @@ def update_readme_whats_new_section(
             f"### {current_tag} Highlights",
             "",
             markdown_bullets(current_highlights, "See CHANGELOG.md release highlights."),
+            "",
+            "See the complete release history in the [public changelog](https://h3pdesign.github.io/Neon-Vision-Editor/changelog.html).",
         ]
     )
 

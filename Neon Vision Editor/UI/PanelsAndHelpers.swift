@@ -2751,7 +2751,10 @@ struct WelcomeTourView: View {
             bullets: [
                 "Editor Improvements: Type continuously on macOS without editor flicker.",
                 "Accessible Controls: Move the window from unused titlebar and toolbar space while keeping toolbar controls usable.",
-                "Performance Updates: Switch between open documents while the editor preserves the current frame and loads previews in the background."
+                "Performance Updates: Switch between open documents while the editor preserves the current frame and loads previews in the background.",
+                "Usability Updates: Keep long, unwrapped iPhone lines visible and stable while typing and scrolling.",
+                "Editor Improvements: Improve hardware-keyboard word and logical-line selection on iPhone and iPad.",
+                "Workflow Refinements: Match current-line highlighting to the selected editor theme."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

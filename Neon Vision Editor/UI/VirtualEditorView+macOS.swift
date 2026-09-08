@@ -858,6 +858,34 @@ struct VirtualEditorAccessibilityContext: Equatable {
 }
 
 @MainActor
+enum VirtualEditorSelectionPolicy {
+    static func lineRange(in text: String, at utf16Offset: Int) -> NSRange {
+        let source = text as NSString
+        guard source.length > 0 else { return NSRange(location: 0, length: 0) }
+        let location = min(max(0, utf16Offset), source.length)
+        return source.lineRange(for: NSRange(location: location, length: 0))
+    }
+
+    static func wordRange(in text: String, at utf16Offset: Int) -> NSRange {
+        let units = Array(text.utf16)
+        guard !units.isEmpty else { return NSRange(location: 0, length: 0) }
+        let location = min(max(0, utf16Offset), units.count - 1)
+        guard isWordUnit(units[location]) else {
+            return NSRange(location: location, length: 0)
+        }
+        var start = location
+        while start > 0, isWordUnit(units[start - 1]) { start -= 1 }
+        var end = location + 1
+        while end < units.count, isWordUnit(units[end]) { end += 1 }
+        return NSRange(location: start, length: end - start)
+    }
+
+    private static func isWordUnit(_ unit: UInt16) -> Bool {
+        guard let scalar = UnicodeScalar(unit) else { return false }
+        return CharacterSet.alphanumerics.contains(scalar) || scalar.value == 95
+    }
+}
+
 final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private enum Geometry {
         static let gutterTextInset: CGFloat = 8
@@ -918,6 +946,22 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var visualRowsSnapshot: (key: String, rows: [VisualRow])?
     private var syntaxSpansByLine: [Int: [VirtualEditorSyntaxSpan]] = [:]
     private(set) var syntaxHighlightTask: Task<Void, Never>?
+    private var deferredViewportTask: Task<Void, Never>?
+    private var activationGeneration: UInt64 = 0
+    private var deferredSyntaxHighlighting = false
+    private var installedDocumentID: UUID?
+    private var installedResourceID = ""
+    private var installedContentRevision: Int?
+    private var installedExternalContentRevision: Int?
+    private struct ViewportCacheKey: Hashable {
+        let resourceID: String
+        let documentID: UUID?
+        let contentRevision: Int
+        let externalContentRevision: Int
+        let anchorLine: Int
+    }
+    private var firstViewportCache: [ViewportCacheKey: EditorDocumentViewport] = [:]
+    private let firstViewportCacheLimit = 24
     private var htmlContextDocument: ObjectIdentifier?
     private var htmlContextGeneration: UInt64?
     private var htmlContexts: [Int: HTMLSyntaxState] = [:]
@@ -941,6 +985,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var configuredContentRevision: Int?
     private var configuredExternalContentRevision: Int?
     private var visualMetricsGeneration = 0
+    private var deferredContentWidthGeneration = 0
     private let viewportMaximumByteCount = 256_000
     private let editRefreshMaximumByteCount = 128_000
     private let visualMetricSampleLineLimit = 512
@@ -976,7 +1021,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         guard lineWrapEnabled, !viewportText.isEmpty else {
             estimatedRowsPerLogicalLine = 1
             contentWidth = max(viewportSize.width, 1)
-            if !lineWrapEnabled { contentWidth = unwrappedContentWidth() }
+            if !lineWrapEnabled {
+                scheduleDeferredUnwrappedContentWidth()
+            }
             return
         }
         let measurement = EditorPerformanceMonitor.shared.measureVirtualEditorLayout {
@@ -1005,6 +1052,27 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         DispatchQueue.main.async { [weak self] in
             guard let self, self.visualMetricsGeneration == generation else { return }
             self.recalculateVisualMetrics()
+            self.setFrameSize(NSSize(width: self.contentWidth, height: self.logicalHeight))
+            self.needsLayout = true
+            self.needsDisplay = true
+        }
+    }
+
+    /// Keep tab activation on the bounded viewport path. Measuring every
+    /// visible line with Core Text is useful for horizontal scrolling, but it
+    /// must not block the first draw of a newly selected tab.
+    private func scheduleDeferredUnwrappedContentWidth() {
+        guard !lineWrapEnabled else { return }
+        deferredContentWidthGeneration &+= 1
+        let generation = deferredContentWidthGeneration
+        let resource = resourceID
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  generation == self.deferredContentWidthGeneration,
+                  resource == self.resourceID,
+                  !self.lineWrapEnabled else { return }
+            let measuredWidth = self.unwrappedContentWidth()
+            self.contentWidth = max(self.viewportSize.width, measuredWidth)
             self.setFrameSize(NSSize(width: self.contentWidth, height: self.logicalHeight))
             self.needsLayout = true
             self.needsDisplay = true
@@ -1108,6 +1176,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     deinit {
         syntaxHighlightTask?.cancel()
+        deferredViewportTask?.cancel()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -1278,7 +1347,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let previousResourceID = self.resourceID
         let previousDocumentID = self.documentID
         let isNewDocument = previousResourceID != resourceID || previousDocumentID != documentID
-        let key = "\(resourceID)|\(document?.utf16Length ?? 0)|\(language)|\(fontSize)|\(fontName)|\(lineHeightMultiplier)|\(colorScheme)|\(syntaxThemeKey(for: colorScheme))|\(editorBaseThemeKey(for: colorScheme))|\(document?.isDirty ?? false)|\(translucentBackgroundEnabled)|\(showsLineNumbers)|\(highlightCurrentLine)|\(lineWrapEnabled)|\(showsInvisibleCharacters)|\(showsIndentationGuides)|\(showsScopeGuides)|\(highlightsScopeBackground)|\(highlightsMatchingBrackets)|\(autoIndentEnabled)|\(autoCloseBracketsEnabled)|\(indentStyle)|\(indentWidth)"
+        // Content length and dirty state are document mutations, not editor
+        // configuration. Including either here rebuilds the native viewport
+        // configuration on every keystroke and causes visible frame churn.
+        // Content revisions are handled separately below without replacing
+        // the editor's structural state.
+        let key = "\(resourceID)|\(language)|\(fontSize)|\(fontName)|\(lineHeightMultiplier)|\(colorScheme)|\(syntaxThemeKey(for: colorScheme))|\(editorBaseThemeKey(for: colorScheme))|\(translucentBackgroundEnabled)|\(showsLineNumbers)|\(highlightCurrentLine)|\(lineWrapEnabled)|\(showsInvisibleCharacters)|\(showsIndentationGuides)|\(showsScopeGuides)|\(highlightsScopeBackground)|\(highlightsMatchingBrackets)|\(autoIndentEnabled)|\(autoCloseBracketsEnabled)|\(indentStyle)|\(indentWidth)"
         let contentChanged = configuredContentRevision != contentRevision || configuredExternalContentRevision != externalContentRevision
         self.document = document
         self.documentID = documentID
@@ -1337,9 +1411,20 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         hasValidVisualMetrics = false
         configuredContentRevision = contentRevision
         configuredExternalContentRevision = externalContentRevision
-        viewport = nil
-        viewportText = ""
-        lineStarts = [0]
+        deferredViewportTask?.cancel()
+        deferredViewportTask = nil
+        activationGeneration &+= 1
+        let currentActivationGeneration = activationGeneration
+        // Unit-level canvases are configured before attachment to a window and
+        // still require synchronous setup. Real editor windows can preserve the
+        // current frame while activation work is deferred.
+        let shouldDeferActivation = isNewDocument && window?.isVisible == true
+        let preservePreviousFrame = shouldDeferActivation && viewport != nil
+        if !preservePreviousFrame {
+            viewport = nil
+            viewportText = ""
+            lineStarts = [0]
+        }
         layoutCache.removeAll()
         attributedLineCache.removeAll()
         visualFragmentCache.removeAll()
@@ -1356,9 +1441,29 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             let selectionLength = min(max(0, selection.length), documentLength - selectionLocation)
             selection = NSRange(location: selectionLocation, length: selectionLength)
         }
-        reloadViewport(anchorLine: lineForAbsoluteOffset(absoluteCaret))
-        setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
-        scheduleVisualMetricsRecalculation()
+        let targetLine = (try? document?.position(atUTF16Offset: absoluteCaret).line) ?? 0
+        if shouldDeferActivation {
+            let cacheKey = ViewportCacheKey(
+                resourceID: resourceID,
+                documentID: documentID,
+                contentRevision: contentRevision,
+                externalContentRevision: externalContentRevision,
+                anchorLine: targetLine
+            )
+            if let cached = firstViewportCache[cacheKey] {
+                installViewport(cached, deferExpensiveWork: true)
+            } else {
+                scheduleDeferredViewportLoad(
+                    anchorLine: targetLine,
+                    cacheKey: cacheKey,
+                    generation: currentActivationGeneration
+                )
+            }
+        } else {
+            reloadViewport(anchorLine: targetLine)
+            setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
+            scheduleVisualMetricsRecalculation()
+        }
         needsDisplay = true
         if isNewDocument {
             // Publish after the representable update so the status bar reflects
@@ -1373,8 +1478,20 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     override func draw(_ dirtyRect: NSRect) {
         guard let context = NSGraphicsContext.current?.cgContext else { return }
         defer {
-            if let documentID {
+            if let documentID,
+               installedDocumentID == documentID,
+               installedResourceID == resourceID,
+               installedContentRevision == configuredContentRevision,
+               installedExternalContentRevision == configuredExternalContentRevision {
                 EditorPerformanceMonitor.shared.markTabSwitchFirstDraw(tabID: documentID)
+                if deferredSyntaxHighlighting {
+                    deferredSyntaxHighlighting = false
+                    let generation = activationGeneration
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self, self.activationGeneration == generation else { return }
+                        self.scheduleSyntaxHighlighting()
+                    }
+                }
             }
         }
         context.saveGState()
@@ -1813,9 +1930,22 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         }
         colorPickerPopover?.close()
         colorPickerPopover = nil
-        absoluteCaret = documentOffset(at: point)
-        selection = NSRange(location: absoluteCaret, length: 0)
-        selectionAnchor = absoluteCaret
+        let clickedOffset = documentOffset(at: point)
+        let localOffset = clickedOffset - viewportLineOriginStartUTF16
+        switch event.clickCount {
+        case 3...:
+            selection = VirtualEditorSelectionPolicy.lineRange(in: viewportText, at: localOffset)
+            absoluteCaret = NSMaxRange(selection)
+            selectionAnchor = selection.location
+        case 2:
+            selection = VirtualEditorSelectionPolicy.wordRange(in: viewportText, at: localOffset)
+            absoluteCaret = NSMaxRange(selection)
+            selectionAnchor = selection.location
+        default:
+            absoluteCaret = clickedOffset
+            selection = NSRange(location: absoluteCaret, length: 0)
+            selectionAnchor = absoluteCaret
+        }
         publishCaret()
         needsDisplay = true
     }
@@ -2784,12 +2914,57 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         reloadViewport(anchorLine: target)
     }
 
+    /// Defers the first bounded read until the representable update has returned.
+    /// The existing canvas remains visible while the new tab is prepared, and a
+    /// stale result is discarded if the user changes tabs again first.
+    private func scheduleDeferredViewportLoad(
+        anchorLine: Int,
+        cacheKey: ViewportCacheKey,
+        generation: UInt64
+    ) {
+        deferredViewportTask?.cancel()
+        deferredViewportTask = Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self,
+                  !Task.isCancelled,
+                  self.activationGeneration == generation,
+                  self.resourceID == cacheKey.resourceID,
+                  self.documentID == cacheKey.documentID,
+                  let document = self.document,
+                  let next = try? document.viewport(
+                      aroundLine: anchorLine,
+                      maximumByteCount: self.viewportMaximumByteCount,
+                      maximumLineCount: 512
+                  ) else { return }
+            guard self.activationGeneration == generation,
+                  self.resourceID == cacheKey.resourceID,
+                  self.documentID == cacheKey.documentID else { return }
+            if self.firstViewportCache.count >= self.firstViewportCacheLimit,
+               let oldestKey = self.firstViewportCache.keys.first {
+                self.firstViewportCache.removeValue(forKey: oldestKey)
+            }
+            self.firstViewportCache[cacheKey] = next
+            self.installViewport(next, deferExpensiveWork: true)
+            self.setFrameSize(NSSize(width: self.contentWidth, height: self.logicalHeight))
+            self.needsLayout = true
+            self.needsDisplay = true
+            self.deferredViewportTask = nil
+        }
+    }
+
     private func reloadViewport(anchorLine: Int, maximumByteCount: Int? = nil) {
         guard let document, let next = try? document.viewport(
             aroundLine: max(0, anchorLine),
             maximumByteCount: maximumByteCount ?? viewportMaximumByteCount,
             maximumLineCount: 512
         ) else { return }
+        installViewport(next, deferExpensiveWork: false)
+    }
+
+    private func installViewport(
+        _ next: EditorDocumentViewport,
+        deferExpensiveWork: Bool
+    ) {
         if let documentID {
             EditorPerformanceMonitor.shared.markViewportLoaded(tabID: documentID)
         }
@@ -2813,9 +2988,19 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                     .trimmingCharacters(in: .newlines)
             )
         }
-        scheduleSyntaxHighlighting()
+        installedDocumentID = documentID
+        installedResourceID = resourceID
+        installedContentRevision = configuredContentRevision
+        installedExternalContentRevision = configuredExternalContentRevision
+        deferredSyntaxHighlighting = deferExpensiveWork
+        if !deferExpensiveWork {
+            scheduleSyntaxHighlighting()
+        }
         visualRowsSnapshot = nil
-        contentWidth = lineWrapEnabled ? max(viewportSize.width, 1) : unwrappedContentWidth()
+        contentWidth = max(viewportSize.width, 1)
+        if !lineWrapEnabled {
+            scheduleDeferredUnwrappedContentWidth()
+        }
         layoutCache.removeAll(keepingCapacity: true)
         needsDisplay = true
     }

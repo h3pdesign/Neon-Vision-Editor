@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.6.3] - 2026-09-07
+
 ### Why Upgrade
 
 - Switch between open documents with less visible delay, including when changing between Markdown and source files.

@@ -54,12 +54,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.6.3**
+> Latest release: **v1.6.4**
 > Next release target: **v1.6.4**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.6.3** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-09-08** for latest release **v1.6.3**
+> Last updated (README): **2026-09-08** for latest release **v1.6.4**
 
 ## What's New in v1.6.2 and v1.6.3
 
@@ -165,7 +165,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=10410&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=10365&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -775,7 +775,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.6.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.6.1) | **A more deliberate workflow** — Brings official Emmet 2 abbreviation expansion to markup and stylesheet editing across the native editors. | Colors HTML tags, attributes, strings, embedded CSS properties, and numbers as separate syntax tokens instead of treating complete attribute or… |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.6.3**
+- Latest release: **v1.6.4**
 - Compare recent changes: [v1.6.2...v1.6.3](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.6.2...v1.6.3)
 
 ## Known Limitations

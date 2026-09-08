@@ -73,6 +73,8 @@
 
 - The selected editor publishes its first frame before deferred layout and preview work begins.
 
+See the complete release history in the [public changelog](https://h3pdesign.github.io/Neon-Vision-Editor/changelog.html).
+
 ### v1.6.2 Context
 
 - v1.6.2: Detects external edits on network volumes even when filesystem change notifications are missed.

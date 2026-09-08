@@ -2749,12 +2749,12 @@ struct WelcomeTourView: View {
             title: "What’s New in v1.6.4",
             subtitle: "Release highlights for v1.6.4.",
             bullets: [
-                "Editor Improvements: Keeps macOS typing visually stable while preserving the native editor viewport.",
-                "Workflow Refinements: Makes empty native titlebar space usable for window movement without sacrificing toolbar actions.",
-                "Performance Updates: Keeps the editor’s native tab and viewport lifecycle intact while these macOS chrome fixes are applied.",
-                "Usability Updates: Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.",
-                "Editor Improvements: Stops per-character document length and dirty-state changes from rebuilding the macOS editor configuration.",
-                "Workflow Refinements: Preserves toolbar button hit-testing while supporting window dragging in the middle of the native toolbar."
+                "Editor Improvements: Type continuously on macOS without editor flicker.",
+                "Accessible Controls: Move the window from unused titlebar and toolbar space while keeping toolbar controls usable.",
+                "Performance Updates: Switch between open documents while the editor preserves the current frame and loads previews in the background.",
+                "Usability Updates: Keep long, unwrapped iPhone lines visible and stable while typing and scrolling.",
+                "Editor Improvements: Improve hardware-keyboard word and logical-line selection on iPhone and iPad.",
+                "Workflow Refinements: Match current-line highlighting to the selected editor theme."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -3224,6 +3224,16 @@ struct WelcomeTourView: View {
 
             if isWhatsNewPage(page) {
                 whatsNewRows(bullets: displayBullets, compactLayout: compactLayout)
+                Button {
+                    guard let url = URL(string: "https://h3pdesign.github.io/Neon-Vision-Editor/changelog.html") else { return }
+                    openURL(url)
+                } label: {
+                    Label("Read the full changelog", systemImage: "arrow.up.right.square")
+                        .font(.system(size: compactLayout ? 13 : 14, weight: .semibold))
+                }
+                .buttonStyle(.link)
+                .padding(.top, 2)
+                .accessibilityHint("Opens the complete release history in your browser")
             } else if page.title == "Editor Essentials" {
                 recommendedEditorSettings(compactLayout: compactLayout)
             } else {

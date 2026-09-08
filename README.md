@@ -69,6 +69,13 @@
 
 ### v1.6.4 Highlights
 
+- Type continuously on macOS without editor flicker.
+- Move the window from unused titlebar and toolbar space while keeping toolbar controls usable.
+- Switch between open documents while the editor preserves the current frame and loads previews in the background.
+- Keep long, unwrapped iPhone lines visible and stable while typing and scrolling.
+- Improve hardware-keyboard word and logical-line selection on iPhone and iPad.
+
+See the complete release history in the [public changelog](https://h3pdesign.github.io/Neon-Vision-Editor/changelog.html).
 - Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.
 
 ### v1.6.3 Context
@@ -358,6 +365,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - **Languages and structured documents:** Swift 6-ready highlighting includes TeX/LaTeX and Typst/CeTZ-aware editing; CSV/TSV, property lists, Apple crash reports, and recognized logs can switch between structured and raw-text views, and plain text can be transformed into validated JSON through an explicit AI-assisted action.
 - **Project and preview workflows:** project-level Markdown/PDF cards reuse the project index for bounded excerpts and thumbnails, while Markdown, HTML, SVG, PDF, and PNG previews remain integrated with the editor.
 - **macOS integration:** the embedded Quick Look extension previews supported Markdown and source files in Finder, and detached Markdown previews can use the same glass treatment without changing editor content.
+- **Latest stable additions (v1.6.4):** Type continuously on macOS without editor flicker; Move the window from unused titlebar and toolbar space while keeping toolbar controls usable; Switch between open documents while the editor preserves the current frame and loads previews in the background; Keep long, unwrapped iPhone lines visible and stable while typing and scrolling; Improve hardware-keyboard word and logical-line selection on iPhone and iPad; Match current-line highlighting to the selected editor theme.
 - **Latest stable additions (v1.6.4):** Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.
 <!-- FEATURE_COVERAGE:END -->
 

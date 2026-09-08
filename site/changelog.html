@@ -120,6 +120,17 @@
       <article class="release current">
         <div class="release-header"><h2>v1.6.4</h2><span class="date">8 September 2026</span><span class="latest">Latest</span></div>
         <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Type continuously on macOS without editor flicker.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Move the window from unused titlebar and toolbar space while keeping toolbar controls usable.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Switch between open documents while the editor preserves the current frame and loads previews in the background.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Keep long, unwrapped iPhone lines visible and stable while typing and scrolling.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Improve hardware-keyboard word and logical-line selection on iPhone and iPad.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Match current-line highlighting to the selected editor theme.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Stops per-character document length and dirty-state changes from rebuilding the macOS editor configuration.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves toolbar button hit-testing while supporting window dragging in the middle of the native toolbar.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Resolves the line-wrap and scrolling regressions tracked in issues #361 and #362, including per-character viewport jumps.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Resolves issue #364 by keeping double-click word selection and triple-click logical-line selection visible after the gesture.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Defers Markdown preview work during tab activation so switching documents is not blocked by preview rendering.</p></div>
           <div class="item"><span class="badge new">New</span><p>Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.</p></div>
           <div class="item"><span class="badge fixed">Fixed</span><p>Stops per-character document length and dirty-state changes from rebuilding the macOS editor configuration.</p></div>
           <div class="item"><span class="badge fixed">Fixed</span><p>Preserves toolbar button hit-testing while supporting window dragging in the middle of the native toolbar.</p></div>

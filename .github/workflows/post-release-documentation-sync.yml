@@ -204,5 +204,15 @@ jobs:
             echo "Could not resolve the open documentation PR for ${docs_sha}." >&2
             exit 1
           fi
-          gh pr merge "${docs_pr}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
-            echo "Auto-merge is unavailable; leaving the documentation PR open."
+
+          # Do not merge immediately after opening the PR.  The pre-release
+          # workflow may still be queued; deleting the branch while that run
+          # is being created produces a failed, job-less check and leaves the
+          # documentation repair looking broken even when the patch is valid.
+          if ! gh pr checks "${docs_pr}" --repo "${GITHUB_REPOSITORY}" --watch --fail-fast --interval 15; then
+            echo "Documentation PR checks failed; leaving ${docs_pr} open for inspection." >&2
+            exit 1
+          fi
+
+          gh pr merge "${docs_pr}" --repo "${GITHUB_REPOSITORY}" --merge --delete-branch || \
+            echo "Documentation PR could not be merged automatically; leaving it open."

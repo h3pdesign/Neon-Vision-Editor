@@ -11,6 +11,32 @@ import SwiftUI
 /// MARK: - Tests
 
 final class WindowTranslucencyTests: XCTestCase {
+    func testEditorWindowAllowsDraggingFromCustomHeaderBackground() {
+        let testWindow = NSWindow(
+            contentRect: NSRect(x: 40, y: 40, width: 480, height: 320),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        testWindow.isReleasedWhenClosed = false
+        defer {
+            testWindow.orderOut(nil)
+            testWindow.close()
+        }
+
+        testWindow.isMovableByWindowBackground = false
+        ContentView.MacEditorSurfacePolicy.configureWindowDragBehavior(testWindow)
+
+        XCTAssertTrue(testWindow.isMovableByWindowBackground)
+    }
+
+    func testToolbarDragRegionAllowsWindowMovement() {
+        let dragRegion = MacWindowDragRegionView(frame: NSRect(x: 0, y: 0, width: 200, height: 30))
+
+        XCTAssertTrue(dragRegion.mouseDownCanMoveWindow)
+        XCTAssertTrue(dragRegion.acceptsFirstMouse(for: nil))
+    }
+
     // Verifies that the translucency toggle updates registered editor windows without touching unrelated panels.
     func testApplyWindowTranslucencyUpdatesMacWindowFlags() {
         let defaults = UserDefaults.standard

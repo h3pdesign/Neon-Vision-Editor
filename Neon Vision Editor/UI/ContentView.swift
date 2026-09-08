@@ -1120,6 +1120,50 @@ struct ContentView: View {
     }
 #if os(macOS)
     enum MacEditorSurfacePolicy {
+        /// Allows empty areas of the native titlebar/toolbar to initiate a window drag.
+        /// AppKit still routes clicks on toolbar controls to those controls.
+        private static var dragMonitors: [Int: Any] = [:]
+
+        static func configureWindowDragBehavior(_ window: NSWindow) {
+            window.isMovableByWindowBackground = true
+            guard dragMonitors[window.windowNumber] == nil else { return }
+            let monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak window] event in
+                guard let window,
+                      event.window === window,
+                      Self.isBlankTitlebarClick(event, in: window) else { return event }
+                // The Swift 6 SDK does not surface NSWindow's ObjC selector,
+                // but the AppKit entry point remains available at runtime.
+                window.perform(Selector(("performWindowDragWithEvent:")), with: event)
+                return nil
+            }
+            dragMonitors[window.windowNumber] = monitor
+        }
+
+        private static func isBlankTitlebarClick(_ event: NSEvent, in window: NSWindow) -> Bool {
+            guard let closeButton = window.standardWindowButton(.closeButton) else { return false }
+            var titlebarView = closeButton.superview
+            while let candidate = titlebarView,
+                  candidate.bounds.width < window.frame.width * 0.8 {
+                titlebarView = candidate.superview
+            }
+            guard let titlebarView else { return false }
+            let point = titlebarView.convert(event.locationInWindow, from: nil)
+            guard titlebarView.bounds.contains(point) else { return false }
+            guard let hitView = titlebarView.hitTest(point) else { return true }
+            var candidate: NSView? = hitView
+            while let view = candidate, view !== titlebarView {
+                if view is NSControl { return false }
+                let typeName = NSStringFromClass(type(of: view))
+                if typeName.localizedCaseInsensitiveContains("Button")
+                    || typeName.localizedCaseInsensitiveContains("Control")
+                    || typeName.localizedCaseInsensitiveContains("ToolbarItem") {
+                    return false
+                }
+                candidate = view.superview
+            }
+            return true
+        }
+
         static func paneBackground(translucent: Bool, solid: Color) -> Color {
             translucent ? .clear : solid
         }
@@ -1406,6 +1450,7 @@ struct ContentView: View {
 
     private func updateWindowChrome(_ window: NSWindow? = nil) {
         guard let targetWindow = window ?? hostWindowNumber.flatMap({ NSApp.window(withWindowNumber: $0) }) else { return }
+        MacEditorSurfacePolicy.configureWindowDragBehavior(targetWindow)
         targetWindow.subtitle = windowSubtitleText
         if #available(macOS 11.0, *) {
             targetWindow.titlebarSeparatorStyle = .none
@@ -2752,7 +2797,11 @@ struct ContentView: View {
 #if os(macOS)
                 updateWindowChrome()
                 if showDetachedPreviewWindow, isMarkdownPreviewDocument {
-                    scheduleMarkdownPreviewRender(immediate: true)
+                    // Keep preview/WebKit work behind the editor's first frame
+                    // during tab activation. The renderer has its own debounce
+                    // and cache, so it will still refresh without blocking the
+                    // newly selected document.
+                    scheduleMarkdownPreviewRender()
                 }
 #endif
             }

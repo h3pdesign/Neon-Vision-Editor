@@ -116,6 +116,28 @@ final class VirtualEditorPerformanceTests: XCTestCase {
         try assertMedianLatency(samples, budget: "viewportReload")
     }
 
+    func testTabSwitchActivationBenchmarkRecordsAllActivationStages() throws {
+        let document = FileBackedTextDocument(content: largeDocumentText())
+        let monitor = EditorPerformanceMonitor(defaults: UserDefaults(suiteName: "NVE-TabSwitchBenchmark-\(UUID().uuidString)")!)
+        let tabID = UUID()
+        monitor.beginTabSwitch(tabID: tabID)
+
+        let started = ProcessInfo.processInfo.systemUptime
+        _ = try document.viewport(aroundLine: lineCount / 2, maximumByteCount: viewportByteCount, maximumLineCount: 512)
+        monitor.markLoadedTabStateApplied(tabID: tabID)
+        monitor.markSwiftUIEditorUpdated(tabID: tabID)
+        monitor.markViewportLoaded(tabID: tabID)
+        monitor.markTabSwitchFirstDraw(tabID: tabID)
+
+        let elapsed = ProcessInfo.processInfo.systemUptime - started
+        XCTAssertGreaterThanOrEqual(elapsed, 0)
+        let event = try XCTUnwrap(monitor.recentTabSwitchEvents().last)
+        XCTAssertNotNil(event.loadedStateMilliseconds)
+        XCTAssertNotNil(event.swiftUIUpdateMilliseconds)
+        XCTAssertNotNil(event.viewportMilliseconds)
+        XCTAssertGreaterThanOrEqual(event.elapsedMilliseconds, 0)
+    }
+
     private func benchmarkOptions() -> XCTMeasureOptions {
         let options = XCTMeasureOptions()
         options.iterationCount = 5

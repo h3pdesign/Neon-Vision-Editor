@@ -1024,6 +1024,12 @@ struct FindReplacePanel: View {
 }
 
 #if os(macOS)
+enum FindReplaceKeyboardPolicy {
+    static func shouldDismiss(_ event: NSEvent) -> Bool {
+        event.keyCode == 53
+    }
+}
+
 @MainActor
 struct FindReplaceWindowPresenter: NSViewRepresentable {
     @Binding var isPresented: Bool
@@ -1051,9 +1057,22 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
         var window: NSPanel?
         var hostingController: NSHostingController<FindReplacePanel>?
         var focusRequestID: Int = 0
+        private var keyDownMonitor: Any?
 
         init(parent: FindReplaceWindowPresenter) {
             self.parent = parent
+        }
+
+        private func installEscapeMonitorIfNeeded() {
+            guard keyDownMonitor == nil else { return }
+            keyDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self,
+                      let window = self.window,
+                      window.isKeyWindow,
+                      FindReplaceKeyboardPolicy.shouldDismiss(event) else { return event }
+                self.parent.onClose()
+                return nil
+            }
         }
 
         func panelContent() -> FindReplacePanel {
@@ -1127,6 +1146,7 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
 
             self.window = panel
             self.hostingController = controller
+            installEscapeMonitorIfNeeded()
             panel.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
         }
@@ -1140,6 +1160,10 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
         }
 
         func windowWillClose(_ notification: Notification) {
+            if let keyDownMonitor {
+                NSEvent.removeMonitor(keyDownMonitor)
+                self.keyDownMonitor = nil
+            }
             self.window = nil
             self.hostingController = nil
             DispatchQueue.main.async {
@@ -4617,6 +4641,14 @@ struct WindowAccessor: NSViewRepresentable {
             onWindowChange(view.window)
         }
     }
+}
+
+/// AppKit drag behavior contract used by the macOS window policy tests.
+@MainActor
+final class MacWindowDragRegionView: NSView {
+    override var mouseDownCanMoveWindow: Bool { true }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
 @MainActor

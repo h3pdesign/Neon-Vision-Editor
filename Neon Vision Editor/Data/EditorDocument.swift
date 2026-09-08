@@ -10,7 +10,7 @@ enum EditorDocumentStorageKind: Sendable {
     case fileBacked
 }
 
-struct EditorDocumentViewport: Equatable {
+struct EditorDocumentViewport: Equatable, Sendable {
     let text: String
     let startByteOffset: Int
     let startUTF16Offset: Int

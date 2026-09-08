@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-09-07 (v1.6.3 release-aligned architecture)
+Last updated: 2026-09-08 (v1.6.4 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -9,6 +9,12 @@ The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/a
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
+### v1.6.4 (2026-09-08)
+
+- Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.
+- Stops per-character document length and dirty-state changes from rebuilding the macOS editor configuration.
+- Preserves toolbar button hit-testing while supporting window dragging in the middle of the native toolbar.
+
 ### v1.6.3 (2026-09-07)
 
 - The selected editor publishes its first frame before deferred layout and preview work begins.
@@ -16,15 +22,6 @@ The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/a
 - Avoids synchronous large-file inspection and preview parsing while selecting a tab, including when switching between Markdown and source files.
 - Fixes Markdown PDF export clipping, removes interactive code controls from exports, preserves A4 page dimensions, and uses content and code-line boundaries for pagination without blank trailing pages.
 - Find in Files now applies root and nested .gitignore rules and the sidebar's Ignored Folders settings consistently, pruning excluded directories while retaining text files with unknown extensions.
-
-### v1.6.2 (2026-09-05)
-
-- Adds a background metadata polling fallback for open network-volume files, reusing the existing external-change conflict handling.
-- Adds an automatic Welcome Tour preference; Finder file launches suppress the tour, including after app updates.
-- Presents purchase alerts using local SwiftUI presentation state and preserves the latest queued purchase message.
-- Retains a complete local recovery copy of external-document save payloads on iOS/iPadOS and visionOS.
-- Avoids duplicate network-file checks and skips tabs that are still loading or already reviewing an external change.
-- Rechecks launch intent before presenting a delayed Welcome Tour.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

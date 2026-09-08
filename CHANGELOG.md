@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.6.4] - 2026-09-08
+
 ### Why Upgrade
 
 - Keeps macOS typing visually stable while preserving the native editor viewport.

@@ -369,6 +369,7 @@ extension ContentView {
             accentWidth: isPreviewPaneResizeHandleHovered || previewPaneResizeStartWidth != nil ? 2 : 0,
             accentColor: Color.accentColor.opacity(0.55),
             surfaceStyle: macResizeHandleSurfaceStyle,
+            topSurfaceStyle: macToolbarBackgroundStyle,
             isActive: isPreviewPaneResizeHandleHovered || previewPaneResizeStartWidth != nil,
             isDragging: previewPaneResizeStartWidth != nil,
             isHovered: $isPreviewPaneResizeHandleHovered,

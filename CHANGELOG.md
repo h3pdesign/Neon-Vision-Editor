@@ -6,6 +6,28 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- Keeps macOS typing visually stable while preserving the native editor viewport.
+- Makes empty native titlebar space usable for window movement without sacrificing toolbar actions.
+
+### Highlights
+
+- Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.
+
+### Fixes
+
+- Stops per-character document length and dirty-state changes from rebuilding the macOS editor configuration.
+- Preserves toolbar button hit-testing while supporting window dragging in the middle of the native toolbar.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.6.3] - 2026-09-07
 
 ### Why Upgrade

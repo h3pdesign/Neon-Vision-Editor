@@ -76,6 +76,7 @@
 - Improve hardware-keyboard word and logical-line selection on iPhone and iPad.
 
 See the complete release history in the [public changelog](https://h3pdesign.github.io/Neon-Vision-Editor/changelog.html).
+- Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.
 
 ### v1.6.3 Context
 
@@ -166,7 +167,7 @@ See the complete release history in the [public changelog](https://h3pdesign.git
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=10410&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=10365&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -227,9 +228,9 @@ The direct GitHub release is currently ahead of the iOS/iPadOS App Store version
 |---|---|---|---|---|---|
 | **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.6.4** | Current direct download |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.6.2** | Current public App Store listing |
-| **Store Review** | macOS | Corrected App Store update | App Store Connect review | **v1.6.3** | In Apple review |
+| **Store Review** | macOS | Corrected App Store update | App Store Connect review | **v1.6.4** | In Apple review |
 | **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.6.1** | Current recorded visionOS listing |
-| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v1.6.3** | Early access builds for feedback; availability may vary by review state |
+| **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **v1.6.4** | Early access builds for feedback; availability may vary by review state |
 
 ## Install
 
@@ -365,6 +366,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - **Project and preview workflows:** project-level Markdown/PDF cards reuse the project index for bounded excerpts and thumbnails, while Markdown, HTML, SVG, PDF, and PNG previews remain integrated with the editor.
 - **macOS integration:** the embedded Quick Look extension previews supported Markdown and source files in Finder, and detached Markdown previews can use the same glass treatment without changing editor content.
 - **Latest stable additions (v1.6.4):** Type continuously on macOS without editor flicker; Move the window from unused titlebar and toolbar space while keeping toolbar controls usable; Switch between open documents while the editor preserves the current frame and loads previews in the background; Keep long, unwrapped iPhone lines visible and stable while typing and scrolling; Improve hardware-keyboard word and logical-line selection on iPhone and iPad; Match current-line highlighting to the selected editor theme.
+- **Latest stable additions (v1.6.4):** Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.
 <!-- FEATURE_COVERAGE:END -->
 
 ### Editing Core

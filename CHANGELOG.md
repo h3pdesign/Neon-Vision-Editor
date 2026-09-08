@@ -6,6 +6,30 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- Keeps native document tabs, sidebars, editor surfaces, and Settings visually consistent across macOS, iOS, and iPadOS window modes.
+- Applies appearance and layout changes immediately when switching Light, Dark, or System mode.
+
+### Highlights
+
+- Replaces the remaining legacy tab-bar paths with native platform tab implementations.
+- Preserves complete tab borders, spacing, and translucent surfaces across hover, selection, and appearance changes.
+
+### Fixes
+
+- Aligns tab, TOC sidebar, project sidebar, line-number, and editor backgrounds in opaque and translucent modes.
+- Prevents tab borders from clipping, flashing, or disappearing during hover and theme transitions.
+- Keeps Settings content sized to the selected tab and opens the Settings window in a stable editor-relative position.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.6.4] - 2026-09-08
 
 ### Why Upgrade

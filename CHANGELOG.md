@@ -16,7 +16,9 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Highlights
 
-- Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.
+- Type continuously on macOS without editor flicker.
+- Move the window from unused titlebar and toolbar space while keeping toolbar controls usable.
+- Switch between open documents while the editor preserves the current frame and loads previews in the background.
 
 ### Fixes
 

@@ -10,6 +10,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - Keeps native document tabs, sidebars, editor surfaces, and Settings visually consistent across macOS, iOS, and iPadOS window modes.
 - Applies appearance and layout changes immediately when switching Light, Dark, or System mode.
+- Makes tab switching and Settings navigation feel immediate while preserving the native platform controls.
 
 ### Highlights
 

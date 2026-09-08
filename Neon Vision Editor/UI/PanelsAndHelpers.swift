@@ -1202,6 +1202,7 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
 struct DetachedPreviewWindowPresenter: NSViewRepresentable {
     @Binding var isPresented: Bool
     let title: String
+    let metadata: String?
     let html: String
     let baseURL: URL?
     @Environment(\.colorScheme) private var colorScheme
@@ -1246,6 +1247,7 @@ struct DetachedPreviewWindowPresenter: NSViewRepresentable {
         func content() -> DetachedPreviewWindowView {
             DetachedPreviewWindowView(
                 title: self.parent.title,
+                metadata: self.parent.metadata,
                 html: self.parent.html,
                 baseURL: self.parent.baseURL,
                 editorBackground: self.parent.editorBackground,
@@ -1335,8 +1337,10 @@ struct DetachedPreviewWindowPresenter: NSViewRepresentable {
 @MainActor
 struct DetachedPreviewWindowView: View {
     static let quickLookGlassTintOpacity = 0.08
+    private static let windowCornerRadius: CGFloat = 14
 
     let title: String
+    let metadata: String?
     let html: String
     let baseURL: URL?
     let editorBackground: Color
@@ -1374,6 +1378,13 @@ struct DetachedPreviewWindowView: View {
                 Text(title)
                     .font(.headline)
                 Spacer()
+                if let metadata {
+                    Text(metadata)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                }
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                 }
@@ -1389,14 +1400,15 @@ struct DetachedPreviewWindowView: View {
         }
         .background {
             if usesQuickLookTransparency {
-                Rectangle()
+                RoundedRectangle(cornerRadius: Self.windowCornerRadius, style: .continuous)
                     .fill(.thinMaterial)
                     .overlay(quickLookGlassTint)
             } else {
-                Rectangle()
+                RoundedRectangle(cornerRadius: Self.windowCornerRadius, style: .continuous)
                     .fill(surfaceBackground)
             }
         }
+        .clipShape(RoundedRectangle(cornerRadius: Self.windowCornerRadius, style: .continuous))
     }
 
     private var quickLookGlassTint: Color {

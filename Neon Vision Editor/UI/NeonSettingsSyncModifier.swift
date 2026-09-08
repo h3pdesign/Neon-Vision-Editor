@@ -11,9 +11,6 @@ struct AppearanceThemeSettingsSyncModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .onAppear {
-                applyResult(AppearanceThemeCloudSync.syncIfEnabled())
-            }
             .onReceive(NotificationCenter.default.publisher(for: NSUbiquitousKeyValueStore.didChangeExternallyNotification)) { _ in
                 applyResult(AppearanceThemeCloudSync.syncIfEnabled())
             }

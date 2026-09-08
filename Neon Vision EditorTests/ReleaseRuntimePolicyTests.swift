@@ -1,5 +1,8 @@
 import XCTest
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 @testable import Neon_Vision_Editor
 
 
@@ -21,6 +24,48 @@ final class ReleaseRuntimePolicyTests: XCTestCase {
         XCTAssertNil(ReleaseRuntimePolicy.preferredColorScheme(for: "system"))
         XCTAssertNil(ReleaseRuntimePolicy.preferredColorScheme(for: "unknown"))
     }
+
+#if os(macOS)
+    func testMacAppearanceMappingAndSystemInheritance() {
+        XCTAssertEqual(ReleaseRuntimePolicy.appKitAppearance(for: "light")?.name, .aqua)
+        XCTAssertEqual(ReleaseRuntimePolicy.appKitAppearance(for: "dark")?.name, .darkAqua)
+        XCTAssertNil(ReleaseRuntimePolicy.appKitAppearance(for: "system"))
+
+        let originalApplicationAppearance = NSApp.appearance
+        let originalWindowAppearances = NSApp.windows.map {
+            ($0, $0.appearance, $0.contentView?.appearance)
+        }
+        defer {
+            NSApp.appearance = originalApplicationAppearance
+            for (window, windowAppearance, contentAppearance) in originalWindowAppearances {
+                window.appearance = windowAppearance
+                window.contentView?.appearance = contentAppearance
+            }
+        }
+
+        ReleaseRuntimePolicy.applyMacApplicationAppearance("light")
+        XCTAssertEqual(NSApp.appearance?.name, .aqua)
+        ReleaseRuntimePolicy.applyMacApplicationAppearance("dark")
+        XCTAssertEqual(NSApp.appearance?.name, .darkAqua)
+        ReleaseRuntimePolicy.applyMacApplicationAppearance("system")
+        XCTAssertNil(NSApp.appearance)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 240),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = NSView(frame: window.contentLayoutRect)
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.contentView?.appearance = NSAppearance(named: .darkAqua)
+
+        ReleaseRuntimePolicy.clearMacWindowAppearanceOverrides([window])
+
+        XCTAssertNil(window.appearance)
+        XCTAssertNil(window.contentView?.appearance)
+    }
+#endif
 
     func testFindNextMovesCursorForwardAndWraps() {
         let text = "alpha beta alpha"

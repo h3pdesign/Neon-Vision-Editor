@@ -434,23 +434,9 @@ struct NeonVisionEditorApp: App {
     }
 
 #if os(macOS)
-    private var appKitAppearance: NSAppearance? {
-        switch appearance {
-        case "light":
-            return NSAppearance(named: .aqua)
-        case "dark":
-            return NSAppearance(named: .darkAqua)
-        default:
-            return nil
-        }
-    }
-
     private func applyGlobalAppearanceOverride() {
-        let override = appKitAppearance
-        NSApp.appearance = override
+        ReleaseRuntimePolicy.applyMacApplicationAppearance(appearance)
         for window in NSApp.windows {
-            window.appearance = override
-            window.contentView?.appearance = override
             window.invalidateShadow()
             window.contentView?.needsDisplay = true
         }
@@ -777,7 +763,6 @@ struct NeonVisionEditorApp: App {
                 supportPurchaseManager: supportPurchaseManager,
                 appUpdateManager: appUpdateManager
             )
-                .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
                 .onAppear { scheduleMacWindowChromePolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
                 .onAppear { applyRuntimeLanguageOverride() }

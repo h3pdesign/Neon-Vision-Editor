@@ -753,10 +753,6 @@ struct ContentView: View {
     @State var projectRefreshStatusIsPending: Bool = false
     @State var projectFolderMonitorSource: DispatchSourceFileSystemObject? = nil
     @State var pendingProjectFolderRefreshWorkItem: DispatchWorkItem? = nil
-    @State var fileTabBarIsScrolledUnderTOCEdge: Bool = false
-    @State var tabDropInsertionTabID: UUID? = nil
-    @State var tabDropInsertionBefore: Bool = true
-    @State var previousSelectedTabID: UUID? = nil
     @State var quickSwitcherRecentItemIDs: [String] = []
     @State var recentFilesRefreshToken: UUID = UUID()
     @State var sharedImportsRefreshToken: UUID = UUID()
@@ -1149,6 +1145,12 @@ struct ContentView: View {
             guard let titlebarView else { return false }
             let point = titlebarView.convert(event.locationInWindow, from: nil)
             guard titlebarView.bounds.contains(point) else { return false }
+            // The transparent titlebar can extend over the editor content. Only
+            // the upper chrome band is a drag surface; otherwise a click that
+            // begins on selected text would be promoted to a window drag and
+            // leave the editor selection visibly marked during the move.
+            let dragBandHeight = min(88, max(44, titlebarView.bounds.height * 0.35))
+            guard point.y >= titlebarView.bounds.maxY - dragBandHeight else { return false }
             guard let hitView = titlebarView.hitTest(point) else { return true }
             var candidate: NSView? = hitView
             while let view = candidate, view !== titlebarView {
@@ -1186,13 +1188,13 @@ struct ContentView: View {
             switch modeRaw {
             case "subtle":
                 whiteLevel = isDarkMode ? 0.18 : 0.90
-                translucentAlpha = 0.92
+                translucentAlpha = 0.96
             case "vibrant":
                 whiteLevel = isDarkMode ? 0.12 : 0.82
-                translucentAlpha = 0.84
+                translucentAlpha = 0.90
             default:
                 whiteLevel = isDarkMode ? 0.15 : 0.86
-                translucentAlpha = 0.88
+                translucentAlpha = 0.93
             }
             return NSColor(calibratedWhite: whiteLevel, alpha: translucent ? translucentAlpha : 1)
         }
@@ -1217,7 +1219,11 @@ struct ContentView: View {
         )
     }
     private var macOpaqueEditorCanvasColor: Color {
-        currentEditorTheme(colorScheme: colorScheme).background
+        // Keep opaque-canvas mode readable while allowing a small amount of
+        // the native window surface to blend through. This is intentionally
+        // subtle; the editor remains visually solid without the hard slab
+        // produced by a fully opaque theme color.
+        currentEditorTheme(colorScheme: colorScheme).background.opacity(0.94)
     }
     private var macEditorSurfaceBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
@@ -1235,11 +1241,29 @@ struct ContentView: View {
         return AnyShapeStyle(macSolidSurfaceColor)
     }
 
-    private var macToolbarBackgroundStyle: AnyShapeStyle {
+    var macToolbarBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
+            // The NSWindow owns the translucent chrome surface. Keep SwiftUI
+            // clear here so the toolbar and tab strip reveal that same window
+            // material instead of stacking an opaque bar material over it.
             return macUnifiedTranslucentMaterialStyle
         }
+        if opaqueEditorSurfaceMac {
+            // Opaque editor mode uses the editor theme for the side columns as
+            // well. Continue that surface through the toolbar and tab strip so
+            // the upper chrome does not become a separate window-colored band.
+            return macEditorSurfaceBackgroundStyle
+        }
         return AnyShapeStyle(macSolidSurfaceColor)
+    }
+
+    var macSidebarColumnBackground: some View {
+        ZStack(alignment: .top) {
+            Rectangle().fill(editorSurfaceBackgroundStyle)
+            Rectangle()
+                .fill(macToolbarBackgroundStyle)
+                .frame(height: 42)
+        }
     }
 
     private var macInterPaneBackgroundStyle: AnyShapeStyle {
@@ -1352,10 +1376,6 @@ struct ContentView: View {
         if UIDevice.current.userInterfaceIdiom == .pad {
             // Keep tabs clear of iPad window controls in narrow/multitasking layouts.
             return horizontalSizeClass == .compact ? 112 : 10
-        }
-#else
-        if shouldUseSplitView {
-            return 4
         }
 #endif
         return 10
@@ -2471,6 +2491,7 @@ struct ContentView: View {
                     VStack(spacing: 0) {
                         if usesAppOwnedIOSSplitChromeLayout {
                             iOSUnifiedToolbarHost
+                            iOSUnifiedDocumentChromeHost
                         }
                         NavigationSplitView {
 #if os(iOS)
@@ -2490,6 +2511,7 @@ struct ContentView: View {
                         .toolbar(.hidden, for: .navigationBar)
                         .background(editorSurfaceBackgroundStyle)
                     }
+                    .background(editorSurfaceBackgroundStyle)
                 } else {
                     editorView
                 }
@@ -2782,7 +2804,6 @@ struct ContentView: View {
             }
             .onChange(of: viewModel.selectedTabID) { previousTabID, selectedTabID in
                 guard previousTabID != selectedTabID else { return }
-                previousSelectedTabID = previousTabID
                 if activeSplitSecondaryTabID == nil {
                     splitSecondaryTabID = nil
                 }
@@ -3562,6 +3583,7 @@ struct ContentView: View {
                     DetachedPreviewWindowPresenter(
                         isPresented: contentView.$showDetachedPreviewWindow,
                         title: contentView.previewTitle,
+                        metadata: contentView.previewFileSizeText(for: contentView.viewModel.selectedTab?.fileURL),
                         html: contentView.detachedPreviewHTML,
                         baseURL: contentView.detachedPreviewBaseURL
                     )
@@ -3997,7 +4019,11 @@ struct ContentView: View {
                 }
             )
                 .frame(minWidth: 200, idealWidth: 250, maxWidth: 600)
+#if os(macOS)
+                .background(Color.clear)
+#else
                 .background(editorSurfaceBackgroundStyle)
+#endif
         } else {
             EmptyView()
         }
@@ -4733,7 +4759,7 @@ struct ContentView: View {
             if shouldUseSplitView {
                 sidebarView
                     .frame(width: clampedTOCSidebarWidth)
-                    .background(editorSurfaceBackgroundStyle)
+                    .background(macSidebarColumnBackground)
                 tocSidebarResizeHandle
             }
             editorView
@@ -4769,6 +4795,7 @@ struct ContentView: View {
             // window. A solid theme color creates a white strip in translucent
             // mode even though both adjacent panes use the window material.
             surfaceStyle: macInterPaneBackgroundStyle,
+            topSurfaceStyle: macToolbarBackgroundStyle,
             isActive: isTOCSidebarResizeHandleHovered || tocSidebarResizeStartWidth != nil,
             isDragging: tocSidebarResizeStartWidth != nil,
             isHovered: $isTOCSidebarResizeHandleHovered,
@@ -5169,7 +5196,7 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
 #if os(iOS) || os(visionOS)
-        let contentWithTopChrome = useIOSUnifiedTopHost
+        let contentWithTopChrome = useIOSUnifiedTopHost && !usesAppOwnedIOSSplitChromeLayout
             ? AnyView(
                 content.safeAreaInset(edge: .top, spacing: 0) {
                     if usesAppOwnedIOSSplitChromeLayout {

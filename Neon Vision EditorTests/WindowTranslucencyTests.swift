@@ -124,9 +124,9 @@ final class WindowTranslucencyTests: XCTestCase {
             effectiveColorScheme: .dark
         )
 
-        XCTAssertEqual(subtle.alphaComponent, 0.92, accuracy: 0.001)
-        XCTAssertEqual(balanced.alphaComponent, 0.88, accuracy: 0.001)
-        XCTAssertEqual(vibrant.alphaComponent, 0.84, accuracy: 0.001)
+        XCTAssertEqual(subtle.alphaComponent, 0.96, accuracy: 0.001)
+        XCTAssertEqual(balanced.alphaComponent, 0.93, accuracy: 0.001)
+        XCTAssertEqual(vibrant.alphaComponent, 0.90, accuracy: 0.001)
         XCTAssertGreaterThan(subtle.alphaComponent, balanced.alphaComponent)
         XCTAssertLessThan(vibrant.alphaComponent, balanced.alphaComponent)
         XCTAssertEqual(disabled, NSColor.windowBackgroundColor)

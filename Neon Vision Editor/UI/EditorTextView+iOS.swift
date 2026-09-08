@@ -1699,13 +1699,14 @@ final class LineNumberedTextViewContainer: UIView {
 
     func applyLineNumberColors(editorBackground: UIColor, textColor: UIColor, translucentBackgroundEnabled: Bool) {
         backgroundColor = translucentBackgroundEnabled ? .clear : editorBackground
-        #if os(visionOS)
+        // The gutter is part of the editor surface, not a system sidebar.
+        // Painting secondarySystemBackground here made it remain opaque white
+        // in iPad translucent mode while the text canvas correctly showed the
+        // window material.
         lineNumberView.backgroundColor = translucentBackgroundEnabled ? .clear : editorBackground
-        divider.backgroundColor = textColor.withAlphaComponent(0.16)
-        #else
-        lineNumberView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.65)
-        divider.backgroundColor = UIColor.separator.withAlphaComponent(0.6)
-        #endif
+        divider.backgroundColor = translucentBackgroundEnabled
+            ? textColor.withAlphaComponent(0.16)
+            : UIColor.separator.withAlphaComponent(0.6)
         lineNumberView.textColor = textColor.withAlphaComponent(0.70)
     }
 

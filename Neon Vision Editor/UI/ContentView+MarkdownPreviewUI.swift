@@ -81,6 +81,13 @@ extension ContentView {
             Text("Markdown Preview")
                 .font(.headline)
             Spacer(minLength: 0)
+            if let metadata = previewFileSizeText(for: viewModel.selectedTab?.fileURL) {
+                Text(metadata)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+            }
             if projectRootFolderURL != nil {
                 Button {
                     toggleMarkdownProjectPreviewFromToolbar()

@@ -261,6 +261,7 @@ extension ContentView {
             accentWidth: isMarkdownProjectPreviewResizeHandleHovered || markdownProjectPreviewResizeStartWidth != nil ? 2 : 0,
             accentColor: Color.accentColor.opacity(0.55),
             surfaceStyle: macResizeHandleSurfaceStyle,
+            topSurfaceStyle: macToolbarBackgroundStyle,
             isActive: isMarkdownProjectPreviewResizeHandleHovered || markdownProjectPreviewResizeStartWidth != nil,
             isDragging: markdownProjectPreviewResizeStartWidth != nil,
             isHovered: $isMarkdownProjectPreviewResizeHandleHovered,

@@ -13,6 +13,34 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertNil(EditorCommandSemantics.markdownCommand(for: "x"))
     }
 
+    func testDoubleAndTripleClickSelectionRanges() {
+        let source = "The quick brown fox\nsecond line"
+        XCTAssertEqual(
+            VirtualEditorSelectionPolicy.wordRange(in: source, at: 5),
+            NSRange(location: 4, length: 5)
+        )
+        XCTAssertEqual(
+            VirtualEditorSelectionPolicy.lineRange(in: source, at: 6),
+            NSRange(location: 0, length: 20)
+        )
+    }
+
+    func testFindReplaceEscapePolicyDismissesOnlyEscape() {
+        let escape = try! XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: "\u{1B}",
+            charactersIgnoringModifiers: "\u{1B}",
+            isARepeat: false,
+            keyCode: 53
+        ))
+        XCTAssertTrue(FindReplaceKeyboardPolicy.shouldDismiss(escape))
+    }
+
     func testVirtualEditorNativeInteractionAndAccessibilityContract() throws {
         let source = String(repeating: "first line\n", count: 30_000) + "accessible target"
         let backing = FileBackedTextDocument(content: source)

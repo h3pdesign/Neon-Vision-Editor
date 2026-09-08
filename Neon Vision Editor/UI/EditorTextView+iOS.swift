@@ -593,8 +593,12 @@ final class EditorInputTextView: UITextView {
         let line = source.lineRange(for: NSRange(location: min(selectedRange.location, source.length), length: 0))
         let width = (source.substring(with: line) as NSString).size(withAttributes: typingAttributes).width + 32
         if width > preferredTextContainerWidth {
-            preferredTextContainerWidth = width
-            enforcePreferredWrapLayout()
+            // Grow in capacity increments instead of resizing TextKit for every
+            // glyph. A resize can make UIKit recompute contentOffset while the
+            // user is typing, which presents as a jump on no-wrap documents.
+            let growth = max(256, preferredTextContainerWidth * 0.25)
+            preferredTextContainerWidth = max(width, preferredTextContainerWidth + growth)
+            enforcePreferredWrapLayout(preservingContentOffset: true)
         }
     }
 
@@ -801,7 +805,7 @@ final class EditorInputTextView: UITextView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        enforcePreferredWrapLayout()
+        enforcePreferredWrapLayout(preservingContentOffset: true)
         (superview as? LineNumberedTextViewContainer)?.lineNumberView.setNeedsDisplay()
         if rendersInvisibleCharacters || rendersIndentationGuides {
             invisibleCharactersOverlayView?.requestRedraw()
@@ -814,10 +818,12 @@ final class EditorInputTextView: UITextView {
         enforcePreferredWrapLayout()
     }
 
-    private func enforcePreferredWrapLayout() {
+    private func enforcePreferredWrapLayout(preservingContentOffset: Bool = false) {
         let desiredLineBreakMode: NSLineBreakMode = preferredShouldWrapText ? .byWordWrapping : .byClipping
         let visibleWidth = max(1, bounds.width - textContainerInset.left - textContainerInset.right)
         let targetWidth = preferredShouldWrapText ? visibleWidth : max(preferredTextContainerWidth, visibleWidth)
+        let priorOffset = preservingContentOffset ? contentOffset : nil
+        var didChangeContainerSize = false
         if textContainer.lineBreakMode != desiredLineBreakMode {
             textContainer.lineBreakMode = desiredLineBreakMode
         }
@@ -826,12 +832,16 @@ final class EditorInputTextView: UITextView {
         }
         if abs(textContainer.size.width - targetWidth) > 1 {
             textContainer.size = CGSize(width: targetWidth, height: .greatestFiniteMagnitude)
+            didChangeContainerSize = true
         }
         guard !preferredShouldWrapText else { return }
         let horizontalInsets = textContainerInset.left + textContainerInset.right
         let requiredWidth = max(bounds.width, targetWidth + horizontalInsets)
         if requiredWidth.isFinite, requiredWidth > contentSize.width + 1 {
             contentSize = CGSize(width: requiredWidth, height: contentSize.height)
+        }
+        if didChangeContainerSize, let priorOffset, priorOffset != contentOffset {
+            setContentOffset(priorOffset, animated: false)
         }
     }
 }
@@ -1828,6 +1838,18 @@ struct CustomTextEditor: UIViewRepresentable {
     let onFontSizeChange: ((CGFloat) -> Void)?
     let onTextMutation: ((EditorTextMutation) -> Void)?
 
+    /// A published caret location must not overwrite an active UIKit selection.
+    /// UIKit reports a triple-tap line selection immediately, while the binding
+    /// update that records the caret can arrive on the following SwiftUI pass.
+    /// Restoring that stale caret would collapse the just-created selection.
+    static func shouldRestoreStoredCaret(
+        didSwitchDocumentResource: Bool,
+        didChangeStoredCaretLocation: Bool,
+        selectionLength: Int
+    ) -> Bool {
+        didSwitchDocumentResource || (didChangeStoredCaretLocation && selectionLength == 0)
+    }
+
     private var fontName: String {
         UserDefaults.standard.string(forKey: SettingsPreferenceKey.editorFontName) ?? ""
     }
@@ -1863,8 +1885,8 @@ struct CustomTextEditor: UIViewRepresentable {
         return UIFont.monospacedSystemFont(ofSize: targetSize, weight: .regular)
     }
 
-    private func currentLineHighlightColor(for colorScheme: ColorScheme) -> UIColor {
-        UIColor.systemBlue.withAlphaComponent(colorScheme == .dark ? 0.30 : 0.22)
+    private func currentLineHighlightColor(theme: EditorTheme, colorScheme: ColorScheme) -> UIColor {
+        UIColor(theme.selection).withAlphaComponent(colorScheme == .dark ? 0.24 : 0.16)
     }
 
     private func applyInvisibleCharacterPreference(_ textView: UITextView) {
@@ -1909,12 +1931,36 @@ struct CustomTextEditor: UIViewRepresentable {
         #endif
     }
 
-    private func applyWrapMode(_ shouldWrapText: Bool, textView: UITextView, preserveOffset: Bool = true) {
+    private func applyWrapMode(
+        _ shouldWrapText: Bool,
+        textView: UITextView,
+        preserveOffset: Bool = true,
+        recomputeNoWrapWidth: Bool = false
+    ) {
         let desiredLineBreakMode: NSLineBreakMode = shouldWrapText ? .byWordWrapping : .byClipping
         let visibleWidth = max(1, textView.bounds.width - textView.textContainerInset.left - textView.textContainerInset.right)
         let targetContainerWidth: CGFloat
         if shouldWrapText {
             targetContainerWidth = visibleWidth
+        } else if !recomputeNoWrapWidth,
+                  textView.textContainer.lineBreakMode == .byClipping,
+                  !textView.textContainer.widthTracksTextView,
+                  textView.textContainer.size.width >= visibleWidth {
+            // Keep the existing no-wrap capacity during ordinary edits. The
+            // full-document measurement is reserved for initial installs and
+            // resource switches; resizing TextKit on every character causes
+            // UIKit to reposition the viewport.
+            let existingWidth = textView.textContainer.size.width
+            (textView as? EditorInputTextView)?.rememberPreferredWrapLayout(
+                shouldWrapText: false,
+                containerWidth: existingWidth
+            )
+            textView.isScrollEnabled = true
+            let hasHorizontalContent = existingWidth > visibleWidth + 1
+            textView.alwaysBounceHorizontal = hasHorizontalContent
+            textView.showsHorizontalScrollIndicator = hasHorizontalContent
+            enforceNoWrapContentWidth(textView, containerWidth: existingWidth)
+            return
         } else {
             targetContainerWidth = noWrapContainerWidth(for: textView, visibleWidth: visibleWidth)
         }
@@ -1924,8 +1970,9 @@ struct CustomTextEditor: UIViewRepresentable {
             textView.textContainer.widthTracksTextView != shouldWrapText ||
             abs(textView.textContainer.size.width - targetContainerSize.width) > 1
         textView.isScrollEnabled = true
-        textView.alwaysBounceHorizontal = !shouldWrapText
-        textView.showsHorizontalScrollIndicator = !shouldWrapText
+        let hasHorizontalContent = !shouldWrapText && targetContainerWidth > visibleWidth + 1
+        textView.alwaysBounceHorizontal = hasHorizontalContent
+        textView.showsHorizontalScrollIndicator = hasHorizontalContent
         if !shouldWrapText {
             enforceNoWrapContentWidth(textView, containerWidth: targetContainerWidth)
         }
@@ -1987,14 +2034,10 @@ struct CustomTextEditor: UIViewRepresentable {
     }
 
     private func noWrapMinimumScrollableWidth(visibleWidth: CGFloat) -> CGFloat {
-#if os(visionOS)
-        return max(visibleWidth, 6_000)
-#else
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            return max(visibleWidth, 8_000)
-        }
-        return max(visibleWidth, 4_000)
-#endif
+        // An empty or short document should not expose an arbitrary horizontal
+        // canvas. Long lines expand the cached width from their measured glyph
+        // advances as soon as they need more room.
+        return visibleWidth
     }
 
     func makeUIView(context: Context) -> LineNumberedTextViewContainer {
@@ -2042,7 +2085,7 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.isOpaque = false
         textView.backgroundColor = .clear
         textView.highlightsCurrentLine = highlightCurrentLine && !isLargeFileMode
-        textView.currentLineHighlightColor = currentLineHighlightColor(for: colorScheme)
+        textView.currentLineHighlightColor = currentLineHighlightColor(theme: theme, colorScheme: colorScheme)
         container.applyLineNumberColors(
             editorBackground: UIColor(theme.background),
             textColor: UIColor(theme.text),
@@ -2055,7 +2098,7 @@ struct CustomTextEditor: UIViewRepresentable {
 #endif
         context.coordinator.installFontSizePinchRecognizer(on: textView)
         let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
-        applyWrapMode(shouldWrapText, textView: textView, preserveOffset: false)
+        applyWrapMode(shouldWrapText, textView: textView, preserveOffset: false, recomputeNoWrapWidth: true)
 
         if !showLineNumbers {
             container.lineNumberView.isHidden = true
@@ -2208,7 +2251,7 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.isOpaque = false
         textView.backgroundColor = .clear
         textView.highlightsCurrentLine = highlightCurrentLine && !isLargeFileMode
-        textView.currentLineHighlightColor = currentLineHighlightColor(for: colorScheme)
+        textView.currentLineHighlightColor = currentLineHighlightColor(theme: theme, colorScheme: colorScheme)
         uiView.applyLineNumberColors(
             editorBackground: UIColor(theme.background),
             textColor: UIColor(theme.text),
@@ -2217,7 +2260,11 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
         if !isInteractivePhoneEditing {
-            applyWrapMode(shouldWrapText, textView: textView)
+            applyWrapMode(
+                shouldWrapText,
+                textView: textView,
+                recomputeNoWrapWidth: didTransitionDocumentState
+            )
         }
         textView.layoutManager.allowsNonContiguousLayout = true
         configurePointerSelectionBehavior(textView)
@@ -2241,7 +2288,11 @@ struct CustomTextEditor: UIViewRepresentable {
             }
         }
         context.coordinator.syncLineNumberScroll()
-        if (didSwitchDocumentResource || didChangeStoredCaretLocation), let storedCaretLocation {
+        if Self.shouldRestoreStoredCaret(
+            didSwitchDocumentResource: didSwitchDocumentResource,
+            didChangeStoredCaretLocation: didChangeStoredCaretLocation,
+            selectionLength: textView.selectedRange.length
+        ), let storedCaretLocation {
             context.coordinator.restoreCaret(storedCaretLocation, in: textView)
         }
         if didTransitionDocumentState {

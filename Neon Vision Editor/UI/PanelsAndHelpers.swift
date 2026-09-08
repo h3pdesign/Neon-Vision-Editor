@@ -1024,6 +1024,12 @@ struct FindReplacePanel: View {
 }
 
 #if os(macOS)
+enum FindReplaceKeyboardPolicy {
+    static func shouldDismiss(_ event: NSEvent) -> Bool {
+        event.keyCode == 53
+    }
+}
+
 @MainActor
 struct FindReplaceWindowPresenter: NSViewRepresentable {
     @Binding var isPresented: Bool
@@ -1051,9 +1057,22 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
         var window: NSPanel?
         var hostingController: NSHostingController<FindReplacePanel>?
         var focusRequestID: Int = 0
+        private var keyDownMonitor: Any?
 
         init(parent: FindReplaceWindowPresenter) {
             self.parent = parent
+        }
+
+        private func installEscapeMonitorIfNeeded() {
+            guard keyDownMonitor == nil else { return }
+            keyDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self,
+                      let window = self.window,
+                      window.isKeyWindow,
+                      FindReplaceKeyboardPolicy.shouldDismiss(event) else { return event }
+                self.parent.onClose()
+                return nil
+            }
         }
 
         func panelContent() -> FindReplacePanel {
@@ -1127,6 +1146,7 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
 
             self.window = panel
             self.hostingController = controller
+            installEscapeMonitorIfNeeded()
             panel.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
         }
@@ -1140,6 +1160,10 @@ struct FindReplaceWindowPresenter: NSViewRepresentable {
         }
 
         func windowWillClose(_ notification: Notification) {
+            if let keyDownMonitor {
+                NSEvent.removeMonitor(keyDownMonitor)
+                self.keyDownMonitor = nil
+            }
             self.window = nil
             self.hostingController = nil
             DispatchQueue.main.async {
@@ -2722,15 +2746,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.6.3",
-            subtitle: "Release highlights for v1.6.3.",
+            title: "What’s New in v1.6.4",
+            subtitle: "Release highlights for v1.6.4.",
             bullets: [
-                "Editor Improvements: Switch between open documents with less visible delay, including when changing between Markdown and source files.",
-                "Workflow Refinements: Keep local development builds usable without requiring a Developer ID certificate for Quick Look.",
-                "Editor Performance: Preserve a responsive first frame while deferred rendering catches up in the background.",
-                "Usability Updates: The selected editor publishes its first frame before deferred layout and preview work begins.",
-                "Editor Performance: Makes macOS tab switching responsive by publishing the selected editor before deferred Core Text layout and Markdown…",
-                "Workflow Refinements: Avoids synchronous large-file inspection and preview parsing while selecting a tab, including when switching between…"
+                "Editor Improvements: Keeps macOS typing visually stable while preserving the native editor viewport.",
+                "Workflow Refinements: Makes empty native titlebar space usable for window movement without sacrificing toolbar actions.",
+                "Performance Updates: Keeps the editor’s native tab and viewport lifecycle intact while these macOS chrome fixes are applied.",
+                "Usability Updates: Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.",
+                "Editor Improvements: Stops per-character document length and dirty-state changes from rebuilding the macOS editor configuration.",
+                "Workflow Refinements: Preserves toolbar button hit-testing while supporting window dragging in the middle of the native toolbar."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4617,6 +4641,14 @@ struct WindowAccessor: NSViewRepresentable {
             onWindowChange(view.window)
         }
     }
+}
+
+/// AppKit drag behavior contract used by the macOS window policy tests.
+@MainActor
+final class MacWindowDragRegionView: NSView {
+    override var mouseDownCanMoveWindow: Bool { true }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
 @MainActor

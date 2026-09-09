@@ -1115,6 +1115,10 @@ struct ContentView: View {
         }
     }
 #if os(macOS)
+@objc private protocol MacWindowDragPerforming {
+    func performWindowDragWithEvent(_ event: NSEvent)
+}
+
     enum MacEditorSurfacePolicy {
         /// Allows empty areas of the native titlebar/toolbar to initiate a window drag.
         /// AppKit still routes clicks on toolbar controls to those controls.
@@ -1127,9 +1131,9 @@ struct ContentView: View {
                 guard let window,
                       event.window === window,
                       Self.isBlankTitlebarClick(event, in: window) else { return event }
-                // The Swift 6 SDK does not surface NSWindow's ObjC selector,
-                // but the AppKit entry point remains available at runtime.
-                window.perform(Selector(("performWindowDragWithEvent:")), with: event)
+                // The Swift 6 SDK does not expose this AppKit member on
+                // NSWindow, but its Objective-C entry point remains available.
+                window.perform(#selector(MacWindowDragPerforming.performWindowDragWithEvent(_:)), with: event)
                 return nil
             }
             dragMonitors[window.windowNumber] = monitor

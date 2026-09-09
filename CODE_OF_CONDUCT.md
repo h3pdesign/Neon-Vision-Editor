@@ -1,60 +1,71 @@
 # Code of Conduct
 
-## Our Pledge
+## Purpose
 
-We as contributors and maintainers pledge to make participation in this project
-a respectful and harassment-free experience for everyone, regardless of
-experience level, background, or personal characteristics.
+Neon Vision Editor expects everyone who participates in the project to behave
+professionally. This Code of Conduct supports productive collaboration; it is
+not intended to regulate ordinary interpersonal friction or require agreement.
 
-We are committed to fostering an open, professional, and collaborative
-environment focused on constructive discussion and technical merit.
+Disagreement, criticism, strong opinions, and technical debate are normal and
+welcome. Participants should focus on the work, communicate honestly, and work
+toward constructive resolution when they disagree.
 
-## Our Standards
+## Expected conduct
 
-Examples of behavior that contributes to a positive environment include:
+Participants must:
 
-- Being respectful and considerate in language and actions
-- Focusing on technical topics and the substance of contributions
-- Giving and accepting constructive feedback gracefully
-- Disagreeing respectfully and without personal attacks
-- Assuming good intent in discussions
+- act in good faith and assume good faith in others;
+- give and receive direct, constructive criticism professionally;
+- focus discussion on the project, its work, and its code rather than on
+  personal characteristics, circumstances, or motives;
+- avoid knowingly misrepresenting another person's words, actions, or
+  contributions; and
+- use project processes, including this Code of Conduct, to support productive
+  collaboration—not to silence legitimate disagreement, retaliate against
+  others, or gain leverage in unrelated disputes.
 
-Examples of unacceptable behavior include:
-
-- Harassment, insults, or personal attacks
-- Trolling, deliberate provocation, or repeated disruption
-- Discriminatory or demeaning language
-- Publishing others’ private information without consent
-- Any conduct that is inappropriate in a professional setting
+Disagreement, bluntness, mistakes, misunderstandings, and criticism are not,
+by themselves, misconduct. They become a conduct concern when they materially
+violate these standards or prevent others from participating in project work.
 
 ## Scope
 
-This Code of Conduct applies within all project spaces, including:
-- GitHub issues and pull requests
-- Code reviews and discussions
-- Any other project-related communication channels
+These standards apply to project repositories, issues, pull requests, code
+reviews, discussions, and other spaces in which someone participates on behalf
+of Neon Vision Editor.
 
 ## Enforcement
 
-Project maintainers are responsible for enforcing this Code of Conduct.
+Maintainers may moderate discussions, edit or remove contributions, issue
+warnings, restrict participation, or impose temporary or permanent bans when
+conduct materially violates these standards. Responses should be proportionate
+to the conduct and the surrounding circumstances.
 
-They may take appropriate action in response to unacceptable behavior, including:
-- Warning the individual
-- Temporarily or permanently restricting participation
-- Removing content that violates this Code of Conduct
+Maintainers should document the relevant conduct, consider the available
+context, and avoid deciding significant conflicts of interest where practical.
 
-Enforcement decisions will be made with the goal of maintaining a healthy and
-productive project environment.
+## Reporting concerns
 
-## Reporting
+Conduct concerns may be reported privately to
+[`contact@sylwellsoftware.com`](mailto:contact@sylwellsoftware.com). Reports
+will be handled with appropriate discretion. Please include the relevant
+project space, links or other evidence, and any immediate safety or access
+concerns when it is safe to do so.
 
-If you experience or witness behavior that violates this Code of Conduct,
-please report it privately to the project maintainer via GitHub.
+Significant conflicts of interest should be disclosed and avoided when deciding
+an outcome. A report is not a substitute for ordinary technical discussion or
+the normal review and appeal paths for project decisions.
 
-Reports will be reviewed and handled in good faith and with discretion.
+## Closing principle
+
+The goal of this Code is to keep collaboration clear, honest, and productive.
+It does not require people to agree, avoid difficult feedback, or soften every
+technical disagreement. It requires participants to address the work directly,
+avoid personal attacks and deliberate distortion, and leave room for others to
+contribute.
 
 ## Attribution
 
 This Code of Conduct is adapted from the
 [Contributor Covenant](https://www.contributor-covenant.org/version/2/1/code_of_conduct.html),
-version 2.1.
+version 2.1, and revised for Neon Vision Editor.

@@ -58,12 +58,16 @@ public enum AIModel {
 // MARK: - Types
 
 public protocol AIClient {
+    var usesEditorAgentPrompt: Bool { get }
     func streamSuggestions(prompt: String) -> AsyncStream<String>
     func lastErrorMessage() async -> String?
+    func latestAgentResult() async -> EditorAgentRunResult?
 }
 
 public extension AIClient {
+    var usesEditorAgentPrompt: Bool { false }
     func lastErrorMessage() async -> String? { nil }
+    func latestAgentResult() async -> EditorAgentRunResult? { nil }
 }
 
 public final class AppleIntelligenceAIClient: AIClient {

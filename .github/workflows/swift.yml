@@ -20,13 +20,21 @@ permissions:
 jobs:
   build:
     if: ${{ !startsWith(github.head_ref, 'release/') }}
-    runs-on: macos-latest
+    # The agentic editor uses the macOS 27 Foundation Models APIs and must be
+    # compiled with the Xcode 17+ SDK rather than the legacy macos-latest image.
+    runs-on: macos-26
 
     steps:
       - uses: actions/checkout@v5
 
       - name: Show Xcode version
         run: xcodebuild -version
+
+      - name: Select Xcode 17+
+        run: |
+          set -euo pipefail
+          source scripts/ci/select_xcode17.sh
+          xcodebuild -version
 
       - name: Build platform matrix
         run: scripts/ci/build_platform_matrix.sh

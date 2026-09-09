@@ -2967,7 +2967,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 return
             }
             if textLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length &&
-                !supportsResponsiveLargeFileHighlight(language: lang, textLength: textLength) {
+                !supportsViewportSyntaxHighlighting(language: lang, textLength: textLength) {
                 updateMatchingBracketOverlay(textView: textView, text: nsText, selectionLocation: selectionLocation)
                 // Cache the current document even when syntax highlighting is
                 // intentionally skipped. Leaving this empty makes every SwiftUI
@@ -3071,7 +3071,6 @@ struct CustomTextEditor: UIViewRepresentable {
             let fullRange = NSRange(location: 0, length: textLength)
             let fastInitialPass = immediate &&
                 lastHighlightedText.isEmpty &&
-                isProgrammingSyntaxLanguage(lang) &&
                 textLength >= EditorRuntimeLimits.initialProgrammingHighlightThresholdUTF16 &&
                 applyRange.length < fullRange.length
             let work = DispatchWorkItem { @Sendable [weak self] in
@@ -3098,8 +3097,13 @@ struct CustomTextEditor: UIViewRepresentable {
             pendingHighlight = work
             pendingHighlightCancellation = cancellation
             let shouldRunImmediate = immediate || (!deferred && (lastHighlightedText.isEmpty || lastHighlightToken != token))
-            let allowImmediate = textLength < EditorRuntimeLimits.nonImmediateHighlightMaxUTF16Length
+            // A document transition gets a bounded visible-range pass without
+            // the large-file queue delay. Only the follow-up full pass remains
+            // deferred, so tab switching never waits for whole-file regex work.
+            let allowImmediate = (immediate && applyRange.length < fullRange.length) ||
+                textLength < EditorRuntimeLimits.nonImmediateHighlightMaxUTF16Length
             if shouldRunImmediate && allowImmediate {
+                syntaxHighlightSignposter.emitEvent("queued_visible_pass")
                 highlightQueue.async(execute: work)
             } else {
                 let delay: TimeInterval
@@ -3131,7 +3135,6 @@ struct CustomTextEditor: UIViewRepresentable {
             let fullRange = NSRange(location: 0, length: text.length)
             if immediate,
                lastHighlightedText.isEmpty,
-               isProgrammingSyntaxLanguage(parent.language),
                text.length >= EditorRuntimeLimits.initialProgrammingHighlightThresholdUTF16 {
                 let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size)
                     .insetBy(dx: 0, dy: -80)
@@ -3145,8 +3148,11 @@ struct CustomTextEditor: UIViewRepresentable {
                     )
                 }
             }
-            // Restrict to visible range only for responsive large-file profiles.
-            let supportsResponsiveRange = supportsResponsiveLargeFileHighlight(
+            // Restrict the first pass to the visible range for every language
+            // with a bounded large-file policy. The complete pass follows in
+            // the background; stateful Markdown remains full-document until
+            // its syntax context can be preserved safely.
+            let supportsResponsiveRange = supportsViewportSyntaxHighlighting(
                 language: parent.language,
                 textLength: text.length
             )
@@ -3366,6 +3372,7 @@ struct CustomTextEditor: UIViewRepresentable {
                     }
                 }
                 textView.textStorage.endEditing()
+                syntaxHighlightSignposter.emitEvent("applied_ios")
                 textView.selectedRange = selectedRange
                 if wasFirstResponder {
                     textView.setContentOffset(priorOffset, animated: false)

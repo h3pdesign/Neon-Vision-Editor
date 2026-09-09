@@ -6,7 +6,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
-## [v1.7.0] - 2026-09-09
+## [v1.7.1] - 2026-09-09
 
 ### Why Upgrade
 
@@ -24,6 +24,10 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Aligns tab, TOC sidebar, project sidebar, line-number, and editor backgrounds in opaque and translucent modes.
 - Prevents tab borders from clipping, flashing, or disappearing during hover and theme transitions.
 - Keeps Settings content sized to the selected tab and opens the Settings window in a stable editor-relative position.
+- Restores drag-to-move behavior across the macOS top bar without applying window-drag handling to the editor surface.
+- Keeps cursor-based text selection available on iPhone, iPad, and visionOS.
+- Makes the Welcome Tour follow the configured Light, Dark, or System appearance and carries the major release highlights forward.
+- Prevents iOS App Store packaging from failing when the export environment rejects Xcode's symbol-copy flag.
 
 ### Breaking changes
 
@@ -43,20 +47,12 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Highlights
 
-- Type continuously on macOS without editor flicker.
-- Move the window from unused titlebar and toolbar space while keeping toolbar controls usable.
-- Switch between open documents while the editor preserves the current frame and loads previews in the background.
-- Keep long, unwrapped iPhone lines visible and stable while typing and scrolling.
-- Improve hardware-keyboard word and logical-line selection on iPhone and iPad.
-- Match current-line highlighting to the selected editor theme.
+- Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.
 
 ### Fixes
 
 - Stops per-character document length and dirty-state changes from rebuilding the macOS editor configuration.
 - Preserves toolbar button hit-testing while supporting window dragging in the middle of the native toolbar.
-- Resolves the line-wrap and scrolling regressions tracked in issues #361 and #362, including per-character viewport jumps.
-- Resolves issue #364 by keeping double-click word selection and triple-click logical-line selection visible after the gesture.
-- Defers Markdown preview work during tab activation so switching documents is not blocked by preview rendering.
 
 ### Breaking changes
 

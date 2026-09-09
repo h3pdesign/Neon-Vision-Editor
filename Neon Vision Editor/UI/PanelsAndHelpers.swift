@@ -340,7 +340,10 @@ struct EditorFindSessionState: Equatable {
     }
 }
 
-struct MobileInlineFindBar: View {
+/// Compact find-and-replace controls embedded at the bottom of the editor.
+/// The search session remains owned by ContentView; this view only renders the
+/// shared controls and forwards user actions.
+struct InlineFindBar: View {
     @Binding var query: String
     @Binding var replacement: String
     @Binding var useRegex: Bool

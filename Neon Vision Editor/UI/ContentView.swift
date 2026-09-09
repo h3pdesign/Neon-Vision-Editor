@@ -1231,8 +1231,9 @@ struct ContentView: View {
         // Keep opaque-canvas mode readable while allowing a small amount of
         // the native window surface to blend through. This is intentionally
         // subtle; the editor remains visually solid without the hard slab
-        // produced by a fully opaque theme color.
-        currentEditorTheme(colorScheme: colorScheme).background.opacity(0.94)
+        // produced by a fully opaque theme color. Keep a little more of the
+        // native surface visible so opaque-canvas chrome does not feel flat.
+        currentEditorTheme(colorScheme: colorScheme).background.opacity(0.90)
     }
     private var macEditorSurfaceBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
@@ -2559,42 +2560,6 @@ struct ContentView: View {
             }
             .frame(width: 0, height: 0)
         )
-        .background(
-            FindReplaceWindowPresenter(
-                isPresented: $showFindReplace,
-                findQuery: $findQuery,
-                replaceQuery: $replaceQuery,
-                useRegex: $findUsesRegex,
-                caseSensitive: $findCaseSensitive,
-                wholeWord: $findWholeWord,
-                matchCount: $findMatchCount,
-                selectedMatchIndex: findSession.selectedIndex,
-                statusMessage: $findStatusMessage,
-                scope: $findScope,
-                onPreviewChanged: { refreshFindPreview() },
-                onFindNext: {
-                    findNext()
-                    refreshFindMatchCount()
-                },
-                onJumpToMatch: { jumpToCurrentFindMatch() },
-                onReplace: {
-                    replaceSelection()
-                    refreshFindPreview()
-                },
-                onReplaceAll: {
-                    replaceAll()
-                    refreshFindPreview()
-                },
-                onScopeChange: { newScope in
-                    if newScope == .project {
-                        showFindReplace = false
-                        requestFindInFilesFromToolbar()
-                    }
-                },
-                onClose: { showFindReplace = false }
-            )
-            .frame(width: 0, height: 0)
-        )
         .onDisappear {
             handleWindowDisappear()
         }
@@ -3161,7 +3126,7 @@ struct ContentView: View {
 
 #if !os(macOS)
         private func applyingFindReplaceSheet(to view: AnyView) -> AnyView {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             AnyView(view)
 #else
             AnyView(view.sheet(isPresented: contentView.$showFindReplace) {
@@ -4893,9 +4858,8 @@ struct ContentView: View {
         persistUnsavedDraftSnapshotIfNeeded()
     }
 
-#if os(iOS)
-    private var mobileInlineFindBar: some View {
-        MobileInlineFindBar(
+    private var inlineFindBar: some View {
+        InlineFindBar(
             query: $findQuery,
             replacement: $replaceQuery,
             useRegex: $findUsesRegex,
@@ -4917,7 +4881,6 @@ struct ContentView: View {
             onClose: { closeFindReplace() }
         )
     }
-#endif
 
     var editorView: some View {
         @Bindable var bindableViewModel = viewModel
@@ -4930,11 +4893,6 @@ struct ContentView: View {
                 if !useIOSUnifiedTopHost && !brainDumpLayoutEnabled {
                     tabBarView
                 }
-#if os(iOS)
-                if showFindReplace && UIDevice.current.userInterfaceIdiom == .pad {
-                    mobileInlineFindBar
-                }
-#endif
                 if isConvertingTextToMarkdown {
                     markdownConversionProgressBanner
                 }
@@ -5060,11 +5018,6 @@ struct ContentView: View {
                     }
                 }
 #endif
-#if os(iOS)
-                if showFindReplace && UIDevice.current.userInterfaceIdiom == .phone {
-                    mobileInlineFindBar
-                }
-#endif
                 if !brainDumpLayoutEnabled {
 #if os(macOS)
                     wordCountView
@@ -5081,6 +5034,13 @@ struct ContentView: View {
                 if shouldOverlayMarkdownFormattingControls && !shouldPlaceMarkdownFormattingBelowTabs {
                     markdownFormattingControlBar
                         .padding(.top, markdownFormattingOverlayTopInset)
+                }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if showFindReplace {
+                    inlineFindBar
+                        .frame(maxWidth: .infinity)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
 

@@ -344,6 +344,7 @@ struct EditorFindSessionState: Equatable {
 /// The search session remains owned by ContentView; this view only renders the
 /// shared controls and forwards user actions.
 struct InlineFindBar: View {
+    let backgroundStyle: AnyShapeStyle
     @Binding var query: String
     @Binding var replacement: String
     @Binding var useRegex: Bool
@@ -452,8 +453,16 @@ struct InlineFindBar: View {
         .font(.body)
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
-        .background(.regularMaterial)
-        .overlay(alignment: isPhone ? .top : .bottom) { Divider() }
+        .background(
+            backgroundStyle,
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.primary.opacity(0.12), lineWidth: 0.8)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
         .onAppear { searchFocused = true }
         .onChange(of: query) { _, _ in onPreviewChanged() }
         .onChange(of: useRegex) { _, enabled in

@@ -3370,10 +3370,7 @@ struct ContentView: View {
                         VStack(spacing: 0) {
                             Group {
                             if contentView.utilitySidebarMode == .assistant {
-                                contentView.utilitySidebarHeader()
-                                    .padding(.top, contentView.utilitySidebarHeaderTopInset)
-                                contentView.aiChatSidebarBody
-                                    .padding(.top, 8)
+                                contentView.aiChatSidebarPanelContent
                             } else {
                                 ProjectStructureSidebarView(
                                     rootFolderURL: contentView.projectRootFolderURL,
@@ -4860,6 +4857,7 @@ struct ContentView: View {
 
     private var inlineFindBar: some View {
         InlineFindBar(
+            backgroundStyle: inlineFindBarBackgroundStyle,
             query: $findQuery,
             replacement: $replaceQuery,
             useRegex: $findUsesRegex,
@@ -4880,6 +4878,10 @@ struct ContentView: View {
             },
             onClose: { closeFindReplace() }
         )
+    }
+
+    private var inlineFindBarBackgroundStyle: AnyShapeStyle {
+        editorSurfaceBackgroundStyle
     }
 
     var editorView: some View {
@@ -5034,6 +5036,9 @@ struct ContentView: View {
                 if shouldOverlayMarkdownFormattingControls && !shouldPlaceMarkdownFormattingBelowTabs {
                     markdownFormattingControlBar
                         .padding(.top, markdownFormattingOverlayTopInset)
+#if os(macOS) || os(iOS)
+                        .padding(.trailing, 12)
+#endif
                 }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {

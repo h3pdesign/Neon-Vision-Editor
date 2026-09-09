@@ -1,6 +1,5 @@
 import SwiftUI
 import Foundation
-import UniformTypeIdentifiers
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -8,83 +7,13 @@ import UIKit
 import AppKit
 #endif
 
-private struct FileTabBarContentMinXPreferenceKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
+ #if os(iOS) || os(visionOS)
 private struct FileTabBarScrollFadeMask<Mask: View>: ViewModifier {
     let mask: Mask
 
     @ViewBuilder
     func body(content: Content) -> some View {
-#if os(macOS)
-        if #available(macOS 26.0, *) {
-            content.mask(mask)
-        } else {
-            // SwiftUI masks can swallow tab-button mouse events on pre-26 macOS.
-            content
-        }
-#else
         content.mask(mask)
-#endif
-    }
-}
-
-#if os(macOS)
-private struct FileTabDropDelegate: DropDelegate {
-    let destinationTabID: UUID
-    let tabWidth: CGFloat
-    @Binding var insertionTabID: UUID?
-    @Binding var insertionBefore: Bool
-    let moveTab: (UUID, UUID, Bool) -> Void
-
-    func validateDrop(info: DropInfo) -> Bool {
-        !info.itemProviders(for: [.plainText]).isEmpty
-    }
-
-    func dropEntered(info: DropInfo) {
-        updateInsertionMarker(for: info.location)
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        updateInsertionMarker(for: info.location)
-        return DropProposal(operation: .move)
-    }
-
-    func dropExited(info: DropInfo) {
-        if insertionTabID == destinationTabID {
-            insertionTabID = nil
-        }
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        let insertBefore = info.location.x < tabWidth / 2
-        guard let provider = info.itemProviders(for: [.plainText]).first else { return false }
-        provider.loadObject(ofClass: NSString.self) { object, _ in
-            guard let identifier = object as? String,
-                  let draggedTabID = UUID(uuidString: identifier),
-                  draggedTabID != destinationTabID else {
-                return
-            }
-            DispatchQueue.main.async {
-                moveTab(draggedTabID, destinationTabID, insertBefore)
-                if insertionTabID == destinationTabID {
-                    insertionTabID = nil
-                }
-            }
-        }
-        return true
-    }
-
-    private func updateInsertionMarker(for location: CGPoint) {
-        let shouldInsertBefore = location.x < tabWidth / 2
-        guard insertionTabID != destinationTabID || insertionBefore != shouldInsertBefore else { return }
-        insertionTabID = destinationTabID
-        insertionBefore = shouldInsertBefore
     }
 }
 #endif
@@ -113,15 +42,24 @@ extension ContentView {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
         } else {
-            iPhoneUnifiedToolbarRow
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
+            GlassSurface(
+                enabled: false,
+                material: primaryGlassMaterial,
+                fallbackColor: iOSNonTranslucentSurfaceColor,
+                shape: .capsule,
+                chromeStyle: .single
+            ) {
+                iPhoneUnifiedToolbarRow
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
         }
     }
 
     var iOSUnifiedDocumentChromeHost: some View {
         VStack(spacing: 0) {
             tabBarView
+                .padding(.bottom, 8)
             if shouldPlaceMarkdownFormattingBelowTabs {
                 iPhoneMarkdownFormattingTopChrome
             }
@@ -156,6 +94,7 @@ extension ContentView {
             // available width so its action row can scroll horizontally.
             .fixedSize(horizontal: markdownFormattingToolbarCollapsed, vertical: false)
             .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.top, 12)
             .tint(iOSToolbarForegroundColor)
     }
 
@@ -795,13 +734,78 @@ extension ContentView {
     var tabBarView: some View {
         VStack(spacing: 0) {
 #if os(macOS)
-            if #available(macOS 26.0, *) {
-                scrollableFileTabBar
-            } else {
-                macLegacyFileTabBar
+            MacNativeFileTabBar(
+                tabs: viewModel.tabs.map {
+                    MacNativeFileTabSnapshot(
+                        id: $0.id,
+                        title: $0.name,
+                        isDirty: $0.isDirty,
+                        isRemote: $0.isRemoteDocument,
+                        isReadOnly: $0.isReadOnlyPreview
+                    )
+                },
+                selectedTabID: viewModel.selectedTabID,
+                usesOpaqueEditorCanvas: opaqueEditorSurfaceMac,
+                onSelect: { viewModel.selectTab(id: $0) },
+                onClose: { tabID in
+                    guard let tab = viewModel.tabs.first(where: { $0.id == tabID }) else { return }
+                    requestCloseTab(tab)
+                },
+                onMove: { sourceID, destinationID, insertBefore in
+                    reorderDroppedTab(
+                        draggedTabID: sourceID,
+                        destinationTabID: destinationID,
+                        insertBefore: insertBefore
+                    )
+                },
+                onAdd: { viewModel.addNewTab() }
+            )
+            // Keep the AppKit representable and the divider as explicit
+            // siblings in the 42-point strip. Without a child height,
+            // VStack can compress the representable's fitting size and make
+            // its scroll view clip the tab layer at the bottom.
+            .frame(height: 41)
+#elseif os(iOS)
+            GlassSurface(
+                // Keep the tab strip tied to the editor theme. Window
+                // translucency should not replace that theme surface with a
+                // separate material band.
+                enabled: false,
+                material: primaryGlassMaterial,
+                fallbackColor: iOSNonTranslucentSurfaceColor,
+                shape: .rounded(18),
+                chromeStyle: .single
+            ) {
+                MobileNativeFileTabBar(
+                    tabs: viewModel.tabs.map {
+                        MobileNativeFileTabSnapshot(
+                            id: $0.id,
+                            title: $0.name,
+                            isDirty: $0.isDirty,
+                            isRemote: $0.isRemoteDocument,
+                            isReadOnly: $0.isReadOnlyPreview
+                        )
+                    },
+                    selectedTabID: viewModel.selectedTabID,
+                    onSelect: { viewModel.selectTab(id: $0) },
+                    onClose: { tabID in
+                        guard let tab = viewModel.tabs.first(where: { $0.id == tabID }) else { return }
+                        requestCloseTab(tab)
+                    },
+                    onMove: { sourceID, destinationID, insertBefore in
+                        reorderDroppedTab(
+                            draggedTabID: sourceID,
+                            destinationTabID: destinationID,
+                            insertBefore: insertBefore
+                        )
+                    },
+                    onAdd: { viewModel.addNewTab() }
+                )
             }
-#else
+#elseif os(visionOS)
             scrollableFileTabBar
+#else
+            EmptyView()
 #endif
 #if os(iOS) || os(visionOS)
             EmptyView()
@@ -811,7 +815,11 @@ extension ContentView {
         }
         .frame(minHeight: 42, maxHeight: 42, alignment: .center)
 #if os(macOS)
-        .background(editorSurfaceBackgroundStyle.opacity(usesAnySidebarTabTransition ? 0 : 1))
+        .background(macToolbarBackgroundStyle)
+#elseif os(iOS)
+        // Keep the full-width strip on the same theme surface as the editor;
+        // this remains stable when window translucency is toggled.
+        .background(iOSNonTranslucentSurfaceColor)
 #else
         .background(
             enableTranslucentWindow
@@ -823,6 +831,22 @@ extension ContentView {
 #endif
     }
 
+#if os(macOS) || os(iOS)
+    private func reorderDroppedTab(
+        draggedTabID: UUID,
+        destinationTabID: UUID,
+        insertBefore: Bool
+    ) {
+        guard draggedTabID != destinationTabID else { return }
+        if insertBefore {
+            viewModel.moveTab(tabID: draggedTabID, beforeTabID: destinationTabID)
+        } else {
+            viewModel.moveTab(tabID: draggedTabID, afterTabID: destinationTabID)
+        }
+    }
+#endif
+
+#if os(visionOS)
     private var scrollableFileTabBar: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
@@ -840,47 +864,14 @@ extension ContentView {
                     .padding(.leading, tabBarLeadingPadding)
                     .padding(.trailing, 10)
                     .padding(.vertical, 6)
-                    .background(fileTabBarOffsetReader)
             }
             .onChange(of: viewModel.selectedTabID) { _, selectedTabID in
                 guard let selectedTabID else { return }
                 proxy.scrollTo(selectedTabID)
             }
         }
-        .coordinateSpace(name: fileTabBarCoordinateSpaceName)
-        .onPreferenceChange(FileTabBarContentMinXPreferenceKey.self) { minX in
-            let isScrolled = minX < tabBarLeadingPadding - 1
-            if fileTabBarIsScrolledUnderTOCEdge != isScrolled {
-                fileTabBarIsScrolledUnderTOCEdge = isScrolled
-            }
-        }
         .modifier(FileTabBarScrollFadeMask(mask: fileTabBarScrollMask))
     }
-
-#if os(macOS)
-    private var macLegacyFileTabBar: some View {
-        fileTabBarContent
-            .padding(5)
-            .background(
-                fileTabBarContainerShape
-                    .fill(Color.secondary.opacity(0.065))
-            )
-            .overlay(
-                fileTabBarContainerShape
-                    .stroke(Color.secondary.opacity(0.10), lineWidth: 1)
-            )
-            .clipShape(fileTabBarContainerShape)
-            .padding(.leading, tabBarLeadingPadding)
-            .padding(.trailing, 10)
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .onAppear {
-                if fileTabBarIsScrolledUnderTOCEdge {
-                    fileTabBarIsScrolledUnderTOCEdge = false
-                }
-            }
-    }
-#endif
 
     private var fileTabBarContent: some View {
         HStack(spacing: 6) {
@@ -919,8 +910,6 @@ extension ContentView {
 
     private func fileTabItem(for tab: TabData) -> some View {
         let isSelected = viewModel.selectedTabID == tab.id
-        let wasPreviouslySelected = previousSelectedTabID == tab.id && !isSelected
-        let isDropTarget = tabDropInsertionTabID == tab.id
         return HStack(spacing: 8) {
             fileTabSelectButton(for: tab, isSelected: isSelected)
             fileTabCloseButton(for: tab)
@@ -929,63 +918,8 @@ extension ContentView {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(isSelected ? Color.accentColor.opacity(0.24) : Color.secondary.opacity(0.07))
         )
-        .overlay(alignment: isDropTarget && !tabDropInsertionBefore ? .trailing : .leading) {
-#if os(macOS)
-            if isSelected || wasPreviouslySelected || isDropTarget {
-                Capsule()
-                    .fill(isDropTarget || isSelected ? Color.accentColor : Color.yellow)
-                    .frame(width: isSelected ? 4 : 3)
-                    .padding(.vertical, 3)
-                    .accessibilityHidden(true)
-            }
-#endif
-        }
         .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-#if os(macOS)
-        .onTapGesture {
-            viewModel.selectTab(id: tab.id)
-        }
-        .onTapGesture(count: 2) {
-            requestCloseTab(tab)
-        }
-        .draggable(tab.id.uuidString)
-        .background {
-            GeometryReader { proxy in
-                Color.clear
-                    .contentShape(Rectangle())
-                    .onDrop(
-                        of: [UTType.plainText.identifier],
-                        delegate: FileTabDropDelegate(
-                            destinationTabID: tab.id,
-                            tabWidth: proxy.size.width,
-                            insertionTabID: $tabDropInsertionTabID,
-                            insertionBefore: $tabDropInsertionBefore,
-                            moveTab: reorderDroppedTab
-                        )
-                    )
-            }
-        }
-        .accessibilityHint(isSelected
-            ? "Selected. Drag this tab onto the left or right half of another tab to reorder tabs."
-            : "Drag onto the left or right half of another tab to reorder tabs.")
-#endif
     }
-
-#if os(macOS)
-    private func reorderDroppedTab(
-        draggedTabID: UUID,
-        destinationTabID: UUID,
-        insertBefore: Bool
-    ) {
-        guard draggedTabID != destinationTabID else { return }
-        if insertBefore {
-            viewModel.moveTab(tabID: draggedTabID, beforeTabID: destinationTabID)
-        } else {
-            viewModel.moveTab(tabID: draggedTabID, afterTabID: destinationTabID)
-        }
-        tabDropInsertionTabID = nil
-    }
-#endif
 
     private func fileTabSelectButton(for tab: TabData, isSelected: Bool) -> some View {
         Button {
@@ -1039,59 +973,20 @@ extension ContentView {
         .help("Close \(tab.name)")
     }
 
-    private var usesSubtleTOCTransition: Bool {
-#if os(macOS)
-        usesTOCSplitChromeCleanup && fileTabBarIsScrolledUnderTOCEdge
-#else
-        false
-#endif
-    }
-
     private var usesMarkdownPreviewTabTransition: Bool {
         isMarkdownPreviewSplitVisible
     }
 
-#if os(macOS)
-    private var usesProjectSidebarTabTransition: Bool {
-        showProjectStructureSidebar && projectNavigatorPlacement == .trailing && !brainDumpLayoutEnabled && !focusModeEnabled
-    }
-
-    private var usesTrailingTabTransition: Bool {
-        usesMarkdownPreviewTabTransition || usesProjectSidebarTabTransition
-    }
-
-    private var usesAnySidebarTabTransition: Bool {
-        usesSubtleTOCTransition || usesMarkdownPreviewTabTransition || usesProjectSidebarTabTransition
-    }
-
-    private var usesTOCSplitChromeCleanup: Bool {
-        shouldUseSplitView
-    }
-#else
     private var usesTrailingTabTransition: Bool {
         usesMarkdownPreviewTabTransition
-    }
-#endif
-
-    private var fileTabBarCoordinateSpaceName: String {
-        "FileTabBarScroll"
-    }
-
-    private var fileTabBarOffsetReader: some View {
-        GeometryReader { proxy in
-            Color.clear.preference(
-                key: FileTabBarContentMinXPreferenceKey.self,
-                value: proxy.frame(in: .named(fileTabBarCoordinateSpaceName)).minX
-            )
-        }
     }
 
     @ViewBuilder
     private var fileTabBarScrollMask: some View {
-        if usesSubtleTOCTransition || usesTrailingTabTransition {
+        if usesTrailingTabTransition {
             LinearGradient(
                 stops: [
-                    .init(color: usesSubtleTOCTransition ? .clear : .black, location: 0),
+                    .init(color: .black, location: 0),
                     .init(color: .black, location: 0.035),
                     .init(color: .black, location: 0.965),
                     .init(color: usesTrailingTabTransition ? .clear : .black, location: 1)
@@ -1104,24 +999,21 @@ extension ContentView {
         }
     }
 
-#if os(macOS)
-    @ViewBuilder
-    private var tabBarBottomDivider: some View {
-        if usesAnySidebarTabTransition {
-            Divider()
-                .opacity(0.22)
-                .padding(.leading, 18)
-                .padding(.trailing, usesTrailingTabTransition ? 18 : 0)
-        } else {
-            Divider()
-                .opacity(0.45)
-        }
-    }
-#endif
 
     private var fileTabBarContainerShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 14, style: .continuous)
     }
+#endif
+
+#if os(macOS)
+    @ViewBuilder
+    private var tabBarBottomDivider: some View {
+        Divider()
+            .opacity(isMarkdownPreviewSplitVisible ? 0.22 : 0.32)
+            .padding(.leading, isMarkdownPreviewSplitVisible ? 18 : 0)
+            .padding(.trailing, isMarkdownPreviewSplitVisible ? 18 : 0)
+    }
+#endif
 
     private var vimStatusSuffix: String {
 #if os(macOS)

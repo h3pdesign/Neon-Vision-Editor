@@ -13,6 +13,47 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertNil(EditorCommandSemantics.markdownCommand(for: "x"))
     }
 
+    func testDoubleAndTripleClickSelectionRanges() {
+        let source = "The quick brown fox\nsecond line"
+        XCTAssertEqual(
+            VirtualEditorSelectionPolicy.wordRange(in: source, at: 5),
+            NSRange(location: 4, length: 5)
+        )
+        XCTAssertEqual(
+            VirtualEditorSelectionPolicy.lineRange(in: source, at: 6),
+            NSRange(location: 0, length: 20)
+        )
+    }
+
+    func testSelectionDragStopsWhenPointerLeavesEditorCanvas() {
+        let bounds = NSRect(x: 0, y: 0, width: 800, height: 600)
+
+        XCTAssertTrue(VirtualEditorSelectionPolicy.shouldContinueDrag(
+            at: NSPoint(x: 400, y: 300),
+            in: bounds
+        ))
+        XCTAssertFalse(VirtualEditorSelectionPolicy.shouldContinueDrag(
+            at: NSPoint(x: 400, y: -1),
+            in: bounds
+        ))
+    }
+
+    func testFindReplaceEscapePolicyDismissesOnlyEscape() {
+        let escape = try! XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            characters: "\u{1B}",
+            charactersIgnoringModifiers: "\u{1B}",
+            isARepeat: false,
+            keyCode: 53
+        ))
+        XCTAssertTrue(FindReplaceKeyboardPolicy.shouldDismiss(escape))
+    }
+
     func testVirtualEditorNativeInteractionAndAccessibilityContract() throws {
         let source = String(repeating: "first line\n", count: 30_000) + "accessible target"
         let backing = FileBackedTextDocument(content: source)
@@ -191,21 +232,21 @@ final class VirtualEditorLayoutTests: XCTestCase {
     func testWhitespaceInspectionReadsTheVisibleLine() {
         let (_, canvas, _) = makeCanvas(source: "value\t  \nnext", language: "plain", caret: 6)
         let result = expectation(description: "whitespace result")
-        var message = ""
+        let observedMessage = WhitespaceInspectionMessage()
         let token = NotificationCenter.default.addObserver(
             forName: .whitespaceScalarInspectionResult,
             object: nil,
             queue: .main
         ) { notification in
-            message = notification.userInfo?[EditorCommandUserInfo.inspectionMessage] as? String ?? ""
+            observedMessage.set(notification.userInfo?[EditorCommandUserInfo.inspectionMessage] as? String ?? "")
             result.fulfill()
         }
         defer { NotificationCenter.default.removeObserver(token) }
         canvas.inspectWhitespaceScalars(Notification(name: .inspectWhitespaceScalarsRequested))
         wait(for: [result], timeout: 1)
         withExtendedLifetime(canvas) {}
-        XCTAssertTrue(message.contains("TAB x1"))
-        XCTAssertTrue(message.contains("SPACE x2"))
+        XCTAssertTrue(observedMessage.value.contains("TAB x1"))
+        XCTAssertTrue(observedMessage.value.contains("SPACE x2"))
     }
 
     func testSelectionContextMenuRestoresCodeSnapshotAction() throws {
@@ -1164,6 +1205,23 @@ private final class CountingEditorDocument: EditorDocument {
     }
     func replace(in viewport: EditorDocumentViewport, utf16Range: NSRange, with replacement: String) throws {
         try backing.replace(in: viewport, utf16Range: utf16Range, with: replacement)
+    }
+}
+
+private nonisolated final class WhitespaceInspectionMessage: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedValue = ""
+
+    func set(_ value: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        storedValue = value
+    }
+
+    var value: String {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedValue
     }
 }
 #endif

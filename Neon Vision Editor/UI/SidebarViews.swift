@@ -93,7 +93,14 @@ struct SidebarView: View {
             #if os(macOS)
             return AnyShapeStyle(Color.clear)
             #else
-            return AnyShapeStyle(.ultraThinMaterial)
+            // Both iPad sidebars must resolve to the same surface color. Two
+            // independent materials sample different content behind each
+            // card, producing visibly different colors in translucent mode.
+            return AnyShapeStyle(
+                currentEditorTheme(colorScheme: colorScheme)
+                    .background
+                    .opacity(colorScheme == .dark ? 0.82 : 0.90)
+            )
             #endif
         }
 #if os(macOS)
@@ -319,7 +326,11 @@ struct SidebarView: View {
 
     private var sidebarOuterPaddingInsets: EdgeInsets {
 #if os(iOS)
-        EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10)
+        // Match the project sidebar's iPad card inset on every edge so the
+        // TOC surface shares its height and boundary with the adjacent bar.
+        UIDevice.current.userInterfaceIdiom == .pad
+            ? EdgeInsets(top: 0, leading: 6, bottom: 0, trailing: 6)
+            : EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10)
 #else
         EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 4)
 #endif
@@ -1558,7 +1569,13 @@ struct ProjectStructureSidebarView: View {
             #if os(macOS)
             return AnyShapeStyle(Color.clear)
             #else
-            return AnyShapeStyle(.ultraThinMaterial)
+            // Keep the project sidebar and TOC sidebar on one resolved color
+            // instead of compositing separate materials over different panes.
+            return AnyShapeStyle(
+                currentEditorTheme(colorScheme: colorScheme)
+                    .background
+                    .opacity(colorScheme == .dark ? 0.82 : 0.90)
+            )
             #endif
         }
 #if os(macOS)
@@ -1702,9 +1719,9 @@ struct ProjectStructureSidebarView: View {
     private var sidebarContainerBorderOverlay: some View {
 #if os(macOS)
         if translucentBackgroundEnabled {
-            // Continue the editor/window material through the boundary instead
-            // of painting a bright outline or exposing a clear hole.
-            sidebarContainerShape.stroke(sidebarSurfaceFill, lineWidth: 1.2)
+            // Keep the window material transparent while retaining a subtle
+            // edge so the sidebar remains legible against the desktop.
+            sidebarContainerShape.stroke(sidebarSurfaceStroke, lineWidth: 1.2)
         } else {
             sidebarContainerShape.stroke(sidebarSurfaceStroke, lineWidth: 1.2)
         }

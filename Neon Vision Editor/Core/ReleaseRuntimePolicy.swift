@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 
 
@@ -74,6 +77,39 @@ enum ReleaseRuntimePolicy {
             return nil
         }
     }
+
+#if os(macOS)
+    static func appKitAppearance(for appearance: String) -> NSAppearance? {
+        switch appearance {
+        case "light":
+            return NSAppearance(named: .aqua)
+        case "dark":
+            return NSAppearance(named: .darkAqua)
+        default:
+            return nil
+        }
+    }
+
+    @MainActor
+    static func clearMacWindowAppearanceOverrides(_ windows: [NSWindow]) {
+        for window in windows {
+            window.contentView?.appearance = nil
+            window.appearance = nil
+        }
+    }
+
+    @MainActor
+    static func applyMacApplicationAppearance(
+        _ appearance: String,
+        application: NSApplication = NSApp
+    ) {
+        // NSApplication is the single appearance owner. Windows and hosting
+        // views must inherit it so returning to System removes every explicit
+        // Light/Dark override instead of retaining a stale child appearance.
+        clearMacWindowAppearanceOverrides(application.windows)
+        application.appearance = appKitAppearance(for: appearance)
+    }
+#endif
 
     static func nextFindMatch(
         in source: String,

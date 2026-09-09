@@ -942,6 +942,15 @@ struct NeonSettingsView: View {
             }
 #endif
         }
+#if os(macOS)
+        // Native macOS preferences should switch panes without the implicit
+        // TabView transition. That transition keeps the old pane in the view
+        // graph while the new pane is measured, which makes the window appear
+        // to rearrange before its final height is applied.
+        .transaction { transaction in
+            transaction.animation = nil
+        }
+#endif
 #if os(iOS) || os(visionOS)
         .animation(.easeOut(duration: 0.22), value: settingsActiveTab)
 #endif
@@ -1231,9 +1240,18 @@ struct NeonSettingsView: View {
             SettingsWindowConfigurator(
                 minSize: macSettingsWindowSize.min,
                 idealSize: macSettingsWindowSize.ideal,
-                preferredContentHeight: macSettingsContentHeights[settingsActiveTab].map {
-                    $0 + UI.macSettingsToolbarContentMargin
-                },
+                editorWindowNumber: WindowViewModelRegistry.shared.windowNumber(for: editorViewModel),
+                themeBackgroundRaw: colorToHex(
+                    currentEditorTheme(colorScheme: effectiveSettingsColorScheme).background
+                ),
+                opaqueEditorCanvasEnabled: opaqueEditorSurfaceMac,
+                // Keep a target available in the same update as the tab
+                // selection. The measured value replaces this estimate as
+                // soon as the selected pane reports its natural height.
+                preferredContentHeight: (
+                    macSettingsContentHeights[settingsActiveTab]
+                        ?? Self.macSettingsEstimatedContentHeight(for: settingsActiveTab)
+                ) + UI.macSettingsToolbarContentMargin,
                 translucentEnabled: usesTranslucentSettingsSurface,
                 translucencyModeRaw: macTranslucencyModeRaw,
                 appearanceRaw: appearance,
@@ -1453,19 +1471,8 @@ struct NeonSettingsView: View {
 
 #if os(macOS)
     private func applyAppearanceImmediately() {
-        let target: NSAppearance?
-        switch appearance {
-        case "light":
-            target = NSAppearance(named: .aqua)
-        case "dark":
-            target = NSAppearance(named: .darkAqua)
-        default:
-            target = nil
-        }
-        NSApp.appearance = target
+        ReleaseRuntimePolicy.applyMacApplicationAppearance(appearance)
         for window in NSApp.windows {
-            window.appearance = target
-            window.contentView?.appearance = target
             window.contentView?.needsDisplay = true
         }
     }
@@ -6436,7 +6443,9 @@ struct NeonSettingsView: View {
                   let height = heights[tabID],
                   height > 0,
                   abs((macSettingsContentHeights[tabID] ?? 0) - height) > 0.5 else { return }
-            macSettingsContentHeights[tabID] = height
+            withTransaction(Transaction(animation: nil)) {
+                macSettingsContentHeights[tabID] = height
+            }
             Self.storeMacSettingsContentHeights(macSettingsContentHeights)
         }
 #else
@@ -6538,17 +6547,26 @@ struct NeonSettingsView: View {
     }
 
     private var settingsWindowBackground: AnyShapeStyle {
-        guard usesTranslucentSettingsSurface else {
-            return AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
+        let themeBackground = currentEditorTheme(colorScheme: effectiveSettingsColorScheme).background
+        if usesTranslucentSettingsSurface {
+            let nativeSurface = SettingsWindowConfigurator.settingsWindowBackgroundColor(
+                translucentEnabled: true,
+                translucencyModeRaw: macTranslucencyModeRaw,
+                appearanceRaw: appearance,
+                effectiveColorScheme: effectiveSettingsColorScheme
+            )
+            return AnyShapeStyle(Color(nsColor: nativeSurface))
         }
-        // Use the exact same calibrated color as the native window bridge. This
-        // keeps the header, tab strip, divider area, and content at one alpha.
-        return AnyShapeStyle(Color(nsColor: SettingsWindowConfigurator.settingsWindowBackgroundColor(
-            translucentEnabled: true,
-            translucencyModeRaw: macTranslucencyModeRaw,
-            appearanceRaw: appearance,
-            effectiveColorScheme: effectiveSettingsColorScheme
-        )))
+        guard opaqueEditorSurfaceMac else {
+            let nativeSurface = SettingsWindowConfigurator.settingsWindowBackgroundColor(
+                translucentEnabled: false,
+                translucencyModeRaw: macTranslucencyModeRaw,
+                appearanceRaw: appearance,
+                effectiveColorScheme: effectiveSettingsColorScheme
+            )
+            return AnyShapeStyle(Color(nsColor: nativeSurface))
+        }
+        return AnyShapeStyle(themeBackground)
     }
 #endif
 
@@ -6795,7 +6813,8 @@ struct NeonSettingsView: View {
     }
 
     private var macSettingsWindowSize: (min: NSSize, ideal: NSSize) {
-        // Keep a stable window envelope across tabs to avoid toolbar-tab jump/overflow relayout.
+        // Keep width and safety bounds stable; the configurator applies each
+        // pane's measured natural height to the native window.
         Self.macSettingsWindowSizePolicy()
     }
 
@@ -6804,6 +6823,23 @@ struct NeonSettingsView: View {
         // safe single-column layout before either form card can overlap, while
         // Toolbar retains enough room for two readable preset cards.
         (NSSize(width: 600, height: 320), NSSize(width: 900, height: 1120))
+    }
+
+    /// Supplies a deterministic target while a newly selected pane is being
+    /// mounted. SwiftUI only publishes the pane's measured height after that
+    /// mount, so waiting for the preference leaves AppKit displaying the old
+    /// window frame during the tab transition.
+    nonisolated static func macSettingsEstimatedContentHeight(for tabID: String) -> CGFloat {
+        switch tabID {
+        case "ai":
+            800
+        case "editor", "toolbar", "themes", "support", "remote", "shortcuts":
+            700
+        case "templates":
+            560
+        default:
+            760
+        }
     }
 
     nonisolated static func macSettingsInitialWindowSize() -> NSSize {
@@ -6815,12 +6851,7 @@ struct NeonSettingsView: View {
         // Bootstrap from the active pane, then replace this estimate with its
         // measured height. This matches native dynamic Preferences windows:
         // each pane gets its own natural height without a fixed global frame.
-        let fallbackContentHeight: CGFloat = switch activeTab {
-        case "ai": 800
-        case "editor", "toolbar", "themes", "support", "remote", "shortcuts": 700
-        case "templates": 560
-        default: 760
-        }
+        let fallbackContentHeight = macSettingsEstimatedContentHeight(for: activeTab)
         let contentHeight = measuredContentHeight ?? fallbackContentHeight
         let windowHeight = min(
             max(contentHeight + 20, policy.min.height),
@@ -7207,6 +7238,9 @@ private enum DefaultFileAssociation {
 struct SettingsWindowConfigurator: NSViewRepresentable {
     let minSize: NSSize
     let idealSize: NSSize
+    let editorWindowNumber: Int?
+    let themeBackgroundRaw: String
+    let opaqueEditorCanvasEnabled: Bool
     let preferredContentHeight: CGFloat?
     let translucentEnabled: Bool
     let translucencyModeRaw: String
@@ -7218,6 +7252,10 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         var pendingApply: DispatchWorkItem?
         var lastTranslucentEnabled: Bool?
         var lastTranslucencyModeRaw: String?
+        var lastAppearanceRaw: String?
+        var lastEffectiveColorScheme: ColorScheme?
+        var lastThemeBackgroundRaw: String?
+        var lastOpaqueEditorCanvasEnabled: Bool?
         var didConfigureWindowChrome = false
         var lastPreferredContentHeight: CGFloat?
         var stableTopEdge: CGFloat?
@@ -7248,6 +7286,29 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
+        let coordinator = context.coordinator
+        let preferredHeightChanged: Bool = {
+            guard let preferredContentHeight else {
+                return coordinator.lastPreferredContentHeight != nil
+            }
+            guard let lastPreferredContentHeight = coordinator.lastPreferredContentHeight else {
+                return true
+            }
+            return abs(lastPreferredContentHeight - preferredContentHeight) > 1
+        }()
+        if coordinator.didInitialApply,
+           coordinator.lastTranslucentEnabled == translucentEnabled,
+           coordinator.lastTranslucencyModeRaw == translucencyModeRaw,
+           coordinator.lastAppearanceRaw == appearanceRaw,
+           coordinator.lastEffectiveColorScheme == effectiveColorScheme,
+           coordinator.lastThemeBackgroundRaw == themeBackgroundRaw,
+           coordinator.lastOpaqueEditorCanvasEnabled == opaqueEditorCanvasEnabled,
+           !preferredHeightChanged {
+            // Settings controls can invalidate the parent view frequently. Do
+            // not re-enter AppKit window layout for changes that do not affect
+            // the Settings window's actual chrome or surface.
+            return
+        }
         scheduleApply(to: nsView.window, coordinator: context.coordinator)
     }
 
@@ -7261,15 +7322,10 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             apply(to: window, coordinator: coordinator)
             return
         }
-        let work = DispatchWorkItem { [weak window, weak coordinator] in
-            guard let window, let coordinator else { return }
-            apply(to: window, coordinator: coordinator)
-        }
-        coordinator.pendingApply = work
-        // The Settings scene applies its default/restored frame after the first view update.
-        // Apply a measured content height only after that layout pass has completed.
-        let delay: DispatchTimeInterval = coordinator.didInitialApply ? .milliseconds(150) : .milliseconds(0)
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+        // The target height is already part of this representable update. A
+        // main-queue hop lets SwiftUI paint the old pane first and exposes the
+        // window-frame correction as visible movement, so apply synchronously.
+        apply(to: window, coordinator: coordinator)
     }
 
     private func apply(to window: NSWindow?, coordinator: Coordinator) {
@@ -7277,10 +7333,15 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         ensureObservers(for: window, coordinator: coordinator)
         coordinator.lastTranslucentEnabled = translucentEnabled
         coordinator.lastTranslucencyModeRaw = translucencyModeRaw
+        coordinator.lastAppearanceRaw = appearanceRaw
+        coordinator.lastEffectiveColorScheme = effectiveColorScheme
+        coordinator.lastThemeBackgroundRaw = themeBackgroundRaw
+        coordinator.lastOpaqueEditorCanvasEnabled = opaqueEditorCanvasEnabled
         let isInitialLayout = !coordinator.didInitialApply
 
         if isInitialLayout {
             enforceResizableSettingsWindowBounds(on: window)
+            centerOverEditorWindow(window)
         }
 
         if !coordinator.didConfigureWindowChrome {
@@ -7305,6 +7366,9 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             coordinator.stableTopEdge = window.frame.maxY
         }
         if let preferredContentHeight,
+           (isInitialLayout || coordinator.lastPreferredContentHeight.map {
+               abs($0 - preferredContentHeight) > 1
+           } ?? true),
            coordinator.lastPreferredContentHeight != preferredContentHeight {
             resizeHeight(
                 on: window,
@@ -7314,19 +7378,9 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             coordinator.lastPreferredContentHeight = preferredContentHeight
         }
         window.isOpaque = !translucentEnabled
-        let windowAppearance: NSAppearance?
-        switch appearanceRaw {
-        case "light":
-            windowAppearance = NSAppearance(named: .aqua)
-        case "dark":
-            windowAppearance = NSAppearance(named: .darkAqua)
-        default:
-            // Inherit the current macOS appearance instead of retaining a
-            // previously forced Dark/Light appearance on this window.
-            windowAppearance = nil
-        }
-        window.appearance = windowAppearance
-        window.contentView?.appearance = windowAppearance
+        // The application owns the explicit Light/Dark override. The Settings
+        // window must inherit it so System mode cannot retain the prior mode.
+        ReleaseRuntimePolicy.clearMacWindowAppearanceOverrides([window])
         // Use one native surface for the titlebar and content. Without this
         // explicit titlebar background, AppKit can retain its default white
         // titlebar even while the Settings content is translucent.
@@ -7346,6 +7400,19 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         window.contentMinSize = minSize
         window.contentMaxSize = maximumSize
         window.standardWindowButton(.zoomButton)?.isEnabled = true
+    }
+
+    private func centerOverEditorWindow(_ settingsWindow: NSWindow) {
+        guard let editorWindowNumber,
+              let editorWindow = NSApp.window(withWindowNumber: editorWindowNumber),
+              editorWindow !== settingsWindow,
+              editorWindow.isVisible else { return }
+        let editorFrame = editorWindow.frame
+        let origin = NSPoint(
+            x: editorFrame.midX - settingsWindow.frame.width / 2,
+            y: editorFrame.midY - settingsWindow.frame.height / 2
+        )
+        settingsWindow.setFrameOrigin(origin)
     }
 
     private func maximumWindowSize(for window: NSWindow) -> NSSize {
@@ -7422,24 +7489,30 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         switch translucencyModeRaw {
         case "subtle":
             whiteLevel = isDark ? 0.18 : 0.90
-            alpha = 0.92
+            alpha = 0.96
         case "vibrant":
             whiteLevel = isDark ? 0.12 : 0.82
-            alpha = 0.84
+            alpha = 0.90
         default:
             whiteLevel = isDark ? 0.15 : 0.86
-            alpha = 0.88
+            alpha = 0.93
         }
         return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
     }
 
     private func translucencyEnabledColor(enabled: Bool) -> NSColor {
-        Self.settingsWindowBackgroundColor(
+        let nativeSurface = Self.settingsWindowBackgroundColor(
             translucentEnabled: enabled,
             translucencyModeRaw: translucencyModeRaw,
             appearanceRaw: appearanceRaw,
             effectiveColorScheme: effectiveColorScheme
         )
+        if enabled || opaqueEditorCanvasEnabled {
+            let fallback = Color(nsColor: nativeSurface.withAlphaComponent(1))
+            let themeColor = NSColor(colorFromHex(themeBackgroundRaw, fallback: fallback))
+            return enabled ? nativeSurface : themeColor.withAlphaComponent(1)
+        }
+        return nativeSurface.withAlphaComponent(1)
     }
 
     private func ensureObservers(for window: NSWindow, coordinator: Coordinator) {

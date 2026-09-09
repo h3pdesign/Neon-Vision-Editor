@@ -2,6 +2,35 @@ import XCTest
 @testable import Neon_Vision_Editor
 
 final class ContentViewLayoutTests: XCTestCase {
+    @MainActor
+    func testSecondaryContentRequestInvalidatesForSeparatorChangeWithoutAnEdit() {
+        let id = UUID()
+        let csv = ContentView.SecondaryContentRequest(
+            context: .init(tabID: id, fileURL: nil, language: "csv"),
+            revision: 1, delimitedMode: .table, plistMode: .text,
+            crashMode: .text, logMode: .text
+        )
+        let tsv = ContentView.SecondaryContentRequest(
+            context: .init(tabID: id, fileURL: nil, language: "tsv"),
+            revision: 1, delimitedMode: .table, plistMode: .text,
+            crashMode: .text, logMode: .text
+        )
+        XCTAssertNotEqual(csv, tsv, "Changing the delimiter must replace the parse task even without editing text.")
+    }
+
+    @MainActor
+    func testSecondaryContentRequestDistinguishesTabsWithIdenticalRevisions() {
+        func request(_ id: UUID, revision: Int = 0) -> ContentView.SecondaryContentRequest {
+            .init(context: .init(tabID: id, fileURL: nil, language: "csv"),
+                  revision: revision, delimitedMode: .table, plistMode: .text,
+                  crashMode: .text, logMode: .text)
+        }
+        let id = UUID()
+        XCTAssertEqual(request(id), request(id), "An unchanged request must not restart parsing.")
+        XCTAssertNotEqual(request(id), request(UUID()), "New tabs commonly have the same content revision.")
+        XCTAssertNotEqual(request(id), request(id, revision: 1), "Edits must replace the parse task.")
+    }
+
     func testRegularWidthSplitUsesAppOwnedChrome() {
         XCTAssertTrue(
             IOSSplitChromePolicy.usesAppOwnedChrome(
@@ -105,6 +134,14 @@ final class ContentViewLayoutTests: XCTestCase {
             MarkdownFormattingChromePolicy.shouldReserveMobileFormattingRow(
                 isPhone: true,
                 shouldShow: true,
+                isCollapsed: true,
+                keepCollapsedBelowTabs: true
+            )
+        )
+        XCTAssertTrue(
+            MarkdownFormattingChromePolicy.shouldReserveMobileFormattingRow(
+                isPhone: true,
+                shouldShow: true,
                 isCollapsed: false
             )
         )
@@ -124,23 +161,26 @@ final class ContentViewLayoutTests: XCTestCase {
         )
     }
 
-    func testCollapsedFormattingControlUsesOpaqueSurfaceWhileExpandedControlMayUseGlass() {
-        XCTAssertFalse(
+    func testFormattingControlUsesGlassWhenEitherWindowOrToolbarTranslucencyIsEnabled() {
+        XCTAssertTrue(
             MarkdownFormattingChromePolicy.usesTranslucentControlSurface(
                 isCollapsed: true,
-                liquidGlassEnabled: true
+                liquidGlassEnabled: false,
+                windowTranslucent: true
             )
         )
         XCTAssertTrue(
             MarkdownFormattingChromePolicy.usesTranslucentControlSurface(
                 isCollapsed: false,
-                liquidGlassEnabled: true
+                liquidGlassEnabled: true,
+                windowTranslucent: false
             )
         )
         XCTAssertFalse(
             MarkdownFormattingChromePolicy.usesTranslucentControlSurface(
                 isCollapsed: false,
-                liquidGlassEnabled: false
+                liquidGlassEnabled: false,
+                windowTranslucent: false
             )
         )
     }

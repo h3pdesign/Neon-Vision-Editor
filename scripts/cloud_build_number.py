@@ -227,6 +227,10 @@ class CloudBuildCounter:
         maximum = 0
         completed_maximum = 0
         unfinished = []
+        ignored_numbers = {
+            int(value) for value in os.environ.get("ASC_IGNORE_CLOUD_RUN_NUMBERS", "").split(",")
+            if value.strip().isdigit() and int(value) > 0
+        }
         while url:
             if url in seen_urls or len(seen_urls) >= 100 or time.monotonic() >= deadline:
                 raise ValueError("Cloud build history is incomplete or changing; retry preflight.")
@@ -247,6 +251,8 @@ class CloudBuildCounter:
                 if progress not in ("COMPLETE", "RUNNING"):
                     raise ValueError("Cloud has an active, queued or unknown-state build. Wait for it to finish before allocating a release number.")
                 if progress == "RUNNING":
+                    if attrs["number"] in ignored_numbers:
+                        continue
                     unfinished.append((item["id"], attrs["number"]))
                 else:
                     completed_maximum = max(completed_maximum, attrs["number"])

@@ -1,29 +1,28 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-09-05 (v1.6.2 release-aligned architecture)
+Last updated: 2026-09-09 (v1.7.1 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
+
+The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/architecture-at-a-glance.svg) is the stable architecture snapshot for the README and release documentation. Update it when ownership boundaries or platform services change.
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
-### v1.6.2 (2026-09-05)
+### v1.7.1 (2026-09-09)
 
-- Adds a background metadata polling fallback for open network-volume files, reusing the existing external-change conflict handling.
-- Adds an automatic Welcome Tour preference; Finder file launches suppress the tour, including after app updates.
-- Presents purchase alerts using local SwiftUI presentation state and preserves the latest queued purchase message.
-- Retains a complete local recovery copy of external-document save payloads on iOS/iPadOS and visionOS.
-- Avoids duplicate network-file checks and skips tabs that are still loading or already reviewing an external change.
-- Rechecks launch intent before presenting a delayed Welcome Tour.
+- Replaces the remaining legacy tab-bar paths with native platform tab implementations.
+- Preserves complete tab borders, spacing, and translucent surfaces across hover, selection, and appearance changes.
+- Aligns tab, TOC sidebar, project sidebar, line-number, and editor backgrounds in opaque and translucent modes.
+- Prevents tab borders from clipping, flashing, or disappearing during hover and theme transitions.
+- Keeps Settings content sized to the selected tab and opens the Settings window in a stable editor-relative position.
+- Restores drag-to-move behavior across the macOS top bar without applying window-drag handling to the editor surface.
 
-### v1.6.1 (2026-09-04)
+### v1.6.4 (2026-09-08)
 
-- Expands complex HTML, JSX, CSS, SCSS, Less, Sass, and related Emmet abbreviations with configured indentation.
-- Restores Tab-to-accept inline completion, Vim navigation, Markdown shortcuts, drag and drop, rich-text paste, code snapshots, and whitespace inspection in the macOS virtual editor.
-- Caches generation-safe bounded viewports and enforces median latency budgets for typing, scrolling, selection, and viewport reloads.
-- Colors HTML tags, attributes, strings, embedded CSS properties, and numbers as separate syntax tokens instead of treating complete attribute or style values as one string.
-- Reads offscreen selections and edits through bounded UTF-16 document ranges instead of materializing an entire file-backed document.
-- Preserves tab selection, preview, structured-data, AI completion, toolbar, and persistence behavior when switching to the virtual editor.
+- Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.
+- Stops per-character document length and dirty-state changes from rebuilding the macOS editor configuration.
+- Preserves toolbar button hit-testing while supporting window dragging in the middle of the native toolbar.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->
@@ -74,6 +73,24 @@ The following ownership boundaries are intentional. Preserve them when adding a 
 - Notifications carry window-scoped editor commands only when they include a window number. Broadcast notifications are reserved for process-wide updates such as preference changes.
 
 When tracing a change, follow this path: user action or system callback -> `ContentView`/native coordinator -> `EditorViewModel` command -> tab-state mutation -> SwiftUI/native editor update. File presenters and asynchronous loads re-enter through the same command path so indexes, dirty state, and observation registrations remain consistent.
+
+### Fast tab activation path
+
+Tab activation has an explicit critical path: select the destination tab, bind its
+already-available bounded viewport to the existing native editor, and draw the
+first frame. It must not synchronously scan the document, write preferences,
+rebuild a project index, parse Markdown, or measure hundreds of wrapped Core Text
+rows. Those jobs are cancellable and generation-checked, and begin after the
+first frame so they cannot block selection feedback. Preview rendering follows
+the same rule: a Markdown/WebKit update is debounced and replaced when a newer
+tab or content revision arrives. This keeps a tab switch an in-place view update,
+not a document reload or SwiftUI identity change.
+
+Performance changes in this path are verified with `EditorPerformanceMonitor`
+signposts and a cross-language switch matrix (plain text, Markdown, and source
+files). A build or unit-test pass proves correctness of the contracts, but only
+an Instruments/Cpu sampler capture on a running macOS build can establish a
+latency improvement.
 
 ### ContentView Extension Boundaries
 

@@ -566,7 +566,6 @@ struct ContentView: View {
     @AppStorage("ToolbarCollapsed") var startsWithToolbarCollapsed: Bool = false
     @State var isToolbarCollapsed: Bool = false
     @AppStorage("SettingsAppearance") var appearance: String = "system"
-    @AppStorage("SettingsTemplateLanguage") private var settingsTemplateLanguage: String = "swift"
     @AppStorage(SettingsPreferenceKey.themeName) private var settingsThemeName: String = "Neon Glow"
     @AppStorage(SettingsPreferenceKey.themeBoldKeywords) private var settingsThemeBoldKeywords: Bool = false
     @AppStorage(SettingsPreferenceKey.themeItalicComments) private var settingsThemeItalicComments: Bool = false
@@ -577,6 +576,7 @@ struct ContentView: View {
     @State var lastProviderUsed: String = "Apple"
     @State private var highlightRefreshToken: Int = 0
     @State var editorExternalMutationRevision: Int = 0
+    @State private var secondaryContentContext: SecondaryContentContext?
 
     // Persisted API tokens for external providers
     @State var grokAPIToken: String = ""
@@ -758,10 +758,6 @@ struct ContentView: View {
     @State var projectRefreshStatusIsPending: Bool = false
     @State var projectFolderMonitorSource: DispatchSourceFileSystemObject? = nil
     @State var pendingProjectFolderRefreshWorkItem: DispatchWorkItem? = nil
-    @State var fileTabBarIsScrolledUnderTOCEdge: Bool = false
-    @State var tabDropInsertionTabID: UUID? = nil
-    @State var tabDropInsertionBefore: Bool = true
-    @State var previousSelectedTabID: UUID? = nil
     @State var quickSwitcherRecentItemIDs: [String] = []
     @State var recentFilesRefreshToken: UUID = UUID()
     @State var sharedImportsRefreshToken: UUID = UUID()
@@ -1086,37 +1082,99 @@ struct ContentView: View {
     }
 
     func syncSecondaryViewModesForCurrentTab() {
+        // Selection and language observers can both reach this method. Avoid
+        // assigning an unchanged mode: each assignment invalidates SwiftUI and
+        // can restart the corresponding parser during a tab transition.
+        func assignIfChanged<Value: Equatable>(_ value: Value, to binding: Binding<Value>) {
+            guard binding.wrappedValue != value else { return }
+            binding.wrappedValue = value
+        }
+
         if isDelimitedFileLanguage {
             if let key = selectedDelimitedViewModePersistenceKey,
                let persisted = persistedDelimitedViewMode(for: key) {
-                delimitedViewMode = persisted
+                assignIfChanged(persisted, to: $delimitedViewMode)
             } else {
-                delimitedViewMode = .table
+                assignIfChanged(.table, to: $delimitedViewMode)
             }
         } else {
-            delimitedViewMode = .text
+            assignIfChanged(.text, to: $delimitedViewMode)
         }
 
         if isPlistDocument {
-            plistViewMode = .structure
+            assignIfChanged(.structure, to: $plistViewMode)
         } else {
-            plistViewMode = .text
+            assignIfChanged(.text, to: $plistViewMode)
         }
 
         if isAppleCrashReportDocument {
-            crashReportViewMode = .structure
+            assignIfChanged(.structure, to: $crashReportViewMode)
         } else {
-            crashReportViewMode = .text
+            assignIfChanged(.text, to: $crashReportViewMode)
         }
 
         if isLogDocument {
-            logViewMode = .summary
+            assignIfChanged(.summary, to: $logViewMode)
         } else {
-            logViewMode = .text
+            assignIfChanged(.text, to: $logViewMode)
         }
     }
 #if os(macOS)
+@objc private protocol MacWindowDragPerforming {
+    func performWindowDragWithEvent(_ event: NSEvent)
+}
+
     enum MacEditorSurfacePolicy {
+        /// Allows empty areas of the native titlebar/toolbar to initiate a window drag.
+        /// AppKit still routes clicks on toolbar controls to those controls.
+        private static var dragMonitors: [Int: Any] = [:]
+
+        static func configureWindowDragBehavior(_ window: NSWindow) {
+            window.isMovableByWindowBackground = true
+            guard dragMonitors[window.windowNumber] == nil else { return }
+            let monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak window] event in
+                guard let window,
+                      event.window === window,
+                      Self.isBlankTitlebarClick(event, in: window) else { return event }
+                // The Swift 6 SDK does not expose this AppKit member on
+                // NSWindow, but its Objective-C entry point remains available.
+                window.perform(#selector(MacWindowDragPerforming.performWindowDragWithEvent(_:)), with: event)
+                return nil
+            }
+            dragMonitors[window.windowNumber] = monitor
+        }
+
+        private static func isBlankTitlebarClick(_ event: NSEvent, in window: NSWindow) -> Bool {
+            guard let closeButton = window.standardWindowButton(.closeButton) else { return false }
+            var titlebarView = closeButton.superview
+            while let candidate = titlebarView,
+                  candidate.bounds.width < window.frame.width * 0.8 {
+                titlebarView = candidate.superview
+            }
+            guard let titlebarView else { return false }
+            let point = titlebarView.convert(event.locationInWindow, from: nil)
+            guard titlebarView.bounds.contains(point) else { return false }
+            // The transparent titlebar can extend over the editor content. Only
+            // the upper chrome band is a drag surface; otherwise a click that
+            // begins on selected text would be promoted to a window drag and
+            // leave the editor selection visibly marked during the move.
+            let dragBandHeight = min(88, max(44, titlebarView.bounds.height * 0.35))
+            guard point.y >= titlebarView.bounds.maxY - dragBandHeight else { return false }
+            guard let hitView = titlebarView.hitTest(point) else { return true }
+            var candidate: NSView? = hitView
+            while let view = candidate, view !== titlebarView {
+                if view is NSControl { return false }
+                let typeName = NSStringFromClass(type(of: view))
+                if typeName.localizedCaseInsensitiveContains("Button")
+                    || typeName.localizedCaseInsensitiveContains("Control")
+                    || typeName.localizedCaseInsensitiveContains("ToolbarItem") {
+                    return false
+                }
+                candidate = view.superview
+            }
+            return true
+        }
+
         static func paneBackground(translucent: Bool, solid: Color) -> Color {
             translucent ? .clear : solid
         }
@@ -1139,13 +1197,13 @@ struct ContentView: View {
             switch modeRaw {
             case "subtle":
                 whiteLevel = isDarkMode ? 0.18 : 0.90
-                translucentAlpha = 0.92
+                translucentAlpha = 0.96
             case "vibrant":
                 whiteLevel = isDarkMode ? 0.12 : 0.82
-                translucentAlpha = 0.84
+                translucentAlpha = 0.90
             default:
                 whiteLevel = isDarkMode ? 0.15 : 0.86
-                translucentAlpha = 0.88
+                translucentAlpha = 0.93
             }
             return NSColor(calibratedWhite: whiteLevel, alpha: translucent ? translucentAlpha : 1)
         }
@@ -1170,7 +1228,11 @@ struct ContentView: View {
         )
     }
     private var macOpaqueEditorCanvasColor: Color {
-        currentEditorTheme(colorScheme: colorScheme).background
+        // Keep opaque-canvas mode readable while allowing a small amount of
+        // the native window surface to blend through. This is intentionally
+        // subtle; the editor remains visually solid without the hard slab
+        // produced by a fully opaque theme color.
+        currentEditorTheme(colorScheme: colorScheme).background.opacity(0.94)
     }
     private var macEditorSurfaceBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
@@ -1188,11 +1250,29 @@ struct ContentView: View {
         return AnyShapeStyle(macSolidSurfaceColor)
     }
 
-    private var macToolbarBackgroundStyle: AnyShapeStyle {
+    var macToolbarBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
+            // The NSWindow owns the translucent chrome surface. Keep SwiftUI
+            // clear here so the toolbar and tab strip reveal that same window
+            // material instead of stacking an opaque bar material over it.
             return macUnifiedTranslucentMaterialStyle
         }
+        if opaqueEditorSurfaceMac {
+            // Opaque editor mode uses the editor theme for the side columns as
+            // well. Continue that surface through the toolbar and tab strip so
+            // the upper chrome does not become a separate window-colored band.
+            return macEditorSurfaceBackgroundStyle
+        }
         return AnyShapeStyle(macSolidSurfaceColor)
+    }
+
+    var macSidebarColumnBackground: some View {
+        ZStack(alignment: .top) {
+            Rectangle().fill(editorSurfaceBackgroundStyle)
+            Rectangle()
+                .fill(macToolbarBackgroundStyle)
+                .frame(height: 42)
+        }
     }
 
     private var macInterPaneBackgroundStyle: AnyShapeStyle {
@@ -1208,7 +1288,10 @@ struct ContentView: View {
 #elseif os(iOS) || os(visionOS)
     var primaryGlassMaterial: Material { colorScheme == .dark ? .regularMaterial : .ultraThinMaterial }
     var toolbarFallbackColor: Color {
-        colorScheme == .dark ? Color.black.opacity(0.34) : Color.white.opacity(0.86)
+        // Keep mobile toolbar chrome on the active editor surface when the
+        // solid fallback is used. System black/white made the toolbar look
+        // detached from themed documents.
+        iOSNonTranslucentSurfaceColor
     }
     var iOSNonTranslucentSurfaceColor: Color {
 #if os(visionOS)
@@ -1306,10 +1389,6 @@ struct ContentView: View {
             // Keep tabs clear of iPad window controls in narrow/multitasking layouts.
             return horizontalSizeClass == .compact ? 112 : 10
         }
-#else
-        if shouldUseSplitView {
-            return 4
-        }
 #endif
         return 10
     }
@@ -1326,6 +1405,9 @@ struct ContentView: View {
 
     private func updateWindowRegistration(_ window: NSWindow?) {
         let number = window?.windowNumber
+        // WindowAccessor updates whenever its SwiftUI parent updates. Registration
+        // and initial window styling belong to attachment, not document selection.
+        guard hostWindowNumber != number else { return }
         if hostWindowNumber != number, let old = hostWindowNumber {
             WindowViewModelRegistry.shared.unregister(windowNumber: old)
         }
@@ -1400,6 +1482,7 @@ struct ContentView: View {
 
     private func updateWindowChrome(_ window: NSWindow? = nil) {
         guard let targetWindow = window ?? hostWindowNumber.flatMap({ NSApp.window(withWindowNumber: $0) }) else { return }
+        MacEditorSurfacePolicy.configureWindowDragBehavior(targetWindow)
         targetWindow.subtitle = windowSubtitleText
         if #available(macOS 11.0, *) {
             targetWindow.titlebarSeparatorStyle = .none
@@ -1664,7 +1747,10 @@ struct ContentView: View {
             viewWithDroppedFileLoadEvents
             .onChange(of: viewModel.selectedTab?.id) { _, _ in
                 editorExternalMutationRevision &+= 1
-                updateLargeFileModeForCurrentContext()
+                // Do not scan the selected document synchronously while the
+                // editor representable is being swapped. The bounded delayed
+                // reevaluation below preserves large-file detection without
+                // blocking the tab's first draw.
                 scheduleLargeFileModeReevaluation(after: 0.9)
                 scheduleSessionPersistence()
             }
@@ -1681,8 +1767,8 @@ struct ContentView: View {
                 }
                 scheduleHighlightRefresh()
             }
-            .onChange(of: currentLanguage) { _, newValue in
-                settingsTemplateLanguage = newValue
+            .onChange(of: currentLanguage) { _, language in
+                EditorPreferenceWriter.shared.set(.string(language), forKey: "SettingsTemplateLanguage")
             }
             .onChange(of: viewModel.pendingExternalFileConflict?.tabID) { _, conflictTabID in
                 if conflictTabID != nil {
@@ -2417,6 +2503,7 @@ struct ContentView: View {
                     VStack(spacing: 0) {
                         if usesAppOwnedIOSSplitChromeLayout {
                             iOSUnifiedToolbarHost
+                            iOSUnifiedDocumentChromeHost
                         }
                         NavigationSplitView {
 #if os(iOS)
@@ -2436,6 +2523,7 @@ struct ContentView: View {
                         .toolbar(.hidden, for: .navigationBar)
                         .background(editorSurfaceBackgroundStyle)
                     }
+                    .background(editorSurfaceBackgroundStyle)
                 } else {
                     editorView
                 }
@@ -2728,7 +2816,6 @@ struct ContentView: View {
             }
             .onChange(of: viewModel.selectedTabID) { previousTabID, selectedTabID in
                 guard previousTabID != selectedTabID else { return }
-                previousSelectedTabID = previousTabID
                 if activeSplitSecondaryTabID == nil {
                     splitSecondaryTabID = nil
                 }
@@ -2736,18 +2823,18 @@ struct ContentView: View {
                 if let automaticPreviewMode = automaticPreviewModeForCurrentDocument {
                     previewMode = automaticPreviewMode
                 }
-                // Keep this interaction cheap. Full session persistence creates
-                // security-scoped bookmarks for every open tab; doing that on the
-                // selection path blocks the main thread and makes tab switching
-                // visibly lag. Store the lightweight selection now, then let the
-                // debounced/lifecycle pass refresh bookmarks and the remaining
-                // session state.
+                // Keep the selection immediately available in memory; the serial
+                // writer delivers preference notifications off the main thread.
                 persistSelectedSessionFileURLImmediately()
                 scheduleSessionPersistence()
 #if os(macOS)
                 updateWindowChrome()
                 if showDetachedPreviewWindow, isMarkdownPreviewDocument {
-                    scheduleMarkdownPreviewRender(immediate: true)
+                    // Keep preview/WebKit work behind the editor's first frame
+                    // during tab activation. The renderer has its own debounce
+                    // and cache, so it will still refresh without blocking the
+                    // newly selected document.
+                    scheduleMarkdownPreviewRender()
                 }
 #endif
             }
@@ -2815,6 +2902,9 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                 handleAppWillResignActive()
+                // Flush after this window has enqueued its final session state;
+                // the app delegate's termination observer may run before ours.
+                EditorPreferenceWriter.shared.flushBeforeTermination()
             }
 #endif
     }
@@ -2845,6 +2935,7 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
                 persistSessionIfReady()
                 persistUnsavedDraftSnapshotIfNeeded()
+                EditorPreferenceWriter.shared.flushBeforeTermination()
             }
 #endif
             .modifier(ModalPresentationModifier(contentView: self))
@@ -3504,6 +3595,7 @@ struct ContentView: View {
                     DetachedPreviewWindowPresenter(
                         isPresented: contentView.$showDetachedPreviewWindow,
                         title: contentView.previewTitle,
+                        metadata: contentView.previewFileSizeText(for: contentView.viewModel.selectedTab?.fileURL),
                         html: contentView.detachedPreviewHTML,
                         baseURL: contentView.detachedPreviewBaseURL
                     )
@@ -3973,7 +4065,11 @@ struct ContentView: View {
                 }
             )
                 .frame(minWidth: 200, idealWidth: 250, maxWidth: 600)
+#if os(macOS)
+                .background(Color.clear)
+#else
                 .background(editorSurfaceBackgroundStyle)
+#endif
         } else {
             EmptyView()
         }
@@ -4504,6 +4600,7 @@ struct ContentView: View {
             indentWidth: effectiveIndentWidth,
             isSplitPaneResizeInProgress: previewPaneResizeStartWidth != nil,
             preferredLayoutWidth: brainDumpLayoutEnabled ? 920 : nil,
+            focusesEditorOnInitialWindowAttachment: startupBehavior == .forceBlankDocument,
             onFontSizeChange: { setEditorFontSize(Double($0)) },
             onTextMutation: { mutation in
                 if let viewport = mutation.viewport {
@@ -4709,7 +4806,7 @@ struct ContentView: View {
             if shouldUseSplitView {
                 sidebarView
                     .frame(width: clampedTOCSidebarWidth)
-                    .background(editorSurfaceBackgroundStyle)
+                    .background(macSidebarColumnBackground)
                 tocSidebarResizeHandle
             }
             editorView
@@ -4745,6 +4842,7 @@ struct ContentView: View {
             // window. A solid theme color creates a white strip in translucent
             // mode even though both adjacent panes use the window material.
             surfaceStyle: macInterPaneBackgroundStyle,
+            topSurfaceStyle: macToolbarBackgroundStyle,
             isActive: isTOCSidebarResizeHandleHovered || tocSidebarResizeStartWidth != nil,
             isDragging: tocSidebarResizeStartWidth != nil,
             isHovered: $isTOCSidebarResizeHandleHovered,
@@ -5145,7 +5243,7 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
 #if os(iOS) || os(visionOS)
-        let contentWithTopChrome = useIOSUnifiedTopHost
+        let contentWithTopChrome = useIOSUnifiedTopHost && !usesAppOwnedIOSSplitChromeLayout
             ? AnyView(
                 content.safeAreaInset(edge: .top, spacing: 0) {
                     if usesAppOwnedIOSSplitChromeLayout {
@@ -5178,23 +5276,27 @@ struct ContentView: View {
             liveContainerWidth = newValue
         }
         .onAppear {
-            syncSecondaryViewModesForCurrentTab()
-            refreshSecondaryContentViewsIfNeeded()
             refreshMarkdownProjectPreview()
             if shouldAutomaticallyPresentMarkdownProjectPreview {
                 presentMarkdownProjectPreviewIfAvailable()
             }
         }
-        .onChange(of: editorObservationSnapshot) { _, _ in
+        .task(id: secondaryContentRequest) {
+            let request = secondaryContentRequest
+            if secondaryContentContext != request.context {
+                secondaryContentContext = request.context
+                activeDelimitedCell = nil
+                syncSecondaryViewModesForCurrentTab()
+                // Normalizing the mode changes the request. Its replacement task
+                // owns the refresh, so no parser starts with the previous tab's mode.
+                guard secondaryContentRequest == request else { return }
+            }
+            guard !Task.isCancelled else { return }
+            clearSecondaryContentViews()
             refreshSecondaryContentViewsIfNeeded()
             if let tabID = viewModel.selectedTabID {
                 EditorPerformanceMonitor.shared.markTOCUpdated(tabID: tabID)
             }
-        }
-        .onChange(of: viewModel.selectedTab?.id) { _, _ in
-            activeDelimitedCell = nil
-            syncSecondaryViewModesForCurrentTab()
-            refreshSecondaryContentViewsIfNeeded()
         }
         .onChange(of: viewModel.selectedTab?.fileURL) { _, _ in
             openAutomaticPreviewIfNeeded()
@@ -5210,26 +5312,6 @@ struct ContentView: View {
                 isMarkdownProjectPreviewPresented = false
             }
             refreshMarkdownProjectPreview()
-        }
-        .onChange(of: delimitedViewMode) { _, newValue in
-            handleDelimitedViewModeChange(newValue)
-        }
-        .onChange(of: plistViewMode) { _, newValue in
-            handlePlistViewModeChange(newValue)
-        }
-        .onChange(of: crashReportViewMode) { _, newValue in
-            handleCrashReportViewModeChange(newValue)
-        }
-        .onChange(of: logViewMode) { _, newValue in
-            handleLogViewModeChange(newValue)
-        }
-        .onChange(of: currentLanguage) { _, _ in
-            syncSecondaryViewModesForCurrentTab()
-            if shouldShowDelimitedTable || shouldShowPlistStructure || shouldShowCrashReportStructure || shouldShowLogSummary {
-                refreshSecondaryContentViewsIfNeeded()
-            } else {
-                clearSecondaryContentViews()
-            }
         }
         .onDisappear {
             cancelSecondaryContentTasks()

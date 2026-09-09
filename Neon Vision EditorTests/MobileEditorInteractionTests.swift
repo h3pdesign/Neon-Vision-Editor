@@ -59,6 +59,32 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
+    func testNoWrapTypingDoesNotJumpViewportWhenCapacityGrows() {
+        withEditor(String(repeating: "W", count: 5_000)) { container in
+            let view = container.textView
+            XCTAssertTrue(view.becomeFirstResponder())
+            view.selectedRange = NSRange(location: 0, length: 0)
+            view.layoutIfNeeded()
+            let initialOffset = view.contentOffset
+
+            for _ in 0..<20 {
+                view.insertText("x")
+                view.layoutIfNeeded()
+                XCTAssertEqual(view.contentOffset.x, initialOffset.x, accuracy: 0.5)
+                XCTAssertEqual(view.contentOffset.y, initialOffset.y, accuracy: 0.5)
+            }
+        }
+    }
+
+    func testEmptyNoWrapDocumentDoesNotExposeArbitraryHorizontalCanvas() {
+        withEditor("") { container in
+            let view = container.textView
+            XCTAssertLessThanOrEqual(view.contentSize.width, view.bounds.width + 1)
+            XCTAssertFalse(view.alwaysBounceHorizontal)
+            XCTAssertFalse(view.showsHorizontalScrollIndicator)
+        }
+    }
+
     func testBottomInsetReservesThreeLines() {
         withEditor("one\ntwo") { container in
             XCTAssertGreaterThanOrEqual(container.textView.textContainerInset.bottom,
@@ -73,6 +99,11 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
+    func testIOSPointerSelectionDoesNotEnableTextDragInteraction() {
+        XCTAssertFalse(EditorPointerSelectionPolicy.shouldEnableTextDragInteraction(for: .pad))
+        XCTAssertFalse(EditorPointerSelectionPolicy.shouldEnableTextDragInteraction(for: .phone))
+    }
+
     func testLogicalLineSelectionPreservesUnicodeAndIncludesLineEnding() {
         let view = EditorInputTextView()
         view.text = "😀 first\r\nsecond\n"
@@ -84,6 +115,24 @@ final class MobileEditorInteractionTests: XCTestCase {
         view.selectLogicalLine(at: 0)
         XCTAssertEqual(view.selectedRange.length, 0)
         XCTAssertEqual(view.accessibilityCustomActions?.first?.name, "Select Line")
+    }
+
+    func testStoredCaretUpdateDoesNotCollapseTripleTapSelection() {
+        XCTAssertFalse(CustomTextEditor.shouldRestoreStoredCaret(
+            didSwitchDocumentResource: false,
+            didChangeStoredCaretLocation: true,
+            selectionLength: 12
+        ))
+        XCTAssertTrue(CustomTextEditor.shouldRestoreStoredCaret(
+            didSwitchDocumentResource: false,
+            didChangeStoredCaretLocation: true,
+            selectionLength: 0
+        ))
+        XCTAssertTrue(CustomTextEditor.shouldRestoreStoredCaret(
+            didSwitchDocumentResource: true,
+            didChangeStoredCaretLocation: false,
+            selectionLength: 12
+        ))
     }
 
     func testActiveTypingUpdatesLineNumbersImmediately() {

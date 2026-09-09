@@ -87,9 +87,10 @@ enum MarkdownFormattingChromePolicy {
     nonisolated static func shouldReserveMobileFormattingRow(
         isPhone: Bool,
         shouldShow: Bool,
-        isCollapsed: Bool
+        isCollapsed: Bool,
+        keepCollapsedBelowTabs: Bool = false
     ) -> Bool {
-        isPhone && shouldShow && !isCollapsed
+        isPhone && shouldShow && (!isCollapsed || keepCollapsedBelowTabs)
     }
 
     nonisolated static func shouldRenderInEditorStack(
@@ -102,9 +103,10 @@ enum MarkdownFormattingChromePolicy {
 
     nonisolated static func usesTranslucentControlSurface(
         isCollapsed: Bool,
-        liquidGlassEnabled: Bool
+        liquidGlassEnabled: Bool,
+        windowTranslucent: Bool
     ) -> Bool {
-        liquidGlassEnabled && !isCollapsed
+        liquidGlassEnabled || windowTranslucent
     }
 }
 
@@ -140,6 +142,7 @@ extension ContentView {
         UIDevice.current.userInterfaceIdiom == .phone
             && shouldPinFloatingStatusToTop
             && shouldShowMarkdownFormattingControls
+            && !shouldPlaceMarkdownFormattingBelowTabs
     }
 
     var iPhoneMarkdownFormattingStatusControl: some View {
@@ -150,9 +153,10 @@ extension ContentView {
         GlassSurface(
             enabled: MarkdownFormattingChromePolicy.usesTranslucentControlSurface(
                 isCollapsed: markdownFormattingToolbarCollapsed,
-                liquidGlassEnabled: shouldUseLiquidGlass
+                liquidGlassEnabled: shouldUseLiquidGlass,
+                windowTranslucent: enableTranslucentWindow
             ),
-            material: primaryGlassMaterial,
+            material: .ultraThinMaterial,
             fallbackColor: markdownFormattingToolbarCollapsed
                 ? Color(uiColor: .secondarySystemBackground)
                 : toolbarFallbackColor,
@@ -162,6 +166,7 @@ extension ContentView {
             markdownFormattingToolbar
         }
         .tint(iOSToolbarForegroundColor)
+        .padding(.trailing, 12)
         .accessibilityLabel("Markdown Formatting")
     }
 #endif
@@ -184,7 +189,8 @@ extension ContentView {
         MarkdownFormattingChromePolicy.shouldReserveMobileFormattingRow(
             isPhone: UIDevice.current.userInterfaceIdiom == .phone,
             shouldShow: shouldShowMarkdownFormattingControls,
-            isCollapsed: markdownFormattingToolbarCollapsed
+            isCollapsed: markdownFormattingToolbarCollapsed,
+            keepCollapsedBelowTabs: shouldPinFloatingStatusToTop
         )
         #elseif os(visionOS)
         return shouldShowMarkdownFormattingControls
@@ -246,6 +252,7 @@ extension ContentView {
             .padding(2)
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
+            .frame(minWidth: 72, minHeight: 32)
         } else {
             markdownFormattingCapsule
         }

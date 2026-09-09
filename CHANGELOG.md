@@ -6,23 +6,92 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
-### Added
+## [v1.7.1] - 2026-09-09
 
-- Adds a macOS 27 Agent Mode for bounded project exploration, reviewable selection edits, and, in the direct macOS build, user-approved syntax, build, test, or selected-file verification with Apple Intelligence.
-- Adds an opt-in Private Cloud Compute setting for complex agent requests, with on-device fallback and visible processing-location and activity summaries.
+### Why Upgrade
 
-### Security
+- Keeps native document tabs, sidebars, editor surfaces, and Settings visually consistent across macOS, iOS, and iPadOS window modes.
+- Applies appearance and layout changes immediately when switching Light, Dark, or System mode.
+- Makes tab switching and Settings navigation feel immediate while preserving the native platform controls.
 
-- Restricts agent file access to the captured project index, rejects path traversal and stale edit targets, and runs only editor-resolved verification commands without a shell or model-authored arguments.
+### Highlights
+
+- Replaces the remaining legacy tab-bar paths with native platform tab implementations.
+- Preserves complete tab borders, spacing, and translucent surfaces across hover, selection, and appearance changes.
 
 ### Fixes
 
+- Aligns tab, TOC sidebar, project sidebar, line-number, and editor backgrounds in opaque and translucent modes.
+- Prevents tab borders from clipping, flashing, or disappearing during hover and theme transitions.
+- Keeps Settings content sized to the selected tab and opens the Settings window in a stable editor-relative position.
+- Restores drag-to-move behavior across the macOS top bar without applying window-drag handling to the editor surface.
+- Keeps cursor-based text selection available on iPhone, iPad, and visionOS.
+- Makes the Welcome Tour follow the configured Light, Dark, or System appearance and carries the major release highlights forward.
+- Prevents iOS App Store packaging from failing when the export environment rejects Xcode's symbol-copy flag.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
+## [v1.6.4] - 2026-09-08
+
+### Why Upgrade
+
+- Keeps macOS typing visually stable while preserving the native editor viewport.
+- Makes empty native titlebar space usable for window movement without sacrificing toolbar actions.
+- Keeps the editor’s native tab and viewport lifecycle intact while these macOS chrome fixes are applied.
+
+### Highlights
+
+- Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.
+
+### Fixes
+
+- Stops per-character document length and dirty-state changes from rebuilding the macOS editor configuration.
+- Preserves toolbar button hit-testing while supporting window dragging in the middle of the native toolbar.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
+## [v1.6.3] - 2026-09-07
+
+### Why Upgrade
+
+- Switch between open documents with less visible delay, including when changing between Markdown and source files.
+- Keep local development builds usable without requiring a Developer ID certificate for Quick Look.
+- Preserve a responsive first frame while deferred rendering catches up in the background.
+
+### Highlights
+
+- The selected editor publishes its first frame before deferred layout and preview work begins.
+
+### Fixes
+
+- Makes macOS tab switching responsive by publishing the selected editor before deferred Core Text layout and Markdown preview work runs.
+- Avoids synchronous large-file inspection and preview parsing while selecting a tab, including when switching between Markdown and source files.
 - Fixes Markdown PDF export clipping, removes interactive code controls from exports, preserves A4 page dimensions, and uses content and code-line boundaries for pagination without blank trailing pages.
 - Find in Files now applies root and nested .gitignore rules and the sidebar's Ignored Folders settings consistently, pruning excluded directories while retaining text files with unknown extensions.
 - Corrects mobile line-number updates while typing and scrolling, and removes the fixed width ceiling that clipped long unwrapped lines.
 - Adds three lines of bottom editing space and keeps context below the active caret on iOS/iPadOS and visionOS.
 - Adds triple-tap logical-line selection and an accessible Select Line action in the mobile editor.
 - Displays Markdown bold and italic source text using font styling while preserving markup, escapes, and code blocks.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
 
 ## [v1.6.2] - 2026-09-05
 

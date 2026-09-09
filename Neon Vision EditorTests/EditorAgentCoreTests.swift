@@ -36,9 +36,15 @@ final class EditorAgentCoreTests: XCTestCase {
         XCTAssertEqual(original.utf16.count, changed.utf16.count)
         XCTAssertNotEqual(Array(original.utf8), Array(changed.utf8))
         let proposal = EditorAgentEditProposal(tabID: tab, range: range, source: original, replacement: "new", summary: "")
-        XCTExpectFailure("Review finding: Swift String equality accepts canonically equivalent but byte-different source; exact-source validation must reject it.") {
-            XCTAssertFalse(proposal.matches(tabID: tab, range: range, currentSource: changed))
-        }
+        XCTAssertFalse(proposal.matches(tabID: tab, range: range, currentSource: changed))
+
+        let equivalentNoOp = EditorAgentPromptPolicy.editProposal(
+            target: .init(tabID: tab, range: range, source: original),
+            replacement: changed,
+            summary: "",
+            mode: .edit
+        )
+        XCTAssertNotNil(equivalentNoOp, "Byte-different normalization is an actual edit and must not be treated as a no-op.")
     }
 
     func testWorkspaceRejectsUnindexedAndDeletedFilesAndDeduplicatesAllowlist() async throws {

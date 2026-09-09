@@ -44,7 +44,18 @@ nonisolated struct EditorAgentEditProposal: Identifiable, Equatable, Sendable {
     let summary: String
 
     func matches(tabID: UUID, range: NSRange, currentSource: String) -> Bool {
-        self.tabID == tabID && self.range == range && source == currentSource
+        self.tabID == tabID
+            && self.range == range
+            && EditorAgentSourceIntegrity.matches(source, currentSource)
+    }
+}
+
+/// Source snapshots are integrity tokens. Swift String equality uses Unicode
+/// canonical equivalence, but stale-edit validation must compare the exact
+/// UTF-8 bytes that the user reviewed.
+nonisolated enum EditorAgentSourceIntegrity {
+    static func matches(_ lhs: String, _ rhs: String) -> Bool {
+        lhs.utf8.elementsEqual(rhs.utf8)
     }
 }
 
@@ -95,7 +106,10 @@ nonisolated enum EditorAgentPromptPolicy {
     }
 
     static func editProposal(target: EditorAgentEditTarget?, replacement: String, summary: String, mode: EditorAgentMode) -> EditorAgentEditProposal? {
-        guard mode == .edit, let target, !replacement.isEmpty, replacement != target.source else { return nil }
+        guard mode == .edit,
+              let target,
+              !replacement.isEmpty,
+              !EditorAgentSourceIntegrity.matches(replacement, target.source) else { return nil }
         return .init(tabID: target.tabID, range: target.range, source: target.source, replacement: replacement, summary: summary)
     }
 }

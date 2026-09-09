@@ -100,8 +100,12 @@ final class MobileNativeFileTabBarTests: XCTestCase {
         )
         view.layoutIfNeeded()
 
-        XCTAssertEqual(view.addButtonFrameForTesting.width, 44)
-        XCTAssertGreaterThanOrEqual(view.addButtonFrameForTesting.minX - view.scrollViewFrameForTesting.maxX, 4)
+        XCTAssertEqual(view.addButtonFrameForTesting.width, 32)
+        XCTAssertEqual(view.trailingTransitionFrameForTesting.minX, view.scrollViewFrameForTesting.maxX, accuracy: 0.5)
+        XCTAssertEqual(view.trailingTransitionFrameForTesting.maxX, view.addButtonFrameForTesting.minX, accuracy: 0.5)
+        XCTAssertEqual(view.trailingTransitionFrameForTesting.width, 2, accuracy: 0.5)
+        XCTAssertFalse(view.trailingTransitionAcceptsTouchesForTesting)
+        XCTAssertTrue(view.trailingTransitionIsVisibleForTesting)
         XCTAssertEqual(view.scrollViewFrameForTesting.minX, 8)
     }
 
@@ -118,6 +122,44 @@ final class MobileNativeFileTabBarTests: XCTestCase {
         XCTAssertGreaterThan(view.horizontalContentWidthForTesting, view.scrollViewFrameForTesting.width)
         XCTAssertGreaterThan(view.horizontalContentOffsetForTesting, 0)
         XCTAssertGreaterThan(try XCTUnwrap(view.tabFrameForTesting(lastID)).minX, view.scrollViewFrameForTesting.width)
+        XCTAssertFalse(view.trailingTransitionIsVisibleForTesting)
+    }
+
+    func testSelectingFirstTabAfterScrollingRightReturnsItFullyIntoView() throws {
+        let ids = (0..<12).map { _ in UUID() }
+        let firstID = try XCTUnwrap(ids.first)
+        let lastID = try XCTUnwrap(ids.last)
+        let view = MobileNativeFileTabBarView(frame: CGRect(x: 0, y: 0, width: 390, height: 42))
+        let tabs = ids.enumerated().map { snapshot(id: $0.element, title: "Document \($0.offset)") }
+
+        view.apply(tabs: tabs, selectedTabID: lastID)
+        view.layoutIfNeeded()
+        XCTAssertGreaterThan(view.horizontalContentOffsetForTesting, 0)
+
+        view.apply(tabs: tabs, selectedTabID: firstID)
+        view.layoutIfNeeded()
+
+        XCTAssertEqual(view.horizontalContentOffsetForTesting, 0, accuracy: 0.5)
+        XCTAssertTrue(view.trailingTransitionIsVisibleForTesting)
+        let visibleFrame = try XCTUnwrap(view.tabFrameInScrollViewForTesting(firstID))
+        XCTAssertGreaterThanOrEqual(visibleFrame.minX, -0.5)
+        XCTAssertLessThanOrEqual(visibleFrame.maxX, view.scrollViewFrameForTesting.width + 0.5)
+    }
+
+    func testRelayoutKeepsSelectedFirstTabAtTheLeadingEdge() throws {
+        let ids = (0..<10).map { _ in UUID() }
+        let firstID = try XCTUnwrap(ids.first)
+        let view = MobileNativeFileTabBarView(frame: CGRect(x: 0, y: 0, width: 390, height: 42))
+        let tabs = ids.enumerated().map { snapshot(id: $0.element, title: "Document \($0.offset)") }
+
+        view.apply(tabs: tabs, selectedTabID: firstID)
+        view.layoutIfNeeded()
+        view.setContentOffsetForTesting(x: 120)
+        view.frame.size.width = 320
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+
+        XCTAssertEqual(view.horizontalContentOffsetForTesting, 0, accuracy: 0.5)
     }
 
     func testSelectingFirstTabAfterScrollingRightReturnsItFullyIntoView() throws {

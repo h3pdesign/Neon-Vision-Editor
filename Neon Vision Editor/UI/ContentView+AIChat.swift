@@ -247,7 +247,8 @@ extension ContentView {
               range.location != NSNotFound,
               range.length > 0,
               NSMaxRange(range) <= tab.document.utf16Length,
-              (try? tab.document.text(inUTF16Range: range)) == currentSelectionSnapshotText else { return nil }
+              let source = try? tab.document.text(inUTF16Range: range),
+              EditorAgentSourceIntegrity.matches(source, currentSelectionSnapshotText) else { return nil }
         return .init(tabID: tab.id, range: range, source: currentSelectionSnapshotText)
     }
 
@@ -288,7 +289,8 @@ extension ContentView {
               range.location != NSNotFound,
               range.length > 0,
               NSMaxRange(range) <= tab.document.utf16Length,
-              (try? tab.document.text(inUTF16Range: range)) == currentSelectionSnapshotText else {
+              let source = try? tab.document.text(inUTF16Range: range),
+              EditorAgentSourceIntegrity.matches(source, currentSelectionSnapshotText) else {
             aiChatConversation.reportError("Select unchanged text in an editable document before replacing it.")
             return
         }
@@ -305,7 +307,8 @@ extension ContentView {
               tab.id == preview.tabID,
               !tab.isReadOnlyPreview,
               NSMaxRange(preview.range) <= tab.document.utf16Length,
-              (try? tab.document.text(inUTF16Range: preview.range)) == preview.source else {
+              let source = try? tab.document.text(inUTF16Range: preview.range),
+              EditorAgentSourceIntegrity.matches(source, preview.source) else {
             aiChatConversation.reportError("The selected text changed. Review the AI proposal again before applying it.")
             return
         }

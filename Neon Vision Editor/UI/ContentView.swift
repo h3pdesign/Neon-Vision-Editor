@@ -600,7 +600,7 @@ struct ContentView: View {
     @State var lastPersistedDraftSignature: String = ""
     @State private var largeFileEstimateCache: LargeFileEstimateCacheEntry?
 #if os(iOS) || os(visionOS)
-    @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = true
+    @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = false
 #else
     @AppStorage("EnableTranslucentWindow") var enableTranslucentWindow: Bool = false
 #endif
@@ -3359,7 +3359,7 @@ struct ContentView: View {
                             language: contentView.currentLanguage,
                             contentUTF16Length: contentView.currentDocumentUTF16Length,
                             documentID: contentView.viewModel.selectedTabID,
-                            translucentBackgroundEnabled: true,
+                            translucentBackgroundEnabled: contentView.enableTranslucentWindow,
                             onItemSelected: {
                                 contentView.showCompactSidebarSheet = false
                             },
@@ -3387,7 +3387,11 @@ struct ContentView: View {
                         }
                     }
                     .presentationDetents([.medium, .large])
-                    .presentationBackground(.ultraThinMaterial)
+                    .presentationBackground(
+                        contentView.enableTranslucentWindow
+                            ? AnyShapeStyle(.ultraThinMaterial)
+                            : AnyShapeStyle(contentView.iOSNonTranslucentSurfaceColor)
+                    )
                 }
                 .sheet(isPresented: contentView.$showCompactProjectSidebarSheet, onDismiss: {
                     contentView.projectSidebarFindInFilesRequestToken = 0
@@ -3408,7 +3412,7 @@ struct ContentView: View {
                                     showSupportedFilesOnly: contentView.showSupportedProjectFilesOnly,
                                     showHiddenFiles: contentView.showHiddenProjectFiles,
                                     ignoredFolderNamesRaw: contentView.$projectIgnoredFolderNamesRaw,
-                                    translucentBackgroundEnabled: true,
+                                    translucentBackgroundEnabled: contentView.enableTranslucentWindow,
                                     boundaryEdge: nil,
                                     onOpenFile: { contentView.openFileFromCompactProjectSidebar() },
                                     onOpenFolder: { contentView.openProjectFolderFromCompactProjectSidebar() },
@@ -3483,7 +3487,11 @@ struct ContentView: View {
                         }
                     }
                     .presentationDetents([.large])
-                    .presentationBackground(.ultraThinMaterial)
+                    .presentationBackground(
+                        contentView.enableTranslucentWindow
+                            ? AnyShapeStyle(.ultraThinMaterial)
+                            : AnyShapeStyle(contentView.iOSNonTranslucentSurfaceColor)
+                    )
                 }
                 .sheet(isPresented: contentView.previewSheetPresentationBinding) {
                     NavigationStack {

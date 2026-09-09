@@ -43,7 +43,7 @@ extension ContentView {
                 .padding(.vertical, 6)
         } else {
             GlassSurface(
-                enabled: false,
+                enabled: enableTranslucentWindow,
                 material: primaryGlassMaterial,
                 fallbackColor: iOSNonTranslucentSurfaceColor,
                 shape: .capsule,
@@ -768,9 +768,8 @@ extension ContentView {
 #elseif os(iOS)
             GlassSurface(
                 // Keep the tab strip tied to the editor theme. Window
-                // translucency should not replace that theme surface with a
-                // separate material band.
-                enabled: false,
+                // translucency should apply to the tab strip as well.
+                enabled: enableTranslucentWindow,
                 material: primaryGlassMaterial,
                 fallbackColor: iOSNonTranslucentSurfaceColor,
                 shape: .rounded(18),
@@ -817,9 +816,11 @@ extension ContentView {
 #if os(macOS)
         .background(macToolbarBackgroundStyle)
 #elseif os(iOS)
-        // Keep the full-width strip on the same theme surface as the editor;
-        // this remains stable when window translucency is toggled.
-        .background(iOSNonTranslucentSurfaceColor)
+        .background(
+            enableTranslucentWindow
+                ? AnyShapeStyle(.ultraThinMaterial)
+                : AnyShapeStyle(iOSNonTranslucentSurfaceColor)
+        )
 #else
         .background(
             enableTranslucentWindow

@@ -99,6 +99,11 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
+    func testIOSPointerSelectionDoesNotEnableTextDragInteraction() {
+        XCTAssertFalse(EditorPointerSelectionPolicy.shouldEnableTextDragInteraction(for: .pad))
+        XCTAssertFalse(EditorPointerSelectionPolicy.shouldEnableTextDragInteraction(for: .phone))
+    }
+
     func testLogicalLineSelectionPreservesUnicodeAndIncludesLineEnding() {
         let view = EditorInputTextView()
         view.text = "😀 first\r\nsecond\n"

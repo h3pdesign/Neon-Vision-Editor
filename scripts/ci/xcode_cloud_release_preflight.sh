@@ -40,7 +40,7 @@ if ! source scripts/ci/select_xcode17.sh; then
   fail "A compatible public Xcode 17+ installation that can open this project is not available."
 fi
 
-active_developer_dir="$DEVELOPER_DIR"
+active_developer_dir="${DEVELOPER_DIR:-$(xcode-select -p 2>/dev/null || true)}"
 if [[ "$active_developer_dir" == *Xcode-beta.app/* ]]; then
   echo "warning: allowing beta toolchain for local metadata checks only; do not upload this archive to App Store Connect." >&2
 fi

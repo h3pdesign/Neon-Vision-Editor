@@ -10,6 +10,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - Keeps editor chrome responsive and visually consistent across macOS, iOS, and iPadOS.
 - Reduces the visible delay before syntax highlighting appears when switching documents.
+- Keeps the AI assistant, Markdown controls, and Find & Replace surfaces readable in opaque and translucent themes.
 
 ### Highlights
 

@@ -22,6 +22,10 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Aligns tab, TOC sidebar, project sidebar, line-number, and editor backgrounds in opaque and translucent modes.
 - Prevents tab borders from clipping, flashing, or disappearing during hover and theme transitions.
 - Keeps Settings content sized to the selected tab and opens the Settings window in a stable editor-relative position.
+- Restores drag-to-move behavior across the macOS top bar without applying window-drag handling to the editor surface.
+- Keeps cursor-based text selection available on iPhone, iPad, and visionOS.
+- Makes the Welcome Tour follow the configured Light, Dark, or System appearance and carries the major release highlights forward.
+- Prevents iOS App Store packaging from failing when the export environment rejects Xcode's symbol-copy flag.
 
 ### Breaking changes
 

@@ -49,6 +49,7 @@ final class MobileNativeFileTabBarView: UIView {
     private let tabsView = UIView()
     private let addButton = UIButton(type: .system)
     private let separator = UIView()
+    private let rightEdgeFadeMask = CAGradientLayer()
     private var tabViewsByID: [UUID: MobileNativeFileTabItemView] = [:]
     private(set) var orderedTabIDs: [UUID] = []
     private(set) var selectedTabID: UUID?
@@ -67,6 +68,15 @@ final class MobileNativeFileTabBarView: UIView {
         scrollView.isDirectionalLockEnabled = true
         scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.addSubview(tabsView)
+        rightEdgeFadeMask.colors = [
+            UIColor.white.cgColor,
+            UIColor.white.cgColor,
+            UIColor.clear.cgColor
+        ]
+        rightEdgeFadeMask.locations = [0, 0.82, 1]
+        rightEdgeFadeMask.startPoint = CGPoint(x: 0, y: 0.5)
+        rightEdgeFadeMask.endPoint = CGPoint(x: 1, y: 0.5)
+        scrollView.layer.mask = rightEdgeFadeMask
         addSubview(scrollView)
 
         var configuration = UIButton.Configuration.plain()
@@ -106,6 +116,7 @@ final class MobileNativeFileTabBarView: UIView {
             width: max(0, buttonX - spacing - leadingInset),
             height: max(0, bounds.height - separatorHeight)
         )
+        rightEdgeFadeMask.frame = scrollView.bounds
         layoutTabs(viewportWidth: scrollView.bounds.width)
     }
 
@@ -162,8 +173,8 @@ final class MobileNativeFileTabBarView: UIView {
 
         let spacing: CGFloat = 5
         let totalSpacing = spacing * CGFloat(max(0, count - 1))
-        let maximumWidth: CGFloat = traitCollection.userInterfaceIdiom == .pad ? 220 : 188
-        let minimumWidth: CGFloat = traitCollection.userInterfaceIdiom == .pad ? 136 : 128
+        let maximumWidth: CGFloat = 220
+        let minimumWidth: CGFloat = traitCollection.userInterfaceIdiom == .pad ? 136 : 148
         let fittedWidth = (viewportWidth - totalSpacing) / CGFloat(count)
         let tabWidth = min(maximumWidth, max(minimumWidth, fittedWidth))
         let contentWidth = max(viewportWidth, tabWidth * CGFloat(count) + totalSpacing)
@@ -350,7 +361,10 @@ private final class MobileNativeFileTabItemView: UIControl, UIDragInteractionDel
         isCurrentSelection = isSelected
         titleLabel.text = snapshot.title
         titleLabel.font = .systemFont(ofSize: 12, weight: isSelected ? .semibold : .regular)
-        titleLabel.textColor = isSelected ? .label : .secondaryLabel
+        // Secondary-label gray is too faint over the light editor surface.
+        // Keep inactive tabs subordinate without sacrificing filename
+        // readability in light mode.
+        titleLabel.textColor = isSelected ? .label : UIColor.label.withAlphaComponent(0.72)
         remoteLabel.isHidden = !snapshot.isRemote
         lockImage.isHidden = !snapshot.isReadOnly
         dirtyIndicator.isHidden = !snapshot.isDirty

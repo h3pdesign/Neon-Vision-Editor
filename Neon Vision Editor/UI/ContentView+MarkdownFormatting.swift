@@ -87,9 +87,10 @@ enum MarkdownFormattingChromePolicy {
     nonisolated static func shouldReserveMobileFormattingRow(
         isPhone: Bool,
         shouldShow: Bool,
-        isCollapsed: Bool
+        isCollapsed: Bool,
+        keepCollapsedBelowTabs: Bool = false
     ) -> Bool {
-        isPhone && shouldShow && !isCollapsed
+        isPhone && shouldShow && (!isCollapsed || keepCollapsedBelowTabs)
     }
 
     nonisolated static func shouldRenderInEditorStack(
@@ -141,6 +142,7 @@ extension ContentView {
         UIDevice.current.userInterfaceIdiom == .phone
             && shouldPinFloatingStatusToTop
             && shouldShowMarkdownFormattingControls
+            && !shouldPlaceMarkdownFormattingBelowTabs
     }
 
     var iPhoneMarkdownFormattingStatusControl: some View {
@@ -187,7 +189,8 @@ extension ContentView {
         MarkdownFormattingChromePolicy.shouldReserveMobileFormattingRow(
             isPhone: UIDevice.current.userInterfaceIdiom == .phone,
             shouldShow: shouldShowMarkdownFormattingControls,
-            isCollapsed: markdownFormattingToolbarCollapsed
+            isCollapsed: markdownFormattingToolbarCollapsed,
+            keepCollapsedBelowTabs: shouldPinFloatingStatusToTop
         )
         #elseif os(visionOS)
         return shouldShowMarkdownFormattingControls

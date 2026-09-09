@@ -2061,9 +2061,11 @@ extension ContentView {
                     }
                 }
                 .padding(.leading, 12)
+                .padding(.trailing, 12)
                 .padding(.vertical, 8)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: true, vertical: false)
             }
+            .defaultScrollAnchor(.leading)
             if !iPhoneMoreActions.isEmpty {
                 moreActionsControl
                     .padding(.trailing, 12)
@@ -2103,7 +2105,9 @@ extension ContentView {
                 .padding(.leading, 24)
                 .padding(.trailing, 8)
                 .padding(.vertical, 8)
+                .fixedSize(horizontal: true, vertical: false)
             }
+            .defaultScrollAnchor(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
             if !iPadOverflowActions.isEmpty {
                 iPadOverflowMenuControl
@@ -2119,9 +2123,9 @@ extension ContentView {
     @ViewBuilder
     var iPadUnifiedToolbarRow: some View {
         GlassSurface(
-            enabled: shouldUseLiquidGlass,
+            enabled: false,
             material: primaryGlassMaterial,
-            fallbackColor: toolbarFallbackColor,
+            fallbackColor: iOSNonTranslucentSurfaceColor,
             shape: .capsule,
             chromeStyle: iOSToolbarChromeStyle
         ) {
@@ -2328,9 +2332,9 @@ extension ContentView {
             if #available(iOS 26.0, *) {
                 ToolbarItem(placement: .topBarTrailing) {
                     GlassSurface(
-                        enabled: shouldUseLiquidGlass,
+                        enabled: false,
                         material: primaryGlassMaterial,
-                        fallbackColor: toolbarFallbackColor,
+                        fallbackColor: iOSNonTranslucentSurfaceColor,
                         shape: .capsule,
                         chromeStyle: iOSToolbarChromeStyle
                     ) {
@@ -2346,9 +2350,9 @@ extension ContentView {
             } else {
                 ToolbarItem(placement: .topBarTrailing) {
                     GlassSurface(
-                        enabled: shouldUseLiquidGlass,
+                        enabled: false,
                         material: primaryGlassMaterial,
-                        fallbackColor: toolbarFallbackColor,
+                        fallbackColor: iOSNonTranslucentSurfaceColor,
                         shape: .capsule,
                         chromeStyle: iOSToolbarChromeStyle
                     ) {

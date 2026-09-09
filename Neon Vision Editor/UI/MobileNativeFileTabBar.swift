@@ -73,7 +73,6 @@ final class MobileNativeFileTabBarView: UIView {
             UIColor.white.cgColor,
             UIColor.clear.cgColor
         ]
-        rightEdgeFadeMask.locations = [0, 0.82, 1]
         rightEdgeFadeMask.startPoint = CGPoint(x: 0, y: 0.5)
         rightEdgeFadeMask.endPoint = CGPoint(x: 1, y: 0.5)
         scrollView.layer.mask = rightEdgeFadeMask
@@ -117,6 +116,9 @@ final class MobileNativeFileTabBarView: UIView {
             height: max(0, bounds.height - separatorHeight)
         )
         rightEdgeFadeMask.frame = scrollView.bounds
+        let fadeWidth = min(18, scrollView.bounds.width)
+        let fadeStart = max(0, 1 - fadeWidth / max(scrollView.bounds.width, 1))
+        rightEdgeFadeMask.locations = [0, NSNumber(value: Double(fadeStart)), 1]
         layoutTabs(viewportWidth: scrollView.bounds.width)
     }
 
@@ -173,16 +175,24 @@ final class MobileNativeFileTabBarView: UIView {
 
         let spacing: CGFloat = 5
         let totalSpacing = spacing * CGFloat(max(0, count - 1))
-        let maximumWidth: CGFloat = 220
-        let minimumWidth: CGFloat = traitCollection.userInterfaceIdiom == .pad ? 136 : 148
-        let fittedWidth = (viewportWidth - totalSpacing) / CGFloat(count)
-        let tabWidth = min(maximumWidth, max(minimumWidth, fittedWidth))
-        let contentWidth = max(viewportWidth, tabWidth * CGFloat(count) + totalSpacing)
+        let maximumWidth: CGFloat = traitCollection.userInterfaceIdiom == .pad ? 220 : 188
+        let minimumWidth: CGFloat = traitCollection.userInterfaceIdiom == .pad ? 136 : 104
+        var tabWidths = orderedTabIDs.map { id in
+            guard let tabView = tabViewsByID[id] else { return minimumWidth }
+            return min(maximumWidth, max(minimumWidth, tabView.preferredTabWidth))
+        }
+        let preferredTotal = tabWidths.reduce(0, +) + totalSpacing
+        if preferredTotal < viewportWidth {
+            let extraPerTab = (viewportWidth - preferredTotal) / CGFloat(count)
+            tabWidths = tabWidths.map { min(maximumWidth, $0 + extraPerTab) }
+        }
+        let contentWidth = max(viewportWidth, tabWidths.reduce(0, +) + totalSpacing)
         tabsView.frame = CGRect(x: 0, y: 0, width: contentWidth, height: scrollView.bounds.height)
         scrollView.contentSize = tabsView.bounds.size
 
         var x: CGFloat = 0
-        for id in orderedTabIDs {
+        for (index, id) in orderedTabIDs.enumerated() {
+            let tabWidth = tabWidths[index]
             tabViewsByID[id]?.frame = CGRect(x: x, y: 5, width: tabWidth, height: max(28, tabsView.bounds.height - 10))
             x += tabWidth + spacing
         }
@@ -251,6 +261,14 @@ private final class MobileNativeFileTabItemView: UIControl, UIDragInteractionDel
     private var snapshot: MobileNativeFileTabSnapshot?
     private var isCurrentSelection = false
     private var insertionBefore: Bool?
+
+    var preferredTabWidth: CGFloat {
+        let titleWidth = titleLabel.intrinsicContentSize.width
+        let remoteWidth: CGFloat = snapshot?.isRemote == true ? 49 : 0
+        let lockWidth: CGFloat = snapshot?.isReadOnly == true ? 17 : 0
+        let dirtyWidth: CGFloat = snapshot?.isDirty == true ? 11 : 0
+        return titleWidth + 50 + remoteWidth + lockWidth + dirtyWidth
+    }
 
     var visualStateForTesting: (selected: Bool, previous: Bool, dirty: Bool) {
         (isCurrentSelection, false, snapshot?.isDirty == true)

@@ -25,6 +25,19 @@ final class VirtualEditorLayoutTests: XCTestCase {
         )
     }
 
+    func testSelectionDragStopsWhenPointerLeavesEditorCanvas() {
+        let bounds = NSRect(x: 0, y: 0, width: 800, height: 600)
+
+        XCTAssertTrue(VirtualEditorSelectionPolicy.shouldContinueDrag(
+            at: NSPoint(x: 400, y: 300),
+            in: bounds
+        ))
+        XCTAssertFalse(VirtualEditorSelectionPolicy.shouldContinueDrag(
+            at: NSPoint(x: 400, y: -1),
+            in: bounds
+        ))
+    }
+
     func testFindReplaceEscapePolicyDismissesOnlyEscape() {
         let escape = try! XCTUnwrap(NSEvent.keyEvent(
             with: .keyDown,

@@ -122,6 +122,19 @@ final class MobileNativeFileTabBarTests: XCTestCase {
         XCTAssertGreaterThan(try XCTUnwrap(view.tabFrameForTesting(lastID)).minX, view.scrollViewFrameForTesting.width)
     }
 
+    func testPhoneTabsUseAReadableDefaultWidthForLongFilenames() throws {
+        let ids = (0..<3).map { _ in UUID() }
+        let view = MobileNativeFileTabBarView(frame: CGRect(x: 0, y: 0, width: 390, height: 42))
+        view.apply(
+            tabs: ids.map { snapshot(id: $0, title: "architecture.md") },
+            selectedTabID: ids.first,
+        )
+        view.layoutIfNeeded()
+
+        let expectedMinimumWidth: CGFloat = UIDevice.current.userInterfaceIdiom == .pad ? 136 : 148
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(view.tabFrameForTesting(ids[1])).width, expectedMinimumWidth)
+    }
+
     func testLargeSnapshotUpdateReusesViewsWithinInteractiveBudget() {
         let ids = (0..<250).map { _ in UUID() }
         let view = MobileNativeFileTabBarView(frame: CGRect(x: 0, y: 0, width: 1_024, height: 42))

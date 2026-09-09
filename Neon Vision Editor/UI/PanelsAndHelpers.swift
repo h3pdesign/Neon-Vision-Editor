@@ -2776,14 +2776,14 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in v1.7.1",
-            subtitle: "Major fixes and improvements from the 1.7.0 and 1.7.1 releases.",
+            subtitle: "Release highlights for v1.7.1.",
             bullets: [
-                "Native Tabs: Replaces the remaining legacy tab-bar paths with native platform tab implementations.",
-                "Theme Consistency: Keeps tabs, sidebars, editor surfaces, and Settings consistent across Light, Dark, and System modes.",
-                "Responsive Workflows: Makes tab switching and Settings navigation feel immediate while preserving native controls.",
-                "Stable Window Surfaces: Aligns tab, TOC sidebar, project sidebar, line-number, and editor backgrounds in opaque and translucent modes.",
-                "Reliable Tab Chrome: Prevents tab borders from clipping, flashing, or disappearing during hover and theme transitions.",
-                "1.7.1 Fixes: Restores top-bar window dragging on supported macOS versions, keeps iPhone/iPad/visionOS text selection working, applies the selected Welcome Tour theme, expands the release highlights, and fixes App Store export packaging."
+                "Editor Improvements: Keeps native document tabs, sidebars, editor surfaces, and Settings visually consistent across macOS, iOS, and iPadOS…",
+                "Workflow Refinements: Applies appearance and layout changes immediately when switching Light, Dark, or System mode.",
+                "Editor Navigation: Makes tab switching and Settings navigation feel immediate while preserving the native platform controls.",
+                "Usability Updates: Replaces the remaining legacy tab-bar paths with native platform tab implementations.",
+                "Editor Improvements: Preserves complete tab borders, spacing, and translucent surfaces across hover, selection, and appearance changes.",
+                "iPhone TOC: Aligns tab, TOC sidebar, project sidebar, line-number, and editor backgrounds in opaque and translucent modes."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

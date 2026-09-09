@@ -128,7 +128,7 @@ extension ContentView {
     }
 
     private var supportsEditorAgentMode: Bool {
-#if os(macOS) && USE_FOUNDATION_MODELS && canImport(FoundationModels) && compiler(>=6.3)
+#if os(macOS) && USE_FOUNDATION_MODELS && MACOS_27_AGENTIC_EDITOR && canImport(FoundationModels)
         if #available(macOS 27.0, *) {
             return selectedModel == .appleIntelligence && appleModelAvailable &&
                 projectRootFolderURL != nil &&
@@ -181,7 +181,7 @@ extension ContentView {
 
     private func configuredAIChatClient(agentMode: EditorAgentMode? = nil) -> AIClient? {
         if let agentMode {
-#if os(macOS) && USE_FOUNDATION_MODELS && canImport(FoundationModels) && compiler(>=6.3)
+#if os(macOS) && USE_FOUNDATION_MODELS && MACOS_27_AGENTIC_EDITOR && canImport(FoundationModels)
             if #available(macOS 27.0, *),
                selectedModel == .appleIntelligence,
                appleModelAvailable,

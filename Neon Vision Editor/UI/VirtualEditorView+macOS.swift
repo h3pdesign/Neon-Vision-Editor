@@ -868,6 +868,10 @@ struct VirtualEditorAccessibilityContext: Equatable {
 
 @MainActor
 enum VirtualEditorSelectionPolicy {
+    static func shouldContinueDrag(at point: NSPoint, in bounds: NSRect) -> Bool {
+        bounds.contains(point)
+    }
+
     static func lineRange(in text: String, at utf16Offset: Int) -> NSRange {
         let source = text as NSString
         guard source.length > 0 else { return NSRange(location: 0, length: 0) }
@@ -2026,7 +2030,16 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     override func mouseDragged(with event: NSEvent) {
         guard let selectionAnchor else { return }
-        let caret = documentOffset(at: convert(event.locationInWindow, from: nil))
+        let point = convert(event.locationInWindow, from: nil)
+        guard VirtualEditorSelectionPolicy.shouldContinueDrag(at: point, in: bounds) else {
+            absoluteCaret = selectionAnchor
+            selection = NSRange(location: selectionAnchor, length: 0)
+            self.selectionAnchor = nil
+            publishCaret()
+            needsDisplay = true
+            return
+        }
+        let caret = documentOffset(at: point)
         absoluteCaret = caret
         selection = NSRange(location: min(selectionAnchor, caret), length: abs(selectionAnchor - caret))
         scheduleDragPublication()

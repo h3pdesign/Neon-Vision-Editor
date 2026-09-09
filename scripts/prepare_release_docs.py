@@ -243,12 +243,13 @@ def prefixed_heading_bullets(tag: str, section_body: str, heading: str, limit: i
 
 
 def release_card_bullets(tag: str, section: str, limit: int) -> list[str]:
-    bullets: list[str] = []
-    for heading in ("Why Upgrade", "Highlights", "Fixes"):
-        remaining = limit - len(bullets)
-        if remaining <= 0:
-            break
-        bullets.extend(prefixed_heading_bullets(tag, section, heading, limit=remaining))
+    # The in-app welcome page is customer-facing.  Keep implementation detail
+    # from Why Upgrade/Fixes out of it; those sections remain useful in the
+    # full changelog.  Release authors should write concise, user-visible
+    # items under Highlights for this surface.
+    bullets = prefixed_heading_bullets(tag, section, "Highlights", limit=limit)
+    if not bullets:
+        bullets = prefixed_heading_bullets(tag, section, "Why Upgrade", limit=limit)
     if not bullets:
         bullets = [f"- {tag}: {bullet[2:]}" for bullet in summarize_section(section, limit=limit)]
     return bullets[:limit]
@@ -267,17 +268,10 @@ def prior_release_tags(changelog: str, tag: str, limit: int = 3) -> list[str]:
 
 
 def welcome_release_bullets(changelog: str, tag: str, section: str) -> list[str]:
-    bullets = release_card_bullets(tag, section, limit=WELCOME_TOUR_CARD_COUNT)
-    if len(bullets) >= WELCOME_TOUR_CARD_COUNT:
-        return bullets
-
-    for prior_tag in prior_release_tags(changelog, tag):
-        prior_section = extract_changelog_section(changelog, prior_tag)
-        remaining = WELCOME_TOUR_CARD_COUNT - len(bullets)
-        bullets.extend(release_card_bullets(prior_tag, prior_section, limit=remaining))
-        if len(bullets) >= WELCOME_TOUR_CARD_COUNT:
-            break
-    return bullets[:WELCOME_TOUR_CARD_COUNT]
+    # Never backfill a release page with older versions.  Mixing historical
+    # changes into the current welcome screen makes internal maintenance notes
+    # look like new public release features.
+    return release_card_bullets(tag, section, limit=WELCOME_TOUR_CARD_COUNT)
 
 
 def shorten_for_welcome_tour_card(text: str, limit: int = WELCOME_TOUR_CARD_TEXT_BUDGET) -> str:
@@ -1111,6 +1105,8 @@ def update_readme_whats_new_section(
             f"### {current_tag} Highlights",
             "",
             markdown_bullets(current_highlights, "See CHANGELOG.md release highlights."),
+            "",
+            "See the complete release history in the [public changelog](https://h3pdesign.github.io/Neon-Vision-Editor/changelog.html).",
         ]
     )
 

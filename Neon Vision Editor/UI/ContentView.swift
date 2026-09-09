@@ -1283,7 +1283,10 @@ struct ContentView: View {
 #elseif os(iOS) || os(visionOS)
     var primaryGlassMaterial: Material { colorScheme == .dark ? .regularMaterial : .ultraThinMaterial }
     var toolbarFallbackColor: Color {
-        colorScheme == .dark ? Color.black.opacity(0.34) : Color.white.opacity(0.86)
+        // Keep mobile toolbar chrome on the active editor surface when the
+        // solid fallback is used. System black/white made the toolbar look
+        // detached from themed documents.
+        iOSNonTranslucentSurfaceColor
     }
     var iOSNonTranslucentSurfaceColor: Color {
 #if os(visionOS)

@@ -43,9 +43,9 @@ extension ContentView {
                 .padding(.vertical, 6)
         } else {
             GlassSurface(
-                enabled: shouldUseLiquidGlass,
+                enabled: false,
                 material: primaryGlassMaterial,
-                fallbackColor: toolbarFallbackColor,
+                fallbackColor: iOSNonTranslucentSurfaceColor,
                 shape: .capsule,
                 chromeStyle: .single
             ) {

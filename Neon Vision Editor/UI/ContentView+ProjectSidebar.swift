@@ -206,13 +206,73 @@ extension ContentView {
 #endif
     }
 
+    /// Keeps the AI tab on the same inset card surface as the project browser.
+    /// The project browser owns this treatment internally, while the AI view is
+    /// composed from a header and chat body and therefore needs the same shell
+    /// at this level.
+    var aiChatSidebarPanelContent: some View {
+        VStack(spacing: 0) {
+            utilitySidebarHeader()
+                .padding(.top, utilitySidebarHeaderTopInset)
+            aiChatSidebarBody
+                .padding(.top, 8)
+        }
+        .background(
+            utilitySidebarSurfaceFill,
+            in: RoundedRectangle(cornerRadius: utilitySidebarCornerRadius, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: utilitySidebarCornerRadius, style: .continuous)
+                .stroke(utilitySidebarSurfaceStroke, lineWidth: 1.2)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: utilitySidebarCornerRadius, style: .continuous))
+        .padding(utilitySidebarOuterPadding)
+    }
+
+    /// Matches ProjectStructureSidebarView's fill in each platform and window
+    /// translucency mode, so switching between Project and AI does not change
+    /// the panel surface.
+    private var utilitySidebarSurfaceFill: AnyShapeStyle {
+        if enableTranslucentWindow {
+#if os(macOS)
+            return AnyShapeStyle(Color.clear)
+#else
+            return AnyShapeStyle(.ultraThinMaterial)
+#endif
+        }
+#if os(macOS)
+        return AnyShapeStyle(.ultraThinMaterial)
+#else
+        return AnyShapeStyle(currentEditorTheme(colorScheme: colorScheme).background)
+#endif
+    }
+
+    private var utilitySidebarSurfaceStroke: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.12)
+            : Color.black.opacity(0.08)
+    }
+
+    private var utilitySidebarCornerRadius: CGFloat {
+#if os(macOS)
+        22
+#else
+        20
+#endif
+    }
+
+    private var utilitySidebarOuterPadding: EdgeInsets {
+#if os(macOS)
+        EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
+#else
+        EdgeInsets()
+#endif
+    }
+
     var projectStructureSidebarBody: some View {
         VStack(spacing: 0) {
             if utilitySidebarMode == .assistant {
-                utilitySidebarHeader()
-                    .padding(.top, utilitySidebarHeaderTopInset)
-                aiChatSidebarBody
-                    .padding(.top, 8)
+                aiChatSidebarPanelContent
             } else {
                 ProjectStructureSidebarView(
                     rootFolderURL: projectRootFolderURL,

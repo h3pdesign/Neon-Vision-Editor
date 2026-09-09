@@ -31,5 +31,8 @@ require_pattern '#if os\(macOS\) && !APP_STORE_BUILD' \
 require_pattern '#if os\(macOS\) && !APP_STORE_BUILD' \
   "Neon Vision Editor/UI/NeonSettingsView.swift" \
   "Python interpreter settings excluded from App Store builds"
+require_pattern '#if !os\(macOS\) \|\| APP_STORE_BUILD' \
+  "Neon Vision Editor/Core/EditorAgentVerificationRunner.swift" \
+  "agent verification process execution excluded from App Store builds"
 
 echo "[app-store-execution-boundary-audit] OK"

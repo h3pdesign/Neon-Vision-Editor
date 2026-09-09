@@ -531,6 +531,7 @@ struct ContentView: View {
 
     // Single-document fallback state (used when no tab model is selected)
     @AppStorage("SelectedAIModel") var selectedModelRaw: String = AIModel.appleIntelligence.rawValue
+    @AppStorage(SettingsPreferenceKey.editorAgentAllowPrivateCloudCompute) var editorAgentAllowPrivateCloudCompute: Bool = false
     @State var singleContent: String = ""
     @State var singleLanguage: String = "plain"
     @State var caretStatus: String = "Ln 1, Col 1"
@@ -691,6 +692,10 @@ struct ContentView: View {
     @State var pendingReplaceAllPreview: FindReplaceAllPreview? = nil
     @State var pendingFindInFilesReplacement: FindInFilesReplacementPreview? = nil
     @State var pendingAIChatReplacement: AIChatReplacementPreview? = nil
+    @State var pendingEditorAgentVerificationPlan: EditorAgentVerificationPlan? = nil
+    @State var editorAgentVerificationResult: EditorAgentVerificationResult? = nil
+    @State var editorAgentVerificationTask: Task<Void, Never>? = nil
+    @State var isEditorAgentVerificationRunning: Bool = false
     @State var showIOSFileImporter: Bool = false
     @State var showIOSFileExporter: Bool = false
     @State var showUnsupportedFileAlert: Bool = false
@@ -1226,8 +1231,9 @@ struct ContentView: View {
         // Keep opaque-canvas mode readable while allowing a small amount of
         // the native window surface to blend through. This is intentionally
         // subtle; the editor remains visually solid without the hard slab
-        // produced by a fully opaque theme color.
-        currentEditorTheme(colorScheme: colorScheme).background.opacity(0.94)
+        // produced by a fully opaque theme color. Keep a little more of the
+        // native surface visible so opaque-canvas chrome does not feel flat.
+        currentEditorTheme(colorScheme: colorScheme).background.opacity(0.90)
     }
     private var macEditorSurfaceBackgroundStyle: AnyShapeStyle {
         if enableTranslucentWindow {
@@ -2554,42 +2560,6 @@ struct ContentView: View {
             }
             .frame(width: 0, height: 0)
         )
-        .background(
-            FindReplaceWindowPresenter(
-                isPresented: $showFindReplace,
-                findQuery: $findQuery,
-                replaceQuery: $replaceQuery,
-                useRegex: $findUsesRegex,
-                caseSensitive: $findCaseSensitive,
-                wholeWord: $findWholeWord,
-                matchCount: $findMatchCount,
-                selectedMatchIndex: findSession.selectedIndex,
-                statusMessage: $findStatusMessage,
-                scope: $findScope,
-                onPreviewChanged: { refreshFindPreview() },
-                onFindNext: {
-                    findNext()
-                    refreshFindMatchCount()
-                },
-                onJumpToMatch: { jumpToCurrentFindMatch() },
-                onReplace: {
-                    replaceSelection()
-                    refreshFindPreview()
-                },
-                onReplaceAll: {
-                    replaceAll()
-                    refreshFindPreview()
-                },
-                onScopeChange: { newScope in
-                    if newScope == .project {
-                        showFindReplace = false
-                        requestFindInFilesFromToolbar()
-                    }
-                },
-                onClose: { showFindReplace = false }
-            )
-            .frame(width: 0, height: 0)
-        )
         .onDisappear {
             handleWindowDisappear()
         }
@@ -3156,7 +3126,7 @@ struct ContentView: View {
 
 #if !os(macOS)
         private func applyingFindReplaceSheet(to view: AnyView) -> AnyView {
-#if os(iOS)
+#if os(iOS) || os(visionOS)
             AnyView(view)
 #else
             AnyView(view.sheet(isPresented: contentView.$showFindReplace) {
@@ -3400,10 +3370,7 @@ struct ContentView: View {
                         VStack(spacing: 0) {
                             Group {
                             if contentView.utilitySidebarMode == .assistant {
-                                contentView.utilitySidebarHeader()
-                                    .padding(.top, contentView.utilitySidebarHeaderTopInset)
-                                contentView.aiChatSidebarBody
-                                    .padding(.top, 8)
+                                contentView.aiChatSidebarPanelContent
                             } else {
                                 ProjectStructureSidebarView(
                                     rootFolderURL: contentView.projectRootFolderURL,
@@ -3868,6 +3835,40 @@ struct ContentView: View {
                     } else {
                         Text("No pending AI replacement.")
                     }
+                }
+                .confirmationDialog(
+                    "Run agent verification?",
+                    isPresented: Binding<Bool>(
+                        get: { contentView.pendingEditorAgentVerificationPlan != nil },
+                        set: { isPresented in
+                            if !isPresented { contentView.pendingEditorAgentVerificationPlan = nil }
+                        }
+                    ),
+                    titleVisibility: .visible
+                ) {
+                    if let plan = contentView.pendingEditorAgentVerificationPlan {
+                        Button("Run \(plan.action.title)") {
+                            contentView.runEditorAgentVerification(plan)
+                            contentView.pendingEditorAgentVerificationPlan = nil
+                        }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    if let plan = contentView.pendingEditorAgentVerificationPlan {
+                        Text("Run this command against files saved on disk:\n\(plan.displayCommand)\n\nWorking directory:\n\(plan.workingDirectoryURL.path)\n\nProject builds, tests, and scripts can modify files and access the network. Only run projects you trust. Stop terminates the launched process; independently detached subprocesses may continue.")
+                    } else {
+                        Text("No pending agent verification.")
+                    }
+                }
+                .sheet(
+                    isPresented: Binding<Bool>(
+                        get: { contentView.editorAgentVerificationResult != nil },
+                        set: { isPresented in
+                            if !isPresented { contentView.editorAgentVerificationResult = nil }
+                        }
+                    )
+                ) {
+                    contentView.editorAgentVerificationResultSheet
                 }
                 .confirmationDialog(
                     "Replace selected project matches?",
@@ -4854,9 +4855,9 @@ struct ContentView: View {
         persistUnsavedDraftSnapshotIfNeeded()
     }
 
-#if os(iOS)
-    private var mobileInlineFindBar: some View {
-        MobileInlineFindBar(
+    private var inlineFindBar: some View {
+        InlineFindBar(
+            backgroundStyle: inlineFindBarBackgroundStyle,
             query: $findQuery,
             replacement: $replaceQuery,
             useRegex: $findUsesRegex,
@@ -4878,7 +4879,10 @@ struct ContentView: View {
             onClose: { closeFindReplace() }
         )
     }
-#endif
+
+    private var inlineFindBarBackgroundStyle: AnyShapeStyle {
+        editorSurfaceBackgroundStyle
+    }
 
     var editorView: some View {
         @Bindable var bindableViewModel = viewModel
@@ -4891,11 +4895,6 @@ struct ContentView: View {
                 if !useIOSUnifiedTopHost && !brainDumpLayoutEnabled {
                     tabBarView
                 }
-#if os(iOS)
-                if showFindReplace && UIDevice.current.userInterfaceIdiom == .pad {
-                    mobileInlineFindBar
-                }
-#endif
                 if isConvertingTextToMarkdown {
                     markdownConversionProgressBanner
                 }
@@ -5021,11 +5020,6 @@ struct ContentView: View {
                     }
                 }
 #endif
-#if os(iOS)
-                if showFindReplace && UIDevice.current.userInterfaceIdiom == .phone {
-                    mobileInlineFindBar
-                }
-#endif
                 if !brainDumpLayoutEnabled {
 #if os(macOS)
                     wordCountView
@@ -5042,6 +5036,16 @@ struct ContentView: View {
                 if shouldOverlayMarkdownFormattingControls && !shouldPlaceMarkdownFormattingBelowTabs {
                     markdownFormattingControlBar
                         .padding(.top, markdownFormattingOverlayTopInset)
+#if os(macOS) || os(iOS)
+                        .padding(.trailing, 12)
+#endif
+                }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if showFindReplace {
+                    inlineFindBar
+                        .frame(maxWidth: .infinity)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
 

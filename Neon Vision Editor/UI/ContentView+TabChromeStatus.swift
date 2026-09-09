@@ -786,6 +786,8 @@ extension ContentView {
                         )
                     },
                     selectedTabID: viewModel.selectedTabID,
+                    transitionColor: UIColor(iOSNonTranslucentSurfaceColor),
+                    transitionOpacity: enableTranslucentWindow ? 0.35 : 1,
                     onSelect: { viewModel.selectTab(id: $0) },
                     onClose: { tabID in
                         guard let tab = viewModel.tabs.first(where: { $0.id == tabID }) else { return }

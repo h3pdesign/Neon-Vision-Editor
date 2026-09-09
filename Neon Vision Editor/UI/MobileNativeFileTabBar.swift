@@ -14,6 +14,8 @@ struct MobileNativeFileTabSnapshot: Equatable, Identifiable {
 struct MobileNativeFileTabBar: UIViewRepresentable {
     let tabs: [MobileNativeFileTabSnapshot]
     let selectedTabID: UUID?
+    let transitionColor: UIColor
+    let transitionOpacity: CGFloat
     let onSelect: (UUID) -> Void
     let onClose: (UUID) -> Void
     let onMove: (UUID, UUID, Bool) -> Void
@@ -34,12 +36,13 @@ struct MobileNativeFileTabBar: UIViewRepresentable {
         view.onClose = onClose
         view.onMove = onMove
         view.onAdd = onAdd
+        view.setTrailingTransitionColor(transitionColor, opacity: transitionOpacity)
         view.apply(tabs: tabs, selectedTabID: selectedTabID)
     }
 }
 
 @MainActor
-final class MobileNativeFileTabBarView: UIView {
+final class MobileNativeFileTabBarView: UIView, UIScrollViewDelegate {
     var onSelect: ((UUID) -> Void)?
     var onClose: ((UUID) -> Void)?
     var onMove: ((UUID, UUID, Bool) -> Void)?
@@ -47,9 +50,10 @@ final class MobileNativeFileTabBarView: UIView {
 
     private let scrollView = UIScrollView()
     private let tabsView = UIView()
+    private let trailingTransitionView = UIView()
+    private let trailingTransitionGradient = CAGradientLayer()
     private let addButton = UIButton(type: .system)
     private let separator = UIView()
-    private let rightEdgeFadeMask = CAGradientLayer()
     private var tabViewsByID: [UUID: MobileNativeFileTabItemView] = [:]
     private(set) var orderedTabIDs: [UUID] = []
     private(set) var selectedTabID: UUID?
@@ -67,16 +71,17 @@ final class MobileNativeFileTabBarView: UIView {
         scrollView.showsVerticalScrollIndicator = false
         scrollView.isDirectionalLockEnabled = true
         scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.delegate = self
         scrollView.addSubview(tabsView)
-        rightEdgeFadeMask.colors = [
-            UIColor.white.cgColor,
-            UIColor.white.cgColor,
-            UIColor.clear.cgColor
-        ]
-        rightEdgeFadeMask.startPoint = CGPoint(x: 0, y: 0.5)
-        rightEdgeFadeMask.endPoint = CGPoint(x: 1, y: 0.5)
-        scrollView.layer.mask = rightEdgeFadeMask
         addSubview(scrollView)
+
+        trailingTransitionView.isUserInteractionEnabled = false
+        trailingTransitionView.isAccessibilityElement = false
+        trailingTransitionView.isHidden = true
+        trailingTransitionGradient.startPoint = CGPoint(x: 0, y: 0.5)
+        trailingTransitionGradient.endPoint = CGPoint(x: 1, y: 0.5)
+        trailingTransitionView.layer.addSublayer(trailingTransitionGradient)
+        addSubview(trailingTransitionView)
 
         var configuration = UIButton.Configuration.plain()
         configuration.image = UIImage(systemName: "plus")
@@ -102,9 +107,9 @@ final class MobileNativeFileTabBarView: UIView {
         let scale = max(1, traitCollection.displayScale)
         let separatorHeight = 1 / scale
         let leadingInset: CGFloat = 8
-        let buttonWidth: CGFloat = 44
-        let trailingInset: CGFloat = 4
-        let spacing: CGFloat = 4
+        let buttonWidth: CGFloat = 32
+        let trailingInset: CGFloat = 0
+        let transitionWidth: CGFloat = 2
         let buttonX = max(leadingInset, bounds.width - trailingInset - buttonWidth)
 
         separator.frame = CGRect(x: 0, y: bounds.height - separatorHeight, width: bounds.width, height: separatorHeight)
@@ -112,14 +117,29 @@ final class MobileNativeFileTabBarView: UIView {
         scrollView.frame = CGRect(
             x: leadingInset,
             y: 0,
-            width: max(0, buttonX - spacing - leadingInset),
+            width: max(0, buttonX - transitionWidth - leadingInset),
             height: max(0, bounds.height - separatorHeight)
         )
-        rightEdgeFadeMask.frame = scrollView.bounds
-        let fadeWidth = min(18, scrollView.bounds.width)
-        let fadeStart = max(0, 1 - fadeWidth / max(scrollView.bounds.width, 1))
-        rightEdgeFadeMask.locations = [0, NSNumber(value: Double(fadeStart)), 1]
+        trailingTransitionView.frame = CGRect(
+            x: scrollView.frame.maxX,
+            y: 0,
+            width: max(0, buttonX - scrollView.frame.maxX),
+            height: max(0, bounds.height - separatorHeight)
+        )
+        trailingTransitionGradient.frame = trailingTransitionView.bounds
         layoutTabs(viewportWidth: scrollView.bounds.width)
+        // Frame changes (rotation, split-view resizing, keyboard chrome) can
+        // preserve an old content offset. Re-apply the selected-tab invariant
+        // after the new viewport has been laid out.
+        scrollSelectedTabToVisible()
+    }
+
+    func setTrailingTransitionColor(_ color: UIColor, opacity: CGFloat) {
+        let resolvedOpacity = min(max(opacity, 0), 1)
+        trailingTransitionGradient.colors = [
+            color.withAlphaComponent(0).cgColor,
+            color.withAlphaComponent(resolvedOpacity).cgColor
+        ]
     }
 
     func apply(
@@ -164,7 +184,7 @@ final class MobileNativeFileTabBarView: UIView {
 
         setNeedsLayout()
         layoutIfNeeded()
-        scrollSelectedTabToVisible(animated: window != nil)
+        scrollSelectedTabToVisible()
     }
 
     private func layoutTabs(viewportWidth: CGFloat) {
@@ -172,21 +192,17 @@ final class MobileNativeFileTabBarView: UIView {
         guard count > 0 else {
             tabsView.frame = CGRect(x: 0, y: 0, width: viewportWidth, height: scrollView.bounds.height)
             scrollView.contentSize = tabsView.bounds.size
+            updateTrailingTransitionVisibility()
             return
         }
 
         let spacing: CGFloat = 5
         let totalSpacing = spacing * CGFloat(max(0, count - 1))
-        let maximumWidth: CGFloat = traitCollection.userInterfaceIdiom == .pad ? 220 : 188
+        let maximumWidth: CGFloat = 188
         let minimumWidth: CGFloat = traitCollection.userInterfaceIdiom == .pad ? 136 : 104
-        var tabWidths = orderedTabIDs.map { id in
+        let tabWidths = orderedTabIDs.map { id in
             guard let tabView = tabViewsByID[id] else { return minimumWidth }
             return min(maximumWidth, max(minimumWidth, tabView.preferredTabWidth))
-        }
-        let preferredTotal = tabWidths.reduce(0, +) + totalSpacing
-        if preferredTotal < viewportWidth {
-            let extraPerTab = (viewportWidth - preferredTotal) / CGFloat(count)
-            tabWidths = tabWidths.map { min(maximumWidth, $0 + extraPerTab) }
         }
         let contentWidth = max(viewportWidth, tabWidths.reduce(0, +) + totalSpacing)
         tabsView.frame = CGRect(x: 0, y: 0, width: contentWidth, height: scrollView.bounds.height)
@@ -198,7 +214,7 @@ final class MobileNativeFileTabBarView: UIView {
                 animated: false
             )
         }
-
+        updateTrailingTransitionVisibility()
         var x: CGFloat = 0
         for (index, id) in orderedTabIDs.enumerated() {
             let tabWidth = tabWidths[index]
@@ -207,7 +223,7 @@ final class MobileNativeFileTabBarView: UIView {
         }
     }
 
-    private func scrollSelectedTabToVisible(animated: Bool) {
+    private func scrollSelectedTabToVisible() {
         guard let selectedTabID, let selectedView = tabViewsByID[selectedTabID] else { return }
         // `selectedView.frame` is in `tabsView` coordinates while the scroll
         // view's bounds origin changes with contentOffset. Convert first so a
@@ -228,17 +244,25 @@ final class MobileNativeFileTabBarView: UIView {
             targetOffset = trailingTarget
         }
 
-        // Use one explicit, clamped offset instead of scrollRectToVisible so
-        // a rapid right-to-left selection cancels the prior animation and
-        // cannot leave the first tab partially clipped.
+        // Set the final offset directly. There is no transition state that
+        // can keep a newly selected tab partially clipped.
         let clampedTarget = min(max(0, targetOffset), maximumOffset)
         scrollView.setContentOffset(
             CGPoint(x: clampedTarget, y: scrollView.contentOffset.y),
-            // Never animate the leading edge. A pending right-to-left
-            // animation is what allowed the first tab to remain partially
-            // clipped after it was selected.
-            animated: animated && clampedTarget > 0.5
+            animated: false
         )
+        updateTrailingTransitionVisibility()
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        updateTrailingTransitionVisibility()
+    }
+
+    private func updateTrailingTransitionVisibility() {
+        let maximumOffset = max(0, scrollView.contentSize.width - scrollView.bounds.width)
+        let hasHiddenTabsToRight = maximumOffset > 0.5
+            && scrollView.contentOffset.x < maximumOffset - 0.5
+        trailingTransitionView.isHidden = !hasHiddenTabsToRight
     }
 
     func selectTabForTesting(_ id: UUID) { onSelect?(id) }
@@ -269,8 +293,14 @@ final class MobileNativeFileTabBarView: UIView {
 
     var addButtonFrameForTesting: CGRect { addButton.frame }
     var scrollViewFrameForTesting: CGRect { scrollView.frame }
+    var trailingTransitionFrameForTesting: CGRect { trailingTransitionView.frame }
+    var trailingTransitionAcceptsTouchesForTesting: Bool { trailingTransitionView.isUserInteractionEnabled }
+    var trailingTransitionIsVisibleForTesting: Bool { !trailingTransitionView.isHidden }
     var horizontalContentOffsetForTesting: CGFloat { scrollView.contentOffset.x }
     var horizontalContentWidthForTesting: CGFloat { scrollView.contentSize.width }
+    func setContentOffsetForTesting(x: CGFloat) {
+        scrollView.setContentOffset(CGPoint(x: x, y: scrollView.contentOffset.y), animated: false)
+    }
 
     @objc private func addTab() {
         onAdd?()

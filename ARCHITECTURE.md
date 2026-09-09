@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-09-09 (v1.7.1 release-aligned architecture)
+Last updated: 2026-09-09 (v1.7.2 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -8,6 +8,14 @@ The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/a
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v1.7.2 (2026-09-09)
+
+- Refines mobile tab transitions, tab spacing, toolbar placement, and theme-aware translucent surfaces.
+- Aligns the AI assistant panel, Markdown controls, and Find & Replace surfaces with the active sidebar and editor themes.
+- Prevents mobile tabs and toolbar controls from clipping at the edges during selection and scrolling.
+- Prevents interrupted macOS window drags from extending editor text selection.
+- Starts macOS syntax highlighting as soon as the selected tab viewport is available.
 
 ### v1.7.1 (2026-09-09)
 
@@ -17,12 +25,6 @@ The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/a
 - Prevents tab borders from clipping, flashing, or disappearing during hover and theme transitions.
 - Keeps Settings content sized to the selected tab and opens the Settings window in a stable editor-relative position.
 - Restores drag-to-move behavior across the macOS top bar without applying window-drag handling to the editor surface.
-
-### v1.6.4 (2026-09-08)
-
-- Adds native macOS window dragging from unused titlebar and toolbar space with no visible drag handle.
-- Stops per-character document length and dirty-state changes from rebuilding the macOS editor configuration.
-- Preserves toolbar button hit-testing while supporting window dragging in the middle of the native toolbar.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->
@@ -187,6 +189,17 @@ The language registry treats TeX/LaTeX and Typst as source text rather than rend
 - Provider credentials remain in `SecureTokenStore`/Keychain. Chat history stores message text and context summaries only; it must not persist API tokens or silently attach fresh editor contents during restore.
 - The sidebar is a presentation surface over the existing editor model. Sending a request must use a captured context snapshot so later tab changes cannot alter an in-flight request, and stale results must not replace newer conversation state.
 - The chat surface uses a compact provider/status header, a single-row composer, a context attachment chip, and a lightweight empty state with suggested prompts. These are shared SwiftUI presentation changes; provider behavior, persistence, disclosure, and response actions remain unchanged.
+
+### macOS 27 Agent Mode
+
+The normative behavior, review findings, design requirements, and remaining release gates are maintained in [AI Agent and Chat Specification](AI_AGENT_CHAT_SPECIFICATION.md). Build success is not live-model or App Review approval evidence.
+
+- Agent Mode is available only with Apple Intelligence on macOS 27 or later. It uses a Foundation Models dynamic profile with separate Explore, Edit, and Verify instructions, bounded project-search and file-read tools, and token-aware on-device context limits. Oversized requests are rejected explicitly; active tool-call/result pairs are not truncated.
+- `EditorAgentWorkspace` captures the open project root and indexed file allowlist for each request. It resolves symlinks, rejects absolute paths and traversal, bounds reads and search results, and treats every path, file, diagnostic, and excerpt as untrusted data rather than instructions.
+- Explore is read-only. Edit may propose a replacement only for the exact captured selection; the editor revalidates the tab, UTF-16 range, and original source before showing the existing diff and apply confirmation. Agent output never writes multiple files directly.
+- Verify may recommend only a fixed syntax, build, test, or selected-file action. `EditorAgentVerificationResolver` constructs the executable and argument array, the UI displays the exact command and working directory for approval, and `EditorAgentVerificationRunner` rejects plans outside its executable and argument allowlist. There is no model-authored shell, installer, or Git-publication tool. Approved project scripts can nevertheless modify files and access the network; approval explicitly discloses this trust boundary. Output is bounded, and cancellation/timeout terminate the owned process group; deliberately detached descendants remain a limitation. Local command execution is disabled in App Store-sandboxed builds and is available only in the direct macOS build.
+- Processing remains on-device by default. A separate, disabled-by-default setting permits complex Edit and Verify requests to use Apple Private Cloud Compute when the model reports it available; Explore remains on-device and unavailable PCC always falls back locally. The result card reports the actual processing location and bounded activity without logging file contents.
+- Deterministic policy tests cover path containment, bounded search, stale-selection rejection, verification resolution, and executable/argument enforcement. Live Foundation Models quality and latency remain device-dependent and require macOS 27 runtime evaluation before release.
 
 ## Markdown and PDF Project Preview Cards
 

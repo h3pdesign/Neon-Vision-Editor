@@ -192,7 +192,6 @@ final class MobileNativeFileTabBarView: UIView, UIScrollViewDelegate {
         guard count > 0 else {
             tabsView.frame = CGRect(x: 0, y: 0, width: viewportWidth, height: scrollView.bounds.height)
             scrollView.contentSize = tabsView.bounds.size
-            updateTrailingTransitionVisibility()
             return
         }
 
@@ -214,7 +213,6 @@ final class MobileNativeFileTabBarView: UIView, UIScrollViewDelegate {
                 animated: false
             )
         }
-        updateTrailingTransitionVisibility()
         var x: CGFloat = 0
         for (index, id) in orderedTabIDs.enumerated() {
             let tabWidth = tabWidths[index]
@@ -244,25 +242,16 @@ final class MobileNativeFileTabBarView: UIView, UIScrollViewDelegate {
             targetOffset = trailingTarget
         }
 
-        // Set the final offset directly. There is no transition state that
-        // can keep a newly selected tab partially clipped.
+        // Use one explicit, clamped offset instead of scrollRectToVisible so
+        // a rapid right-to-left selection cancels the prior animation and
+        // cannot leave the first tab partially clipped.
         let clampedTarget = min(max(0, targetOffset), maximumOffset)
         scrollView.setContentOffset(
             CGPoint(x: clampedTarget, y: scrollView.contentOffset.y),
+            // Keep selection deterministic at either edge. A pending
+            // animation can leave the leading tab partially clipped.
             animated: false
         )
-        updateTrailingTransitionVisibility()
-    }
-
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        updateTrailingTransitionVisibility()
-    }
-
-    private func updateTrailingTransitionVisibility() {
-        let maximumOffset = max(0, scrollView.contentSize.width - scrollView.bounds.width)
-        let hasHiddenTabsToRight = maximumOffset > 0.5
-            && scrollView.contentOffset.x < maximumOffset - 0.5
-        trailingTransitionView.isHidden = !hasHiddenTabsToRight
     }
 
     func selectTabForTesting(_ id: UUID) { onSelect?(id) }

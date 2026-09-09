@@ -1,6 +1,7 @@
 #if os(macOS)
 import AppKit
 import CoreText
+import OSLog
 import SwiftUI
 
 struct VirtualEditorHexColorLiteral: Equatable {
@@ -1175,6 +1176,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
+        NotificationCenter.default.addObserver(self, selector: #selector(cancelPointerSelectionForWindowMove(_:)), name: NSWindow.willMoveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(moveToLine(_:)), name: .moveCursorToLine, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(updateFindHighlights(_:)), name: .updateEditorFindHighlights, object: nil)
@@ -1192,6 +1194,17 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         syntaxHighlightTask?.cancel()
         deferredViewportTask?.cancel()
         NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func cancelPointerSelectionForWindowMove(_ notification: Notification) {
+        guard let movedWindow = notification.object as? NSWindow,
+              movedWindow === window else { return }
+        // A titlebar drag can interrupt the editor's mouse-up event. Clear the
+        // editor's in-progress drag anchor before AppKit starts moving the
+        // window, otherwise subsequent drag events can extend the text range.
+        selectionAnchor = nil
+        pendingDragPublication?.cancel()
+        pendingDragPublication = nil
     }
 
     @objc private func moveToLine(_ notification: Notification) {
@@ -1465,7 +1478,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 anchorLine: targetLine
             )
             if let cached = firstViewportCache[cacheKey] {
-                installViewport(cached, deferExpensiveWork: true)
+                // The viewport is already available, so start syntax work with
+                // the activation instead of waiting for the first draw pass.
+                installViewport(cached, deferExpensiveWork: false)
             } else {
                 scheduleDeferredViewportLoad(
                     anchorLine: targetLine,
@@ -2967,7 +2982,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 self.firstViewportCache.removeValue(forKey: oldestKey)
             }
             self.firstViewportCache[cacheKey] = next
-            self.installViewport(next, deferExpensiveWork: true)
+            // Keep the bounded document read off the representable update, but
+            // let highlighting begin as soon as the new viewport is installed.
+            self.installViewport(next, deferExpensiveWork: false)
             self.setFrameSize(NSSize(width: self.contentWidth, height: self.logicalHeight))
             self.needsLayout = true
             self.needsDisplay = true
@@ -3089,6 +3106,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let patterns = getSyntaxPatterns(for: syntaxLanguage, colors: colors)
         let htmlText = viewportText
         let htmlViewport = isHTMLLikeSyntaxLanguage(syntaxLanguage) ? viewport : nil
+        syntaxHighlightSignposter.emitEvent("queued_macos")
         syntaxHighlightTask = Task { [weak self] in
             let initialHTMLState: HTMLSyntaxState?
             if let htmlViewport {
@@ -3160,6 +3178,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             }
             guard let self, !Task.isCancelled, generation == self.syntaxHighlightGeneration else { return }
             self.syntaxSpansByLine = spans
+            syntaxHighlightSignposter.emitEvent("applied_macos")
             self.attributedLineCache.removeAll(keepingCapacity: true)
             self.visualFragmentCache.removeAll(keepingCapacity: true)
             self.visualRowsSnapshot = nil

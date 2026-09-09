@@ -597,6 +597,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v1.7.2": ("Schnellere Tabs und konsistente Editorflächen", "Verbessert mobile Tabs, Toolbar- und AI-Seitenleistenflächen, verhindert macOS-Auswahlfehler beim Fensterziehen und startet die Syntaxhervorhebung beim Tabwechsel früher.", ["Tabs", "Editor", "Leistung"]),
         "v1.7.1": ("Stabilere Fenster, Auswahl und App-Store-Builds", "Behebt das Verschieben von Fenstern, die Textauswahl auf iPhone und iPad, die Darstellung der Willkommenstour und die iOS-App-Store-Paketierung.", ["Fenster", "Auswahl", "App Store"]),
         "v1.7.0": ("Native Tabs und konsistente Fensterdarstellung", "Hält Tabs, Seitenleisten, Editorflächen und Einstellungen über macOS, iOS und iPadOS hinweg konsistent und stabil.", ["Tabs", "Darstellung", "Seitenleisten"]),
         "v1.6.4": ("Stabiles Tippen und zuverlässiges Fensterziehen", "Hält den macOS-Editor beim Tippen stabil und macht leere Bereiche der nativen Symbolleiste verschiebbar, ohne ihre Aktionen zu blockieren.", ["Editor", "Fenster", "Symbolleiste"]),
@@ -621,6 +622,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v1.7.2": ("Hurtigere faner og ensartede editorflader", "Forbedrer mobile faner, værktøjslinjer og AI-sidepaneler, forhindrer markeringsfejl ved vinduesflytning på macOS og starter syntaksfarver tidligere ved faneskift.", ["Faner", "Editor", "Ydeevne"]),
         "v1.7.1": ("Mere stabile vinduer, markering og App Store-builds", "Retter flytning af vinduer, tekstmarkering på iPhone og iPad, velkomstturens udseende og iOS App Store-paketering.", ["Vinduer", "Markering", "App Store"]),
         "v1.7.0": ("Native faner og ensartet vinduesvisning", "Holder faner, sidepaneler, editorflader og indstillinger ensartede og stabile på macOS, iOS og iPadOS.", ["Faner", "Visning", "Sidepaneler"]),
         "v1.6.4": ("Stabil indtastning og pålidelig vinduesflytning", "Holder macOS-editoren stabil under indtastning og gør tomme områder i den native værktøjslinje flytbare uden at blokere dens handlinger.", ["Editor", "Vindue", "Værktøjslinje"]),
@@ -645,6 +647,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v1.7.2": ("Onglets plus rapides et surfaces cohérentes", "Améliore les onglets mobiles, les barres d’outils et les panneaux AI, évite les sélections involontaires lors du déplacement d’une fenêtre macOS et lance plus tôt la coloration syntaxique.", ["Onglets", "Éditeur", "Performances"]),
         "v1.7.1": ("Fenêtres, sélection et builds App Store plus stables", "Corrige le déplacement des fenêtres, la sélection de texte sur iPhone et iPad, l’apparence de l’accueil et le paquet iOS pour l’App Store.", ["Fenêtres", "Sélection", "App Store"]),
         "v1.7.0": ("Onglets natifs et apparence cohérente", "Garde les onglets, barres latérales, surfaces d’édition et réglages cohérents et stables sur macOS, iOS et iPadOS.", ["Onglets", "Apparence", "Barres latérales"]),
         "v1.6.4": ("Saisie stable et déplacement fiable des fenêtres", "Stabilise l’éditeur macOS pendant la saisie et rend les espaces vides de la barre d’outils déplaçables sans bloquer ses actions.", ["Éditeur", "Fenêtre", "Barre d’outils"]),
@@ -669,6 +672,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v1.7.2": ("Pestañas más rápidas y superficies coherentes", "Mejora las pestañas móviles, las barras y los paneles de IA, evita selecciones involuntarias al mover ventanas en macOS e inicia antes el resaltado de sintaxis.", ["Pestañas", "Editor", "Rendimiento"]),
         "v1.7.1": ("Ventanas, selección y builds del App Store más estables", "Corrige el movimiento de ventanas, la selección de texto en iPhone y iPad, la apariencia de la bienvenida y el empaquetado iOS para el App Store.", ["Ventanas", "Selección", "App Store"]),
         "v1.7.0": ("Pestañas nativas y apariencia coherente", "Mantiene coherentes y estables las pestañas, barras laterales, superficies del editor y Ajustes en macOS, iOS y iPadOS.", ["Pestañas", "Apariencia", "Barras laterales"]),
         "v1.6.4": ("Escritura estable y movimiento fiable de ventanas", "Estabiliza el editor de macOS al escribir y permite mover la ventana desde los espacios vacíos de la barra nativa sin bloquear sus acciones.", ["Editor", "Ventana", "Barra"]),
@@ -693,6 +697,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v1.7.2": ("高速なタブ切り替えと一貫したエディタ表示", "モバイルタブ、ツールバー、AI サイドバーを改善し、macOS のウインドウ移動時の意図しない選択を防ぎ、タブ切り替え時の構文色表示を早めます。", ["タブ", "エディタ", "パフォーマンス"]),
         "v1.7.1": ("ウインドウ、選択、App Store ビルドを安定化", "ウインドウ移動、iPhone と iPad のテキスト選択、ウェルカムツアーの外観、iOS App Store パッケージを修正します。", ["ウインドウ", "選択", "App Store"]),
         "v1.7.0": ("ネイティブタブと一貫したウインドウ表示", "macOS、iOS、iPadOS でタブ、サイドバー、エディタ面、設定の表示を一貫させ、安定させます。", ["タブ", "表示", "サイドバー"]),
         "v1.6.4": ("安定した入力と確実なウインドウ移動", "macOS エディタの入力中のちらつきを抑え、ネイティブツールバーの空白部分から操作を妨げずにウインドウを移動できます。", ["エディタ", "ウインドウ", "ツールバー"]),
@@ -717,6 +722,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v1.7.2": ("更快的标签页与一致的编辑器表面", "改进移动标签页、工具栏和 AI 侧边栏，避免 macOS 拖动窗口时意外选择文本，并在切换标签页时更早启动语法高亮。", ["标签页", "编辑器", "性能"]),
         "v1.7.1": ("更稳定的窗口、文本选择与 App Store 构建", "修复窗口移动、iPhone 和 iPad 文本选择、欢迎导览外观以及 iOS App Store 打包问题。", ["窗口", "选择", "App Store"]),
         "v1.7.0": ("原生标签页与一致的窗口外观", "在 macOS、iOS 和 iPadOS 上保持标签页、侧边栏、编辑器表面和设置的一致性与稳定性。", ["标签页", "外观", "侧边栏"]),
         "v1.6.4": ("稳定输入与可靠的窗口拖动", "让 macOS 编辑器输入时保持稳定，并可从原生工具栏的空白区域移动窗口，同时不影响工具栏操作。", ["编辑器", "窗口", "工具栏"]),

@@ -6,6 +6,33 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.7.2] - 2026-09-09
+
+### Why Upgrade
+
+- Keeps editor chrome responsive and visually consistent across macOS, iOS, and iPadOS.
+- Reduces the visible delay before syntax highlighting appears when switching documents.
+- Keeps the AI assistant, Markdown controls, and Find & Replace surfaces readable in opaque and translucent themes.
+
+### Highlights
+
+- Refines mobile tab transitions, tab spacing, toolbar placement, and theme-aware translucent surfaces.
+- Aligns the AI assistant panel, Markdown controls, and Find & Replace surfaces with the active sidebar and editor themes.
+
+### Fixes
+
+- Prevents mobile tabs and toolbar controls from clipping at the edges during selection and scrolling.
+- Prevents interrupted macOS window drags from extending editor text selection.
+- Starts macOS syntax highlighting as soon as the selected tab viewport is available.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.7.1] - 2026-09-09
 
 ### Why Upgrade

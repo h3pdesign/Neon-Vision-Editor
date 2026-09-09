@@ -89,9 +89,7 @@ final class MobileNativeFileTabBarTests: XCTestCase {
         XCTAssertTrue(state.traits.contains(.button))
         XCTAssertTrue(state.traits.contains(.selected))
         XCTAssertEqual(view.accessibilityActionsForTesting(id)?.first, "Close Tab")
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            XCTAssertEqual(view.accessibilityActionsForTesting(id), ["Close Tab", "Move Tab Left", "Move Tab Right"])
-        }
+        XCTAssertEqual(view.accessibilityActionsForTesting(id), ["Close Tab", "Move Tab Left", "Move Tab Right"])
     }
 
     func testAddButtonStaysOutsideHorizontallyScrollingTabs() {
@@ -120,6 +118,26 @@ final class MobileNativeFileTabBarTests: XCTestCase {
         XCTAssertGreaterThan(view.horizontalContentWidthForTesting, view.scrollViewFrameForTesting.width)
         XCTAssertGreaterThan(view.horizontalContentOffsetForTesting, 0)
         XCTAssertGreaterThan(try XCTUnwrap(view.tabFrameForTesting(lastID)).minX, view.scrollViewFrameForTesting.width)
+    }
+
+    func testSelectingFirstTabAfterScrollingRightReturnsItFullyIntoView() throws {
+        let ids = (0..<12).map { _ in UUID() }
+        let firstID = try XCTUnwrap(ids.first)
+        let lastID = try XCTUnwrap(ids.last)
+        let view = MobileNativeFileTabBarView(frame: CGRect(x: 0, y: 0, width: 390, height: 42))
+        let tabs = ids.enumerated().map { snapshot(id: $0.element, title: "Document \($0.offset)") }
+
+        view.apply(tabs: tabs, selectedTabID: lastID)
+        view.layoutIfNeeded()
+        XCTAssertGreaterThan(view.horizontalContentOffsetForTesting, 0)
+
+        view.apply(tabs: tabs, selectedTabID: firstID)
+        view.layoutIfNeeded()
+
+        XCTAssertEqual(view.horizontalContentOffsetForTesting, 0, accuracy: 0.5)
+        let visibleFrame = try XCTUnwrap(view.tabFrameInScrollViewForTesting(firstID))
+        XCTAssertGreaterThanOrEqual(visibleFrame.minX, -0.5)
+        XCTAssertLessThanOrEqual(visibleFrame.maxX, view.scrollViewFrameForTesting.width + 0.5)
     }
 
     func testPhoneTabsUseAReadableDefaultWidthForLongFilenames() throws {

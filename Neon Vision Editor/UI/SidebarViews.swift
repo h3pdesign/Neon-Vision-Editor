@@ -90,17 +90,10 @@ struct SidebarView: View {
 
     private var sidebarSurfaceFill: AnyShapeStyle {
         if translucentBackgroundEnabled {
-            #if os(macOS)
+#if os(macOS)
             return AnyShapeStyle(Color.clear)
             #else
-            // Both iPad sidebars must resolve to the same surface color. Two
-            // independent materials sample different content behind each
-            // card, producing visibly different colors in translucent mode.
-            return AnyShapeStyle(
-                currentEditorTheme(colorScheme: colorScheme)
-                    .background
-                    .opacity(colorScheme == .dark ? 0.82 : 0.90)
-            )
+            return AnyShapeStyle(.ultraThinMaterial)
             #endif
         }
 #if os(macOS)
@@ -1566,16 +1559,10 @@ struct ProjectStructureSidebarView: View {
 
     private var sidebarSurfaceFill: AnyShapeStyle {
         if translucentBackgroundEnabled {
-            #if os(macOS)
+#if os(macOS)
             return AnyShapeStyle(Color.clear)
             #else
-            // Keep the project sidebar and TOC sidebar on one resolved color
-            // instead of compositing separate materials over different panes.
-            return AnyShapeStyle(
-                currentEditorTheme(colorScheme: colorScheme)
-                    .background
-                    .opacity(colorScheme == .dark ? 0.82 : 0.90)
-            )
+            return AnyShapeStyle(.ultraThinMaterial)
             #endif
         }
 #if os(macOS)

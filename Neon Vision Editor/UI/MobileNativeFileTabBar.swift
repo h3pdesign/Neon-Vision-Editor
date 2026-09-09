@@ -151,7 +151,9 @@ final class MobileNativeFileTabBarView: UIView {
             tabView.apply(
                 snapshot: snapshot,
                 isSelected: snapshot.id == selectedTabID,
-                allowsReordering: traitCollection.userInterfaceIdiom == .pad
+                // Keep tab interaction consistent across iPhone and iPad.
+                // The same drag/drop implementation supports both sizes.
+                allowsReordering: true
             )
         }
 
@@ -189,6 +191,13 @@ final class MobileNativeFileTabBarView: UIView {
         let contentWidth = max(viewportWidth, tabWidths.reduce(0, +) + totalSpacing)
         tabsView.frame = CGRect(x: 0, y: 0, width: contentWidth, height: scrollView.bounds.height)
         scrollView.contentSize = tabsView.bounds.size
+        let maximumOffset = max(0, contentWidth - viewportWidth)
+        if scrollView.contentOffset.x > maximumOffset {
+            scrollView.setContentOffset(
+                CGPoint(x: maximumOffset, y: scrollView.contentOffset.y),
+                animated: false
+            )
+        }
 
         var x: CGFloat = 0
         for (index, id) in orderedTabIDs.enumerated() {
@@ -200,9 +209,36 @@ final class MobileNativeFileTabBarView: UIView {
 
     private func scrollSelectedTabToVisible(animated: Bool) {
         guard let selectedTabID, let selectedView = tabViewsByID[selectedTabID] else { return }
-        let visibleRect = selectedView.frame.insetBy(dx: -6, dy: 0)
-        guard !scrollView.bounds.contains(visibleRect) else { return }
-        scrollView.scrollRectToVisible(visibleRect, animated: animated)
+        // `selectedView.frame` is in `tabsView` coordinates while the scroll
+        // view's bounds origin changes with contentOffset. Convert first so a
+        // tab selected beside the left edge is measured in the actual viewport
+        // rather than against stale content coordinates.
+        let tabRect = selectedView.convert(selectedView.bounds, to: scrollView)
+        let visibleBounds = scrollView.bounds.insetBy(dx: 6, dy: 0)
+        guard !visibleBounds.contains(tabRect) else { return }
+
+        let viewportWidth = scrollView.bounds.width
+        let maximumOffset = max(0, scrollView.contentSize.width - viewportWidth)
+        let leadingTarget = max(0, selectedView.frame.minX - 6)
+        let trailingTarget = min(maximumOffset, selectedView.frame.maxX + 6 - viewportWidth)
+        let targetOffset: CGFloat
+        if tabRect.minX < visibleBounds.minX {
+            targetOffset = leadingTarget
+        } else {
+            targetOffset = trailingTarget
+        }
+
+        // Use one explicit, clamped offset instead of scrollRectToVisible so
+        // a rapid right-to-left selection cancels the prior animation and
+        // cannot leave the first tab partially clipped.
+        let clampedTarget = min(max(0, targetOffset), maximumOffset)
+        scrollView.setContentOffset(
+            CGPoint(x: clampedTarget, y: scrollView.contentOffset.y),
+            // Never animate the leading edge. A pending right-to-left
+            // animation is what allowed the first tab to remain partially
+            // clipped after it was selected.
+            animated: animated && clampedTarget > 0.5
+        )
     }
 
     func selectTabForTesting(_ id: UUID) { onSelect?(id) }
@@ -226,6 +262,10 @@ final class MobileNativeFileTabBarView: UIView {
     }
 
     func tabFrameForTesting(_ id: UUID) -> CGRect? { tabViewsByID[id]?.frame }
+    func tabFrameInScrollViewForTesting(_ id: UUID) -> CGRect? {
+        guard let tabView = tabViewsByID[id] else { return nil }
+        return tabView.convert(tabView.bounds, to: scrollView)
+    }
 
     var addButtonFrameForTesting: CGRect { addButton.frame }
     var scrollViewFrameForTesting: CGRect { scrollView.frame }

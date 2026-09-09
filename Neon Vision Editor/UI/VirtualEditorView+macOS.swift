@@ -379,6 +379,7 @@ struct VirtualEditorView: NSViewRepresentable {
     let indentWidth: Int
     let isSplitPaneResizeInProgress: Bool
     let preferredLayoutWidth: CGFloat?
+    let focusesEditorOnInitialWindowAttachment: Bool
     let onFontSizeChange: ((CGFloat) -> Void)?
     let onTextMutation: ((EditorTextMutation) -> Bool)?
 
@@ -392,6 +393,7 @@ struct VirtualEditorView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> VirtualEditorScrollView {
         let view = VirtualEditorScrollView()
+        view.focusesEditorOnInitialWindowAttachment = focusesEditorOnInitialWindowAttachment
         view.configure(
             document: document,
             documentID: documentID,
@@ -605,6 +607,8 @@ final class VirtualEditorScrollView: NSScrollView {
     private var isSplitPaneResizeInProgress = false
     private var viewportGeometryRetryCount = 0
     private var isViewportGeometryRetryScheduled = false
+    var focusesEditorOnInitialWindowAttachment = false
+    private var didRequestInitialEditorFocus = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -734,7 +738,12 @@ final class VirtualEditorScrollView: NSScrollView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        guard window != nil else { return }
+        guard let window else { return }
+
+        if focusesEditorOnInitialWindowAttachment, !didRequestInitialEditorFocus {
+            didRequestInitialEditorFocus = true
+            window.makeFirstResponder(canvas)
+        }
 
         // SwiftUI can replace the surrounding hierarchy (for example when a
         // workspace mode hides every sidebar) before the scroll view receives
@@ -1108,6 +1117,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
     override var undoManager: UndoManager? { documentUndoManager }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func isAccessibilityElement() -> Bool { true }

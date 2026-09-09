@@ -12,6 +12,12 @@ nonisolated func iPadShiftScrollFontSizeDelta(contentOffsetDeltaY: CGFloat) -> C
 }
 
 #if os(iOS)
+enum EditorPointerSelectionPolicy {
+    static func shouldEnableTextDragInteraction(for idiom: UIUserInterfaceIdiom) -> Bool {
+        false
+    }
+}
+
 enum EditorPencilInputPolicy {
     static func selectionAnchorPoint(current: CGPoint, translation: CGPoint) -> CGPoint {
         CGPoint(x: current.x - translation.x, y: current.y - translation.y)
@@ -1917,12 +1923,19 @@ struct CustomTextEditor: UIViewRepresentable {
     }
 
     private func configurePointerSelectionBehavior(_ textView: UITextView) {
-        #if os(visionOS)
-        textView.textDragInteraction?.isEnabled = true
-        #else
+#if os(visionOS)
+        // Keep the system pointer selection interaction in control of drags.
+        // Text transfers otherwise take precedence over selecting editor text.
+        textView.textDragInteraction?.isEnabled = false
+#else
+        // Keep UIKit's native pointer/text-selection interaction in control of
+        // mouse drags on both iPad and iPhone. Text drag transfers otherwise
+        // claim the drag before the caret/selection interaction can update.
+        textView.textDragInteraction?.isEnabled = EditorPointerSelectionPolicy.shouldEnableTextDragInteraction(
+            for: UIDevice.current.userInterfaceIdiom
+        )
         if UIDevice.current.userInterfaceIdiom == .pad {
             textView.keyboardDismissMode = .none
-            textView.textDragInteraction?.isEnabled = true
         } else {
             // A phone editor should release the software keyboard as soon as
             // the document is scrolled. `.interactive` only follows a downward

@@ -42,15 +42,24 @@ extension ContentView {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
         } else {
-            iPhoneUnifiedToolbarRow
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
+            GlassSurface(
+                enabled: shouldUseLiquidGlass,
+                material: primaryGlassMaterial,
+                fallbackColor: toolbarFallbackColor,
+                shape: .capsule,
+                chromeStyle: .single
+            ) {
+                iPhoneUnifiedToolbarRow
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
         }
     }
 
     var iOSUnifiedDocumentChromeHost: some View {
         VStack(spacing: 0) {
             tabBarView
+                .padding(.bottom, 8)
             if shouldPlaceMarkdownFormattingBelowTabs {
                 iPhoneMarkdownFormattingTopChrome
             }
@@ -85,6 +94,7 @@ extension ContentView {
             // available width so its action row can scroll horizontally.
             .fixedSize(horizontal: markdownFormattingToolbarCollapsed, vertical: false)
             .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.top, 12)
             .tint(iOSToolbarForegroundColor)
     }
 
@@ -757,12 +767,12 @@ extension ContentView {
             .frame(height: 41)
 #elseif os(iOS)
             GlassSurface(
-                // Window translucency must keep the tab strip on a material
-                // surface even when the optional Liquid Glass toolbar style is
-                // disabled; otherwise the fallback color paints an opaque band.
-                enabled: shouldUseLiquidGlass || enableTranslucentWindow,
+                // Keep the tab strip tied to the editor theme. Window
+                // translucency should not replace that theme surface with a
+                // separate material band.
+                enabled: false,
                 material: primaryGlassMaterial,
-                fallbackColor: toolbarFallbackColor,
+                fallbackColor: iOSNonTranslucentSurfaceColor,
                 shape: .rounded(18),
                 chromeStyle: .single
             ) {
@@ -807,10 +817,9 @@ extension ContentView {
 #if os(macOS)
         .background(macToolbarBackgroundStyle)
 #elseif os(iOS)
-        // Keep the full-width strip on the same surface as the project bar
-        // and editor. The inner GlassSurface supplies the rounded chrome;
-        // this outer surface prevents a mismatched band around it.
-        .background(editorSurfaceBackgroundStyle)
+        // Keep the full-width strip on the same theme surface as the editor;
+        // this remains stable when window translucency is toggled.
+        .background(iOSNonTranslucentSurfaceColor)
 #else
         .background(
             enableTranslucentWindow

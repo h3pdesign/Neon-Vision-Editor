@@ -134,6 +134,14 @@ final class ContentViewLayoutTests: XCTestCase {
             MarkdownFormattingChromePolicy.shouldReserveMobileFormattingRow(
                 isPhone: true,
                 shouldShow: true,
+                isCollapsed: true,
+                keepCollapsedBelowTabs: true
+            )
+        )
+        XCTAssertTrue(
+            MarkdownFormattingChromePolicy.shouldReserveMobileFormattingRow(
+                isPhone: true,
+                shouldShow: true,
                 isCollapsed: false
             )
         )

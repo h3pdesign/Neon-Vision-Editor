@@ -169,16 +169,24 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     def test_dispatch_pins_sha_and_documentation_writers_queue(self):
         hosted = (ROOT / ".github/workflows/release-github-only.yml").read_text()
+        release_all = (ROOT / "scripts/release_all.sh").read_text()
         checkout = hosted.split("- name: Checkout release source", 1)[1].split("- name: Validate release docs", 1)[0]
         self.assertNotIn("--depth=1", checkout)
         self.assertIn('merge-base --is-ancestor "$SOURCE_SHA" "$MAIN_SHA"', checkout)
-        self.assertIn('-f ref="$RELEASE_SHA"', (ROOT / "scripts/release_all.sh").read_text())
-        self.assertNotIn('-f ref=main', (ROOT / "scripts/release_all.sh").read_text())
+        self.assertIn('-f ref="$RELEASE_SHA"', release_all)
+        self.assertNotIn('-f ref=main', release_all)
+        self.assertIn('--input - <<EOF', release_all)
+        self.assertNotIn('-F "environment_ids[]=', release_all)
+        self.assertIn("Reusing active ${WORKFLOW_NAME} run", release_all)
         for name in ("post-release-documentation-sync", "sync-readme-appstore-versions", "update-download-metrics"):
             workflow = (ROOT / f".github/workflows/{name}.yml").read_text()
             self.assertIn("group: public-documentation-writer", workflow)
             self.assertIn("queue: max", workflow)
             self.assertNotIn("run: sleep", workflow)
+        docs_sync = (ROOT / ".github/workflows/post-release-documentation-sync.yml").read_text()
+        self.assertIn("checks_ready=false", docs_sync)
+        self.assertIn("--json name --jq 'length'", docs_sync)
+        self.assertIn("Timed out waiting for checks to register", docs_sync)
 
     @unittest.skipUnless(shutil.which("ssh-keygen"), "SSH signing executable unavailable")
     def test_real_local_worktree_signing_resume_and_source_preservation(self):

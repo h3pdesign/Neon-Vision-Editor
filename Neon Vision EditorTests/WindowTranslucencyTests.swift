@@ -37,6 +37,32 @@ final class WindowTranslucencyTests: XCTestCase {
         XCTAssertTrue(dragRegion.acceptsFirstMouse(for: nil))
     }
 
+    func testVirtualEditorCanvasRejectsWindowBackgroundDragging() {
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 480, height: 320))
+
+        XCTAssertFalse(canvas.mouseDownCanMoveWindow)
+    }
+
+    func testNewWindowEditorBecomesInitialFirstResponder() {
+        let testWindow = NSWindow(
+            contentRect: NSRect(x: 40, y: 40, width: 480, height: 320),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        testWindow.isReleasedWhenClosed = false
+        defer {
+            testWindow.orderOut(nil)
+            testWindow.close()
+        }
+
+        let editor = VirtualEditorScrollView(frame: testWindow.contentView?.bounds ?? .zero)
+        editor.focusesEditorOnInitialWindowAttachment = true
+        testWindow.contentView = editor
+
+        XCTAssertTrue(testWindow.firstResponder === editor.documentView)
+    }
+
     // Verifies that the translucency toggle updates registered editor windows without touching unrelated panels.
     func testApplyWindowTranslucencyUpdatesMacWindowFlags() {
         let defaults = UserDefaults.standard

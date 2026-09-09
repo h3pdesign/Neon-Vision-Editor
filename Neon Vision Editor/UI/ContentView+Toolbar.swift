@@ -2123,7 +2123,7 @@ extension ContentView {
     @ViewBuilder
     var iPadUnifiedToolbarRow: some View {
         GlassSurface(
-            enabled: false,
+            enabled: enableTranslucentWindow,
             material: primaryGlassMaterial,
             fallbackColor: iOSNonTranslucentSurfaceColor,
             shape: .capsule,
@@ -2332,7 +2332,7 @@ extension ContentView {
             if #available(iOS 26.0, *) {
                 ToolbarItem(placement: .topBarTrailing) {
                     GlassSurface(
-                        enabled: false,
+                        enabled: enableTranslucentWindow,
                         material: primaryGlassMaterial,
                         fallbackColor: iOSNonTranslucentSurfaceColor,
                         shape: .capsule,
@@ -2350,7 +2350,7 @@ extension ContentView {
             } else {
                 ToolbarItem(placement: .topBarTrailing) {
                     GlassSurface(
-                        enabled: false,
+                        enabled: enableTranslucentWindow,
                         material: primaryGlassMaterial,
                         fallbackColor: iOSNonTranslucentSurfaceColor,
                         shape: .capsule,

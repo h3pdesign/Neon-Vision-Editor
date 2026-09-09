@@ -1,4 +1,8 @@
-#if os(macOS) && USE_FOUNDATION_MODELS && canImport(FoundationModels)
+// The agent profile APIs (DynamicProfile and PrivateCloudComputeLanguageModel)
+// are introduced by the Xcode 27 SDK. Keep the rest of FoundationModels
+// available to Xcode 26.6 release builds while excluding this source entirely
+// when the newer SDK/compiler is not present.
+#if os(macOS) && USE_FOUNDATION_MODELS && canImport(FoundationModels) && compiler(>=6.3)
 import Foundation
 import FoundationModels
 

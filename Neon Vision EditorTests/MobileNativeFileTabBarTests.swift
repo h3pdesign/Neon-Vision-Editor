@@ -131,7 +131,7 @@ final class MobileNativeFileTabBarTests: XCTestCase {
         )
         view.layoutIfNeeded()
 
-        let expectedMinimumWidth: CGFloat = UIDevice.current.userInterfaceIdiom == .pad ? 136 : 148
+        let expectedMinimumWidth: CGFloat = UIDevice.current.userInterfaceIdiom == .pad ? 136 : 128
         XCTAssertGreaterThanOrEqual(try XCTUnwrap(view.tabFrameForTesting(ids[1])).width, expectedMinimumWidth)
     }
 

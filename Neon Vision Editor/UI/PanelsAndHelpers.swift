@@ -2708,6 +2708,23 @@ struct WelcomeTourView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.purchase) private var purchase
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
+    @AppStorage("SettingsAppearance") private var appearance: String = "system"
+
+    private var effectiveTourColorScheme: ColorScheme {
+        switch appearance {
+        case "light": return .light
+        case "dark": return .dark
+        default: return colorScheme
+        }
+    }
+
+    private var preferredTourColorScheme: ColorScheme? {
+        switch appearance {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
 
     static var releaseID: String {
         let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
@@ -2759,10 +2776,14 @@ struct WelcomeTourView: View {
     private let pages: [TourPage] = [
         TourPage(
             title: "What’s New in v1.7.0",
-            subtitle: "Release highlights for v1.7.0.",
+            subtitle: "Major fixes and improvements in the current release.",
             bullets: [
-                "Editor Improvements: Replaces the remaining legacy tab-bar paths with native platform tab implementations.",
-                "Workflow Refinements: Preserves complete tab borders, spacing, and translucent surfaces across hover, selection, and appearance changes."
+                "Native Tabs: Replaces the remaining legacy tab-bar paths with native platform tab implementations.",
+                "Theme Consistency: Keeps tabs, sidebars, editor surfaces, and Settings consistent across Light, Dark, and System modes.",
+                "Responsive Workflows: Makes tab switching and Settings navigation feel immediate while preserving native controls.",
+                "Stable Window Surfaces: Aligns tab, TOC sidebar, project sidebar, line-number, and editor backgrounds in opaque and translucent modes.",
+                "Reliable Tab Chrome: Prevents tab borders from clipping, flashing, or disappearing during hover and theme transitions.",
+                "Settings Polish: Keeps Settings content sized to the selected tab and opens the window in a stable editor-relative position."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -3011,9 +3032,10 @@ struct WelcomeTourView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: containerCornerRadius, style: .continuous)
-                .stroke(colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.08), lineWidth: 1)
+                .stroke(effectiveTourColorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.08), lineWidth: 1)
         )
         .frame(width: 980, height: 780)
+        .preferredColorScheme(preferredTourColorScheme)
 #else
         .presentationDetents([.height(preferredSheetHeight), .large])
 #endif
@@ -3089,19 +3111,19 @@ struct WelcomeTourView: View {
     private var welcomeTourBackground: some View {
         ZStack {
             Rectangle()
-                .fill(colorScheme == .dark ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.ultraThinMaterial))
+                .fill(effectiveTourColorScheme == .dark ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.ultraThinMaterial))
 
             LinearGradient(
                 colors: welcomeTourBackgroundColors,
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            .opacity(colorScheme == .dark ? 0.42 : 0.28)
+            .opacity(effectiveTourColorScheme == .dark ? 0.42 : 0.28)
         }
     }
 
     private var welcomeTourBackgroundColors: [Color] {
-        if colorScheme == .dark {
+        if effectiveTourColorScheme == .dark {
             return [
                 Color(red: 0.09, green: 0.10, blue: 0.14),
                 Color(red: 0.13, green: 0.16, blue: 0.22)
@@ -3154,30 +3176,22 @@ struct WelcomeTourView: View {
     ) -> some View {
         let displayBullets = page.bullets.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("![") }
 #if os(macOS)
-        if isWhatsNewPage(page), !compactLayout {
+        ScrollView(.vertical, showsIndicators: true) {
             tourCardContent(for: page, displayBullets: displayBullets, index: index, compactLayout: compactLayout)
-                .padding(.top, 8)
-                .padding(.horizontal, 2)
-                .frame(maxHeight: .infinity, alignment: .top)
-                .clipped()
-        } else {
-            ScrollView(.vertical, showsIndicators: true) {
-                tourCardContent(for: page, displayBullets: displayBullets, index: index, compactLayout: compactLayout)
-                    .padding(.bottom, compactLayout ? 24 : 0)
-            }
-            .padding(.top, 8)
-            .padding(.horizontal, 2)
-            .mask(alignment: .bottom) {
-                LinearGradient(
-                    stops: [
-                        .init(color: .black, location: 0),
-                        .init(color: .black, location: compactLayout ? 0.90 : 1),
-                        .init(color: .clear, location: 1)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
+                .padding(.bottom, compactLayout ? 24 : 0)
+        }
+        .padding(.top, 8)
+        .padding(.horizontal, 2)
+        .mask(alignment: .bottom) {
+            LinearGradient(
+                stops: [
+                    .init(color: .black, location: 0),
+                    .init(color: .black, location: compactLayout ? 0.90 : 1),
+                    .init(color: .clear, location: 1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
         }
 #else
         ScrollView(.vertical, showsIndicators: true) {
@@ -3327,10 +3341,10 @@ struct WelcomeTourView: View {
             .padding(compactLayout ? 10 : 12)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(colorScheme == .dark ? Color.white.opacity(0.060) : Color.white.opacity(0.68))
+                    .fill(effectiveTourColorScheme == .dark ? Color.white.opacity(0.060) : Color.white.opacity(0.68))
                     .overlay(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07), lineWidth: 1)
+                            .stroke(effectiveTourColorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07), lineWidth: 1)
                     )
             )
         }
@@ -3371,21 +3385,17 @@ struct WelcomeTourView: View {
         .padding(compactLayout ? 10 : 12)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(colorScheme == .dark ? Color.white.opacity(0.060) : Color.white.opacity(0.68))
+                .fill(effectiveTourColorScheme == .dark ? Color.white.opacity(0.060) : Color.white.opacity(0.68))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07), lineWidth: 1)
+                        .stroke(effectiveTourColorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07), lineWidth: 1)
                 )
         )
     }
 
     @ViewBuilder
     private func whatsNewRows(bullets: [String], compactLayout: Bool) -> some View {
-        #if os(macOS)
-        let columns = 3
-        #else
         let columns = 2
-        #endif
 
         VStack(alignment: .leading, spacing: compactLayout ? 10 : 12) {
             ForEach(Array(stride(from: 0, to: bullets.count, by: columns)), id: \.self) { rowStart in
@@ -3420,7 +3430,7 @@ struct WelcomeTourView: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .shadow(color: Color.accentColor.opacity(colorScheme == .dark ? 0.28 : 0.20), radius: 6, y: 2)
+                        .shadow(color: Color.accentColor.opacity(effectiveTourColorScheme == .dark ? 0.28 : 0.20), radius: 6, y: 2)
                 )
                 .padding(.top, 1)
                 .accessibilityHidden(true)
@@ -3441,12 +3451,12 @@ struct WelcomeTourView: View {
         .frame(maxWidth: .infinity, minHeight: compactLayout ? 104 : 142, maxHeight: compactLayout ? 118 : 142, alignment: .topLeading)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(colorScheme == .dark ? Color.white.opacity(0.060) : Color.white.opacity(0.68))
+                .fill(effectiveTourColorScheme == .dark ? Color.white.opacity(0.060) : Color.white.opacity(0.68))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07), lineWidth: 1)
+                        .stroke(effectiveTourColorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.06), radius: 10, y: 4)
+                .shadow(color: Color.black.opacity(effectiveTourColorScheme == .dark ? 0.18 : 0.06), radius: 10, y: 4)
         )
         .clipped()
         .accessibilityElement(children: .combine)
@@ -4472,6 +4482,41 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "1.7.0", version: "1.7.0", date: "2026-09-09", highlights: [
+            "Replaces remaining legacy tab-bar paths with native platform tabs and preserves borders, spacing, and translucent surfaces during appearance changes.",
+            "Keeps macOS, iOS, and iPadOS editor surfaces consistent in opaque and translucent window modes.",
+            "Improves Settings sizing and navigation while keeping tab switching responsive and preserving native controls."
+        ]),
+        Release(id: "1.6.4", version: "1.6.4", date: "2026-09-08", highlights: [
+            "Adds native macOS window dragging from unused titlebar and toolbar space without sacrificing toolbar actions.",
+            "Keeps macOS typing visually stable and avoids rebuilding editor configuration for every character edit.",
+            "Preserves toolbar hit-testing while native window chrome is updated."
+        ]),
+        Release(id: "1.6.3", version: "1.6.3", date: "2026-09-07", highlights: [
+            "Publishes the selected editor's first frame before deferred layout and preview work begins.",
+            "Improves Markdown and source-file tab switching, PDF export, Find in Files ignores, and mobile line-number behavior.",
+            "Adds mobile logical-line selection and preserves Markdown source emphasis."
+        ]),
+        Release(id: "1.6.2", version: "1.6.2", date: "2026-09-05", highlights: [
+            "Adds metadata polling for external edits on network volumes and safer conflict handling.",
+            "Adds an automatic Welcome Tour preference and suppresses the tour for Finder file launches.",
+            "Improves external-document saves, purchase feedback, encoding changes, and failed-open recovery."
+        ]),
+        Release(id: "1.6.1", version: "1.6.1", date: "2026-09-04", highlights: [
+            "Adds official Emmet expansion for markup and stylesheet editing.",
+            "Restores macOS virtual-editor commands including inline completion, Vim navigation, Markdown shortcuts, drag and drop, snapshots, and whitespace inspection.",
+            "Adds bounded viewport caching and performance budgets for large documents."
+        ]),
+        Release(id: "1.6.0", version: "1.6.0", date: "2026-09-03", highlights: [
+            "Adds bounded large-file rendering and background indexing for Markdown and source documents.",
+            "Adds HEX color swatches and a source-editor color picker with format preservation.",
+            "Improves UTF-8/UTF-16 editing, caret navigation, atomic saves, accessibility context, and editor-width changes."
+        ]),
+        Release(id: "1.5.6", version: "1.5.6", date: "2026-08-29", highlights: [
+            "Adds compact, language-aware mobile toolbar presets while preserving full menu and accessibility names.",
+            "Improves Markdown list continuation, text-selection commands, and mobile formatting controls.",
+            "Keeps Settings and Help toolbar visibility aligned with configured presets."
+        ]),
         Release(id: "1.0.2", version: "1.0.2", date: "2026-07-28", highlights: [
             "Adds persistent Markdown project card previews with grid or stacked layouts.",
             "Adds saved editor layout presets for Writing, Code, Markdown, and Review.",
@@ -4663,12 +4708,34 @@ final class MacWindowDragRegionView: NSView {
 struct WelcomeTourWindowPresenter: NSViewRepresentable {
     @Binding var isPresented: Bool
     let makeContent: () -> WelcomeTourView
+    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("SettingsAppearance") private var appearance: String = "system"
+    @AppStorage("EnableTranslucentWindow") private var enableTranslucentWindow: Bool = true
+    @AppStorage("SettingsMacTranslucencyMode") private var translucencyModeRaw: String = "balanced"
+
+    private var effectiveColorScheme: ColorScheme {
+        switch appearance {
+        case "light": return .light
+        case "dark": return .dark
+        default: return colorScheme
+        }
+    }
+
+    private var windowBackgroundColor: NSColor {
+        SettingsWindowConfigurator.settingsWindowBackgroundColor(
+            translucentEnabled: enableTranslucentWindow,
+            translucencyModeRaw: translucencyModeRaw,
+            appearanceRaw: appearance,
+            effectiveColorScheme: effectiveColorScheme
+        )
+    }
 
     @MainActor
     final class Coordinator: NSObject, NSWindowDelegate {
         var parent: WelcomeTourWindowPresenter
         weak var hostWindow: NSWindow?
         var window: NSWindow?
+        var hostingController: NSHostingController<WelcomeTourView>?
         private var hostWindowObservers: [NSObjectProtocol] = []
         private weak var observedHostWindow: NSWindow?
 
@@ -4769,7 +4836,9 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
 
         func presentIfNeeded() {
             guard window == nil else {
-                if let window {
+                if let window, let hostingController {
+                    hostingController.rootView = parent.makeContent()
+                    configureAppearance(of: window)
                     centerTourWindow(window)
                 }
                 window?.makeKeyAndOrderFront(nil)
@@ -4786,20 +4855,40 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
             window.delegate = self
             window.isMovableByWindowBackground = false
             window.titleVisibility = .hidden
-            window.titlebarAppearsTransparent = false
             window.setContentSize(NSSize(width: 980, height: 720))
+            configureAppearance(of: window)
 
             centerTourWindow(window)
 
             self.window = window
+            self.hostingController = controller
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
+        }
+
+        private func configureAppearance(of window: NSWindow) {
+            switch parent.appearance {
+            case "light": window.appearance = NSAppearance(named: .aqua)
+            case "dark": window.appearance = NSAppearance(named: .darkAqua)
+            default: window.appearance = nil
+            }
+            window.isOpaque = !parent.enableTranslucentWindow
+            window.backgroundColor = parent.windowBackgroundColor
+            window.contentView?.wantsLayer = true
+            window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
+            window.titlebarAppearsTransparent = true
+            window.toolbarStyle = .unified
+            window.styleMask.insert(.fullSizeContentView)
+            if #available(macOS 13.0, *) {
+                window.titlebarSeparatorStyle = .none
+            }
         }
 
         func dismissIfNeeded() {
             guard let window else { return }
             window.close()
             self.window = nil
+            self.hostingController = nil
         }
 
         func windowWillClose(_ notification: Notification) {

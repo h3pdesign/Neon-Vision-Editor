@@ -4554,6 +4554,7 @@ struct ContentView: View {
             indentWidth: effectiveIndentWidth,
             isSplitPaneResizeInProgress: previewPaneResizeStartWidth != nil,
             preferredLayoutWidth: brainDumpLayoutEnabled ? 920 : nil,
+            focusesEditorOnInitialWindowAttachment: startupBehavior == .forceBlankDocument,
             onFontSizeChange: { setEditorFontSize(Double($0)) },
             onTextMutation: { mutation in
                 if let viewport = mutation.viewport {

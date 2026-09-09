@@ -1,6 +1,7 @@
 #if os(macOS)
 import AppKit
 import CoreText
+import OSLog
 import SwiftUI
 
 struct VirtualEditorHexColorLiteral: Equatable {
@@ -3089,6 +3090,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let patterns = getSyntaxPatterns(for: syntaxLanguage, colors: colors)
         let htmlText = viewportText
         let htmlViewport = isHTMLLikeSyntaxLanguage(syntaxLanguage) ? viewport : nil
+        syntaxHighlightSignposter.emitEvent("queued_macos")
         syntaxHighlightTask = Task { [weak self] in
             let initialHTMLState: HTMLSyntaxState?
             if let htmlViewport {
@@ -3160,6 +3162,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             }
             guard let self, !Task.isCancelled, generation == self.syntaxHighlightGeneration else { return }
             self.syntaxSpansByLine = spans
+            syntaxHighlightSignposter.emitEvent("applied_macos")
             self.attributedLineCache.removeAll(keepingCapacity: true)
             self.visualFragmentCache.removeAll(keepingCapacity: true)
             self.visualRowsSnapshot = nil

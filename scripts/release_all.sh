@@ -560,9 +560,9 @@ approve_pending_release_environment() {
     [[ -n "$environment_id" ]] || continue
     echo "Approving protected release environment ${environment_id} for workflow run ${run_id}..."
     gh_retry gh api -X POST "repos/${REPO_SLUG}/actions/runs/${run_id}/pending_deployments" \
-      -F "environment_ids[]=${environment_id}" \
-      -f state=approved \
-      -f comment="Release ${TAG} approved after local release validation."
+      --input - <<EOF
+{"environment_ids":[${environment_id}],"state":"approved","comment":"Release environment approved after local release validation."}
+EOF
   done <<< "$environment_ids"
 }
 
@@ -879,42 +879,55 @@ if [[ "$TRIGGER_NOTARIZED" -eq 1 ]] && step_enabled notarize; then
     WORKFLOW_DISPATCH_CMD=(gh workflow run "$WORKFLOW_NAME" --ref main -f tag="$TAG" -f ref="$RELEASE_SHA")
   fi
 
-  echo "Dispatching ${WORKFLOW_NAME} for ${TAG}..."
-  DISPATCHED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-  DISPATCH_UNCERTAIN=0
-  if ! "${WORKFLOW_DISPATCH_CMD[@]}"; then
-    DISPATCH_UNCERTAIN=1
-    echo "Workflow dispatch response failed; checking for a created run before retrying." >&2
+  # Reuse an active same-tag run instead of creating a duplicate that will sit
+  # behind the release concurrency group. This makes reruns idempotent when a
+  # terminal command is interrupted while GitHub continues the workflow.
+  RUN_ID="$(
+    gh_retry gh run list \
+      --workflow "$WORKFLOW_NAME" \
+      --limit 30 \
+      --json databaseId,displayTitle,status,createdAt \
+      --jq "[.[] | select((.displayTitle | contains(\"${TAG}\")) and .status != \"completed\")][0].databaseId // empty" || true
+  )"
+  if [[ -n "$RUN_ID" ]]; then
+    echo "Reusing active ${WORKFLOW_NAME} run ${RUN_ID} for ${TAG}."
   else
-    echo "Workflow dispatch request accepted."
-  fi
-
-  echo "Waiting for ${WORKFLOW_NAME} run..."
-  RUN_ID=""
-  for dispatch_attempt in 1 2; do
-    if [[ "$dispatch_attempt" -eq 2 ]]; then
-      if [[ "$DISPATCH_UNCERTAIN" -eq 0 ]]; then
-        break
-      fi
-      echo "No run appeared after the failed response; retrying the dispatch once."
-      "${WORKFLOW_DISPATCH_CMD[@]}"
+    echo "Dispatching ${WORKFLOW_NAME} for ${TAG}..."
+    DISPATCHED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    DISPATCH_UNCERTAIN=0
+    if ! "${WORKFLOW_DISPATCH_CMD[@]}"; then
+      DISPATCH_UNCERTAIN=1
+      echo "Workflow dispatch response failed; checking for a created run before retrying." >&2
+    else
+      echo "Workflow dispatch request accepted."
     fi
 
-    for _ in {1..20}; do
-      sleep 6
-      RUN_ID="$(
-        gh_retry gh run list \
-          --workflow "$WORKFLOW_NAME" \
-          --limit 30 \
-          --json databaseId,displayTitle,createdAt \
-          --jq "[.[] | select((.displayTitle | contains(\"${TAG}\")) and .createdAt >= \"${DISPATCHED_AT}\")][0].databaseId // empty" || true
-      )"
-      if [[ -n "$RUN_ID" ]]; then
-        break
+    echo "Waiting for ${WORKFLOW_NAME} run..."
+    for dispatch_attempt in 1 2; do
+      if [[ "$dispatch_attempt" -eq 2 ]]; then
+        if [[ "$DISPATCH_UNCERTAIN" -eq 0 ]]; then
+          break
+        fi
+        echo "No run appeared after the failed response; retrying the dispatch once."
+        "${WORKFLOW_DISPATCH_CMD[@]}"
       fi
+
+      for _ in {1..20}; do
+        sleep 6
+        RUN_ID="$(
+          gh_retry gh run list \
+            --workflow "$WORKFLOW_NAME" \
+            --limit 30 \
+            --json databaseId,displayTitle,createdAt \
+            --jq "[.[] | select((.displayTitle | contains(\"${TAG}\")) and .createdAt >= \"${DISPATCHED_AT}\")][0].databaseId // empty" || true
+        )"
+        if [[ -n "$RUN_ID" ]]; then
+          break
+        fi
+      done
+      [[ -n "$RUN_ID" ]] && break
     done
-    [[ -n "$RUN_ID" ]] && break
-  done
+  fi
   if [[ -z "$RUN_ID" ]]; then
     echo "Could not find workflow run for ${TAG}." >&2
     exit 1

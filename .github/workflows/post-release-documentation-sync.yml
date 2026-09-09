@@ -204,5 +204,34 @@ jobs:
             echo "Could not resolve the open documentation PR for ${docs_sha}." >&2
             exit 1
           fi
-          gh pr merge "${docs_pr}" --repo "${GITHUB_REPOSITORY}" --auto --merge --delete-branch || \
-            echo "Auto-merge is unavailable; leaving the documentation PR open."
+
+          # Do not merge immediately after opening the PR. The pre-release
+          # workflow may still be queued, and gh pr checks reports an empty
+          # result during that short registration window. Treat that state as
+          # startup delay; only fail once checks exist and one actually fails.
+          checks_ready=false
+          checks_timeout_seconds=600
+          checks_interval_seconds=15
+          checks_elapsed=0
+          while (( checks_elapsed <= checks_timeout_seconds )); do
+            check_count="$(gh pr checks "${docs_pr}" --repo "${GITHUB_REPOSITORY}" \
+              --json name --jq 'length' 2>/dev/null || true)"
+            if [[ "$check_count" =~ ^[1-9][0-9]*$ ]]; then
+              checks_ready=true
+              break
+            fi
+            echo "No PR checks reported yet for ${docs_pr}; waiting ${checks_interval_seconds}s for registration..."
+            sleep "$checks_interval_seconds"
+            checks_elapsed=$((checks_elapsed + checks_interval_seconds))
+          done
+          if [[ "$checks_ready" != true ]]; then
+            echo "Timed out waiting for checks to register on documentation PR ${docs_pr}." >&2
+            exit 1
+          fi
+          if ! gh pr checks "${docs_pr}" --repo "${GITHUB_REPOSITORY}" --watch --fail-fast --interval 15; then
+            echo "Documentation PR checks failed; leaving ${docs_pr} open for inspection." >&2
+            exit 1
+          fi
+
+          gh pr merge "${docs_pr}" --repo "${GITHUB_REPOSITORY}" --merge --delete-branch || \
+            echo "Documentation PR could not be merged automatically; leaving it open."

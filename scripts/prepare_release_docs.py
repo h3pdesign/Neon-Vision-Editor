@@ -267,6 +267,15 @@ def prior_release_tags(changelog: str, tag: str, limit: int = 3) -> list[str]:
 
 
 def welcome_release_bullets(changelog: str, tag: str, section: str) -> list[str]:
+    if tag == "v1.7.1":
+        return [
+            "- Native Tabs: Keeps document tabs and editor surfaces consistent across supported Apple platforms.",
+            "- Theme Consistency: Applies the selected Light, Dark, or System appearance across the editor and its supporting windows.",
+            "- Responsive Workflows: Makes tab switching and Settings navigation feel immediate while preserving native controls.",
+            "- Stable Window Surfaces: Preserves complete tab borders, spacing, and translucent surfaces during hover and appearance changes.",
+            "- Reliable Tab Chrome: Replaces legacy tab-bar paths with native platform implementations and aligns mobile editor surfaces.",
+            "- 1.7.1 Fixes: Restores macOS dragging, cursor selection on iPhone/iPad/visionOS, themed Welcome Tour, and iOS exports.",
+        ]
     bullets = release_card_bullets(tag, section, limit=WELCOME_TOUR_CARD_COUNT)
     if len(bullets) >= WELCOME_TOUR_CARD_COUNT:
         return bullets

@@ -54,12 +54,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.7.1**
+> Latest release: **v1.7.2**
 > Next release target: **v1.7.2**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.7.1** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-09-09** for latest release **v1.7.1**
+> Last updated (README): **2026-09-09** for latest release **v1.7.2**
 
 ## What's New Since v1.6.4
 
@@ -153,7 +153,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=10778&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=10793&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -763,7 +763,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.6.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.6.3) | **A more deliberate workflow** — Switch between open documents with less visible delay, including when changing between Markdown and source files. | Makes macOS tab switching responsive by publishing the selected editor before deferred Core Text layout and Markdown preview work runs. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.7.1**
+- Latest release: **v1.7.2**
 - Compare recent changes: [v1.6.4...v1.7.1](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.6.4...v1.7.1)
 
 ## Known Limitations

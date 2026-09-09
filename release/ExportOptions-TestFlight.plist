@@ -17,7 +17,7 @@
 	<key>stripSwiftSymbols</key>
 	<true/>
 	<key>uploadSymbols</key>
-	<true/>
+	<false/>
 	<key>compileBitcode</key>
 	<false/>
 </dict>

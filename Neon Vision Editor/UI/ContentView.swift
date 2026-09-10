@@ -1519,16 +1519,29 @@ struct ContentView: View {
     private func updateWindowChrome(_ window: NSWindow? = nil) {
         guard let targetWindow = window ?? hostWindowNumber.flatMap({ NSApp.window(withWindowNumber: $0) }) else { return }
         MacEditorSurfacePolicy.configureWindowDragBehavior(targetWindow)
-        targetWindow.subtitle = windowSubtitleText
+        updateWindowSubtitle(targetWindow)
         if #available(macOS 11.0, *) {
-            targetWindow.titlebarSeparatorStyle = .none
+            if targetWindow.titlebarSeparatorStyle != .none {
+                targetWindow.titlebarSeparatorStyle = .none
+            }
         }
         if !enableTranslucentWindow {
-            targetWindow.backgroundColor = MacEditorSurfacePolicy.windowBackground(
+            let backgroundColor = MacEditorSurfacePolicy.windowBackground(
                 translucent: false,
                 modeRaw: macTranslucencyModeRaw,
                 isDarkMode: colorScheme == .dark
             )
+            if targetWindow.backgroundColor != backgroundColor {
+                targetWindow.backgroundColor = backgroundColor
+            }
+        }
+    }
+
+    private func updateWindowSubtitle(_ window: NSWindow? = nil) {
+        guard let targetWindow = window ?? hostWindowNumber.flatMap({ NSApp.window(withWindowNumber: $0) }) else { return }
+        let subtitle = windowSubtitleText
+        if targetWindow.subtitle != subtitle {
+            targetWindow.subtitle = subtitle
         }
     }
 
@@ -2612,16 +2625,16 @@ struct ContentView: View {
             if activeSplitSecondaryTabID == nil {
                 splitSecondaryTabID = nil
             }
-            updateWindowChrome()
+            updateWindowSubtitle()
         }
         .onChange(of: largeFileOpenModeRaw) { _, _ in
-            updateWindowChrome()
+            updateWindowSubtitle()
         }
         .onChange(of: remoteSessionsEnabled) { _, _ in
-            updateWindowChrome()
+            updateWindowSubtitle()
         }
         .onChange(of: remotePreparedTarget) { _, _ in
-            updateWindowChrome()
+            updateWindowSubtitle()
         }
 #endif
     }
@@ -2792,22 +2805,34 @@ struct ContentView: View {
                 }
             }
             .onChange(of: settingsThemeName) { _, _ in
+#if !os(macOS)
                 scheduleHighlightRefresh()
+#endif
             }
             .onChange(of: themeFormattingRefreshSignature) { _, _ in
+#if !os(macOS)
                 scheduleHighlightRefresh()
+#endif
             }
             .onChange(of: highlightMatchingBrackets) { _, _ in
+#if !os(macOS)
                 scheduleHighlightRefresh()
+#endif
             }
             .onChange(of: showScopeGuides) { _, _ in
+#if !os(macOS)
                 scheduleHighlightRefresh()
+#endif
             }
             .onChange(of: highlightScopeBackground) { _, _ in
+#if !os(macOS)
                 scheduleHighlightRefresh()
+#endif
             }
             .onChange(of: viewModel.isLineWrapEnabled) { _, _ in
+#if !os(macOS)
                 scheduleHighlightRefresh()
+#endif
             }
     }
 
@@ -2832,7 +2857,7 @@ struct ContentView: View {
                 persistSelectedSessionFileURLImmediately()
                 scheduleSessionPersistence()
 #if os(macOS)
-                updateWindowChrome()
+                updateWindowSubtitle()
                 if showDetachedPreviewWindow, isMarkdownPreviewDocument {
                     // Keep preview/WebKit work behind the editor's first frame
                     // during tab activation. The renderer has its own debounce
@@ -5333,16 +5358,19 @@ struct ContentView: View {
         .onChange(of: enableTranslucentWindow) { _, newValue in
             applyWindowTranslucency(newValue)
             // Force immediate recolor when translucency changes so syntax highlighting stays visible.
+#if !os(macOS)
             highlightRefreshToken &+= 1
-        }
-#if os(macOS)
-        .onChange(of: opaqueEditorSurfaceMac) { _, _ in
-            highlightRefreshToken &+= 1
-        }
 #endif
+        }
         .onChange(of: settingsThemeHexOverridesData) { _, _ in
+#if os(macOS)
+            // The virtual editor reads the encoded override data while updating
+            // its native configuration. Reapplying every NSWindow surface here
+            // forces an unrelated full-window composition pass.
+#else
             applyWindowTranslucency(enableTranslucentWindow)
             highlightRefreshToken &+= 1
+#endif
         }
         )
 #if os(iOS) || os(visionOS)
@@ -5397,11 +5425,9 @@ struct ContentView: View {
         .onChange(of: macTranslucencyModeRaw) { _, _ in
             // Keep all chrome/background surfaces in lockstep when mode changes.
             applyWindowTranslucency(enableTranslucentWindow)
-            highlightRefreshToken &+= 1
         }
         .onChange(of: colorScheme) { _, _ in
             applyWindowTranslucency(enableTranslucentWindow)
-            highlightRefreshToken &+= 1
         }
         )
 #else

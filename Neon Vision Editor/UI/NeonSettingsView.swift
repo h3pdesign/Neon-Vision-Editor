@@ -229,16 +229,19 @@ struct NeonSettingsView: View {
     // MARK: - Theme Storage
 
     @AppStorage(SettingsPreferenceKey.themeName) private var selectedTheme: String = "Neon Glow"
-    @AppStorage("SettingsThemeTextColor") private var themeTextHex: String = "#EDEDED"
-    @AppStorage("SettingsThemeBackgroundColor") private var themeBackgroundHex: String = "#0E1116"
-    @AppStorage("SettingsThemeCursorColor") private var themeCursorHex: String = "#4EA4FF"
-    @AppStorage("SettingsThemeSelectionColor") private var themeSelectionHex: String = "#2A3340"
-    @AppStorage("SettingsThemeKeywordColor") private var themeKeywordHex: String = "#F5D90A"
-    @AppStorage("SettingsThemeStringColor") private var themeStringHex: String = "#4EA4FF"
-    @AppStorage("SettingsThemeNumberColor") private var themeNumberHex: String = "#FFB86C"
-    @AppStorage("SettingsThemeCommentColor") private var themeCommentHex: String = "#7F8C98"
-    @AppStorage("SettingsThemeTypeColor") private var themeTypeHex: String = "#32D269"
-    @AppStorage("SettingsThemeBuiltinColor") private var themeBuiltinHex: String = "#EC7887"
+    // These values are editing drafts. The selected theme and its encoded overrides
+    // are the durable source of truth. Keeping every draft token in AppStorage made
+    // one theme click publish ten process-wide preference changes.
+    @State private var themeTextHex: String
+    @State private var themeBackgroundHex: String
+    @State private var themeCursorHex: String
+    @State private var themeSelectionHex: String
+    @State private var themeKeywordHex: String
+    @State private var themeStringHex: String
+    @State private var themeNumberHex: String
+    @State private var themeCommentHex: String
+    @State private var themeTypeHex: String
+    @State private var themeBuiltinHex: String
     @AppStorage(SettingsPreferenceKey.savedCustomThemes) private var savedCustomThemesData: Data = Data()
     @AppStorage("SettingsFavoriteThemes") private var favoriteThemesRaw: String = ""
     @AppStorage(SettingsPreferenceKey.themeHexOverrides) private var themeHexOverridesData: Data = Data()
@@ -312,16 +315,28 @@ struct NeonSettingsView: View {
         // “Custom” without a saved palette represents the current in-progress colors.
         guard themeName != "Custom" || !colors.isEmpty else { return }
 
-        themeTextHex = colors["text"] ?? defaultHex(for: "text", themeName: themeName)
-        themeBackgroundHex = backgroundHex(from: colors, themeName: themeName)
-        themeCursorHex = colors["cursor"] ?? defaultHex(for: "cursor", themeName: themeName)
-        themeSelectionHex = colors["selection"] ?? defaultHex(for: "selection", themeName: themeName)
-        themeKeywordHex = colors["keyword"] ?? defaultHex(for: "keyword", themeName: themeName)
-        themeStringHex = colors["string"] ?? defaultHex(for: "string", themeName: themeName)
-        themeNumberHex = colors["number"] ?? defaultHex(for: "number", themeName: themeName)
-        themeCommentHex = colors["comment"] ?? defaultHex(for: "comment", themeName: themeName)
-        themeTypeHex = colors["type"] ?? defaultHex(for: "type", themeName: themeName)
-        themeBuiltinHex = colors["builtin"] ?? defaultHex(for: "builtin", themeName: themeName)
+        let nextValues = [
+            colors["text"] ?? defaultHex(for: "text", themeName: themeName),
+            backgroundHex(from: colors, themeName: themeName),
+            colors["cursor"] ?? defaultHex(for: "cursor", themeName: themeName),
+            colors["selection"] ?? defaultHex(for: "selection", themeName: themeName),
+            colors["keyword"] ?? defaultHex(for: "keyword", themeName: themeName),
+            colors["string"] ?? defaultHex(for: "string", themeName: themeName),
+            colors["number"] ?? defaultHex(for: "number", themeName: themeName),
+            colors["comment"] ?? defaultHex(for: "comment", themeName: themeName),
+            colors["type"] ?? defaultHex(for: "type", themeName: themeName),
+            colors["builtin"] ?? defaultHex(for: "builtin", themeName: themeName)
+        ]
+        if themeTextHex != nextValues[0] { themeTextHex = nextValues[0] }
+        if themeBackgroundHex != nextValues[1] { themeBackgroundHex = nextValues[1] }
+        if themeCursorHex != nextValues[2] { themeCursorHex = nextValues[2] }
+        if themeSelectionHex != nextValues[3] { themeSelectionHex = nextValues[3] }
+        if themeKeywordHex != nextValues[4] { themeKeywordHex = nextValues[4] }
+        if themeStringHex != nextValues[5] { themeStringHex = nextValues[5] }
+        if themeNumberHex != nextValues[6] { themeNumberHex = nextValues[6] }
+        if themeCommentHex != nextValues[7] { themeCommentHex = nextValues[7] }
+        if themeTypeHex != nextValues[8] { themeTypeHex = nextValues[8] }
+        if themeBuiltinHex != nextValues[9] { themeBuiltinHex = nextValues[9] }
     }
 
     private var themeBackgroundOverrideKey: String {
@@ -376,15 +391,40 @@ struct NeonSettingsView: View {
         if persistBackground || hasBackgroundOverride(themeOverrides) {
             themeOverrides[themeBackgroundOverrideKey] = themeBackgroundHex
         }
-        themeOverrides["cursor"] = themeCursorHex
-        themeOverrides["selection"] = themeSelectionHex
-        themeOverrides["keyword"] = themeKeywordHex
-        themeOverrides["string"] = themeStringHex
-        themeOverrides["number"] = themeNumberHex
-        themeOverrides["comment"] = themeCommentHex
-        themeOverrides["type"] = themeTypeHex
-        themeOverrides["builtin"] = themeBuiltinHex
-        overrides[name] = themeOverrides
+        let tokenValues = [
+            "cursor": themeCursorHex,
+            "selection": themeSelectionHex,
+            "keyword": themeKeywordHex,
+            "string": themeStringHex,
+            "number": themeNumberHex,
+            "comment": themeCommentHex,
+            "type": themeTypeHex,
+            "builtin": themeBuiltinHex
+        ]
+        let defaultPalette = themePaletteColors(for: name)
+        let defaultTokenValues = [
+            "cursor": colorToHex(defaultPalette.cursor),
+            "selection": colorToHex(defaultPalette.selection),
+            "keyword": colorToHex(defaultPalette.keyword),
+            "string": colorToHex(defaultPalette.string),
+            "number": colorToHex(defaultPalette.number),
+            "comment": colorToHex(defaultPalette.comment),
+            "type": colorToHex(defaultPalette.type),
+            "builtin": colorToHex(defaultPalette.builtin)
+        ]
+        for (key, value) in tokenValues {
+            if value.lowercased() == defaultTokenValues[key]?.lowercased() {
+                themeOverrides.removeValue(forKey: key)
+            } else {
+                themeOverrides[key] = value
+            }
+        }
+        if themeOverrides.isEmpty {
+            overrides.removeValue(forKey: name)
+        } else {
+            overrides[name] = themeOverrides
+        }
+        guard overrides != loadHexOverrides() else { return }
         saveHexOverrides(overrides)
     }
 
@@ -764,6 +804,17 @@ struct NeonSettingsView: View {
     ) {
         self.supportsOpenInTabs = supportsOpenInTabs
         self.supportsTranslucency = supportsTranslucency
+        let defaults = UserDefaults.standard
+        _themeTextHex = State(initialValue: defaults.string(forKey: "SettingsThemeTextColor") ?? "#EDEDED")
+        _themeBackgroundHex = State(initialValue: defaults.string(forKey: "SettingsThemeBackgroundColor") ?? "#0E1116")
+        _themeCursorHex = State(initialValue: defaults.string(forKey: "SettingsThemeCursorColor") ?? "#4EA4FF")
+        _themeSelectionHex = State(initialValue: defaults.string(forKey: "SettingsThemeSelectionColor") ?? "#2A3340")
+        _themeKeywordHex = State(initialValue: defaults.string(forKey: "SettingsThemeKeywordColor") ?? "#F5D90A")
+        _themeStringHex = State(initialValue: defaults.string(forKey: "SettingsThemeStringColor") ?? "#4EA4FF")
+        _themeNumberHex = State(initialValue: defaults.string(forKey: "SettingsThemeNumberColor") ?? "#FFB86C")
+        _themeCommentHex = State(initialValue: defaults.string(forKey: "SettingsThemeCommentColor") ?? "#7F8C98")
+        _themeTypeHex = State(initialValue: defaults.string(forKey: "SettingsThemeTypeColor") ?? "#32D269")
+        _themeBuiltinHex = State(initialValue: defaults.string(forKey: "SettingsThemeBuiltinColor") ?? "#EC7887")
     }
 
 #if os(visionOS)
@@ -1188,16 +1239,6 @@ struct NeonSettingsView: View {
             macTranslucencyModeRaw,
             String(opaqueEditorSurfaceMac),
             selectedTheme,
-            themeTextHex,
-            themeBackgroundHex,
-            themeCursorHex,
-            themeSelectionHex,
-            themeKeywordHex,
-            themeStringHex,
-            themeNumberHex,
-            themeCommentHex,
-            themeTypeHex,
-            themeBuiltinHex,
             settingsDataFingerprint(savedCustomThemesData),
             settingsDataFingerprint(themeHexOverridesData),
             String(themeBoldKeywords),
@@ -4024,8 +4065,14 @@ struct NeonSettingsView: View {
         }
         .padding(UI.space8)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .onChange(of: selectedTheme) { oldTheme, newTheme in
-            saveCurrentColorsToOverrides(for: oldTheme)
+        .onAppear {
+            applyThemeColors(for: selectedTheme)
+        }
+        .onChange(of: selectedTheme) { _, newTheme in
+            // Apply the selected palette in the same state transaction. The
+            // editor observes this AppStorage value immediately; deferring it
+            // made the first click appear ineffective. Unchanged control values
+            // are skipped and no longer churn the theme-resolution cache key.
             applyThemeColors(for: newTheme)
         }
         .onChange(of: effectiveSettingsColorScheme) { _, _ in
@@ -7287,6 +7334,11 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSView, context: Context) {
         let coordinator = context.coordinator
+        let relevantThemeBackgroundRaw = Self.relevantThemeBackgroundRaw(
+            themeBackgroundRaw: themeBackgroundRaw,
+            opaqueEditorCanvasEnabled: opaqueEditorCanvasEnabled,
+            translucentEnabled: translucentEnabled
+        )
         let preferredHeightChanged: Bool = {
             guard let preferredContentHeight else {
                 return coordinator.lastPreferredContentHeight != nil
@@ -7301,7 +7353,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
            coordinator.lastTranslucencyModeRaw == translucencyModeRaw,
            coordinator.lastAppearanceRaw == appearanceRaw,
            coordinator.lastEffectiveColorScheme == effectiveColorScheme,
-           coordinator.lastThemeBackgroundRaw == themeBackgroundRaw,
+           coordinator.lastThemeBackgroundRaw == relevantThemeBackgroundRaw,
            coordinator.lastOpaqueEditorCanvasEnabled == opaqueEditorCanvasEnabled,
            !preferredHeightChanged {
             // Settings controls can invalidate the parent view frequently. Do
@@ -7331,13 +7383,27 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
     private func apply(to window: NSWindow?, coordinator: Coordinator) {
         guard let window else { return }
         ensureObservers(for: window, coordinator: coordinator)
+        let relevantThemeBackgroundRaw = Self.relevantThemeBackgroundRaw(
+            themeBackgroundRaw: themeBackgroundRaw,
+            opaqueEditorCanvasEnabled: opaqueEditorCanvasEnabled,
+            translucentEnabled: translucentEnabled
+        )
+        let wasInitiallyApplied = coordinator.didInitialApply
+        let translucencyChanged = coordinator.lastTranslucentEnabled != translucentEnabled
+        let appearanceChanged = coordinator.lastAppearanceRaw != appearanceRaw
+            || coordinator.lastEffectiveColorScheme != effectiveColorScheme
+        let surfaceChanged = translucencyChanged
+            || coordinator.lastTranslucencyModeRaw != translucencyModeRaw
+            || appearanceChanged
+            || coordinator.lastThemeBackgroundRaw != relevantThemeBackgroundRaw
+            || coordinator.lastOpaqueEditorCanvasEnabled != opaqueEditorCanvasEnabled
         coordinator.lastTranslucentEnabled = translucentEnabled
         coordinator.lastTranslucencyModeRaw = translucencyModeRaw
         coordinator.lastAppearanceRaw = appearanceRaw
         coordinator.lastEffectiveColorScheme = effectiveColorScheme
-        coordinator.lastThemeBackgroundRaw = themeBackgroundRaw
+        coordinator.lastThemeBackgroundRaw = relevantThemeBackgroundRaw
         coordinator.lastOpaqueEditorCanvasEnabled = opaqueEditorCanvasEnabled
-        let isInitialLayout = !coordinator.didInitialApply
+        let isInitialLayout = !wasInitiallyApplied
 
         if isInitialLayout {
             enforceResizableSettingsWindowBounds(on: window)
@@ -7360,7 +7426,9 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         }
         // Changing the full-size content-view style mask causes AppKit to relayout
         // the Settings window. Keep it stable and update only visual properties.
-        window.titlebarAppearsTransparent = translucentEnabled
+        if isInitialLayout || translucencyChanged {
+            window.titlebarAppearsTransparent = translucentEnabled
+        }
         if isInitialLayout {
             clampSettingsWindowToVisibleFrame(window)
             coordinator.stableTopEdge = window.frame.maxY
@@ -7377,19 +7445,38 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
             )
             coordinator.lastPreferredContentHeight = preferredContentHeight
         }
-        window.isOpaque = !translucentEnabled
+        if isInitialLayout || translucencyChanged {
+            window.isOpaque = !translucentEnabled
+        }
         // The application owns the explicit Light/Dark override. The Settings
         // window must inherit it so System mode cannot retain the prior mode.
-        ReleaseRuntimePolicy.clearMacWindowAppearanceOverrides([window])
+        if isInitialLayout || appearanceChanged {
+            ReleaseRuntimePolicy.clearMacWindowAppearanceOverrides([window])
+        }
         // Use one native surface for the titlebar and content. Without this
         // explicit titlebar background, AppKit can retain its default white
         // titlebar even while the Settings content is translucent.
-        let settingsSurfaceColor = translucencyEnabledColor(enabled: translucentEnabled)
-        window.backgroundColor = settingsSurfaceColor
-        window.titlebarAppearsTransparent = translucentEnabled
-        window.contentView?.wantsLayer = true
-        window.contentView?.layer?.backgroundColor = settingsSurfaceColor.cgColor
+        if isInitialLayout || surfaceChanged {
+            let settingsSurfaceColor = translucencyEnabledColor(enabled: translucentEnabled)
+            if window.backgroundColor != settingsSurfaceColor {
+                window.backgroundColor = settingsSurfaceColor
+            }
+            if window.contentView?.wantsLayer != true {
+                window.contentView?.wantsLayer = true
+            }
+            if window.contentView?.layer?.backgroundColor != settingsSurfaceColor.cgColor {
+                window.contentView?.layer?.backgroundColor = settingsSurfaceColor.cgColor
+            }
+        }
         coordinator.didInitialApply = true
+    }
+
+    nonisolated static func relevantThemeBackgroundRaw(
+        themeBackgroundRaw: String,
+        opaqueEditorCanvasEnabled: Bool,
+        translucentEnabled: Bool
+    ) -> String {
+        translucentEnabled || !opaqueEditorCanvasEnabled ? "" : themeBackgroundRaw
     }
 
     private func enforceResizableSettingsWindowBounds(on window: NSWindow) {

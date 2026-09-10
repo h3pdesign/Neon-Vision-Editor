@@ -1379,7 +1379,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         // configuration on every keystroke and causes visible frame churn.
         // Content revisions are handled separately below without replacing
         // the editor's structural state.
-        let key = "\(resourceID)|\(language)|\(fontSize)|\(fontName)|\(lineHeightMultiplier)|\(colorScheme)|\(syntaxThemeKey(for: colorScheme))|\(editorBaseThemeKey(for: colorScheme))|\(translucentBackgroundEnabled)|\(showsLineNumbers)|\(highlightCurrentLine)|\(lineWrapEnabled)|\(showsInvisibleCharacters)|\(showsIndentationGuides)|\(showsScopeGuides)|\(highlightsScopeBackground)|\(highlightsMatchingBrackets)|\(autoIndentEnabled)|\(autoCloseBracketsEnabled)|\(indentStyle)|\(indentWidth)"
+        // Resolve the theme once per representable update. Re-resolving it for
+        // each part of the configuration key repeated UserDefaults reads and
+        // theme-key generation on the main actor during every tab switch.
+        let resolvedTheme = currentEditorTheme(colorScheme: colorScheme)
+        let key = "\(resourceID)|\(language)|\(fontSize)|\(fontName)|\(lineHeightMultiplier)|\(colorScheme)|\(syntaxThemeKey(for: resolvedTheme))|\(editorBaseThemeKey(for: resolvedTheme))|\(translucentBackgroundEnabled)|\(showsLineNumbers)|\(highlightCurrentLine)|\(lineWrapEnabled)|\(showsInvisibleCharacters)|\(showsIndentationGuides)|\(showsScopeGuides)|\(highlightsScopeBackground)|\(highlightsMatchingBrackets)|\(autoIndentEnabled)|\(autoCloseBracketsEnabled)|\(indentStyle)|\(indentWidth)"
         let contentChanged = configuredContentRevision != contentRevision || configuredExternalContentRevision != externalContentRevision
         self.document = document
         self.documentID = documentID
@@ -1387,7 +1391,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         self.documentDisplayName = displayName
         self.language = language
         self.scheme = colorScheme
-        self.resolvedEditorTheme = currentEditorTheme(colorScheme: colorScheme)
+        self.resolvedEditorTheme = resolvedTheme
         self.resolvedSyntaxColors = SyntaxColors.from(theme: resolvedEditorTheme)
         self.editorFontName = fontName
         resolvedEditorFont = fontName.isEmpty
@@ -1842,8 +1846,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             rows[rowIndex + 1].fragment.absoluteStartUTF16 > localLocation
     }
 
-    private func syntaxThemeKey(for colorScheme: ColorScheme) -> String {
-        let syntax = currentEditorTheme(colorScheme: colorScheme).syntax
+    private func syntaxThemeKey(for theme: EditorTheme) -> String {
+        let syntax = theme.syntax
         return [
             syntax.keyword, syntax.string, syntax.number, syntax.comment, syntax.attribute,
             syntax.variable, syntax.def, syntax.property, syntax.meta, syntax.tag,
@@ -1851,8 +1855,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         ].map { NSColor($0).description }.joined(separator: "|")
     }
 
-    private func editorBaseThemeKey(for colorScheme: ColorScheme) -> String {
-        let theme = currentEditorTheme(colorScheme: colorScheme)
+    private func editorBaseThemeKey(for theme: EditorTheme) -> String {
         return [theme.text, theme.background, theme.cursor, theme.selection]
             .map { NSColor($0).description }
             .joined(separator: "|")
@@ -2962,7 +2965,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     ) {
         deferredViewportTask?.cancel()
         deferredViewportTask = Task { @MainActor [weak self] in
-            await Task.yield()
+            // Reserve the current run loop for the first frame of the newly
+            // selected tab. On newer macOS releases a plain Task.yield can
+            // resume before AppKit draws, putting the bounded viewport read
+            // back on the interaction-critical path.
+            try? await Task.sleep(nanoseconds: 16_000_000)
             guard let self,
                   !Task.isCancelled,
                   self.activationGeneration == generation,
@@ -3101,7 +3108,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let generation = syntaxHighlightGeneration
         let lines = viewportLines
         let syntaxLanguage = language
-        let syntaxTheme = syntaxThemeKey(for: scheme)
+        let syntaxTheme = syntaxThemeKey(for: resolvedEditorTheme)
         let colors = resolvedSyntaxColors
         let patterns = getSyntaxPatterns(for: syntaxLanguage, colors: colors)
         let htmlText = viewportText

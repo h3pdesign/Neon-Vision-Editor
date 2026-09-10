@@ -23,6 +23,7 @@ struct AppearanceThemeSettingsSyncModifier: ViewModifier {
     }
 
     private func scheduleLocalChangePush() {
+        guard syncEnabled else { return }
         pendingPushTask?.cancel()
         pendingPushTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 650_000_000)

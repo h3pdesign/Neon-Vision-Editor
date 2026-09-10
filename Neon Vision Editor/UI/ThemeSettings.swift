@@ -884,22 +884,29 @@ private struct ThemeOverrideSignature: Equatable {
 
 private enum EditorThemeResolutionCache {
     private struct State: Sendable {
-        var key: EditorThemeResolutionCacheKey?
-        var theme: EditorTheme?
+        var entries: [(key: EditorThemeResolutionCacheKey, theme: EditorTheme)] = []
     }
+
+    nonisolated private static let capacity = 12
 
     nonisolated private static let state = NVELock(State())
 
     nonisolated static func theme(for key: EditorThemeResolutionCacheKey) -> EditorTheme? {
         state.withLock { state in
-            state.key == key ? state.theme : nil
+            guard let index = state.entries.firstIndex(where: { $0.key == key }) else { return nil }
+            let entry = state.entries.remove(at: index)
+            state.entries.append(entry)
+            return entry.theme
         }
     }
 
     nonisolated static func store(_ theme: EditorTheme, for key: EditorThemeResolutionCacheKey) {
         state.withLock { state in
-            state.key = key
-            state.theme = theme
+            state.entries.removeAll { $0.key == key }
+            state.entries.append((key: key, theme: theme))
+            while state.entries.count > capacity {
+                state.entries.removeFirst()
+            }
         }
     }
 }
@@ -911,16 +918,6 @@ private struct EditorThemeResolutionCacheKey: Equatable {
     let italicComments: Bool
     let underlineLinks: Bool
     let boldMarkdownHeadings: Bool
-    let textHex: String
-    let backgroundHex: String
-    let cursorHex: String
-    let selectionHex: String
-    let keywordHex: String
-    let stringHex: String
-    let numberHex: String
-    let commentHex: String
-    let typeHex: String
-    let builtinHex: String
     let customThemesSignature: ThemeOverrideSignature
     let overridesSignature: ThemeOverrideSignature
 
@@ -934,16 +931,6 @@ private struct EditorThemeResolutionCacheKey: Equatable {
             lhs.italicComments == rhs.italicComments &&
             lhs.underlineLinks == rhs.underlineLinks &&
             lhs.boldMarkdownHeadings == rhs.boldMarkdownHeadings &&
-            lhs.textHex == rhs.textHex &&
-            lhs.backgroundHex == rhs.backgroundHex &&
-            lhs.cursorHex == rhs.cursorHex &&
-            lhs.selectionHex == rhs.selectionHex &&
-            lhs.keywordHex == rhs.keywordHex &&
-            lhs.stringHex == rhs.stringHex &&
-            lhs.numberHex == rhs.numberHex &&
-            lhs.commentHex == rhs.commentHex &&
-            lhs.typeHex == rhs.typeHex &&
-            lhs.builtinHex == rhs.builtinHex &&
             lhs.customThemesSignature == rhs.customThemesSignature &&
             lhs.overridesSignature == rhs.overridesSignature
     }
@@ -988,16 +975,6 @@ func currentEditorTheme(
         italicComments: italicComments,
         underlineLinks: underlineLinks,
         boldMarkdownHeadings: boldMarkdownHeadings,
-        textHex: defaults.string(forKey: "SettingsThemeTextColor") ?? "",
-        backgroundHex: defaults.string(forKey: "SettingsThemeBackgroundColor") ?? "",
-        cursorHex: defaults.string(forKey: "SettingsThemeCursorColor") ?? "",
-        selectionHex: defaults.string(forKey: "SettingsThemeSelectionColor") ?? "",
-        keywordHex: defaults.string(forKey: "SettingsThemeKeywordColor") ?? "",
-        stringHex: defaults.string(forKey: "SettingsThemeStringColor") ?? "",
-        numberHex: defaults.string(forKey: "SettingsThemeNumberColor") ?? "",
-        commentHex: defaults.string(forKey: "SettingsThemeCommentColor") ?? "",
-        typeHex: defaults.string(forKey: "SettingsThemeTypeColor") ?? "",
-        builtinHex: defaults.string(forKey: "SettingsThemeBuiltinColor") ?? "",
         customThemesSignature: ThemeOverrideSignature(data: defaults.data(forKey: SettingsPreferenceKey.savedCustomThemes)),
         overridesSignature: ThemeOverrideSignature(data: overridesData)
     )

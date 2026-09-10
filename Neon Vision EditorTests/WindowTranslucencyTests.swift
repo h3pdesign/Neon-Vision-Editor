@@ -158,6 +158,33 @@ final class WindowTranslucencyTests: XCTestCase {
         XCTAssertEqual(disabled, NSColor.windowBackgroundColor)
     }
 
+    func testSettingsSurfaceIgnoresThemeBackgroundWhenItCannotAffectTheWindow() {
+        XCTAssertEqual(
+            SettingsWindowConfigurator.relevantThemeBackgroundRaw(
+                themeBackgroundRaw: "#112233",
+                opaqueEditorCanvasEnabled: true,
+                translucentEnabled: true
+            ),
+            ""
+        )
+        XCTAssertEqual(
+            SettingsWindowConfigurator.relevantThemeBackgroundRaw(
+                themeBackgroundRaw: "#112233",
+                opaqueEditorCanvasEnabled: false,
+                translucentEnabled: false
+            ),
+            ""
+        )
+        XCTAssertEqual(
+            SettingsWindowConfigurator.relevantThemeBackgroundRaw(
+                themeBackgroundRaw: "#112233",
+                opaqueEditorCanvasEnabled: true,
+                translucentEnabled: false
+            ),
+            "#112233"
+        )
+    }
+
     func testVirtualEditorScrollSurfaceDoesNotPaintOpaqueDefaultBackground() {
         let scrollView = VirtualEditorScrollView(frame: NSRect(x: 0, y: 0, width: 480, height: 320))
 

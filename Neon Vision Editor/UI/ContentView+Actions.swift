@@ -1210,17 +1210,31 @@ extension ContentView {
             guard WindowViewModelRegistry.shared.viewModel(for: window.windowNumber) != nil else {
                 continue
             }
-            window.isOpaque = !enabled
-            window.backgroundColor = editorTranslucentBackgroundColor(
+            let isOpaque = !enabled
+            let backgroundColor = editorTranslucentBackgroundColor(
                 enabled: enabled,
                 isDarkMode: isDarkMode
             )
+            if window.isOpaque != isOpaque {
+                window.isOpaque = isOpaque
+            }
+            if window.backgroundColor != backgroundColor {
+                window.backgroundColor = backgroundColor
+            }
             // Keep chrome flags constant; toggling these causes visible top-bar jumps.
-            window.titlebarAppearsTransparent = true
-            window.toolbarStyle = .unified
-            window.styleMask.insert(.fullSizeContentView)
+            if !window.titlebarAppearsTransparent {
+                window.titlebarAppearsTransparent = true
+            }
+            if window.toolbarStyle != .unified {
+                window.toolbarStyle = .unified
+            }
+            if !window.styleMask.contains(.fullSizeContentView) {
+                window.styleMask.insert(.fullSizeContentView)
+            }
             if #available(macOS 13.0, *) {
-                window.titlebarSeparatorStyle = .none
+                if window.titlebarSeparatorStyle != .none {
+                    window.titlebarSeparatorStyle = .none
+                }
             }
         }
 #endif

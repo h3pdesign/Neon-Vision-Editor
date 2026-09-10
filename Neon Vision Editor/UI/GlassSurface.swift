@@ -58,10 +58,29 @@ struct GlassSurface<Content: View>: View {
     }
 
     var body: some View {
+        glassContent
+    }
+
+    @ViewBuilder
+    private var glassContent: some View {
+#if os(visionOS)
+        if enabled {
+            content
+                .glassBackgroundEffect(displayMode: .always)
+                .overlay(primaryChromeShape)
+                .overlay(secondaryChromeShape)
+        } else {
+            content
+                .background(backgroundStyle)
+                .overlay(primaryChromeShape)
+                .overlay(secondaryChromeShape)
+        }
+#else
         content
             .background(backgroundStyle)
             .overlay(primaryChromeShape)
             .overlay(secondaryChromeShape)
+#endif
     }
 
     @ViewBuilder

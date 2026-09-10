@@ -2123,7 +2123,7 @@ extension ContentView {
     @ViewBuilder
     var iPadUnifiedToolbarRow: some View {
         GlassSurface(
-            enabled: enableTranslucentWindow,
+            enabled: enableTranslucentWindow || visionOSSystemGlassEnabled,
             material: primaryGlassMaterial,
             fallbackColor: iOSNonTranslucentSurfaceColor,
             shape: .capsule,

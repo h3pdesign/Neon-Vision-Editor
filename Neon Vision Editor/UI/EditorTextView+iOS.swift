@@ -1821,6 +1821,7 @@ struct CustomTextEditor: UIViewRepresentable {
     let externalEditRevision: Int
     let language: String
     let colorScheme: ColorScheme
+    let ignoreBackgroundOverrides: Bool
     let fontSize: CGFloat
     @Binding var isLineWrapEnabled: Bool
     let isLargeFileMode: Bool
@@ -2057,7 +2058,11 @@ struct CustomTextEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> LineNumberedTextViewContainer {
         let container = LineNumberedTextViewContainer()
         let textView = container.textView
-        let theme = currentEditorTheme(colorScheme: colorScheme, formatting: formattingPreferences)
+        let theme = currentEditorTheme(
+            colorScheme: colorScheme,
+            formatting: formattingPreferences,
+            ignoreBackgroundOverrides: ignoreBackgroundOverrides
+        )
 
         textView.delegate = context.coordinator
         textView.isEditable = !isReadOnly
@@ -2258,7 +2263,11 @@ struct CustomTextEditor: UIViewRepresentable {
             context.coordinator.lastLineHeight = lineHeightMultiple
             context.coordinator.lastLetterSpacing = letterSpacing
         }
-        let theme = currentEditorTheme(colorScheme: colorScheme, formatting: formattingPreferences)
+        let theme = currentEditorTheme(
+            colorScheme: colorScheme,
+            formatting: formattingPreferences,
+            ignoreBackgroundOverrides: ignoreBackgroundOverrides
+        )
         let baseColor = UIColor(theme.text)
         textView.tintColor = UIColor(theme.cursor)
         textView.markdownFormattingEnabled = language.lowercased() == "markdown"
@@ -3038,7 +3047,11 @@ struct CustomTextEditor: UIViewRepresentable {
                 return
             }
 
-            let theme = currentEditorTheme(colorScheme: scheme, formatting: parent.formattingPreferences)
+            let theme = currentEditorTheme(
+                colorScheme: scheme,
+                formatting: parent.formattingPreferences,
+                ignoreBackgroundOverrides: parent.ignoreBackgroundOverrides
+            )
             let syntaxProfile = syntaxProfile(for: lang, text: nsText)
             let colors = SyntaxColors.from(theme: theme)
             let patterns = getSyntaxPatterns(for: lang, colors: colors, profile: syntaxProfile)

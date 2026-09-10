@@ -2787,15 +2787,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.7.1",
-            subtitle: "Release highlights for v1.7.1.",
+            title: "What’s New in v1.7.2",
+            subtitle: "Release highlights for v1.7.2.",
             bullets: [
-                "Editor Improvements: Keeps document tabs and editor surfaces consistent across supported Apple platforms.",
-                "Workflow Refinements: Applies the selected Light, Dark, or System appearance across the editor and its supporting windows.",
-                "Editor Navigation: Makes tab switching and Settings navigation feel immediate while preserving native controls.",
-                "Usability Updates: Preserves complete tab borders, spacing, and translucent surfaces during hover and appearance changes.",
-                "Editor Improvements: Replaces legacy tab-bar paths with native platform implementations and aligns mobile editor surfaces.",
-                "Workflow Refinements: Restores macOS dragging, cursor selection on iPhone/iPad/visionOS, themed Welcome Tour, and iOS exports."
+                "Editor Performance: Keeps editor chrome responsive and visually consistent across macOS, iOS, and iPadOS.",
+                "Large-file Highlighting: Reduces the visible delay before syntax highlighting appears when switching documents.",
+                "Performance Updates: Keeps the AI assistant, Markdown controls, and Find & Replace surfaces readable in opaque and translucent themes.",
+                "Usability Updates: Refines mobile tab transitions, tab spacing, toolbar placement, and theme-aware translucent surfaces.",
+                "Editor Improvements: Aligns the AI assistant panel, Markdown controls, and Find & Replace surfaces with the active sidebar and editor themes.",
+                "Accessible Controls: Prevents mobile tabs and toolbar controls from clipping at the edges during selection and scrolling."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -1287,7 +1287,7 @@ struct ContentView: View {
         )
     }
 #elseif os(iOS) || os(visionOS)
-    var primaryGlassMaterial: Material { colorScheme == .dark ? .regularMaterial : .ultraThinMaterial }
+    var primaryGlassMaterial: Material { effectiveEditorColorScheme == .dark ? .regularMaterial : .ultraThinMaterial }
     var toolbarFallbackColor: Color {
         // Keep mobile toolbar chrome on the active editor surface when the
         // solid fallback is used. System black/white made the toolbar look
@@ -1296,24 +1296,57 @@ struct ContentView: View {
     }
     var iOSNonTranslucentSurfaceColor: Color {
 #if os(visionOS)
-        if let readerSurface = VisionMarkdownPreviewReaderStyle(rawValue: markdownPreviewReaderStyleVisionRaw)?.editorSurfaceColor {
-            return readerSurface
+        if let readerStyle = VisionMarkdownPreviewReaderStyle(rawValue: markdownPreviewReaderStyleVisionRaw) {
+            if readerStyle == .systemGlass {
+                return .clear
+            }
+            if let readerSurface = readerStyle.editorSurfaceColor {
+                return readerSurface
+            }
         }
 #endif
-        return currentEditorTheme(colorScheme: colorScheme).background
+        return currentEditorTheme(colorScheme: effectiveEditorColorScheme).background
     }
     var useIOSUnifiedSolidSurfaces: Bool {
 #if os(visionOS)
-        if VisionMarkdownPreviewReaderStyle(rawValue: markdownPreviewReaderStyleVisionRaw)?.editorSurfaceColor != nil {
-            return true
+        if let readerStyle = VisionMarkdownPreviewReaderStyle(rawValue: markdownPreviewReaderStyleVisionRaw) {
+            return readerStyle != .systemGlass && readerStyle.editorSurfaceColor != nil
         }
 #endif
         return !enableTranslucentWindow
+    }
+    var visionOSSystemGlassEnabled: Bool {
+#if os(visionOS)
+        VisionMarkdownPreviewReaderStyle(rawValue: markdownPreviewReaderStyleVisionRaw) == .systemGlass
+#else
+        false
+#endif
     }
     var toolbarDensityScale: CGFloat { 1.0 }
     var toolbarDensityOpacity: Double { 1.0 }
 
 #endif
+
+    var effectiveEditorColorScheme: ColorScheme {
+#if os(visionOS)
+        switch VisionMarkdownPreviewReaderStyle(rawValue: markdownPreviewReaderStyleVisionRaw) {
+        case .dark, .ink:
+            return .dark
+        case .systemGlass, .paper, .slate, .none:
+            return .light
+        }
+#else
+        return colorScheme
+#endif
+    }
+
+    var effectiveMobileTranslucencyEnabled: Bool {
+#if os(iOS) || os(visionOS)
+        enableTranslucentWindow || visionOSSystemGlassEnabled
+#else
+        enableTranslucentWindow
+#endif
+    }
 
     var editorSurfaceBackgroundStyle: AnyShapeStyle {
 #if os(macOS)
@@ -1322,7 +1355,9 @@ struct ContentView: View {
         if useIOSUnifiedSolidSurfaces {
             return AnyShapeStyle(iOSNonTranslucentSurfaceColor)
         }
-        return enableTranslucentWindow ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear)
+        return (enableTranslucentWindow || visionOSSystemGlassEnabled)
+            ? AnyShapeStyle(.ultraThinMaterial)
+            : AnyShapeStyle(Color.clear)
 #endif
     }
 
@@ -1330,7 +1365,7 @@ struct ContentView: View {
 #if os(macOS)
         enableTranslucentWindow || !opaqueEditorSurfaceMac
 #else
-        enableTranslucentWindow
+        effectiveMobileTranslucencyEnabled
 #endif
     }
 
@@ -2537,6 +2572,10 @@ struct ContentView: View {
     // Layout: NavigationSplitView with optional sidebar and the primary code editor.
     var body: some View {
         lifecycleConfiguredRootView
+        // VisionOS reading surfaces own the editor appearance. Keep the
+        // system-glass and light presets from inheriting a dark window scheme,
+        // while Dark/Ink continue to render as a coherent dark surface.
+        .environment(\.colorScheme, effectiveEditorColorScheme)
         .onChange(of: showFindReplace) { _, isPresented in
             if isPresented {
                 refreshFindPreview()
@@ -3329,7 +3368,7 @@ struct ContentView: View {
                             language: contentView.currentLanguage,
                             contentUTF16Length: contentView.currentDocumentUTF16Length,
                             documentID: contentView.viewModel.selectedTabID,
-                            translucentBackgroundEnabled: contentView.enableTranslucentWindow,
+                            translucentBackgroundEnabled: contentView.effectiveMobileTranslucencyEnabled,
                             onItemSelected: {
                                 contentView.showCompactSidebarSheet = false
                             },
@@ -3379,7 +3418,7 @@ struct ContentView: View {
                                     showSupportedFilesOnly: contentView.showSupportedProjectFilesOnly,
                                     showHiddenFiles: contentView.showHiddenProjectFiles,
                                     ignoredFolderNamesRaw: contentView.$projectIgnoredFolderNamesRaw,
-                                    translucentBackgroundEnabled: contentView.enableTranslucentWindow,
+                                    translucentBackgroundEnabled: contentView.effectiveMobileTranslucencyEnabled,
                                     boundaryEdge: nil,
                                     onOpenFile: { contentView.openFileFromCompactProjectSidebar() },
                                     onOpenFolder: { contentView.openProjectFolderFromCompactProjectSidebar() },
@@ -4018,7 +4057,7 @@ struct ContentView: View {
                 language: currentLanguage,
                 contentUTF16Length: currentDocumentUTF16Length,
                 documentID: viewModel.selectedTabID,
-                translucentBackgroundEnabled: enableTranslucentWindow,
+                translucentBackgroundEnabled: effectiveMobileTranslucencyEnabled,
                 onItemSelected: {
 #if os(iOS)
                     if horizontalSizeClass == .compact {
@@ -4476,8 +4515,8 @@ struct ContentView: View {
                     documentID: tabID,
                     snapshotCacheKey: minimapSnapshotCacheKey(tabID: tabID, language: language),
                     text: minimapText,
-                    language: language,
-                    colorScheme: colorScheme,
+                language: language,
+            colorScheme: effectiveEditorColorScheme,
                     isLargeFileMode: effectiveLargeFileModeEnabled || isLoading,
                     onSelectLine: { line in
                         moveEditorFromMinimap(to: line, tabID: tabID)
@@ -4550,7 +4589,7 @@ struct ContentView: View {
             externalContentRevision: tab?.externalContentRevision ?? 0,
             storedCaretLocation: storedCaretLocation(for: tabID),
             language: language,
-            colorScheme: colorScheme,
+            colorScheme: effectiveEditorColorScheme,
             fontSize: editorFontSize,
             fontName: editorFontName,
             lineHeightMultiplier: editorLineHeight,
@@ -4613,7 +4652,8 @@ struct ContentView: View {
             storedCaretLocation: storedCaretLocation(for: tabID),
             externalEditRevision: editorExternalMutationRevision &+ (viewModel.selectedTab?.externalContentRevision ?? 0),
             language: language,
-            colorScheme: colorScheme,
+            colorScheme: effectiveEditorColorScheme,
+            ignoreBackgroundOverrides: visionOSSystemGlassEnabled,
             fontSize: editorFontSize,
             isLineWrapEnabled: lineWrapEnabled,
             isLargeFileMode: effectiveLargeFileModeEnabled,
@@ -5059,7 +5099,7 @@ struct ContentView: View {
             } else if showGitChangesEditor {
                 GitChangesEditorView(
                     gitViewModel: gitViewModel,
-                    translucentBackgroundEnabled: enableTranslucentWindow,
+                    translucentBackgroundEnabled: effectiveMobileTranslucencyEnabled,
                     onClose: { showGitChangesEditor = false }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -5141,7 +5181,7 @@ struct ContentView: View {
             editorAndPreview = AnyView(
                 GitChangesEditorView(
                     gitViewModel: gitViewModel,
-                    translucentBackgroundEnabled: enableTranslucentWindow,
+                    translucentBackgroundEnabled: effectiveMobileTranslucencyEnabled,
                     onClose: { showGitChangesEditor = false }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -5428,9 +5468,9 @@ struct ContentView: View {
         .tint(NeonUIStyle.accentBlue)
 #else
         .toolbarBackground(
-            enableTranslucentWindow
+            (enableTranslucentWindow || visionOSSystemGlassEnabled)
             ? AnyShapeStyle(.ultraThinMaterial)
-            : AnyShapeStyle(Color(.systemBackground)),
+            : AnyShapeStyle(Color.clear),
             for: ToolbarPlacement.navigationBar
         )
 #endif

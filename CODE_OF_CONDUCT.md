@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Neon Vision Editor expects everyone who participates in the project to behave
+We expects everyone who participates in the project to behave
 professionally. This Code of Conduct supports productive collaboration; it is
 not intended to regulate ordinary interpersonal friction or require agreement.
 
@@ -47,7 +47,7 @@ context, and avoid deciding significant conflicts of interest where practical.
 ## Reporting concerns
 
 Conduct concerns may be reported privately to
-[`contact@sylwellsoftware.com`](mailto:contact@sylwellsoftware.com). Reports
+[`contact@sylwellsoftware.com`](mailto:contact@apps-h3p.com). Reports
 will be handled with appropriate discretion. Please include the relevant
 project space, links or other evidence, and any immediate safety or access
 concerns when it is safe to do so.

@@ -147,6 +147,7 @@ extension ContentView {
 #if os(visionOS)
     enum VisionMarkdownPreviewReaderStyle: String, CaseIterable, Identifiable {
         case systemGlass
+        case dark
         case paper
         case slate
         case ink
@@ -156,6 +157,7 @@ extension ContentView {
         var title: String {
             switch self {
             case .systemGlass: return "System Glass"
+            case .dark: return "Dark"
             case .paper: return "Paper"
             case .slate: return "Slate"
             case .ink: return "Ink"
@@ -165,6 +167,7 @@ extension ContentView {
         var backgroundStyle: MarkdownPreviewBackgroundStyle {
             switch self {
             case .systemGlass: return .automatic
+            case .dark: return .ink
             case .paper: return .paper
             case .slate: return .slate
             case .ink: return .ink
@@ -175,6 +178,8 @@ extension ContentView {
             switch self {
             case .systemGlass:
                 return nil
+            case .dark:
+                return Color(red: 0.043, green: 0.043, blue: 0.051)
             case .paper:
                 return Color(red: 1.0, green: 0.992, blue: 0.969)
             case .slate:

@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.7.2] - 2026-09-09
+
 ### Why Upgrade
 
 - Keeps editor chrome responsive and visually consistent across macOS, iOS, and iPadOS.

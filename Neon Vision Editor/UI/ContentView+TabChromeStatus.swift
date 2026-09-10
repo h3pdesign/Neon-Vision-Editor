@@ -43,7 +43,7 @@ extension ContentView {
                 .padding(.vertical, 6)
         } else {
             GlassSurface(
-                enabled: enableTranslucentWindow,
+                enabled: enableTranslucentWindow || visionOSSystemGlassEnabled,
                 material: primaryGlassMaterial,
                 fallbackColor: iOSNonTranslucentSurfaceColor,
                 shape: .capsule,
@@ -804,7 +804,15 @@ extension ContentView {
                 )
             }
 #elseif os(visionOS)
-            scrollableFileTabBar
+            GlassSurface(
+                enabled: visionOSSystemGlassEnabled,
+                material: primaryGlassMaterial,
+                fallbackColor: iOSNonTranslucentSurfaceColor,
+                shape: .rounded(14),
+                chromeStyle: .single
+            ) {
+                scrollableFileTabBar
+            }
 #else
             EmptyView()
 #endif
@@ -827,7 +835,7 @@ extension ContentView {
         .background(
             enableTranslucentWindow
             ? AnyShapeStyle(.ultraThinMaterial)
-            : (useIOSUnifiedSolidSurfaces ? AnyShapeStyle(iOSNonTranslucentSurfaceColor) : AnyShapeStyle(Color(.systemBackground)))
+            : (useIOSUnifiedSolidSurfaces ? AnyShapeStyle(iOSNonTranslucentSurfaceColor) : AnyShapeStyle(Color.clear))
         )
         .contentShape(Rectangle())
         .zIndex(10)
@@ -857,7 +865,7 @@ extension ContentView {
                     .padding(5)
                     .background(
                         fileTabBarContainerShape
-                            .fill(Color.secondary.opacity(0.065))
+                            .fill(visionOSSystemGlassEnabled ? Color.clear : Color.secondary.opacity(0.065))
                     )
                     .overlay(
                         fileTabBarContainerShape

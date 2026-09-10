@@ -953,7 +953,8 @@ private struct EditorThemeResolutionCacheKey: Equatable {
 
 func currentEditorTheme(
     colorScheme: ColorScheme,
-    formatting: EditorFormattingPreferences? = nil
+    formatting: EditorFormattingPreferences? = nil,
+    ignoreBackgroundOverrides: Bool = false
 ) -> EditorTheme {
     let defaults = UserDefaults.standard
     if defaults.string(forKey: "SettingsThemeOverridesVersion") != "v2" {
@@ -979,8 +980,9 @@ func currentEditorTheme(
     let boldMarkdownHeadings = formatting?.boldMarkdownHeadings ?? defaults.bool(forKey: SettingsPreferenceKey.themeBoldMarkdownHeadings)
     let overridesData = defaults.data(forKey: SettingsPreferenceKey.themeHexOverrides)
     let overrides = ThemeOverrideDecodeCache.overrides(from: overridesData)
+    let colorSchemeID = colorScheme == .dark ? "dark" : "light"
     let cacheKey = EditorThemeResolutionCacheKey(
-        colorSchemeID: colorScheme == .dark ? "dark" : "light",
+        colorSchemeID: "\(colorSchemeID)|background-overrides:\(!ignoreBackgroundOverrides)",
         name: name,
         boldKeywords: boldKeywords,
         italicComments: italicComments,
@@ -1009,7 +1011,9 @@ func currentEditorTheme(
     let defaultTextHex = colorToHex(defaultPalette.text).lowercased()
     let overrideTextHex = themeOverrides["text"]?.lowercased()
     let hasTextOverride = savedCustomColors != nil || themeOverrides["textExplicit"] == "true" || (overrideTextHex != nil && overrideTextHex != defaultTextHex)
-    let explicitBackgroundOverride = backgroundOverrideHex(from: themeOverrides, colorScheme: colorScheme)
+    let explicitBackgroundOverride = ignoreBackgroundOverrides
+        ? nil
+        : backgroundOverrideHex(from: themeOverrides, colorScheme: colorScheme)
     let hasBackgroundOverride = explicitBackgroundOverride != nil
     if !themeOverrides.isEmpty {
         palette = ThemePalette(

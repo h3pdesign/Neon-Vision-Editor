@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.7.5] - 2026-09-11
+
 ### Why Upgrade
 
 - Restores reliable drag-to-reorder behavior for native macOS document tabs.

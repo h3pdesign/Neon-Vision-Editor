@@ -2787,15 +2787,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.7.4",
-            subtitle: "Release highlights for v1.7.4.",
+            title: "What’s New in v1.7.5",
+            subtitle: "Release highlights for v1.7.5.",
             bullets: [
-                "Editor Performance: Keeps Markdown and PDF project browsing responsive while large preview collections are prepared.",
-                "Workflow Refinements: Reduces avoidable SwiftUI panel invalidations as indexed project files finish loading.",
-                "Performance Updates: Preserves progressive preview feedback while publishing UI changes in bounded batches.",
-                "Usability Updates: Updates project-preview cards and progress in bounded batches instead of invalidating the complete panel for every indexed…",
-                "Editor Improvements: Prevents per-file loading-status publications from triggering redundant SwiftUI project-preview refreshes.",
-                "Workflow Refinements: Completes macOS 27 release readiness while keeping existing deployment targets and runtime availability checks for older…"
+                "Editor Improvements: Restores reliable drag-to-reorder behavior for native macOS document tabs.",
+                "Workflow Refinements: Makes large-document scrolling smoother by keeping ordinary scroll events on AppKit's composited path.",
+                "Performance Updates: Keeps the editor and minimap synchronized without repeating imperceptible viewport updates.",
+                "Usability Updates: Reuses prepared Core Text rows across fine-grained scrolling while retaining an ahead-of-viewport render window.",
+                "Editor Improvements: Prevents native tab items from being treated as draggable window background instead of receiving their own reorder gesture.",
+                "Workflow Refinements: Stops ordinary macOS editor scrolling from invalidating the complete canvas and rebuilding visual rows for subpoint movement."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

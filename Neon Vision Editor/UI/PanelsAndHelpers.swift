@@ -2787,15 +2787,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.7.2",
-            subtitle: "Release highlights for v1.7.2.",
+            title: "What’s New in v1.7.3",
+            subtitle: "Release highlights for v1.7.3.",
             bullets: [
-                "Editor Performance: Keeps editor chrome responsive and visually consistent across macOS, iOS, and iPadOS.",
-                "Large-file Highlighting: Reduces the visible delay before syntax highlighting appears when switching documents.",
-                "Performance Updates: Keeps the AI assistant, Markdown controls, and Find & Replace surfaces readable in opaque and translucent themes.",
-                "Usability Updates: Refines mobile tab transitions, tab spacing, toolbar placement, and theme-aware translucent surfaces.",
-                "Editor Improvements: Aligns the AI assistant panel, Markdown controls, and Find & Replace surfaces with the active sidebar and editor themes.",
-                "Accessible Controls: Prevents mobile tabs and toolbar controls from clipping at the edges during selection and scrolling."
+                "Editor Improvements: Completes macOS 27 release readiness while keeping existing deployment targets and runtime availability checks for older…",
+                "Editor Performance: Makes macOS theme changes, settings updates, and document-tab activation more responsive by avoiding redundant preference…",
+                "Performance Updates: Restores a coherent system-glass appearance across visionOS themes and reading surfaces.",
+                "Usability Updates: Enables the macOS 27 Agent Mode sources in Xcode 27 App Store and notarized builds while preserving runtime availability…",
+                "Editor Improvements: Validates the application with the macOS, iOS/iPadOS, and visionOS 27 SDKs accepted by App Store Connect.",
+                "Workflow Refinements: Prevents a theme selection from publishing ten process-wide preference changes and removes unrelated full-window…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

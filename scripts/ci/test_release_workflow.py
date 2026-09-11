@@ -49,6 +49,11 @@ def fixture(root):
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_release_all_forwards_resume_auto_to_both_preparation_calls(self):
+        script = (ROOT / "scripts/release_all.sh").read_text()
+        self.assertEqual(script.count('prep_cmd+=(--resume)'), 1)
+        self.assertEqual(script.count('preparation+=(--resume)'), 1)
+
     def test_xcode_selector_rejects_underscored_beta_candidates_for_production(self):
         with tempfile.TemporaryDirectory(prefix="nve-xcode-selector-") as temp:
             fake_xcodebuild = Path(temp) / "xcodebuild"

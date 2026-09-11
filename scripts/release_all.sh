@@ -685,6 +685,7 @@ VALIDATION_ROOT="$ROOT"
 if step_enabled prep && ! git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1; then
   preparation=(bash scripts/release_prep.sh "$TAG")
   if [[ ${#DATE_ARG[@]} -gt 0 ]]; then preparation+=("${DATE_ARG[@]}"); fi
+  if [[ "$RESUME_AUTO" -eq 1 ]]; then preparation+=(--resume); fi
   "${preparation[@]}"
   VALIDATION_ROOT="$(dirname "$ROOT")/$(basename "$ROOT")-release-${TAG#v}"
 fi
@@ -768,6 +769,9 @@ if step_enabled prep; then
     prep_cmd=(scripts/release_prep.sh "$TAG")
     if [[ ${#DATE_ARG[@]} -gt 0 ]]; then
       prep_cmd+=("${DATE_ARG[@]}")
+    fi
+    if [[ "$RESUME_AUTO" -eq 1 ]]; then
+      prep_cmd+=(--resume)
     fi
     prep_cmd+=(--push)
     "${prep_cmd[@]}"

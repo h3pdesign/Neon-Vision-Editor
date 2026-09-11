@@ -74,6 +74,18 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 self.assertNotIn(greedy_pattern, workflow)
                 self.assertGreaterEqual(workflow.count(balanced_pattern), 4)
 
+    def test_fallbacks_do_not_require_published_readme_before_publication(self):
+        workflows = (
+            ".github/workflows/release-notarized.yml",
+            ".github/workflows/release-notarized-selfhosted.yml",
+        )
+        for path in workflows:
+            with self.subTest(workflow=path):
+                workflow = (ROOT / path).read_text()
+                self.assertNotIn('grep -nE "^> Latest release:', workflow)
+                self.assertNotIn('grep -nE "^- Latest release:', workflow)
+                self.assertNotIn("releases/tag/${TAG_NAME}", workflow)
+
     def test_release_all_forwards_resume_auto_to_both_preparation_calls(self):
         script = (ROOT / "scripts/release_all.sh").read_text()
         self.assertEqual(script.count('prep_cmd+=(--resume)'), 1)

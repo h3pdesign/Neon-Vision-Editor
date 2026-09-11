@@ -92,7 +92,7 @@ jobs:
           EXISTING_KEYCHAINS=()
           while IFS= read -r keychain_path; do
             [[ -n "$keychain_path" ]] && EXISTING_KEYCHAINS+=("$keychain_path")
-          done < <(security list-keychains -d user | sed -E 's/^[[:space:]]*"?(.*)"?[[:space:]]*$/\1/' | awk 'NF')
+          done < <(security list-keychains -d user | sed -E 's/^[[:space:]]*"//; s/"[[:space:]]*$//' | awk 'NF')
           if (( ${#EXISTING_KEYCHAINS[@]} > 0 )); then
             security list-keychains -d user -s "$KEYCHAIN" "${EXISTING_KEYCHAINS[@]}"
           else
@@ -148,6 +148,8 @@ jobs:
             -destination "generic/platform=macOS" \
             -archivePath "$ARCHIVE_PATH" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            CODE_SIGN_STYLE=Manual \
             archive
 
       - name: Export app
@@ -466,21 +468,21 @@ jobs:
             RESTORE_LIST=()
             while IFS= read -r keychain_path; do
               [[ -n "$keychain_path" ]] && RESTORE_LIST+=("$keychain_path")
-            done < <(sed -E 's/^[[:space:]]*"?(.*)"?[[:space:]]*$/\1/' "$ORIGINAL_LIST" | awk 'NF')
+            done < <(sed -E 's/^[[:space:]]*"//; s/"[[:space:]]*$//' "$ORIGINAL_LIST" | awk 'NF')
             if (( ${#RESTORE_LIST[@]} > 0 )); then
               security list-keychains -d user -s "${RESTORE_LIST[@]}" || true
             fi
           fi
 
           if [[ -f "$ORIGINAL_DEFAULT" ]]; then
-            DEFAULT_KEYCHAIN="$(sed -E 's/^[[:space:]]*"?(.*)"?[[:space:]]*$/\1/' "$ORIGINAL_DEFAULT" | head -n1)"
+            DEFAULT_KEYCHAIN="$(sed -E 's/^[[:space:]]*"//; s/"[[:space:]]*$//' "$ORIGINAL_DEFAULT" | head -n1)"
             if [[ -n "${DEFAULT_KEYCHAIN:-}" ]]; then
               security default-keychain -d user -s "$DEFAULT_KEYCHAIN" || true
             fi
           fi
 
           if [[ -f "$ORIGINAL_LOGIN" ]]; then
-            LOGIN_KEYCHAIN="$(sed -E 's/^[[:space:]]*"?(.*)"?[[:space:]]*$/\1/' "$ORIGINAL_LOGIN" | head -n1)"
+            LOGIN_KEYCHAIN="$(sed -E 's/^[[:space:]]*"//; s/"[[:space:]]*$//' "$ORIGINAL_LOGIN" | head -n1)"
             if [[ -n "${LOGIN_KEYCHAIN:-}" ]]; then
               security login-keychain -d user -s "$LOGIN_KEYCHAIN" || true
             fi

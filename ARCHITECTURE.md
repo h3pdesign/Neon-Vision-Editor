@@ -334,10 +334,10 @@ Do not reattach Sparkle to the shared/App Store target to simplify project confi
 - `scripts/release_all.sh` orchestrates direct release modes and resumable hosted/self-hosted notarization paths.
 - `scripts/append_release_build_metadata.sh` adds the signed app build number to release notes.
 - `scripts/ci/release_gate.sh`, `scripts/ci/build_platform_matrix.sh`, and `scripts/ci/run_syntax_highlighting_regressions.swift` provide release, cross-platform, and focused syntax validation.
-- `.github/workflows/release-github-only.yml` builds the direct target, publishes release assets and a signed Sparkle appcast, explicitly dispatches Pages after appcast publication, and can prepare the Homebrew Cask update.
+- `.github/workflows/release-github-only.yml` builds the direct target, publishes release assets and a signed Sparkle appcast, and explicitly dispatches Pages after appcast publication.
 - `.github/workflows/post-release-documentation-sync.yml` waits at least ten minutes after each stable release, regenerates durable README, architecture, website, changelog, and Welcome Tour release surfaces from `CHANGELOG.md`, validates the result, and signed-commits any repaired drift to `main`.
 - Hosted and self-hosted notarized workflows are mirrored in `.github/workflows/` and `scripts/workflow-templates/`; changes to one path must keep its template counterpart synchronized.
-- Homebrew Cask handoff uses a short-lived GitHub App installation token to update a fork branch. The workflow summary exposes the exact upstream compare/PR URL when automatic upstream PR creation is not permitted.
+- Release workflows update only `h3pdesign/homebrew-tap`. They never create branches or pull requests in `Homebrew/homebrew-cask`; the official cask discovers published releases through its upstream `livecheck` configuration.
 - `SHA256SUMS.txt`, release asset checksums, code-signature verification, notarization, appcast signatures, and Homebrew hashes all describe the same published ZIP/DMG artifacts and must be regenerated together when an asset is replaced.
 
 Release reruns may operate on an existing tag, so workflows preserve historic download baselines and distinguish release version from build number. Security scanning uses repository-managed CodeQL configuration; do not add a competing advanced workflow unless the repository intentionally switches away from Default Setup.

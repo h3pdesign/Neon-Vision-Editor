@@ -119,6 +119,27 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 self.assertGreaterEqual(workflow.count("shasum -a 256 -c SHA256SUMS.txt"), 2)
                 self.assertIn('gh release delete-asset "$TAG_NAME" "SHA256SUMS.txt"', workflow)
 
+    def test_release_automation_never_submits_to_official_homebrew_cask(self):
+        release_paths = (
+            ".github/workflows/release-notarized.yml",
+            ".github/workflows/release-notarized-selfhosted.yml",
+            "scripts/workflow-templates/release-notarized.yml",
+            "scripts/workflow-templates/release-notarized-selfhosted.yml",
+        )
+        forbidden = (
+            "HOMEBREW_CASK_APP_CLIENT_ID",
+            "HOMEBREW_CASK_PRIVATE_KEY",
+            "create_homebrew_cask_pr.sh",
+            "repositories: homebrew-cask",
+            "cask_only",
+        )
+        for path in release_paths:
+            with self.subTest(workflow=path):
+                workflow = (ROOT / path).read_text()
+                self.assertIn("repos/h3pdesign/homebrew-tap/dispatches", workflow)
+                for value in forbidden:
+                    self.assertNotIn(value, workflow)
+
     def test_release_all_forwards_resume_auto_to_both_preparation_calls(self):
         script = (ROOT / "scripts/release_all.sh").read_text()
         self.assertEqual(script.count('prep_cmd+=(--resume)'), 1)

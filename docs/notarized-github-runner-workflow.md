@@ -56,7 +56,7 @@ Set these exact names:
 - `APPLE_TEAM_ID` (`CS727NF72U`)
 - `APPLE_APP_SPECIFIC_PASSWORD` (Apple app-specific password)
 
-The official Homebrew cask uses GitHub Releases livecheck. Homebrew's automated cask update service opens version pull requests after each published GitHub release; no Homebrew token or release-workflow step is required here.
+The official Homebrew cask uses GitHub Releases livecheck. Homebrew's own update service may open version pull requests after a published GitHub release. Neon Vision Editor release workflows must not create official-cask branches or pull requests; they update only `h3pdesign/homebrew-tap`.
 
 Set `MACOS_CERT_P12` from terminal:
 

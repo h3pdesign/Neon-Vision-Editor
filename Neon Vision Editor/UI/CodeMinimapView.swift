@@ -456,7 +456,9 @@ struct CodeMinimapView: View {
                   idString == documentID.uuidString,
                   let top = notification.userInfo?[EditorCommandUserInfo.viewportTopFraction] as? Double,
                   let height = notification.userInfo?[EditorCommandUserInfo.viewportHeightFraction] as? Double else { return }
-            viewport = CodeMinimapViewport(topFraction: top, heightFraction: height)
+            let nextViewport = CodeMinimapViewport(topFraction: top, heightFraction: height)
+            guard viewport != nextViewport else { return }
+            viewport = nextViewport
             EditorPerformanceMonitor.shared.endMinimapViewportUpdate(tabID: documentID)
         }
         .onAppear {

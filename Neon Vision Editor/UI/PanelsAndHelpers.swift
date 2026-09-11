@@ -2787,15 +2787,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.7.3",
-            subtitle: "Release highlights for v1.7.3.",
+            title: "What’s New in v1.7.4",
+            subtitle: "Release highlights for v1.7.4.",
             bullets: [
-                "Editor Improvements: Completes macOS 27 release readiness while keeping existing deployment targets and runtime availability checks for older…",
-                "Editor Performance: Makes macOS theme changes, settings updates, and document-tab activation more responsive by avoiding redundant preference…",
-                "Performance Updates: Restores a coherent system-glass appearance across visionOS themes and reading surfaces.",
-                "Usability Updates: Enables the macOS 27 Agent Mode sources in Xcode 27 App Store and notarized builds while preserving runtime availability…",
-                "Editor Improvements: Validates the application with the macOS, iOS/iPadOS, and visionOS 27 SDKs accepted by App Store Connect.",
-                "Workflow Refinements: Prevents a theme selection from publishing ten process-wide preference changes and removes unrelated full-window…"
+                "Editor Performance: Keeps Markdown and PDF project browsing responsive while large preview collections are prepared.",
+                "Workflow Refinements: Reduces avoidable SwiftUI panel invalidations as indexed project files finish loading.",
+                "Performance Updates: Preserves progressive preview feedback while publishing UI changes in bounded batches.",
+                "Usability Updates: Updates project-preview cards and progress in bounded batches instead of invalidating the complete panel for every indexed…",
+                "Editor Improvements: Prevents per-file loading-status publications from triggering redundant SwiftUI project-preview refreshes.",
+                "Workflow Refinements: Completes macOS 27 release readiness while keeping existing deployment targets and runtime availability checks for older…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

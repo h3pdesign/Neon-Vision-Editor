@@ -6,6 +6,30 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.7.4] - 2026-09-11
+
+### Why Upgrade
+
+- Keeps Markdown and PDF project browsing responsive while large preview collections are prepared.
+- Reduces avoidable SwiftUI panel invalidations as indexed project files finish loading.
+- Preserves progressive preview feedback while publishing UI changes in bounded batches.
+
+### Highlights
+
+- Updates project-preview cards and progress in bounded batches instead of invalidating the complete panel for every indexed file.
+
+### Fixes
+
+- Prevents per-file loading-status publications from triggering redundant SwiftUI project-preview refreshes.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.7.3] - 2026-09-11
 
 ### Why Upgrade

@@ -195,12 +195,12 @@ final class MarkdownProjectPreviewModel: ObservableObject {
                             totalCount: previewEntries.count,
                             generation: generation
                         )
+                        await self?.publishLoadingStatus(
+                            loadedCount: loadedCount,
+                            totalCount: previewEntries.count,
+                            generation: generation
+                        )
                     }
-                    await self?.publishLoadingStatus(
-                        loadedCount: loadedCount,
-                        totalCount: previewEntries.count,
-                        generation: generation
-                    )
                     if let nextEntry = pendingEntries.next() {
                         group.addTask(priority: .background) {
                             guard !Task.isCancelled else { return nil }

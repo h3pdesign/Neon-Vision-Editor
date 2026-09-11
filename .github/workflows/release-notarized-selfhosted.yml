@@ -15,7 +15,7 @@ on:
         type: boolean
 
 permissions:
-  actions: read
+  actions: write
   contents: write
   issues: write
 

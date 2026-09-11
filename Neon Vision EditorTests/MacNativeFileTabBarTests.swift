@@ -68,6 +68,17 @@ final class MacNativeFileTabBarTests: XCTestCase {
         XCTAssertEqual(move?.2, false)
     }
 
+    func testTabItemsRejectWindowBackgroundDraggingSoReorderingReceivesMouseDrags() throws {
+        let id = UUID()
+        let view = MacNativeFileTabBarView(frame: NSRect(x: 0, y: 0, width: 600, height: 42))
+        view.apply(tabs: [snapshot(id: id, title: "Document")], selectedTabID: id)
+
+        let tabItem = try XCTUnwrap(view.descendants.first {
+            NSStringFromClass(type(of: $0)).contains("MacNativeFileTabItemView")
+        })
+        XCTAssertFalse(tabItem.mouseDownCanMoveWindow)
+    }
+
     func testKeyboardAdjacentSelectionUsesOrderedTabsAndStopsAtEdges() {
         let firstID = UUID()
         let secondID = UUID()
@@ -242,6 +253,12 @@ final class MacNativeFileTabBarTests: XCTestCase {
             isRemote: false,
             isReadOnly: false
         )
+    }
+}
+
+private extension NSView {
+    var descendants: [NSView] {
+        subviews + subviews.flatMap(\.descendants)
     }
 }
 #endif

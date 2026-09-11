@@ -1,7 +1,7 @@
 # Release workflow
 
 When asked to make a new release, start from clean `develop` aligned with
-`origin/develop`. The next planned version is **1.7.4**. OS 27 features are
+`origin/develop`. The next planned version is **1.7.5**. OS 27 features are
 part of `develop`; App Store builds must use Xcode 27 or later so their
 SDK-qualified sources are included, while older SDK builds retain compatibility.
 
@@ -23,7 +23,7 @@ the GitHub release version or a pending review submission.
 ## Offline rehearsal
 
 ```bash
-bash scripts/release_all.sh v1.7.4 --dry-run
+bash scripts/release_all.sh v1.7.5 --dry-run
 python3 scripts/ci/test_release_workflow.py
 ```
 
@@ -103,14 +103,14 @@ Manual non-Cloud App Store uploads also need separate coordination.
    tag and the release notes. Move every issue that remains open in the release
    milestone to the next planned version milestone without closing the issue,
    then close the emptied release milestone before running the release gate.
-2. Run `bash scripts/release_prep.sh v1.7.4`. This creates a sibling worktree on
-   `release/1.7.4`, writes `release/prepared-release.json`, generates documentation
+2. Run `bash scripts/release_prep.sh v1.7.5`. This creates a sibling worktree on
+   `release/1.7.5`, writes `release/prepared-release.json`, generates documentation
    and makes a signed commit. The original checkout stays unchanged.
 3. Review the worktree. Repeating preparation reuses its source, date and build.
    If interrupted, inspect the preserved worktree before using `--resume`.
    That explicit option regenerates release-owned files only; unrelated edits
    block it. Changed develop or a conflicting date requires manual reconciliation.
-4. For the complete authorized release, run `bash scripts/release_all.sh v1.7.4
+4. For the complete authorized release, run `bash scripts/release_all.sh v1.7.5
    --github-hosted`. Preparation is followed by documentation and platform/release
    gates before pushing the protected main PR. Existing prepared work is reused.
 5. After the PR merges, dispatch the hosted workflow with the exact merge SHA.

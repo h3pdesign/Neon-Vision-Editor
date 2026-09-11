@@ -349,6 +349,59 @@ enum VirtualEditorScrollAnchorPolicy {
     }
 }
 
+struct VirtualEditorVisualRowsCacheKey: Equatable {
+    let configuration: String
+    let contentRevision: Int?
+    let externalContentRevision: Int?
+    let viewportLineOrigin: Int
+    let availableWidthInHalfPoints: Int
+    let lineHeightInHundredths: Int
+}
+
+enum VirtualEditorVisualRowWindowPolicy {
+    /// Keeps one full viewport of rows prepared beyond the visible bottom. The
+    /// coverage boundary advances one page at a time, so subpoint scrolling
+    /// never invalidates an otherwise reusable Core Text row snapshot.
+    static func coveredMaxY(
+        visibleMaxY: CGFloat,
+        viewportHeight: CGFloat,
+        lineHeight: CGFloat
+    ) -> CGFloat {
+        let safeLineHeight = max(1, lineHeight)
+        let rowsPerPage = max(1, Int(ceil(max(safeLineHeight, viewportHeight) / safeLineHeight)))
+        let requiredRow = max(1, Int(ceil((max(0, visibleMaxY) + max(safeLineHeight, viewportHeight)) / safeLineHeight)))
+        let coveredRows = Int(ceil(Double(requiredRow) / Double(rowsPerPage))) * rowsPerPage
+        return CGFloat(coveredRows) * safeLineHeight
+    }
+}
+
+struct VirtualEditorViewportPublicationSnapshot: Equatable {
+    let documentIdentifier: String?
+    let topFraction: Double
+    let heightFraction: Double
+}
+
+enum VirtualEditorViewportPublicationPolicy {
+    static let minimumFractionDelta = 0.001
+
+    static func shouldPublish(
+        previous: VirtualEditorViewportPublicationSnapshot?,
+        next: VirtualEditorViewportPublicationSnapshot,
+        force: Bool = false
+    ) -> Bool {
+        guard !force, let previous else { return true }
+        guard previous.documentIdentifier == next.documentIdentifier else { return true }
+        return abs(previous.topFraction - next.topFraction) >= minimumFractionDelta ||
+            abs(previous.heightFraction - next.heightFraction) >= minimumFractionDelta
+    }
+}
+
+enum VirtualEditorCanvasInvalidationPolicy {
+    static func requiresFullInvalidation(didReloadViewport: Bool, didResize: Bool) -> Bool {
+        didReloadViewport || didResize
+    }
+}
+
 /// The macOS production editor surface. It intentionally does not use NSTextView
 /// or TextKit: only a bounded EditorDocument viewport is decoded and laid out.
 struct VirtualEditorView: NSViewRepresentable {
@@ -608,6 +661,8 @@ final class VirtualEditorScrollView: NSScrollView {
     private var isSplitPaneResizeInProgress = false
     private var viewportGeometryRetryCount = 0
     private var isViewportGeometryRetryScheduled = false
+    private var isViewportPublicationScheduled = false
+    private var lastPublishedViewport: VirtualEditorViewportPublicationSnapshot?
     var focusesEditorOnInitialWindowAttachment = false
     private var didRequestInitialEditorFocus = false
 
@@ -666,7 +721,7 @@ final class VirtualEditorScrollView: NSScrollView {
     @objc private func handleEditorViewportRequest(_ notification: Notification) {
         guard let requestedID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
               requestedID == canvas.documentIdentifier else { return }
-        publishViewport()
+        publishViewport(force: true)
     }
 
     override func magnify(with event: NSEvent) {
@@ -804,6 +859,10 @@ final class VirtualEditorScrollView: NSScrollView {
     }
 
     @objc private func boundsDidChange() {
+        updateForVisibleBoundsChange()
+    }
+
+    func updateForVisibleBoundsChange() {
         let scrollY = contentView.bounds.minY
         let didScroll = abs(scrollY - canvas.lastScrollY) >= 0.5
         let didResize: Bool
@@ -820,30 +879,52 @@ final class VirtualEditorScrollView: NSScrollView {
         let previousViewportOrigin = canvas.viewportLineOrigin
         canvas.reloadViewportIfNeeded(scrollY: scrollY)
         let didReloadViewport = previousViewportOrigin != canvas.viewportLineOrigin
-        if didReloadViewport || didResize {
+        if VirtualEditorCanvasInvalidationPolicy.requiresFullInvalidation(
+            didReloadViewport: didReloadViewport,
+            didResize: didResize
+        ) {
             canvas.recalculateVisualMetrics()
             canvas.setFrameSize(NSSize(width: canvas.contentWidth, height: canvas.logicalHeight))
             canvas.lastReloadAnchorLine = canvas.viewportLineOrigin
+            // Viewport replacement and geometry changes alter pixels. Ordinary
+            // scrolling only moves the clip view across the existing canvas.
+            canvas.needsLayout = true
+            canvas.needsDisplay = true
+            reflectScrolledClipView(contentView)
         }
-        // A bounded viewport replacement invalidates the canvas while the clip
-        // view is scrolling. Let AppKit coalesce the redraw with its normal
-        // layout transaction instead of forcing synchronous layout and display
-        // work into the scroll callback.
-        canvas.needsLayout = true
-        canvas.needsDisplay = true
-        reflectScrolledClipView(contentView)
-        publishViewport()
+        scheduleViewportPublication()
     }
 
-    private func publishViewport() {
+    private func scheduleViewportPublication() {
+        guard !isViewportPublicationScheduled else { return }
+        isViewportPublicationScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.isViewportPublicationScheduled = false
+            self.publishViewport()
+        }
+    }
+
+    private func publishViewport(force: Bool = false) {
         let maximum = max(1, canvas.logicalHeight - contentView.bounds.height)
+        let next = VirtualEditorViewportPublicationSnapshot(
+            documentIdentifier: canvas.documentIdentifier,
+            topFraction: Double(contentView.bounds.minY / maximum),
+            heightFraction: Double(contentView.bounds.height / max(1, canvas.logicalHeight))
+        )
+        guard VirtualEditorViewportPublicationPolicy.shouldPublish(
+            previous: lastPublishedViewport,
+            next: next,
+            force: force
+        ) else { return }
+        lastPublishedViewport = next
         NotificationCenter.default.post(
             name: .editorViewportDidChange,
             object: nil,
             userInfo: [
-                EditorCommandUserInfo.documentID: canvas.documentIdentifier as Any,
-                EditorCommandUserInfo.viewportTopFraction: Double(contentView.bounds.minY / maximum),
-                EditorCommandUserInfo.viewportHeightFraction: Double(contentView.bounds.height / max(1, canvas.logicalHeight))
+                EditorCommandUserInfo.documentID: next.documentIdentifier as Any,
+                EditorCommandUserInfo.viewportTopFraction: next.topFraction,
+                EditorCommandUserInfo.viewportHeightFraction: next.heightFraction
             ]
         )
     }
@@ -957,7 +1038,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var layoutCache: [Int: CTLine] = [:]
     private var attributedLineCache: [Int: NSAttributedString] = [:]
     private var visualFragmentCache = VirtualEditorVisualFragmentCache()
-    private var visualRowsSnapshot: (key: String, rows: [VisualRow])?
+    private var visualRowsSnapshot: (key: VirtualEditorVisualRowsCacheKey, coveredMaxY: CGFloat, rows: [VisualRow])?
     private var syntaxSpansByLine: [Int: [VirtualEditorSyntaxSpan]] = [:]
     private(set) var syntaxHighlightTask: Task<Void, Never>?
     private var deferredViewportTask: Task<Void, Never>?
@@ -1712,16 +1793,23 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         // metrics have been recalculated. The viewport is the current editor
         // allocation and is therefore the authoritative wrapping width.
         let availableWidth = max(1, viewportSize.width - gutterWidth - 16)
-        let snapshotKey = [
-            lastConfigurationKey,
-            String(configuredContentRevision ?? 0),
-            String(configuredExternalContentRevision ?? 0),
-            String(viewportLineOrigin),
-            String(Int((availableWidth * 2).rounded())),
-            String(Int(((enclosingScrollView?.contentView.bounds.maxY ?? viewportSize.height) * 2).rounded())),
-            String(Int((lineHeight * 100).rounded()))
-        ].joined(separator: "|")
-        if let visualRowsSnapshot, visualRowsSnapshot.key == snapshotKey {
+        let snapshotKey = VirtualEditorVisualRowsCacheKey(
+            configuration: lastConfigurationKey,
+            contentRevision: configuredContentRevision,
+            externalContentRevision: configuredExternalContentRevision,
+            viewportLineOrigin: viewportLineOrigin,
+            availableWidthInHalfPoints: Int((availableWidth * 2).rounded()),
+            lineHeightInHundredths: Int((lineHeight * 100).rounded())
+        )
+        let visibleBounds = enclosingScrollView?.contentView.bounds
+        let coveredMaxY = VirtualEditorVisualRowWindowPolicy.coveredMaxY(
+            visibleMaxY: visibleBounds?.maxY ?? viewportSize.height,
+            viewportHeight: visibleBounds?.height ?? viewportSize.height,
+            lineHeight: lineHeight
+        )
+        if let visualRowsSnapshot,
+           visualRowsSnapshot.key == snapshotKey,
+           visualRowsSnapshot.coveredMaxY >= coveredMaxY {
             return visualRowsSnapshot.rows
         }
         var rows: [VisualRow] = []
@@ -1732,8 +1820,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         )
         for viewportLine in viewportLines {
             let estimatedBaseline = baseline
-            let viewportMaxY = (enclosingScrollView?.contentView.bounds.maxY ?? viewportSize.height) + lineHeight * 2
-            if estimatedBaseline > viewportMaxY {
+            if estimatedBaseline > coveredMaxY {
                 break
             }
             let fragments = cachedVisualFragments(
@@ -1753,7 +1840,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 baseline += lineHeight
             }
         }
-        visualRowsSnapshot = (snapshotKey, rows)
+        visualRowsSnapshot = (snapshotKey, coveredMaxY, rows)
         return rows
     }
 

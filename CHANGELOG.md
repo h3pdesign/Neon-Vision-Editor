@@ -6,6 +6,32 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.7.5] - 2026-09-11
+
+### Why Upgrade
+
+- Restores reliable drag-to-reorder behavior for native macOS document tabs.
+- Makes large-document scrolling smoother by keeping ordinary scroll events on AppKit's composited path.
+- Keeps the editor and minimap synchronized without repeating imperceptible viewport updates.
+
+### Highlights
+
+- Reuses prepared Core Text rows across fine-grained scrolling while retaining an ahead-of-viewport render window.
+
+### Fixes
+
+- Prevents native tab items from being treated as draggable window background instead of receiving their own reorder gesture.
+- Stops ordinary macOS editor scrolling from invalidating the complete canvas and rebuilding visual rows for subpoint movement.
+- Coalesces editor viewport publications and avoids duplicate SwiftUI minimap state updates.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.7.4] - 2026-09-11
 
 ### Why Upgrade

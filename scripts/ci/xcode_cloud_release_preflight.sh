@@ -31,17 +31,18 @@ scripts/ci/storekit_configuration_audit.sh
 
 # Select a full Xcode installation even when the host's xcode-select currently
 # points at CommandLineTools. The shared selector prefers the newest stable
-# Xcode 17+ installation and rejects beta Xcode unless explicitly allowed for
+# Xcode 27+ installation and rejects beta Xcode unless explicitly allowed for
 # local metadata checks.
 if [[ "$allow_beta_toolchain" -eq 1 ]]; then
   export NVE_ALLOW_BETA_XCODE=1
 fi
 if ! source scripts/ci/select_xcode17.sh; then
-  fail "A compatible public Xcode 17+ installation that can open this project is not available."
+  fail "A compatible public Xcode 27+ installation that can open this project is not available."
 fi
 
 active_developer_dir="${DEVELOPER_DIR:-$(xcode-select -p 2>/dev/null || true)}"
-if [[ "$active_developer_dir" == *Xcode-beta.app/* ]]; then
+if [[ "$active_developer_dir" == *Xcode-beta.app/* ||
+      "$active_developer_dir" == *Xcode_*_beta*.app/* ]]; then
   echo "warning: allowing beta toolchain for local metadata checks only; do not upload this archive to App Store Connect." >&2
 fi
 
@@ -49,9 +50,9 @@ xcode_version="$(xcodebuild -version 2>/dev/null || true)"
 printf '%s\n' "$xcode_version"
 [[ "$xcode_version" == Xcode* ]] || fail "xcodebuild is not available from a full Xcode installation."
 
-major="$(printf '%s\n' "$xcode_version" | awk '/^Xcode / {split($2, v, "."); print v[1]; exit}')"
-[[ "$major" =~ ^[0-9]+$ ]] || fail "Unable to read Xcode major version."
-[[ "$major" -ge 17 ]] || fail "Xcode 17 or newer is required."
+require_xcode_major 27 || fail "Xcode 27 or newer is required for OS 27 App Store builds."
+require_sdk_major 27 macosx iphoneos iphonesimulator xros || \
+  fail "The complete OS 27 SDK family is required for App Store builds."
 
 if ! xcodebuild -list -project "$project" >/tmp/nve_xcode_cloud_preflight_schemes.txt; then
   fail "Xcode cannot open $project."
@@ -61,6 +62,16 @@ if ! grep -qx "        $app_store_scheme" /tmp/nve_xcode_cloud_preflight_schemes
   fail "Shared App Store scheme '$app_store_scheme' was not found."
 fi
 rm -f /tmp/nve_xcode_cloud_preflight_schemes.txt
+
+app_store_build_settings="$(xcodebuild \
+  -project "$project" \
+  -scheme "$app_store_scheme" \
+  -configuration Release \
+  -sdk macosx \
+  -showBuildSettings 2>/dev/null)"
+active_conditions="$(printf '%s\n' "$app_store_build_settings" | awk -F ' = ' '/^[[:space:]]*SWIFT_ACTIVE_COMPILATION_CONDITIONS = / {print $2; exit}')"
+[[ " $active_conditions " == *" MACOS_27_AGENTIC_EDITOR "* ]] || \
+  fail "The App Store Release configuration does not enable the macOS 27 Agent Mode sources."
 
 project_marker="$(awk '/LastUpgradeCheck = / {gsub(/[^0-9]/, "", $3); print $3; exit}' "$project/project.pbxproj")"
 [[ -n "$project_marker" ]] || fail "Unable to read LastUpgradeCheck from $project."

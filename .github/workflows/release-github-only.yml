@@ -57,7 +57,9 @@ jobs:
       cancel-in-progress: false
     environment:
       name: github-release
-    runs-on: macos-26
+    # The production gate below rejects the preview beta until GitHub updates
+    # this image to Xcode 27 RC or a later public release.
+    runs-on: xcode-27
 
     steps:
       - name: Check required secrets
@@ -178,7 +180,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: scripts/ci/release_notes_quality_gate.sh "$TAG_NAME"
 
-      - name: Select Xcode 17+
+      - name: Select Xcode 27+
         run: |
           set -euo pipefail
           if [[ -x scripts/ci/select_xcode17.sh ]]; then
@@ -188,11 +190,8 @@ jobs:
             exit 1
           fi
           xcodebuild -version
-          XCODE_MAJOR="$(xcodebuild -version | awk '/Xcode/ {split($2,v,"."); print v[1]}' | head -n1)"
-          if [[ -z "${XCODE_MAJOR}" || "${XCODE_MAJOR}" -lt 17 ]]; then
-            echo "Xcode 17+ is required for release builds." >&2
-            exit 1
-          fi
+          require_xcode_major 27
+          require_sdk_major 27 macosx
 
       - name: Import signing certificate
         env:

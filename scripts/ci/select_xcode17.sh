@@ -29,12 +29,18 @@ project_is_openable() {
   [[ -f "Neon Vision Editor.xcodeproj/project.pbxproj" ]]
 }
 
+developer_dir_is_beta() {
+  local developer_dir="$1"
+  [[ "$developer_dir" == *Xcode-beta.app/* ||
+     "$developer_dir" == *Xcode_*_beta*.app/* ]]
+}
+
 active_xcode_is_beta() {
   local active_developer_dir="${DEVELOPER_DIR:-}"
   if [[ -z "$active_developer_dir" ]]; then
     active_developer_dir="$(xcode-select -p 2>/dev/null || true)"
   fi
-  [[ "$active_developer_dir" == *Xcode-beta.app/* ]]
+  developer_dir_is_beta "$active_developer_dir"
 }
 
 beta_xcode_allowed() {
@@ -69,14 +75,14 @@ select_best_compatible_xcode() {
     if [[ -z "$major" || ! "$major" =~ ^[0-9]+$ || "$major" -lt 17 ]]; then
       continue
     fi
-    if [[ "$candidate" == *Xcode-beta.app/* ]] && ! beta_xcode_allowed; then
+    if developer_dir_is_beta "$candidate" && ! beta_xcode_allowed; then
       continue
     fi
     minor="$(echo "$version" | awk -F. '{print ($2 == "" ? 0 : $2)}')"
     patch="$(echo "$version" | awk -F. '{print ($3 == "" ? 0 : $3)}')"
     # Release builds should prefer a compatible stable Xcode over a newer beta.
     stability=1
-    if [[ "$candidate" == *Xcode-beta.app/* ]]; then
+    if developer_dir_is_beta "$candidate"; then
       stability=0
     fi
     key="$(printf "%01d%03d%03d%03d" "$stability" "$major" "$minor" "$patch")"
@@ -91,6 +97,28 @@ select_best_compatible_xcode() {
   has_xcode17_or_newer || return 1
   project_is_openable || return 1
   echo "Using DEVELOPER_DIR=$DEVELOPER_DIR"
+}
+
+require_xcode_major() {
+  local required_major="$1"
+  local actual_major
+  if ! actual_major="$(get_xcode_major)" || [[ "$actual_major" -lt "$required_major" ]]; then
+    echo "Xcode ${required_major} or newer is required." >&2
+    return 1
+  fi
+}
+
+require_sdk_major() {
+  local required_major="$1"
+  shift
+  local sdk sdk_version
+  for sdk in "$@"; do
+    sdk_version="$(xcrun --sdk "$sdk" --show-sdk-version 2>/dev/null || true)"
+    if [[ "$sdk_version" != "${required_major}."* ]]; then
+      echo "Expected ${sdk} ${required_major}.x SDK, found ${sdk_version:-none}." >&2
+      return 1
+    fi
+  done
 }
 
 if [[ -n "${DEVELOPER_DIR:-}" ]]; then

@@ -49,6 +49,30 @@ def fixture(root):
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_xcode_selector_rejects_underscored_beta_candidates_for_production(self):
+        with tempfile.TemporaryDirectory(prefix="nve-xcode-selector-") as temp:
+            fake_xcodebuild = Path(temp) / "xcodebuild"
+            fake_xcodebuild.write_text('#!/bin/sh\nprintf "Xcode 27.0\\nBuild version 27A5252f\\n"\n')
+            fake_xcodebuild.chmod(0o755)
+            script = r'''
+                export NVE_ALLOW_BETA_XCODE=1
+                source scripts/ci/select_xcode17.sh
+                candidate_developer_dirs() {
+                  printf '%s\n' /Applications/Xcode_27_beta_6.app/Contents/Developer
+                }
+                unset NVE_ALLOW_BETA_XCODE
+                if select_best_compatible_xcode; then
+                  exit 91
+                fi
+                export NVE_ALLOW_BETA_XCODE=1
+                select_best_compatible_xcode >/dev/null
+                [[ "$DEVELOPER_DIR" == /Applications/Xcode_27_beta_6.app/Contents/Developer ]]
+            '''
+            env = dict(os.environ, PATH=temp + os.pathsep + os.environ["PATH"])
+            result = subprocess.run(["bash", "-c", script], cwd=ROOT, env=env,
+                                    text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_ref_inventory_accepts_no_named_refs(self):
         with tempfile.TemporaryDirectory(prefix="nve-empty-refs-") as temp:
             root = Path(temp)

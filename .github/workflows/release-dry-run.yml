@@ -22,7 +22,7 @@ jobs:
     concurrency:
       group: release-dry-run-${{ inputs.tag }}
       cancel-in-progress: true
-    runs-on: macos-15
+    runs-on: xcode-27
     steps:
       - name: Checkout repository
         env:
@@ -46,6 +46,7 @@ jobs:
       - name: Run release preflight
         env:
           TAG: ${{ inputs.tag }}
+          NVE_ALLOW_BETA_XCODE: 1
         run: |
           set -euo pipefail
           scripts/ci/release_preflight.sh "$TAG"

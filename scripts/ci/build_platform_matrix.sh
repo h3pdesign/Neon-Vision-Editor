@@ -5,6 +5,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 source scripts/ci/select_xcode17.sh
+require_xcode_major 27
+require_sdk_major 27 macosx iphoneos iphonesimulator xros
 
 PROJECT="${PROJECT:-Neon Vision Editor.xcodeproj}"
 SCHEME="${SCHEME:-Neon Vision Editor}"

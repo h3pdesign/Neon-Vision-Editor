@@ -202,7 +202,7 @@ Use this path when the local Mac is on beta macOS or beta Xcode.
    - Repository: `h3pdesign/Neon-Vision-Editor`
    - Branch: `main`
    - Scheme: `Neon Vision Editor AppStore`
-   - Xcode: latest public GM release, not beta
+   - Xcode: Xcode 27 RC or a later public release, not beta
    - Clean build: enabled
    - Archive action: enabled
    - Distribution: TestFlight or App Store Connect
@@ -221,7 +221,7 @@ Use this path when the local Mac is on beta macOS or beta Xcode.
    - Select the processed build on the app version
    - Submit for review
 
-If Xcode Cloud fails with future project metadata, open the project once with the latest public GM Xcode, save it, commit that project-file change, push, and rerun the workflow.
+If Xcode Cloud fails with future project metadata, open the project once with Xcode 27 RC or a later public release, save it, commit that project-file change, push, and rerun the workflow.
 
 ## How To Use Codex For This Release
 

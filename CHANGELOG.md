@@ -6,6 +6,10 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Maintenance
+
+- Removes official Homebrew Cask branch and pull-request generation from release automation. Releases continue updating `h3pdesign/homebrew-tap`, while the official cask relies on Homebrew's upstream livecheck process.
+
 ## [v1.7.5] - 2026-09-11
 
 ### Why Upgrade

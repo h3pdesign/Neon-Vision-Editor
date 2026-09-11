@@ -54,12 +54,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.7.4**
+> Latest release: **v1.7.5**
 > Next release target: **v1.7.5**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.7.4** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-09-11** for latest release **v1.7.4**
+> Last updated (README): **2026-09-11** for latest release **v1.7.5**
 
 ## What's New in v1.7.3 and v1.7.4
 
@@ -163,7 +163,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=11117&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=11179&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -773,7 +773,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.7.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.7.2) | **A more deliberate workflow** — Keeps editor chrome responsive and visually consistent across macOS, iOS, and iPadOS. | Prevents mobile tabs and toolbar controls from clipping at the edges during selection and scrolling. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.7.4**
+- Latest release: **v1.7.5**
 - Compare recent changes: [v1.7.3...v1.7.4](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.7.3...v1.7.4)
 
 ## Known Limitations

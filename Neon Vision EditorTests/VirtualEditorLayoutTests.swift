@@ -658,6 +658,90 @@ final class VirtualEditorLayoutTests: XCTestCase {
         )
     }
 
+    func testOrdinaryScrollDoesNotRequireWholeCanvasInvalidation() {
+        XCTAssertFalse(VirtualEditorCanvasInvalidationPolicy.requiresFullInvalidation(
+            didReloadViewport: false,
+            didResize: false
+        ))
+        XCTAssertTrue(VirtualEditorCanvasInvalidationPolicy.requiresFullInvalidation(
+            didReloadViewport: true,
+            didResize: false
+        ))
+        XCTAssertTrue(VirtualEditorCanvasInvalidationPolicy.requiresFullInvalidation(
+            didReloadViewport: false,
+            didResize: true
+        ))
+    }
+
+    func testOrdinaryBoundsChangeLeavesCanvasLayoutAndDisplayValid() throws {
+        let scrollView = VirtualEditorScrollView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        scrollView.layoutSubtreeIfNeeded()
+        scrollView.updateForVisibleBoundsChange()
+        let canvas = try XCTUnwrap(scrollView.documentView as? VirtualEditorCanvas)
+
+        scrollView.contentView.postsBoundsChangedNotifications = false
+        scrollView.contentView.setBoundsOrigin(NSPoint(x: 0, y: 1))
+        canvas.needsLayout = false
+        canvas.needsDisplay = false
+        scrollView.updateForVisibleBoundsChange()
+
+        XCTAssertFalse(canvas.needsLayout)
+        XCTAssertFalse(canvas.needsDisplay)
+    }
+
+    func testVisualRowCoverageIsStableAcrossSubpointScrolling() {
+        let first = VirtualEditorVisualRowWindowPolicy.coveredMaxY(
+            visibleMaxY: 550,
+            viewportHeight: 600,
+            lineHeight: 20
+        )
+        let next = VirtualEditorVisualRowWindowPolicy.coveredMaxY(
+            visibleMaxY: 550.5,
+            viewportHeight: 600,
+            lineHeight: 20
+        )
+
+        XCTAssertEqual(first, next)
+        XCTAssertGreaterThanOrEqual(first, 1_150)
+        XCTAssertEqual(first.truncatingRemainder(dividingBy: 20), 0)
+    }
+
+    func testViewportPublicationIgnoresImperceptibleMovementButNotDocumentChanges() {
+        let previous = VirtualEditorViewportPublicationSnapshot(
+            documentIdentifier: "first",
+            topFraction: 0.25,
+            heightFraction: 0.1
+        )
+        let subthreshold = VirtualEditorViewportPublicationSnapshot(
+            documentIdentifier: "first",
+            topFraction: 0.2505,
+            heightFraction: 0.1
+        )
+        let visibleMovement = VirtualEditorViewportPublicationSnapshot(
+            documentIdentifier: "first",
+            topFraction: 0.251,
+            heightFraction: 0.1
+        )
+        let differentDocument = VirtualEditorViewportPublicationSnapshot(
+            documentIdentifier: "second",
+            topFraction: 0.2505,
+            heightFraction: 0.1
+        )
+
+        XCTAssertFalse(VirtualEditorViewportPublicationPolicy.shouldPublish(
+            previous: previous,
+            next: subthreshold
+        ))
+        XCTAssertTrue(VirtualEditorViewportPublicationPolicy.shouldPublish(
+            previous: previous,
+            next: visibleMovement
+        ))
+        XCTAssertTrue(VirtualEditorViewportPublicationPolicy.shouldPublish(
+            previous: previous,
+            next: differentDocument
+        ))
+    }
+
     func testVisualRowEstimateSmoothingIsBoundedAndExplicit() {
         XCTAssertEqual(
             VirtualEditorVisualRowIndex.smoothedEstimate(previous: 1, observed: 3),

@@ -408,6 +408,7 @@ private final class MacNativeFileTabItemView: NSView, NSDraggingSource {
 
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }
 
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {

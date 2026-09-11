@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.7.3] - 2026-09-11
+
 ### Why Upgrade
 
 - Completes macOS 27 release readiness while keeping existing deployment targets and runtime availability checks for older systems.

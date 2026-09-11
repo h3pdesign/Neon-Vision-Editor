@@ -49,6 +49,31 @@ def fixture(root):
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_all_notarized_archives_force_developer_id_signing(self):
+        workflows = (
+            ".github/workflows/release-github-only.yml",
+            ".github/workflows/release-notarized.yml",
+            ".github/workflows/release-notarized-selfhosted.yml",
+        )
+        for path in workflows:
+            with self.subTest(workflow=path):
+                workflow = (ROOT / path).read_text()
+                self.assertIn('CODE_SIGN_IDENTITY="Developer ID Application"', workflow)
+                self.assertIn("CODE_SIGN_STYLE=Manual", workflow)
+
+    def test_persistent_runner_keychain_paths_drop_balanced_quotes(self):
+        workflows = (
+            ".github/workflows/release-notarized.yml",
+            ".github/workflows/release-notarized-selfhosted.yml",
+        )
+        greedy_pattern = 's/^[[:space:]]*"?(.*)"?[[:space:]]*$/\\1/'
+        balanced_pattern = 's/^[[:space:]]*"//; s/"[[:space:]]*$//'
+        for path in workflows:
+            with self.subTest(workflow=path):
+                workflow = (ROOT / path).read_text()
+                self.assertNotIn(greedy_pattern, workflow)
+                self.assertGreaterEqual(workflow.count(balanced_pattern), 4)
+
     def test_release_all_forwards_resume_auto_to_both_preparation_calls(self):
         script = (ROOT / "scripts/release_all.sh").read_text()
         self.assertEqual(script.count('prep_cmd+=(--resume)'), 1)

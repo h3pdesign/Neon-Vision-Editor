@@ -100,7 +100,9 @@ Manual non-Cloud App Store uploads also need separate coordination.
 ### Release steps
 
 1. Fetch and review `develop`, the proposed version, the diff since the previous
-   tag, the closed release milestone and the release notes.
+   tag and the release notes. Move every issue that remains open in the release
+   milestone to the next planned version milestone without closing the issue,
+   then close the emptied release milestone before running the release gate.
 2. Run `bash scripts/release_prep.sh v1.7.4`. This creates a sibling worktree on
    `release/1.7.4`, writes `release/prepared-release.json`, generates documentation
    and makes a signed commit. The original checkout stays unchanged.

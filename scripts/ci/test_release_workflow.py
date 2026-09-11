@@ -86,6 +86,17 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 self.assertNotIn('grep -nE "^- Latest release:', workflow)
                 self.assertNotIn("releases/tag/${TAG_NAME}", workflow)
 
+    def test_fallbacks_can_dispatch_post_release_workflows(self):
+        workflows = (
+            ".github/workflows/release-notarized.yml",
+            ".github/workflows/release-notarized-selfhosted.yml",
+        )
+        for path in workflows:
+            with self.subTest(workflow=path):
+                workflow = (ROOT / path).read_text()
+                permissions = workflow.split("permissions:\n", 1)[1].split("\njobs:\n", 1)[0]
+                self.assertIn("  actions: write\n", permissions)
+
     def test_release_all_forwards_resume_auto_to_both_preparation_calls(self):
         script = (ROOT / "scripts/release_all.sh").read_text()
         self.assertEqual(script.count('prep_cmd+=(--resume)'), 1)

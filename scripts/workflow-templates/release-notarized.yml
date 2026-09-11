@@ -8,19 +8,12 @@ on:
         description: "Existing Git tag to release (e.g. v0.4.5)"
         required: true
         type: string
-      cask_only:
-        description: "Create only the Homebrew Cask update pull request"
-        required: false
-        default: false
-        type: boolean
-
 permissions:
   contents: write
   issues: write
 
 jobs:
   release:
-    if: ${{ !(inputs.cask_only || false) }}
     timeout-minutes: 180
     concurrency:
       group: release-${{ inputs.tag }}
@@ -435,25 +428,6 @@ jobs:
           echo "Failed to complete homebrew-tap update after retries." >&2
           exit 1
 
-      - name: Create Homebrew Cask App token
-        id: homebrew_cask_app_token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars.HOMEBREW_CASK_APP_CLIENT_ID }}
-          private-key: ${{ secrets.HOMEBREW_CASK_APP_PRIVATE_KEY }}
-          owner: h3pdesign
-          repositories: homebrew-cask
-
-      - name: Prepare Homebrew Cask update branch
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ steps.homebrew_cask_app_token.outputs.token }}
-          TAG_NAME: ${{ inputs.tag }}
-          HOMEBREW_CASK_PREPARE_ONLY: true
-        run: |
-          set -euo pipefail
-          bash scripts/create_homebrew_cask_pr.sh
-
       - name: Restore user keychain state
         if: ${{ always() }}
         run: |
@@ -489,27 +463,3 @@ jobs:
 
           security delete-keychain "$KEYCHAIN" || true
           rm -f cert.p12
-
-  update-homebrew-cask:
-    if: ${{ inputs.cask_only || false }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Create Homebrew Cask App token
-        id: homebrew_cask_app_token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars.HOMEBREW_CASK_APP_CLIENT_ID }}
-          private-key: ${{ secrets.HOMEBREW_CASK_APP_PRIVATE_KEY }}
-          owner: h3pdesign
-          repositories: homebrew-cask
-
-      - name: Prepare Homebrew Cask update branch
-        env:
-          GH_TOKEN: ${{ steps.homebrew_cask_app_token.outputs.token }}
-          TAG_NAME: ${{ inputs.tag }}
-          HOMEBREW_CASK_PREPARE_ONLY: true
-        run: |
-          set -euo pipefail
-          bash scripts/create_homebrew_cask_pr.sh

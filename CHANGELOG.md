@@ -6,6 +6,36 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- Completes macOS 27 release readiness while keeping existing deployment targets and runtime availability checks for older systems.
+- Makes macOS theme changes, settings updates, and document-tab activation more responsive by avoiding redundant preference and window-composition work.
+- Restores a coherent system-glass appearance across visionOS themes and reading surfaces.
+
+### Highlights
+
+- Enables the macOS 27 Agent Mode sources in Xcode 27 App Store and notarized builds while preserving runtime availability checks and older-OS compatibility.
+- Validates the application with the macOS, iOS/iPadOS, and visionOS 27 SDKs accepted by App Store Connect.
+
+### Fixes
+
+- Prevents a theme selection from publishing ten process-wide preference changes and removes unrelated full-window composition work from theme updates.
+- Avoids unnecessary editor highlighting and window-chrome refreshes during macOS settings changes and tab activation.
+- Keeps visionOS System Glass light in light mode and prevents mixed light and dark surfaces in Paper and other appearance themes.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
+### Maintenance
+
+- Moves hosted platform, release-validation, and notarized-release jobs to GitHub's `xcode-27` runner and verifies the macOS, iOS/iPadOS, and visionOS 27 SDK paths before compiling them in CI; production archives continue to reject beta Xcode builds.
+- Centralizes Xcode and SDK validation across CI and release workflows and correctly rejects both `Xcode-beta.app` and underscored beta installation names from production archives.
+
 ## [v1.7.2] - 2026-09-09
 
 ### Why Upgrade

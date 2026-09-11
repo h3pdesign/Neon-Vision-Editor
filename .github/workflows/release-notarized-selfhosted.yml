@@ -94,14 +94,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: scripts/ci/release_notes_quality_gate.sh "$TAG_NAME"
 
-      - name: Select/verify Xcode 17+
+      - name: Select/verify Xcode 27+
         run: |
           set -euo pipefail
           if [[ ! -x scripts/ci/select_xcode17.sh ]]; then
-            echo "Missing scripts/ci/select_xcode17.sh in checked-out tag. Production notarized release requires Xcode 17+ selection." >&2
+            echo "Missing scripts/ci/select_xcode17.sh in checked-out tag. Production notarized release requires Xcode 27+ selection." >&2
             exit 1
           fi
           source scripts/ci/select_xcode17.sh
+          require_xcode_major 27
+          require_sdk_major 27 macosx
 
       - name: Import signing certificate
         env:

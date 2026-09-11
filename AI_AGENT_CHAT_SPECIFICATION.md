@@ -1,6 +1,6 @@
 # AI Agent and Chat — Specification and Requirements
 
-Reviewed: 2026-09-09. Development branch: `feature/macos-27-agentic-editor`.
+Reviewed: 2026-09-11. Development branch: `develop`.
 
 This document defines the intended product contract and release requirements. A requirement is not proof of implementation or App Review approval. See the review record and verification evidence below for remaining work.
 

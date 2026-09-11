@@ -25,8 +25,9 @@ jobs:
     concurrency:
       group: release-${{ inputs.tag }}
       cancel-in-progress: true
-    # Use Tahoe-capable image; AppIcon image renditions are required, iconstack is optional.
-    runs-on: macos-26
+    # The production gate below rejects the preview beta until GitHub updates
+    # this image to Xcode 27 RC or a later public release.
+    runs-on: xcode-27
 
     steps:
       - name: Checkout tag
@@ -49,7 +50,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: scripts/ci/release_notes_quality_gate.sh "$TAG_NAME"
 
-      - name: Select Xcode 17+
+      - name: Select Xcode 27+
         id: xcode_mode
         run: |
           set -euo pipefail
@@ -60,11 +61,8 @@ jobs:
             exit 1
           fi
           xcodebuild -version
-          XCODE_MAJOR="$(xcodebuild -version | awk '/Xcode/ {split($2,v,"."); print v[1]}' | head -n1)"
-          if [[ -z "${XCODE_MAJOR}" || "${XCODE_MAJOR}" -lt 17 ]]; then
-            echo "Xcode 17+ is required for notarized release builds." >&2
-            exit 1
-          fi
+          require_xcode_major 27
+          require_sdk_major 27 macosx
           echo "require_iconstack=0" >> "$GITHUB_OUTPUT"
 
       - name: Import signing certificate

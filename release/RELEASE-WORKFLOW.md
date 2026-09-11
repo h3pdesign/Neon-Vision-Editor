@@ -1,8 +1,9 @@
 # Release workflow
 
 When asked to make a new release, start from clean `develop` aligned with
-`origin/develop`. The next planned version is **1.6.2**. Do not merge the
-separate macOS 27 agent branch into this release.
+`origin/develop`. The next planned version is **1.7.3**. OS 27 features are
+part of `develop`; App Store builds must use Xcode 27 or later so their
+SDK-qualified sources are included, while older SDK builds retain compatibility.
 
 ## Release content
 
@@ -22,7 +23,7 @@ the GitHub release version or a pending review submission.
 ## Offline rehearsal
 
 ```bash
-bash scripts/release_all.sh v1.6.2 --dry-run
+bash scripts/release_all.sh v1.7.3 --dry-run
 python3 scripts/ci/test_release_workflow.py
 ```
 
@@ -46,7 +47,8 @@ the default offline rehearsal, Xcode may access package servers to resolve depen
 Real preparation now requires authenticated, read-only App Store Connect access.
 It reads every page of the selected product's Cloud build runs and chooses
 `max(project build, published GitHub build, highest Cloud run number) + 1`.
-With project build 1028 and Cloud's last allocated run 1028, the candidate is 1029.
+The values are resolved live for every release; documentation must not carry a
+stale example as an implied build reservation.
 It records the product ID and observed counter in the release manifest, never the
 credential. Active/queued builds, unknown states, missing history, malformed
 responses, authentication errors and incomplete pagination stop preparation.
@@ -99,14 +101,14 @@ Manual non-Cloud App Store uploads also need separate coordination.
 
 1. Fetch and review `develop`, the proposed version, the diff since the previous
    tag, the closed release milestone and the release notes.
-2. Run `bash scripts/release_prep.sh v1.6.2`. This creates a sibling worktree on
-   `release/1.6.2`, writes `release/prepared-release.json`, generates documentation
+2. Run `bash scripts/release_prep.sh v1.7.3`. This creates a sibling worktree on
+   `release/1.7.3`, writes `release/prepared-release.json`, generates documentation
    and makes a signed commit. The original checkout stays unchanged.
 3. Review the worktree. Repeating preparation reuses its source, date and build.
    If interrupted, inspect the preserved worktree before using `--resume`.
    That explicit option regenerates release-owned files only; unrelated edits
    block it. Changed develop or a conflicting date requires manual reconciliation.
-4. For the complete authorized release, run `bash scripts/release_all.sh v1.6.2
+4. For the complete authorized release, run `bash scripts/release_all.sh v1.7.3
    --github-hosted`. Preparation is followed by documentation and platform/release
    gates before pushing the protected main PR. Existing prepared work is reused.
 5. After the PR merges, dispatch the hosted workflow with the exact merge SHA.
@@ -119,8 +121,7 @@ Manual non-Cloud App Store uploads also need separate coordination.
    checksums before advancing download references. Documentation writers share
    a queued concurrency group. App Store sync reads actual availability without
    assuming a fixed propagation delay; rerun it when the Store release appears.
-8. Verify the protected main-to-develop synchronization PR has merged. Bring
-   develop into the macOS 27 branch separately, preserving its independent scope.
+8. Verify the protected main-to-develop synchronization PR has merged.
 
 `--next` resolves local reachable tags after fetching for real preparation.
 Prefer an explicit approved version for reproducible releases. A missing or

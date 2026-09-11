@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.7.4] - 2026-09-11
+
 ### Why Upgrade
 
 - Keeps Markdown and PDF project browsing responsive while large preview collections are prepared.

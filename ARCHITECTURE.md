@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-09-11 (v1.7.3 release-aligned architecture)
+Last updated: 2026-09-11 (v1.7.4 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -9,6 +9,11 @@ The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/a
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
+### v1.7.4 (2026-09-11)
+
+- Updates project-preview cards and progress in bounded batches instead of invalidating the complete panel for every indexed file.
+- Prevents per-file loading-status publications from triggering redundant SwiftUI project-preview refreshes.
+
 ### v1.7.3 (2026-09-11)
 
 - Enables the macOS 27 Agent Mode sources in Xcode 27 App Store and notarized builds while preserving runtime availability checks and older-OS compatibility.
@@ -16,14 +21,6 @@ The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/a
 - Prevents a theme selection from publishing ten process-wide preference changes and removes unrelated full-window composition work from theme updates.
 - Avoids unnecessary editor highlighting and window-chrome refreshes during macOS settings changes and tab activation.
 - Keeps visionOS System Glass light in light mode and prevents mixed light and dark surfaces in Paper and other appearance themes.
-
-### v1.7.2 (2026-09-09)
-
-- Refines mobile tab transitions, tab spacing, toolbar placement, and theme-aware translucent surfaces.
-- Aligns the AI assistant panel, Markdown controls, and Find & Replace surfaces with the active sidebar and editor themes.
-- Prevents mobile tabs and toolbar controls from clipping at the edges during selection and scrolling.
-- Prevents interrupted macOS window drags from extending editor text selection.
-- Starts macOS syntax highlighting as soon as the selected tab viewport is available.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

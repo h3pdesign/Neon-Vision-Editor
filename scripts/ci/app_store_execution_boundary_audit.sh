@@ -34,5 +34,8 @@ require_pattern '#if os\(macOS\) && !APP_STORE_BUILD' \
 require_pattern '#if !os\(macOS\) \|\| APP_STORE_BUILD' \
   "Neon Vision Editor/Core/EditorAgentVerificationRunner.swift" \
   "agent verification process execution excluded from App Store builds"
+require_pattern 'SWIFT_ACTIVE_COMPILATION_CONDITIONS\[sdk=macosx27\.\*\].*MACOS_27_AGENTIC_EDITOR' \
+  "Neon Vision Editor.xcodeproj/project.pbxproj" \
+  "macOS 27 Agent Mode enabled only for the macOS 27 SDK"
 
 echo "[app-store-execution-boundary-audit] OK"

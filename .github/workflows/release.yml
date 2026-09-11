@@ -17,7 +17,7 @@ jobs:
     concurrency:
       group: unsigned-dry-run-${{ inputs.tag }}
       cancel-in-progress: true
-    runs-on: macos-15
+    runs-on: xcode-27
     steps:
       - name: Checkout (no external actions)
         env:
@@ -33,10 +33,14 @@ jobs:
           git fetch --depth=1 origin "refs/tags/${TAG_NAME}"
           git checkout -b "release-${TAG_NAME}" FETCH_HEAD
 
-      - name: Show Xcode Version
+      - name: Show Xcode 27 Version
+        env:
+          NVE_ALLOW_BETA_XCODE: 1
         run: |
           set -euo pipefail
           source scripts/ci/select_xcode17.sh
+          require_xcode_major 27
+          require_sdk_major 27 macosx
 
       - name: Validate release input
         env:

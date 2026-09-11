@@ -17,6 +17,8 @@ trap 'rm -rf "$DERIVED_DATA"' EXIT
 
 section "Toolchain"
 source scripts/ci/select_xcode17.sh
+require_xcode_major 27
+require_sdk_major 27 macosx iphoneos iphonesimulator xros
 
 section "Static App Store audits"
 scripts/ci/privacy_log_audit.sh
@@ -45,7 +47,7 @@ xcodebuild \
   test
 
 section "visionOS simulator build"
-if xcrun simctl list runtimes | grep -Eq 'visionOS (26\.5|26\.)'; then
+if xcrun simctl list runtimes | grep -Eq 'visionOS 27\.'; then
   xcodebuild \
     -project "Neon Vision Editor.xcodeproj" \
     -scheme "Neon Vision Editor" \
@@ -56,7 +58,7 @@ if xcrun simctl list runtimes | grep -Eq 'visionOS (26\.5|26\.)'; then
     CODE_SIGN_IDENTITY="" \
     build
 else
-  echo "No visionOS 26.x simulator runtime found; skipping visionOS simulator build."
+  echo "No visionOS 27.x simulator runtime found; skipping visionOS simulator build."
 fi
 
 echo

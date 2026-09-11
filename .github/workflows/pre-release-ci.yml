@@ -22,7 +22,7 @@ jobs:
     concurrency:
       group: pre-release-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - name: Checkout repository
         env:
@@ -38,35 +38,15 @@ jobs:
           git fetch --depth=1 origin "$REF"
           git checkout FETCH_HEAD
 
-      - name: Select/verify Xcode (17 preferred, 16+ fallback)
-        id: xcode_select
+      - name: Verify Xcode 27 SDK family
+        env:
+          NVE_ALLOW_BETA_XCODE: 1
         run: |
           set -euo pipefail
-          if source scripts/ci/select_xcode17.sh; then
-            echo "Using Xcode 17+ for pre-release CI."
-            echo "legacy_icon_mode=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "Xcode 17+ unavailable on hosted runner; falling back to Xcode 16+."
-            xcodebuild -version
-            XCODE_MAJOR="$(xcodebuild -version | awk '/Xcode/ {split($2, v, "."); print v[1]}')"
-            if [[ "${XCODE_MAJOR:-0}" -lt 16 ]]; then
-              echo "Xcode 16+ is required for pre-release CI fallback." >&2
-              exit 1
-            fi
-            echo "legacy_icon_mode=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Prepare legacy app icon for Xcode 16 fallback
-        if: ${{ steps.xcode_select.outputs.legacy_icon_mode == 'true' }}
-        run: |
-          set -euo pipefail
-          ICON_DIR="Neon Vision Editor/Resources"
-          if [[ -d "${ICON_DIR}/AppIcon.icon" ]]; then
-            mv "${ICON_DIR}/AppIcon.icon" "${ICON_DIR}/AppIcon.icon.disabled"
-          fi
-          rm -rf "${ICON_DIR}/Assets.xcassets/AppIcon.appiconset"
-          cp -R "${ICON_DIR}/Assets.xcassets/AppIcon-iOS.appiconset" "${ICON_DIR}/Assets.xcassets/AppIcon.appiconset"
-          echo "Prepared AppIcon.appiconset fallback for Xcode 16 hosted runner."
+          source scripts/ci/select_xcode17.sh
+          require_xcode_major 27
+          require_sdk_major 27 macosx iphoneos iphonesimulator xros
+          xcodebuild -version
 
       - name: Validate basic release docs format
         run: |

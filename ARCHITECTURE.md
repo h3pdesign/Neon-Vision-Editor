@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-09-11 (v1.7.4 release-aligned architecture)
+Last updated: 2026-09-11 (v1.7.5 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -9,18 +9,17 @@ The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/a
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
+### v1.7.5 (2026-09-11)
+
+- Reuses prepared Core Text rows across fine-grained scrolling while retaining an ahead-of-viewport render window.
+- Prevents native tab items from being treated as draggable window background instead of receiving their own reorder gesture.
+- Stops ordinary macOS editor scrolling from invalidating the complete canvas and rebuilding visual rows for subpoint movement.
+- Coalesces editor viewport publications and avoids duplicate SwiftUI minimap state updates.
+
 ### v1.7.4 (2026-09-11)
 
 - Updates project-preview cards and progress in bounded batches instead of invalidating the complete panel for every indexed file.
 - Prevents per-file loading-status publications from triggering redundant SwiftUI project-preview refreshes.
-
-### v1.7.3 (2026-09-11)
-
-- Enables the macOS 27 Agent Mode sources in Xcode 27 App Store and notarized builds while preserving runtime availability checks and older-OS compatibility.
-- Validates the application with the macOS, iOS/iPadOS, and visionOS 27 SDKs accepted by App Store Connect.
-- Prevents a theme selection from publishing ten process-wide preference changes and removes unrelated full-window composition work from theme updates.
-- Avoids unnecessary editor highlighting and window-chrome refreshes during macOS settings changes and tab activation.
-- Keeps visionOS System Glass light in light mode and prevents mixed light and dark surfaces in Paper and other appearance themes.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

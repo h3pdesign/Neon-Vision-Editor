@@ -97,6 +97,28 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 permissions = workflow.split("permissions:\n", 1)[1].split("\njobs:\n", 1)[0]
                 self.assertIn("  actions: write\n", permissions)
 
+    def test_fallbacks_publish_an_existing_draft_release(self):
+        workflows = (
+            ".github/workflows/release-notarized.yml",
+            ".github/workflows/release-notarized-selfhosted.yml",
+        )
+        for path in workflows:
+            with self.subTest(workflow=path):
+                workflow = (ROOT / path).read_text()
+                self.assertRegex(workflow, r'gh release edit "\$TAG_NAME"[^\n]*--draft=false')
+
+    def test_fallbacks_publish_and_verify_release_checksums(self):
+        workflows = (
+            ".github/workflows/release-notarized.yml",
+            ".github/workflows/release-notarized-selfhosted.yml",
+        )
+        for path in workflows:
+            with self.subTest(workflow=path):
+                workflow = (ROOT / path).read_text()
+                self.assertIn("shasum -a 256 Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg > SHA256SUMS.txt", workflow)
+                self.assertGreaterEqual(workflow.count("shasum -a 256 -c SHA256SUMS.txt"), 2)
+                self.assertIn('gh release delete-asset "$TAG_NAME" "SHA256SUMS.txt"', workflow)
+
     def test_release_all_forwards_resume_auto_to_both_preparation_calls(self):
         script = (ROOT / "scripts/release_all.sh").read_text()
         self.assertEqual(script.count('prep_cmd+=(--resume)'), 1)

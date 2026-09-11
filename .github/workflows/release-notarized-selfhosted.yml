@@ -287,6 +287,12 @@ jobs:
           done
           rm -rf "$DMG_STAGE"
 
+      - name: Create release checksums
+        run: |
+          set -euo pipefail
+          shasum -a 256 Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg > SHA256SUMS.txt
+          shasum -a 256 -c SHA256SUMS.txt
+
       - name: Extract changelog section
         env:
           TAG_NAME: ${{ inputs.tag }}
@@ -318,10 +324,10 @@ jobs:
 
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             bash scripts/preserve_release_download_baseline.sh "$TAG_NAME" release-notes.md
-            gh release upload "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg --clobber
-            gh release edit "$TAG_NAME" --title "Neon Vision Editor $TAG_NAME" --notes-file release-notes.md
+            gh release upload "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt --clobber
+            gh release edit "$TAG_NAME" --title "Neon Vision Editor $TAG_NAME" --notes-file release-notes.md --draft=false
           else
-            gh release create "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg \
+            gh release create "$TAG_NAME" Neon.Vision.Editor.app.zip Neon.Vision.Editor.app.dmg SHA256SUMS.txt \
               --title "Neon Vision Editor $TAG_NAME" \
               --notes-file release-notes.md
           fi
@@ -342,7 +348,8 @@ jobs:
             rm -rf "$WORK_DIR"
           }
           trap cleanup_mount EXIT
-          gh release download "$TAG_NAME" -p Neon.Vision.Editor.app.zip -p Neon.Vision.Editor.app.dmg -D "$WORK_DIR"
+          gh release download "$TAG_NAME" -p Neon.Vision.Editor.app.zip -p Neon.Vision.Editor.app.dmg -p SHA256SUMS.txt -D "$WORK_DIR"
+          (cd "$WORK_DIR" && shasum -a 256 -c SHA256SUMS.txt)
           ditto -x -k "$WORK_DIR/Neon.Vision.Editor.app.zip" "$WORK_DIR/extracted"
           /usr/bin/codesign --verify --deep --strict "$WORK_DIR/extracted/Neon Vision Editor.app"
           scripts/ci/verify_icon_payload.sh "$WORK_DIR/extracted/Neon Vision Editor.app"
@@ -371,6 +378,7 @@ jobs:
           set -euo pipefail
           gh release delete-asset "$TAG_NAME" "Neon.Vision.Editor.app.zip" -y || true
           gh release delete-asset "$TAG_NAME" "Neon.Vision.Editor.app.dmg" -y || true
+          gh release delete-asset "$TAG_NAME" "SHA256SUMS.txt" -y || true
           gh release edit "$TAG_NAME" --draft true || true
           echo "Rolled back release asset and marked release as draft due to post-publish verification failure."
 

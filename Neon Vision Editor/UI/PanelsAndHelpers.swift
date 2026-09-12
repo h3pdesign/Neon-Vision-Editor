@@ -2787,15 +2787,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.7.5",
-            subtitle: "Release highlights for v1.7.5.",
+            title: "What’s New in v1.7.6",
+            subtitle: "Release highlights for v1.7.6.",
             bullets: [
-                "Editor Improvements: Restores reliable drag-to-reorder behavior for native macOS document tabs.",
-                "Workflow Refinements: Makes large-document scrolling smoother by keeping ordinary scroll events on AppKit's composited path.",
-                "Performance Updates: Keeps the editor and minimap synchronized without repeating imperceptible viewport updates.",
-                "Usability Updates: Reuses prepared Core Text rows across fine-grained scrolling while retaining an ahead-of-viewport render window.",
-                "Editor Improvements: Prevents native tab items from being treated as draggable window background instead of receiving their own reorder gesture.",
-                "Workflow Refinements: Stops ordinary macOS editor scrolling from invalidating the complete canvas and rebuilding visual rows for subpoint movement."
+                "Editor Improvements: Keeps macOS editor text intact while scrolling long or wrapped documents.",
+                "Workflow Refinements: Restores reliable line rendering when scrolling with the Markdown preview and sidebars open.",
+                "Performance Updates: Preserves the virtual editor's bounded layout and redraw behavior while repairing ordinary scroll updates.",
+                "Usability Updates: Repaints only the visible Core Text canvas region during ordinary scrolling, preserving the fast virtualized layout path.",
+                "Editor Improvements: Prevents stale AppKit backing pixels from covering or clipping editor lines during macOS scrolling.",
+                "Workflow Refinements: Restores reliable drag-to-reorder behavior for native macOS document tabs."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.7.6] - 2026-09-12
+
 ### Why Upgrade
 
 - Keeps macOS editor text intact while scrolling long or wrapped documents.

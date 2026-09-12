@@ -53,7 +53,26 @@ nonisolated func isProgrammingSyntaxLanguage(_ language: String) -> Bool {
     case "swift", "c", "cpp", "c++", "objective-c", "objective-c++", "objc", "java",
          "kotlin", "rust", "go", "python", "ruby", "php", "perl", "lua", "r",
          "javascript", "js", "typescript", "ts", "tsx", "jsx", "shell", "bash",
-         "zsh", "fish", "powershell":
+         "zsh", "fish", "powershell", "sql":
+        return true
+    default:
+        return false
+    }
+}
+
+/// Syntax modes whose regex patterns can be applied to a bounded line-aligned
+/// viewport for large documents. Markdown remains full-document because its
+/// fences and other constructs carry state across the viewport boundary.
+nonisolated func isViewportSafeSyntaxLanguage(_ language: String) -> Bool {
+    switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    case "swift", "ada", "python", "javascript", "js", "typescript", "ts", "tsx", "jsx",
+         "php", "java", "kotlin", "go", "ruby", "rust", "fish", "perl", "lua", "r",
+         "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "htm",
+         "xhtml", "expressionengine", "css", "c", "cpp", "c++", "dockerfile", "makefile",
+         "hcl", "xcconfig", "strings", "csharp", "objective-c", "objective-c++", "objc",
+         "json", "jsonc", "json5", "xml", "svg", "plist", "yaml", "yml", "toml", "nix",
+         "eml", "csv", "tsv", "ini", "vim", "log", "crashlog", "ipynb", "typst", "tex",
+         "shell", "bash", "zsh", "powershell":
         return true
     default:
         return false
@@ -156,7 +175,7 @@ func supportsViewportSyntaxHighlighting(language: String, textLength: Int) -> Bo
         return true
     }
     return textLength >= EditorRuntimeLimits.programmingViewportSyntaxUTF16Length &&
-        (isProgrammingSyntaxLanguage(language) || isXMLLikeSyntaxLanguage(language)) &&
+        isViewportSafeSyntaxLanguage(language) &&
         currentLargeFileOpenMode() != .plainText
 }
 

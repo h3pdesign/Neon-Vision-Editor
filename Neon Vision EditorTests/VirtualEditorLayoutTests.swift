@@ -673,20 +673,27 @@ final class VirtualEditorLayoutTests: XCTestCase {
         ))
     }
 
-    func testOrdinaryBoundsChangeLeavesCanvasLayoutAndDisplayValid() throws {
-        let scrollView = VirtualEditorScrollView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
-        scrollView.layoutSubtreeIfNeeded()
-        scrollView.updateForVisibleBoundsChange()
-        let canvas = try XCTUnwrap(scrollView.documentView as? VirtualEditorCanvas)
-
-        scrollView.contentView.postsBoundsChangedNotifications = false
-        scrollView.contentView.setBoundsOrigin(NSPoint(x: 0, y: 1))
-        canvas.needsLayout = false
-        canvas.needsDisplay = false
-        scrollView.updateForVisibleBoundsChange()
-
-        XCTAssertFalse(canvas.needsLayout)
-        XCTAssertFalse(canvas.needsDisplay)
+    func testOrdinaryScrollRequiresVisibleCanvasInvalidation() {
+        XCTAssertTrue(VirtualEditorCanvasInvalidationPolicy.requiresVisibleInvalidation(
+            didScroll: true,
+            didReloadViewport: false,
+            didResize: false
+        ))
+        XCTAssertFalse(VirtualEditorCanvasInvalidationPolicy.requiresVisibleInvalidation(
+            didScroll: false,
+            didReloadViewport: false,
+            didResize: false
+        ))
+        XCTAssertFalse(VirtualEditorCanvasInvalidationPolicy.requiresVisibleInvalidation(
+            didScroll: true,
+            didReloadViewport: true,
+            didResize: false
+        ))
+        XCTAssertFalse(VirtualEditorCanvasInvalidationPolicy.requiresVisibleInvalidation(
+            didScroll: true,
+            didReloadViewport: false,
+            didResize: true
+        ))
     }
 
     func testVisualRowCoverageIsStableAcrossSubpointScrolling() {

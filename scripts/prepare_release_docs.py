@@ -597,6 +597,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v1.7.6": ("Stabile Editorzeilen beim Scrollen", "Zeichnet beim Scrollen den sichtbaren Core-Text-Bereich neu und verhindert überlagerte oder abgeschnittene Zeilen in langen und umbrochenen Dokumenten.", ["Editor", "Scrollen", "macOS"]),
         "v1.7.5": ("Flüssigeres Scrollen und zuverlässige Tabs", "Hält feine Scrollbewegungen auf dem schnellen AppKit-Pfad, vermeidet redundante Minimap-Aktualisierungen und stellt das Verschieben nativer macOS-Tabs wieder her.", ["Editor", "Leistung", "Tabs"]),
         "v1.7.4": ("Flüssigere Projektvorschauen", "Aktualisiert Markdown- und PDF-Projektkarten in begrenzten Gruppen und vermeidet redundante SwiftUI-Aktualisierungen für jede indizierte Datei.", ["Vorschau", "Leistung", "Projekte"]),
         "v1.7.3": ("Bereit für macOS 27 und schnellere Einstellungen", "Aktiviert Agent Mode in Xcode-27-Builds, reduziert redundante Arbeit bei Themes und Tabs und vereinheitlicht System-Glass-Flächen unter visionOS.", ["macOS 27", "Leistung", "Themes"]),
@@ -625,6 +626,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v1.7.6": ("Stabile editorlinjer under rulning", "Gentegner det synlige Core Text-område under rulning og forhindrer overlappende eller afskårne linjer i lange dokumenter med linjeombrydning.", ["Editor", "Rulning", "macOS"]),
         "v1.7.5": ("Mere flydende rulning og pålidelige faner", "Holder fine rullebevægelser på den hurtige AppKit-sti, undgår overflødige minimap-opdateringer og gendanner flytning af native macOS-faner.", ["Editor", "Ydeevne", "Faner"]),
         "v1.7.4": ("Mere flydende projektvisninger", "Opdaterer Markdown- og PDF-projektkort i afgrænsede grupper og undgår overflødige SwiftUI-opdateringer for hver indekseret fil.", ["Forhåndsvisning", "Ydeevne", "Projekter"]),
         "v1.7.3": ("Klar til macOS 27 og hurtigere indstillinger", "Aktiverer Agent Mode i Xcode 27-builds, reducerer overflødigt arbejde ved tema- og faneskift og ensretter System Glass-flader på visionOS.", ["macOS 27", "Ydeevne", "Temaer"]),
@@ -653,6 +655,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v1.7.6": ("Lignes stables pendant le défilement", "Redessine la zone Core Text visible pendant le défilement et évite les lignes superposées ou tronquées dans les documents longs avec retour à la ligne.", ["Éditeur", "Défilement", "macOS"]),
         "v1.7.5": ("Défilement plus fluide et onglets fiables", "Conserve les petits défilements sur le chemin AppKit rapide, évite les mises à jour redondantes de la minicarte et rétablit le déplacement des onglets natifs macOS.", ["Éditeur", "Performances", "Onglets"]),
         "v1.7.4": ("Aperçus de projet plus fluides", "Actualise les cartes de projet Markdown et PDF par lots limités et évite les mises à jour SwiftUI redondantes pour chaque fichier indexé.", ["Aperçu", "Performances", "Projets"]),
         "v1.7.3": ("Prêt pour macOS 27 et réglages plus rapides", "Active le mode Agent dans les builds Xcode 27, réduit le travail superflu lors des changements de thème et d’onglet et harmonise les surfaces System Glass sur visionOS.", ["macOS 27", "Performances", "Thèmes"]),
@@ -681,6 +684,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v1.7.6": ("Líneas estables al desplazarse", "Redibuja la región visible de Core Text durante el desplazamiento y evita líneas superpuestas o recortadas en documentos largos con ajuste de línea.", ["Editor", "Desplazamiento", "macOS"]),
         "v1.7.5": ("Desplazamiento más fluido y pestañas fiables", "Mantiene los pequeños desplazamientos en la ruta rápida de AppKit, evita actualizaciones redundantes del minimapa y restaura el movimiento de pestañas nativas de macOS.", ["Editor", "Rendimiento", "Pestañas"]),
         "v1.7.4": ("Vistas previas de proyecto más fluidas", "Actualiza las tarjetas de proyecto Markdown y PDF en lotes limitados y evita actualizaciones redundantes de SwiftUI por cada archivo indexado.", ["Vista previa", "Rendimiento", "Proyectos"]),
         "v1.7.3": ("Preparado para macOS 27 y ajustes más rápidos", "Activa el modo Agente en builds con Xcode 27, reduce el trabajo redundante al cambiar temas y pestañas y unifica las superficies System Glass en visionOS.", ["macOS 27", "Rendimiento", "Temas"]),
@@ -709,6 +713,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v1.7.6": ("スクロール中も安定したエディタ行", "スクロール時に表示中の Core Text 領域だけを再描画し、長い折り返し文書で行が重なったり欠けたりする問題を防ぎます。", ["エディタ", "スクロール", "macOS"]),
         "v1.7.5": ("より滑らかなスクロールと確実なタブ操作", "細かなスクロールを高速な AppKit 経路で処理し、不要なミニマップ更新を避け、macOS のネイティブタブ移動を復元します。", ["エディタ", "パフォーマンス", "タブ"]),
         "v1.7.4": ("より滑らかなプロジェクトプレビュー", "Markdown と PDF のプロジェクトカードを制限された単位で更新し、インデックスされたファイルごとの不要な SwiftUI 更新を防ぎます。", ["プレビュー", "パフォーマンス", "プロジェクト"]),
         "v1.7.3": ("macOS 27 対応と設定操作の高速化", "Xcode 27 ビルドで Agent Mode を有効にし、テーマとタブ切り替え時の不要な処理を減らし、visionOS の System Glass 表示を統一します。", ["macOS 27", "パフォーマンス", "テーマ"]),
@@ -737,6 +742,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v1.7.6": ("滚动时保持编辑器行稳定", "滚动时仅重绘可见的 Core Text 区域，避免长文档和自动换行文档中的文本行重叠或被裁切。", ["编辑器", "滚动", "macOS"]),
         "v1.7.5": ("更流畅的滚动与可靠的标签页", "让细微滚动保持在快速的 AppKit 路径上，避免重复更新小地图，并恢复 macOS 原生标签页拖动排序。", ["编辑器", "性能", "标签页"]),
         "v1.7.4": ("更流畅的项目预览", "以有限批次更新 Markdown 和 PDF 项目卡片，避免每个索引文件触发重复的 SwiftUI 刷新。", ["预览", "性能", "项目"]),
         "v1.7.3": ("支持 macOS 27，并提升设置响应速度", "在 Xcode 27 构建中启用 Agent Mode，减少切换主题和标签页时的重复工作，并统一 visionOS 的 System Glass 表面。", ["macOS 27", "性能", "主题"]),

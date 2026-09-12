@@ -400,6 +400,17 @@ enum VirtualEditorCanvasInvalidationPolicy {
     static func requiresFullInvalidation(didReloadViewport: Bool, didResize: Bool) -> Bool {
         didReloadViewport || didResize
     }
+
+    static func requiresVisibleInvalidation(
+        didScroll: Bool,
+        didReloadViewport: Bool,
+        didResize: Bool
+    ) -> Bool {
+        didScroll && !requiresFullInvalidation(
+            didReloadViewport: didReloadViewport,
+            didResize: didResize
+        )
+    }
 }
 
 /// The macOS production editor surface. It intentionally does not use NSTextView
@@ -891,6 +902,15 @@ final class VirtualEditorScrollView: NSScrollView {
             canvas.needsLayout = true
             canvas.needsDisplay = true
             reflectScrolledClipView(contentView)
+        } else if VirtualEditorCanvasInvalidationPolicy.requiresVisibleInvalidation(
+            didScroll: didScroll,
+            didReloadViewport: didReloadViewport,
+            didResize: didResize
+        ) {
+            // AppKit can copy stale Core Text backing pixels during smooth
+            // scrolling. Repaint only the visible document rect so glyph rows
+            // stay intact without relaying out or invalidating the full canvas.
+            canvas.setNeedsDisplay(canvas.visibleRect)
         }
         scheduleViewportPublication()
     }

@@ -6,6 +6,28 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- Keeps macOS editor text intact while scrolling long or wrapped documents.
+- Restores reliable line rendering when scrolling with the Markdown preview and sidebars open.
+- Preserves the virtual editor's bounded layout and redraw behavior while repairing ordinary scroll updates.
+
+### Highlights
+
+- Repaints only the visible Core Text canvas region during ordinary scrolling, preserving the fast virtualized layout path.
+
+### Fixes
+
+- Prevents stale AppKit backing pixels from covering or clipping editor lines during macOS scrolling.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ### Maintenance
 
 - Removes official Homebrew Cask branch and pull-request generation from release automation. Releases continue updating `h3pdesign/homebrew-tap`, while the official cask relies on Homebrew's upstream livecheck process.

@@ -6,6 +6,30 @@ import SwiftUI
 final class SyntaxHighlightingRegressionTests: XCTestCase {
     private let colors = SyntaxColors.fromVibrantLightTheme(colorScheme: .dark)
 
+    func testEverySupportedNonStatefulSyntaxUsesViewportPolicyForLargeDocuments() {
+        let defaults = UserDefaults.standard
+        let openModeKey = "SettingsLargeFileOpenMode"
+        let previousOpenMode = defaults.object(forKey: openModeKey)
+        defer {
+            if let previousOpenMode {
+                defaults.set(previousOpenMode, forKey: openModeKey)
+            } else {
+                defaults.removeObject(forKey: openModeKey)
+            }
+        }
+        defaults.set("deferred", forKey: openModeKey)
+
+        let intentionallyFullDocumentLanguages: Set<String> = ["markdown", "standard", "plain"]
+        for language in CodeTemplateCatalog.supportedLanguages
+        where !intentionallyFullDocumentLanguages.contains(language) {
+            XCTAssertTrue(
+                supportsViewportSyntaxHighlighting(language: language, textLength: 600_000),
+                "\(language) must not run whole-document syntax matching during a large Replace All."
+            )
+        }
+        XCTAssertFalse(supportsViewportSyntaxHighlighting(language: "markdown", textLength: 600_000))
+    }
+
     func testJSONPatternsMatchEscapedURLsAndNumbers() {
         let patterns = getSyntaxPatterns(for: "json", colors: colors)
         let sample = """

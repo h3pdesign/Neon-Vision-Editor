@@ -15,7 +15,13 @@ struct FindReplaceAllPreview: Identifiable {
     let id = UUID()
     let source: String
     let replacement: String
+    let mutations: [FindReplaceAllMutation]
     let matchCount: Int
+}
+
+struct FindReplaceAllMutation {
+    let range: NSRange
+    let replacement: String
 }
 
 
@@ -1047,8 +1053,7 @@ extension ContentView {
             findStatusMessage = "No matches found"
             return nil
         }
-        let replacement = NSMutableString(string: source)
-        for range in result.ranges.reversed() {
+        let mutations = result.ranges.compactMap { range -> FindReplaceAllMutation? in
             guard let text = ReleaseRuntimePolicy.replacementForFindMatch(
                 in: source,
                 range: range,
@@ -1057,12 +1062,17 @@ extension ContentView {
                 useRegex: findUsesRegex,
                 caseSensitive: findCaseSensitive,
                 wholeWord: findWholeWord && !findUsesRegex
-            ) else { continue }
-            replacement.replaceCharacters(in: range, with: text)
+            ) else { return nil }
+            return FindReplaceAllMutation(range: range, replacement: text)
+        }
+        let replacement = NSMutableString(string: source)
+        for mutation in mutations.reversed() {
+            replacement.replaceCharacters(in: mutation.range, with: mutation.replacement)
         }
         return FindReplaceAllPreview(
             source: source,
             replacement: replacement as String,
+            mutations: mutations,
             matchCount: result.ranges.count
         )
     }
@@ -1112,7 +1122,16 @@ extension ContentView {
             findStatusMessage = "The document changed. Review Replace All again."
             return
         }
-        currentContentBinding.wrappedValue = preview.replacement
+        if let tab = viewModel.selectedTab {
+            postEditorReplacements(preview.mutations, documentID: tab.id)
+            findSession = EditorFindSessionState(
+                presentationRevision: findSession.presentationRevision &+ 1
+            )
+            findMatchCount = 0
+            postEditorFindHighlights()
+        } else {
+            currentContentBinding.wrappedValue = preview.replacement
+        }
 #endif
         findStatusMessage = "Replaced \(preview.matchCount) matches"
     }
@@ -1133,6 +1152,18 @@ extension ContentView {
             name: .replaceEditorRangeRequested,
             object: nil,
             userInfo: userInfo
+        )
+    }
+
+    private func postEditorReplacements(_ mutations: [FindReplaceAllMutation], documentID: UUID) {
+        NotificationCenter.default.post(
+            name: .replaceEditorRangesRequested,
+            object: nil,
+            userInfo: [
+                EditorCommandUserInfo.documentID: documentID.uuidString,
+                EditorCommandUserInfo.replacementRanges: mutations.map { NSValue(range: $0.range) },
+                EditorCommandUserInfo.replacementTexts: mutations.map(\.replacement)
+            ]
         )
     }
 

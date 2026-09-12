@@ -4446,6 +4446,7 @@ extension Notification.Name {
     nonisolated static let moveCursorToRange = Notification.Name("moveCursorToRange")
     nonisolated static let updateEditorFindHighlights = Notification.Name("updateEditorFindHighlights")
     nonisolated static let replaceEditorRangeRequested = Notification.Name("replaceEditorRangeRequested")
+    nonisolated static let replaceEditorRangesRequested = Notification.Name("replaceEditorRangesRequested")
     static let toggleVimModeRequested = Notification.Name("toggleVimModeRequested")
     static let vimModeStateDidChange = Notification.Name("vimModeStateDidChange")
     static let droppedFileURL = Notification.Name("droppedFileURL")
@@ -4598,6 +4599,8 @@ enum EditorCommandUserInfo {
     nonisolated static let findMatchRanges = "findMatchRanges"
     nonisolated static let selectedFindMatchRange = "selectedFindMatchRange"
     nonisolated static let replacementText = "replacementText"
+    nonisolated static let replacementRanges = "replacementRanges"
+    nonisolated static let replacementTexts = "replacementTexts"
     nonisolated static let bracketToken = "bracketToken"
     nonisolated static let sourceTextView = "sourceTextView"
     nonisolated static let completionContext = "completionContext"

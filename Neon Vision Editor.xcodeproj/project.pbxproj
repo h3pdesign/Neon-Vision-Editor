@@ -1272,6 +1272,9 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				NVE_APP_PROFILE_NAME = "Neon Vision Editor Developer ID G2 App 20260609003243";
+				NVE_DEVELOPER_ID_IDENTITY = 62FF5D2240E836ABBA9571C2C370C94C3A789EFF;
+				NVE_SHARE_EXTENSION_PROFILE_NAME = "Neon Vision Editor Developer ID G2 Share Extension 20260609003246";
 				ONLY_ACTIVE_ARCH = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = USE_FOUNDATION_MODELS;
@@ -1303,7 +1306,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "Neon Vision Editor/Neon Vision Editor iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Neon Vision Editor/Neon Vision Editor macOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "$(NVE_DEVELOPER_ID_IDENTITY)";
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
 				CURRENT_PROJECT_VERSION = 1045;
@@ -1487,7 +1490,7 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = "Neon Vision Editor Share Extension/Neon Vision Editor Share Extension.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "$(NVE_DEVELOPER_ID_IDENTITY)";
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
 				CURRENT_PROJECT_VERSION = 1045;
@@ -1794,7 +1797,9 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = "Neon Vision Editor Quick Look/Neon Vision Editor Quick Look.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "$(NVE_DEVELOPER_ID_IDENTITY)";
 				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
 				CURRENT_PROJECT_VERSION = 1045;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;

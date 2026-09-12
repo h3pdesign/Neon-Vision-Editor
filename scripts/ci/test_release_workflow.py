@@ -49,6 +49,31 @@ def fixture(root):
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_release_github_has_local_developer_id_signing_defaults(self):
+        project = (ROOT / prep.PROJECT).read_text()
+        self.assertIn(
+            'NVE_APP_PROFILE_NAME = "Neon Vision Editor Developer ID G2 App 20260609003243";',
+            project,
+        )
+        self.assertIn(
+            'NVE_SHARE_EXTENSION_PROFILE_NAME = "Neon Vision Editor Developer ID G2 Share Extension 20260609003246";',
+            project,
+        )
+        self.assertIn(
+            "NVE_DEVELOPER_ID_IDENTITY = 62FF5D2240E836ABBA9571C2C370C94C3A789EFF;",
+            project,
+        )
+        self.assertEqual(
+            project.count(
+                '\"CODE_SIGN_IDENTITY[sdk=macosx*]\" = \"$(NVE_DEVELOPER_ID_IDENTITY)\";'
+            ),
+            3,
+        )
+        self.assertEqual(
+            project.count('\"CODE_SIGN_STYLE[sdk=macosx*]\" = Manual;'),
+            3,
+        )
+
     def test_all_notarized_archives_force_developer_id_signing(self):
         workflows = (
             ".github/workflows/release-github-only.yml",

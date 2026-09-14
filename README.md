@@ -1,9 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
-> Prepared release: **v1.8.0** — not published. See [candidate notes](CHANGELOG.md).
-
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.7.6-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.8.0-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-github-only.yml"><img alt="Primary Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-github-only.yml?branch=main&label=Primary%20Release"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md"><img alt="Security Policy" src="https://img.shields.io/badge/security-policy-22C55E"></a>
@@ -54,34 +52,28 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.7.6**
+> Latest release: **v1.8.0**
 > Next release target: **v1.8.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.8.0** / App Store and TestFlight availability varies by platform and review status
 > Last updated (README): **2026-09-14** for latest release **v1.8.0**
 
-## What's New in v1.7.5 and v1.7.6
+## What's New Since v1.7.6
 
 ### Why Upgrade
 
-- v1.7.6: Keeps macOS editor text intact while scrolling long or wrapped documents.
-- v1.7.6: Restores reliable line rendering when scrolling with the Markdown preview and sidebars open.
-- v1.7.6: Preserves the virtual editor's bounded layout and redraw behavior while repairing ordinary scroll updates.
+- v1.8.0: Opens files from Finder by dropping them anywhere in the macOS workspace, with each file placed in its own editor tab.
+- v1.8.0: Keeps large terminal output, Git diffs, project indexing, and long-document tab switching responsive under sustained workloads.
+- v1.8.0: Uses Swift 6.4 and OS 27 Foundation improvements while preserving the existing deployment targets.
 
-### v1.7.6 Highlights
+### v1.8.0 Highlights
 
-- Repaints only the visible Core Text canvas region during ordinary scrolling, preserving the fast virtualized layout path.
-
-### v1.7.5 Context
-
-- v1.7.5: Restores reliable drag-to-reorder behavior for native macOS document tabs.
-- v1.7.5: Makes large-document scrolling smoother by keeping ordinary scroll events on AppKit's composited path.
-- v1.7.5: Keeps the editor and minimap synchronized without repeating imperceptible viewport updates.
-
-### v1.7.5 Highlights
-
-- Reuses prepared Core Text rows across fine-grained scrolling while retaining an ahead-of-viewport render window.
+- Adds native macOS file drag and drop with modern DropSession handling and a compatible path for older supported macOS releases.
+- Adds a compact five-step macOS window-surface slider that moves from dense native frosted glass to a lighter frosted surface while preserving background blur.
+- Streams terminal output incrementally into a native text view and precomputes stable Git diff rows.
+- Reduces repeated URL normalization during project scans and uses the measured faster byte-iteration path for large files.
+- Uses measured size classes, flexible pane widths, scaled tab typography, and safe-area-aware margins instead of assuming a specific iPhone or iPad shape.
 
 ## Start Here
 
@@ -141,7 +133,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v1.7.6 release docs current; v1.7.6 direct download current</td>
+        <td>v1.8.0 release docs current; v1.8.0 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -360,7 +352,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - **Languages and structured documents:** Swift 6-ready highlighting includes TeX/LaTeX and Typst/CeTZ-aware editing; CSV/TSV, property lists, Apple crash reports, and recognized logs can switch between structured and raw-text views, and plain text can be transformed into validated JSON through an explicit AI-assisted action.
 - **Project and preview workflows:** project-level Markdown/PDF cards reuse the project index for bounded excerpts and thumbnails, while Markdown, HTML, SVG, PDF, and PNG previews remain integrated with the editor.
 - **macOS integration:** the embedded Quick Look extension previews supported Markdown and source files in Finder, and detached Markdown previews can use the same glass treatment without changing editor content.
-- **Latest stable additions (v1.7.6):** Repaints only the visible Core Text canvas region during ordinary scrolling, preserving the fast virtualized layout path.
+- **Latest stable additions (v1.8.0):** Adds native macOS file drag and drop with modern DropSession handling and a compatible path for older supported macOS releases; Adds a compact five-step macOS window-surface slider that moves from dense native frosted glass to a lighter frosted surface while preserving background blur; Streams terminal output incrementally into a native text view and precomputes stable Git diff rows; Reduces repeated URL normalization during project scans and uses the measured faster byte-iteration path for large files; Uses measured size classes, flexible pane widths, scaled tab typography, and safe-area-aware margins instead of assuming a specific iPhone or iPad shape.
 <!-- FEATURE_COVERAGE:END -->
 
 ### Editing Core
@@ -630,7 +622,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v1.7.6` notarized GitHub release | Current |
+| Stable direct download | `v1.8.0` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
 | Post-1.4 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v1.5+` work |
@@ -638,19 +630,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.7.6-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.7.7-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.8.0-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.8.1-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v1.5%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v1.7.6)
+### Now (v1.8.0)
 
 - ![v1.4.0](https://img.shields.io/badge/v1.4.0-22C55E?style=flat-square) delivers file-backed large-document editing, bounded live viewport virtualization, reliable ordinary-file installation, and the release workflow hardening shipped alongside the release.
-  Tracking: [Release v1.7.6](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.7.6)
+  Tracking: [Release v1.8.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.8.0)
 
-### Next (v1.7.7)
+### Next (v1.8.1)
 
-- ![v1.7.7](https://img.shields.io/badge/v1.7.7-F59E0B?style=flat-square) targets the reviewed changes listed under Unreleased in CHANGELOG.md; scope is not final until release preparation.
+- ![v1.8.1](https://img.shields.io/badge/v1.8.1-F59E0B?style=flat-square) targets the reviewed changes listed under Unreleased in CHANGELOG.md; scope is not final until release preparation.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v1.5+)
@@ -740,7 +732,7 @@ Vim navigation is also available on iPad with a hardware keyboard after enabling
 
 ## Changelog
 
-Latest stable: **v1.7.6** (2026-09-12)
+Latest stable: **v1.8.0** (2026-09-14)
 
 ### Editor Evolution
 
@@ -748,8 +740,6 @@ Latest stable: **v1.7.6** (2026-09-12)
 ```mermaid
 timeline
     title Neon Vision Editor — recent release story
-    9 September 2026 : v1.7.2 · A more deliberate workflow
-                : Keeps editor chrome responsive and visually consistent across macOS, iOS, and iPadOS.
     11 September 2026 : v1.7.3 · Windows that remember
                 : Completes macOS 27 release readiness while keeping existing deployment targets and runtime availability checks for older systems.
     11 September 2026 : v1.7.4 · A more deliberate workflow
@@ -758,6 +748,8 @@ timeline
                 : Restores reliable drag-to-reorder behavior for native macOS document tabs.
     12 September 2026 : v1.7.6 · A more deliberate workflow
                 : Keeps macOS editor text intact while scrolling long or wrapped documents.
+    14 September 2026 : v1.8.0 · Release highlights
+                : Opens files from Finder by dropping them anywhere in the macOS workspace, with each file placed in its own editor tab.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -767,13 +759,13 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
+| [`v1.8.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.8.0) | **Release highlights** — Opens files from Finder by dropping them anywhere in the macOS workspace, with each file placed in its own editor tab. | Keeps a newly selected long document's complete content visible instead of applying a stale scroll position from the previous tab. |
 | [`v1.7.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.7.6) | **A more deliberate workflow** — Keeps macOS editor text intact while scrolling long or wrapped documents. | Prevents stale AppKit backing pixels from covering or clipping editor lines during macOS scrolling. |
 | [`v1.7.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.7.5) | **Windows that remember** — Restores reliable drag-to-reorder behavior for native macOS document tabs. | Prevents native tab items from being treated as draggable window background instead of receiving their own reorder gesture. |
-| [`v1.7.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.7.4) | **A more deliberate workflow** — Keeps Markdown and PDF project browsing responsive while large preview collections are prepared. | Prevents per-file loading-status publications from triggering redundant SwiftUI project-preview refreshes. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.7.6**
-- Compare recent changes: [v1.7.5...v1.7.6](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.7.5...v1.7.6)
+- Latest release: **v1.8.0**
+- Compare recent changes: [v1.7.6...v1.8.0](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.7.6...v1.8.0)
 
 ## Known Limitations
 
@@ -795,12 +787,12 @@ The recent release arc is about continuity: files that change outside the app, w
 
 ## Release Integrity
 
-- Tag: `v1.7.6`
+- Tag: `v1.8.0`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v1.7.6
+git rev-parse --verify v1.8.0
 ```
 
 - Verify downloaded artifact checksum locally:

@@ -14,6 +14,71 @@ import AppKit
 #elseif canImport(UIKit)
 import UIKit
 #endif
+
+#if os(macOS)
+@MainActor
+struct MacWindowBackdropView: NSViewRepresentable {
+    let enabled: Bool
+    let modeRaw: String
+    let isDarkMode: Bool
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView(frame: .zero)
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.isEmphasized = true
+        Self.configure(view, enabled: enabled, modeRaw: modeRaw, isDarkMode: isDarkMode)
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        Self.configure(nsView, enabled: enabled, modeRaw: modeRaw, isDarkMode: isDarkMode)
+    }
+
+    static func configure(
+        _ view: NSVisualEffectView,
+        enabled: Bool,
+        modeRaw: String,
+        isDarkMode: Bool
+    ) {
+        let kind = ContentView.MacEditorSurfacePolicy.translucentSurfaceKind(modeRaw: modeRaw)
+        view.wantsLayer = true
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.isEmphasized = true
+        view.isHidden = !enabled
+        let tintAlpha: CGFloat
+        switch kind {
+        case .stronglyFrosted:
+            view.material = .underWindowBackground
+            view.alphaValue = 1
+            tintAlpha = 0.55
+        case .frosted:
+            view.material = .underWindowBackground
+            view.alphaValue = 0.98
+            tintAlpha = 0.48
+        case .balanced:
+            view.material = .underWindowBackground
+            view.alphaValue = 0.96
+            tintAlpha = 0.42
+        case .light:
+            view.material = .underWindowBackground
+            view.alphaValue = 0.94
+            tintAlpha = 0.36
+        case .transparent:
+            view.material = .underWindowBackground
+            view.alphaValue = 0.92
+            tintAlpha = 0.30
+        }
+        let tintWhite: CGFloat = isDarkMode ? 0.06 : 0.96
+        view.layer?.backgroundColor = NSColor(
+            calibratedWhite: tintWhite,
+            alpha: enabled ? tintAlpha : 0
+        ).cgColor
+        view.appearance = NSAppearance(named: isDarkMode ? .darkAqua : .aqua)
+    }
+}
+#endif
 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -99,6 +164,23 @@ enum IOSSplitChromePolicy {
         usesSplitView: Bool
     ) -> Bool {
         usesUnifiedTopHost && usesSplitView
+    }
+}
+
+enum IOSAdaptiveLayoutPolicy {
+    nonisolated static func usesRegularLayout(
+        horizontalSizeClass: UserInterfaceSizeClass?,
+        containerWidth: CGFloat
+    ) -> Bool {
+        if let horizontalSizeClass {
+            return horizontalSizeClass == .regular
+        }
+        return containerWidth >= 600
+    }
+
+    nonisolated static func secondaryPaneIdealWidth(containerWidth: CGFloat) -> CGFloat {
+        guard containerWidth > 0 else { return 300 }
+        return min(max(containerWidth * 0.4, 280), 520)
     }
 }
 
@@ -521,6 +603,7 @@ struct ContentView: View {
     @Environment(\.colorScheme) var colorScheme
 #if os(iOS) || os(visionOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @ScaledMetric(relativeTo: .caption) var mobileTabBarHeight: CGFloat = 42
 #endif
 #if os(macOS)
     @Environment(\.openWindow) var openWindow
@@ -1125,6 +1208,14 @@ struct ContentView: View {
 }
 
     enum MacEditorSurfacePolicy {
+        enum TranslucentSurfaceKind: Equatable {
+            case stronglyFrosted
+            case frosted
+            case balanced
+            case light
+            case transparent
+        }
+
         /// Allows empty areas of the native titlebar/toolbar to initiate a window drag.
         /// AppKit still routes clicks on toolbar controls to those controls.
         private static var dragMonitors: [Int: Any] = [:]
@@ -1179,6 +1270,46 @@ struct ContentView: View {
             translucent ? .clear : solid
         }
 
+        static func translucentSurfaceKind(modeRaw: String) -> TranslucentSurfaceKind {
+            switch modeRaw {
+            case "frosted": return .stronglyFrosted
+            case "subtle": return .frosted
+            case "light": return .light
+            case "vibrant": return .transparent
+            default: return .balanced
+            }
+        }
+
+        static func nativeTranslucencyEnabled(
+            translucent: Bool,
+            opaqueEditorCanvas: Bool
+        ) -> Bool {
+            translucent || !opaqueEditorCanvas
+        }
+
+        static func effectiveTranslucencyModeRaw(
+            translucent: Bool,
+            opaqueEditorCanvas: Bool,
+            selectedModeRaw: String
+        ) -> String {
+            !translucent && !opaqueEditorCanvas ? "frosted" : selectedModeRaw
+        }
+
+        static func translucentSurfaceStyle(modeRaw: String) -> AnyShapeStyle {
+            switch translucentSurfaceKind(modeRaw: modeRaw) {
+            case .stronglyFrosted:
+                return AnyShapeStyle(.thickMaterial)
+            case .frosted:
+                return AnyShapeStyle(.regularMaterial)
+            case .balanced:
+                return AnyShapeStyle(.thinMaterial)
+            case .light:
+                return AnyShapeStyle(.ultraThinMaterial)
+            case .transparent:
+                return AnyShapeStyle(Color.clear)
+            }
+        }
+
         static func interPaneBackground(
             translucent: Bool,
             opaqueEditorCanvas: Bool,
@@ -1192,30 +1323,37 @@ struct ContentView: View {
         }
 
         static func windowBackground(translucent: Bool, modeRaw: String, isDarkMode: Bool) -> NSColor {
+            if translucent {
+                return .clear
+            }
             let whiteLevel: CGFloat
-            let translucentAlpha: CGFloat
             switch modeRaw {
             case "subtle":
                 whiteLevel = isDarkMode ? 0.18 : 0.90
-                translucentAlpha = 0.96
             case "vibrant":
                 whiteLevel = isDarkMode ? 0.12 : 0.82
-                translucentAlpha = 0.90
             default:
                 whiteLevel = isDarkMode ? 0.15 : 0.86
-                translucentAlpha = 0.93
             }
-            return NSColor(calibratedWhite: whiteLevel, alpha: translucent ? translucentAlpha : 1)
+            return NSColor(calibratedWhite: whiteLevel, alpha: 1)
         }
     }
 
     private let bracketHelperTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
     private var macUnifiedTranslucentMaterialStyle: AnyShapeStyle {
-        AnyShapeStyle(
-            MacEditorSurfacePolicy.paneBackground(
-                translucent: enableTranslucentWindow,
-                solid: macSolidSurfaceColor
-            )
+        AnyShapeStyle(Color.clear)
+    }
+    private var macNativeTranslucencyEnabled: Bool {
+        MacEditorSurfacePolicy.nativeTranslucencyEnabled(
+            translucent: enableTranslucentWindow,
+            opaqueEditorCanvas: opaqueEditorSurfaceMac
+        )
+    }
+    private var macEffectiveTranslucencyModeRaw: String {
+        MacEditorSurfacePolicy.effectiveTranslucencyModeRaw(
+            translucent: enableTranslucentWindow,
+            opaqueEditorCanvas: opaqueEditorSurfaceMac,
+            selectedModeRaw: macTranslucencyModeRaw
         )
     }
     private var macSolidSurfaceColor: Color {
@@ -1236,8 +1374,8 @@ struct ContentView: View {
         currentEditorTheme(colorScheme: colorScheme).background.opacity(0.90)
     }
     private var macEditorSurfaceBackgroundStyle: AnyShapeStyle {
-        if enableTranslucentWindow {
-            return AnyShapeStyle(Color.clear)
+        if macNativeTranslucencyEnabled {
+            return macUnifiedTranslucentMaterialStyle
         }
         if opaqueEditorSurfaceMac {
             return AnyShapeStyle(macOpaqueEditorCanvasColor)
@@ -1245,14 +1383,14 @@ struct ContentView: View {
         return AnyShapeStyle(macSolidSurfaceColor)
     }
     private var macChromeBackgroundStyle: AnyShapeStyle {
-        if enableTranslucentWindow {
+        if macNativeTranslucencyEnabled {
             return macUnifiedTranslucentMaterialStyle
         }
         return AnyShapeStyle(macSolidSurfaceColor)
     }
 
     var macToolbarBackgroundStyle: AnyShapeStyle {
-        if enableTranslucentWindow {
+        if macNativeTranslucencyEnabled {
             // The NSWindow owns the translucent chrome surface. Keep SwiftUI
             // clear here so the toolbar and tab strip reveal that same window
             // material instead of stacking an opaque bar material over it.
@@ -1279,7 +1417,7 @@ struct ContentView: View {
     private var macInterPaneBackgroundStyle: AnyShapeStyle {
         AnyShapeStyle(
             MacEditorSurfacePolicy.interPaneBackground(
-                translucent: enableTranslucentWindow,
+                translucent: macNativeTranslucencyEnabled,
                 opaqueEditorCanvas: opaqueEditorSurfaceMac,
                 editor: macOpaqueEditorCanvasColor,
                 solid: macSolidSurfaceColor
@@ -1374,7 +1512,7 @@ struct ContentView: View {
         #if os(visionOS)
         return [.large]
         #else
-        if UIDevice.current.userInterfaceIdiom == .pad {
+        if usesRegularIOSLayout {
             return [.fraction(0.72), .large]
         }
         return [.large]
@@ -1405,8 +1543,8 @@ struct ContentView: View {
 #endif
 
     var useIOSUnifiedTopHost: Bool {
-#if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .phone || UIDevice.current.userInterfaceIdiom == .pad
+#if os(iOS)
+        true
 #else
         false
 #endif
@@ -1417,6 +1555,21 @@ struct ContentView: View {
             usesUnifiedTopHost: useIOSUnifiedTopHost,
             usesSplitView: shouldUseSplitView
         )
+    }
+
+    var usesRegularIOSLayout: Bool {
+#if os(iOS) || os(visionOS)
+        IOSAdaptiveLayoutPolicy.usesRegularLayout(
+            horizontalSizeClass: horizontalSizeClass,
+            containerWidth: liveContainerWidth
+        )
+#else
+        true
+#endif
+    }
+
+    var usesCompactIOSLayout: Bool {
+        !usesRegularIOSLayout
     }
 
     var tabBarLeadingPadding: CGFloat {
@@ -2584,7 +2737,7 @@ struct ContentView: View {
 
     // Layout: NavigationSplitView with optional sidebar and the primary code editor.
     var body: some View {
-        lifecycleConfiguredRootView
+        fileDropConfiguredRootView
         // VisionOS reading surfaces own the editor appearance. Keep the
         // system-glass and light presets from inheriting a dark window scheme,
         // while Dark/Ink continue to render as a coherent dark surface.
@@ -2606,12 +2759,22 @@ struct ContentView: View {
             if showFindReplace { refreshFindPreview() }
         }
 #if os(macOS)
-        .background(
-            WindowAccessor { window in
-                updateWindowRegistration(window)
+        .background {
+            ZStack {
+                MacWindowBackdropView(
+                    enabled: macNativeTranslucencyEnabled,
+                    modeRaw: macEffectiveTranslucencyModeRaw,
+                    isDarkMode: effectiveEditorColorScheme == .dark
+                )
+                .allowsHitTesting(false)
+                .ignoresSafeArea()
+
+                WindowAccessor { window in
+                    updateWindowRegistration(window)
+                }
+                .frame(width: 0, height: 0)
             }
-            .frame(width: 0, height: 0)
-        )
+        }
         .onDisappear {
             handleWindowDisappear()
         }
@@ -2636,6 +2799,25 @@ struct ContentView: View {
         .onChange(of: remotePreparedTarget) { _, _ in
             updateWindowSubtitle()
         }
+#endif
+    }
+
+    @ViewBuilder
+    private var fileDropConfiguredRootView: some View {
+#if os(macOS)
+        if #available(macOS 26.0, *) {
+            lifecycleConfiguredRootView
+                .dropDestination(for: URL.self, isEnabled: true) { urls, _ in
+                    _ = openDroppedFiles(urls)
+                }
+        } else {
+            lifecycleConfiguredRootView
+                .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+                    acceptDroppedFileProviders(providers)
+                }
+        }
+#else
+        lifecycleConfiguredRootView
 #endif
     }
 
@@ -3015,7 +3197,7 @@ struct ContentView: View {
             isToolbarCollapsed = startsWithToolbarCollapsed
 #endif
 #if os(iOS) || os(visionOS)
-            if UIDevice.current.userInterfaceIdiom == .pad && projectSidebarWidth < Double(minimumProjectSidebarWidth) {
+            if usesRegularIOSLayout && projectSidebarWidth < Double(minimumProjectSidebarWidth) {
                 projectSidebarWidth = Double(minimumProjectSidebarWidth)
             }
 #endif
@@ -3105,20 +3287,16 @@ struct ContentView: View {
         let contentView: ContentView
 
 #if os(iOS) || os(visionOS)
-        private var isiPhone: Bool {
-            UIDevice.current.userInterfaceIdiom == .phone
-        }
-
         private var findReplaceSheetMaxWidth: CGFloat? {
-            isiPhone ? nil : 480
+            contentView.usesCompactIOSLayout ? nil : 480
         }
 
         private var findReplaceSheetDetents: Set<PresentationDetent> {
-            isiPhone ? [.large] : [.height(600)]
+            contentView.usesCompactIOSLayout ? [.large] : [.fraction(0.72), .large]
         }
 
         private var findInFilesSheetDetents: Set<PresentationDetent> {
-            isiPhone ? [.large] : [.height(700), .large]
+            contentView.usesCompactIOSLayout ? [.large] : [.fraction(0.82), .large]
         }
 
         @ViewBuilder
@@ -3255,7 +3433,7 @@ struct ContentView: View {
                 #if os(visionOS)
                 .presentationContentInteraction(.resizes)
                 #else
-                .presentationContentInteraction(UIDevice.current.userInterfaceIdiom == .pad ? .resizes : .scrolls)
+                .presentationContentInteraction(contentView.usesRegularIOSLayout ? .resizes : .scrolls)
                 #endif
 #endif
             })
@@ -3325,7 +3503,7 @@ struct ContentView: View {
 #elseif os(iOS) || os(visionOS)
             AnyView(view.onChange(of: contentView.showFindInFiles) { _, isPresented in
                 guard isPresented else { return }
-                if contentView.horizontalSizeClass == .compact {
+                if contentView.usesCompactIOSLayout {
                     contentView.showCompactProjectSidebarSheet = true
                 } else {
                     contentView.showProjectStructureSidebar = true
@@ -3541,7 +3719,7 @@ struct ContentView: View {
                             .navigationBarTitleDisplayMode(.inline)
                             .toolbar {
 #if os(iOS) || os(visionOS)
-                                if UIDevice.current.userInterfaceIdiom == .phone && contentView.isMarkdownPreviewDocument {
+                                if contentView.usesCompactIOSLayout && contentView.isMarkdownPreviewDocument {
                                     ToolbarItem(placement: .topBarLeading) {
                                         contentView.markdownPreviewPhoneSettingsMenu
                                     }
@@ -4050,8 +4228,7 @@ struct ContentView: View {
 #if os(macOS)
         return viewModel.showSidebar && !brainDumpLayoutEnabled && !focusModeEnabled
 #else
-        // Keep iPhone layout single-column to avoid horizontal clipping.
-        return viewModel.showSidebar && !brainDumpLayoutEnabled && !focusModeEnabled && horizontalSizeClass == .regular
+        return viewModel.showSidebar && !brainDumpLayoutEnabled && !focusModeEnabled && usesRegularIOSLayout
 #endif
     }
 
@@ -4085,7 +4262,7 @@ struct ContentView: View {
                 translucentBackgroundEnabled: effectiveMobileTranslucencyEnabled,
                 onItemSelected: {
 #if os(iOS)
-                    if horizontalSizeClass == .compact {
+                    if usesCompactIOSLayout {
                         viewModel.showSidebar = false
                     }
 #endif
@@ -4237,7 +4414,7 @@ struct ContentView: View {
         switch largeFileOpenModeRaw {
         case "standard":
 #if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .phone {
+            if usesCompactIOSLayout {
                 return "Std"
             }
 #endif
@@ -4455,7 +4632,7 @@ struct ContentView: View {
             }.value
             await Task.yield()
 #if os(iOS) || os(visionOS)
-            if UIDevice.current.userInterfaceIdiom == .phone {
+            if usesCompactIOSLayout {
                 sidebarCompareDiffPresentation = DocumentDiffPresentation(
                     title: title,
                     leftTitle: leftTitle,
@@ -4559,7 +4736,7 @@ struct ContentView: View {
 
     private func shouldUseOuterNoWrapEditorScroll(lineWrapEnabled: Bool) -> Bool {
 #if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .pad &&
+        usesRegularIOSLayout &&
         !lineWrapEnabled &&
         !effectiveLargeFileModeEnabled
 #else
@@ -5216,10 +5393,14 @@ struct ContentView: View {
                 HStack(spacing: 0) {
                     primaryEditorColumn
 
-                    if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .leading && horizontalSizeClass == .regular {
+                    if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .leading && usesRegularIOSLayout {
                         iOSPaneDivider
                         markdownProjectPreviewPanel
-                            .frame(width: 300)
+                            .frame(
+                                minWidth: 240,
+                                idealWidth: IOSAdaptiveLayoutPolicy.secondaryPaneIdealWidth(containerWidth: liveContainerWidth),
+                                maxWidth: 520
+                            )
                     }
 
                     if isMarkdownPreviewSplitVisible {
@@ -5236,10 +5417,14 @@ struct ContentView: View {
                         pdfPreviewSplitPane
                     }
 
-                    if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing && horizontalSizeClass == .regular {
+                    if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing && usesRegularIOSLayout {
                         iOSPaneDivider
                         markdownProjectPreviewPanel
-                            .frame(width: 300)
+                            .frame(
+                                minWidth: 240,
+                                idealWidth: IOSAdaptiveLayoutPolicy.secondaryPaneIdealWidth(containerWidth: liveContainerWidth),
+                                maxWidth: 520
+                            )
                     }
                 }
             )
@@ -5376,15 +5561,10 @@ struct ContentView: View {
 #if os(iOS) || os(visionOS)
         let eventAwareContent = AnyView(
             applyingKeyboardAccessoryHandlers(to: eventAwareContentBase)
-        .onChange(of: horizontalSizeClass) { _, newClass in
-            if UIDevice.current.userInterfaceIdiom == .pad && newClass != .regular && isPreviewVisible {
-                closeCurrentPreview()
-            }
-        }
         .onChange(of: showSettingsSheet) { _, isPresented in
             if isPresented {
 #if os(iOS) || os(visionOS)
-                if UIDevice.current.userInterfaceIdiom == .pad {
+                if usesRegularIOSLayout {
                     settingsSheetDetent = .large
                 }
 #endif
@@ -5426,6 +5606,9 @@ struct ContentView: View {
             // Keep all chrome/background surfaces in lockstep when mode changes.
             applyWindowTranslucency(enableTranslucentWindow)
         }
+        .onChange(of: opaqueEditorSurfaceMac) { _, _ in
+            applyWindowTranslucency(enableTranslucentWindow)
+        }
         .onChange(of: colorScheme) { _, _ in
             applyWindowTranslucency(enableTranslucentWindow)
         }
@@ -5442,7 +5625,7 @@ struct ContentView: View {
         .sheet(
             isPresented: Binding(
                 get: {
-                    horizontalSizeClass == .compact && isMarkdownProjectPreviewVisible
+                    usesCompactIOSLayout && isMarkdownProjectPreviewVisible
                 },
                 set: { isPresented in
                     if !isPresented {

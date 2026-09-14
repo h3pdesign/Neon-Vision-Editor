@@ -37,3 +37,20 @@ The v1.4.0 large-file path is file-backed rather than a full-document compatibil
 - The macOS virtual text renderer keeps `NSTextView` attached to the active bounded window, requests replacement windows around the scroll anchor, and limits syntax highlighting/minimap work to the visible range. Measure viewport installation and replacement as rendering operations, not as full-document open operations.
 - Large editable documents remain editable below the 100 MB partial-open boundary. The 100 MB-and-above path is intentionally read-only and exposes only the first 4 MB for safe inspection.
 - Performance investigations must measure viewport replacement, scrolling, typing, save, and external-change handling separately; a full-document allocation in the per-edit path is a regression.
+
+## Swift 6.4 and OS 27 audit (2026-09-14)
+
+The v1.8.0 performance pass keeps optimizations evidence-driven:
+
+- Terminal ANSI parsing and display sanitization run outside the main actor. The UI receives coalesced incremental attributed chunks every 33 ms and appends them to a native `NSTextView`; it does not rebuild the complete 240,000 UTF-16-unit scrollback value on every publication.
+- Git diff presentations precompute changed, inline, and side-by-side display rows once. SwiftUI renders those rows with stable identities instead of filtering and rebuilding arrays during body evaluation.
+- The Data iteration benchmark in issue #507 measured `withUnsafeBytes` at 0.32 seconds, RawSpan at 0.59 seconds, and `Data.enumerated()` at 2.12 seconds for the benchmark workload. Keep `withUnsafeBytes`; RawSpan is both OS-27-only and slower for this path.
+- Foundation's OS 27 implementations of `Data`, `NSData`, `URL`, `NSURL`, and `CFURL` are runtime replacements, so they require no source-level availability branch. Release and platform-matrix builds require Xcode 27 and the OS 27 SDK family; the project index stays on native `URL` and cached `URLResourceValues`, normalizes its root once per scan, and receives the newer runtime automatically on OS 27 while retaining older deployment targets.
+- Keep Swift 6 default main-actor isolation for UI ownership, but explicitly move measured parsing and formatting work off the main actor. Do not enable approachable concurrency as a performance switch.
+- Do not add yielding accessors, blanket `@inline(always)`, or `@specialized` attributes until an Instruments trace identifies a remaining copy or dispatch hotspot. These features can increase exclusivity complexity or binary size without improving the current workloads.
+
+The optimized Release-GitHub build was exercised on a MacBook Pro M5 Pro with macOS 27.0 (26A428) and Xcode 27.0 (27A266a). A 16,000-line PTY workload reached its completion marker, retained bounded scrollback, and produced no Instruments hang over 250 ms in a 30-second Time Profiler capture. ANSI work appeared on the processing worker; the incremental text bridge appeared only sparsely in CPU samples.
+
+Automated tab switching covered HTML, CSV, Markdown, Swift, and Ada documents. Full accessibility-tree capture itself produced main-thread stalls while serializing very large editor and WebKit accessibility values, so those stalls are automation overhead and are not accepted as tab-switch latency measurements. Use the deterministic tab-switch and virtual-editor XCTest benchmarks plus the existing `TabSwitch` signposts for regression decisions.
+
+No OS 26 runtime is installed on this machine, so an OS 26 versus OS 27 timing comparison remains unmeasured. Record that comparison on identical hardware before attributing a performance change to OS 27 Foundation or Swift runtime behavior.

@@ -52,6 +52,32 @@ final class FileBackedTextDocumentTests: XCTestCase {
         }
     }
 
+    func testByteScansPreserveUnicodeEncodingsAndLineEndings() throws {
+        let encodings: [TextEncodingDescriptor.Identifier] = [
+            .utf8, .utf8WithBOM,
+            .utf16LittleEndian, .utf16LittleEndianWithBOM,
+            .utf16BigEndian, .utf16BigEndianWithBOM
+        ]
+        let lineEndings: [(separator: String, expected: FileBackedTextDocument.LineEnding)] = [
+            ("\n", .lf), ("\r\n", .crlf), ("\r", .cr)
+        ]
+
+        for identifier in encodings {
+            let encoding = TextEncodingDescriptor(identifier: identifier)
+            for lineEnding in lineEndings {
+                let source = ["alpha", "βeta 😀", "tail", ""].joined(separator: lineEnding.separator)
+                let url = directory.appendingPathComponent("scan-\(identifier.rawValue)-\(lineEnding.expected.rawValue).txt")
+                try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
+
+                let document = try FileBackedTextDocument(url: url, knownEncoding: encoding)
+
+                XCTAssertEqual(document.string(), source, identifier.rawValue)
+                XCTAssertEqual(document.restoreRecord.lineEnding, lineEnding.expected, identifier.rawValue)
+                XCTAssertEqual(document.lineCount, lineEnding.expected == .cr ? 1 : 4, identifier.rawValue)
+            }
+        }
+    }
+
     func testLogicalPositionsAreExactAcrossUnicodeStorageAndEdits() throws {
         for identifier in [TextEncodingDescriptor.Identifier.utf8, .utf8WithBOM, .utf16LittleEndianWithBOM, .utf16BigEndian] {
             let encoding = TextEncodingDescriptor(identifier: identifier)

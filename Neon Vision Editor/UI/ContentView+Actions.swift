@@ -15,8 +15,43 @@ struct FindReplaceAllPreview: Identifiable {
     let id = UUID()
     let source: String
     let replacement: String
+    let mutations: [FindReplaceAllMutation]
     let matchCount: Int
 }
+
+struct FindReplaceAllMutation {
+    let range: NSRange
+    let replacement: String
+}
+
+#if os(macOS)
+enum EditorFileDropPolicy {
+    nonisolated static func regularFileURLs(in urls: [URL]) -> [URL] {
+        urls.filter { url in
+            guard url.isFileURL else { return false }
+            return (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+        }
+    }
+
+    nonisolated static func fileURL(fromDroppedItem item: NSSecureCoding?) -> URL? {
+        if let url = item as? URL, url.isFileURL {
+            return url
+        }
+        if let data = item as? Data,
+           let value = String(data: data, encoding: .utf8),
+           let url = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
+           url.isFileURL {
+            return url
+        }
+        if let value = item as? String,
+           let url = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
+           url.isFileURL {
+            return url
+        }
+        return nil
+    }
+}
+#endif
 
 
 // MARK: - Content View Actions
@@ -661,7 +696,7 @@ extension ContentView {
 
     func toggleSidebarFromToolbar() {
 #if os(iOS) || os(visionOS)
-        if horizontalSizeClass == .compact {
+        if usesCompactIOSLayout {
             showCompactSidebarSheet.toggle()
             return
         }
@@ -675,8 +710,7 @@ extension ContentView {
 
     func toggleProjectSidebarFromToolbar() {
 #if os(iOS) || os(visionOS)
-        let isPhone = UIDevice.current.userInterfaceIdiom == .phone
-        if isPhone || horizontalSizeClass == .compact || horizontalSizeClass == nil {
+        if usesCompactIOSLayout {
             DispatchQueue.main.async {
                 showCompactProjectSidebarSheet.toggle()
             }
@@ -740,10 +774,10 @@ extension ContentView {
         previewMode = previewMode.toggled(for: requestedMode)
         let isOpeningPreview = previewMode != .none
 #if os(iOS) || os(visionOS)
-        if UIDevice.current.userInterfaceIdiom == .pad && isOpeningPreview {
+        if usesRegularIOSLayout && isOpeningPreview {
             showProjectStructureSidebar = false
             showCompactProjectSidebarSheet = false
-        } else if UIDevice.current.userInterfaceIdiom == .phone && isOpeningPreview {
+        } else if usesCompactIOSLayout && isOpeningPreview {
             markdownPreviewSheetDetent = .large
             dismissKeyboard()
         }
@@ -1047,8 +1081,7 @@ extension ContentView {
             findStatusMessage = "No matches found"
             return nil
         }
-        let replacement = NSMutableString(string: source)
-        for range in result.ranges.reversed() {
+        let mutations = result.ranges.compactMap { range -> FindReplaceAllMutation? in
             guard let text = ReleaseRuntimePolicy.replacementForFindMatch(
                 in: source,
                 range: range,
@@ -1057,12 +1090,17 @@ extension ContentView {
                 useRegex: findUsesRegex,
                 caseSensitive: findCaseSensitive,
                 wholeWord: findWholeWord && !findUsesRegex
-            ) else { continue }
-            replacement.replaceCharacters(in: range, with: text)
+            ) else { return nil }
+            return FindReplaceAllMutation(range: range, replacement: text)
+        }
+        let replacement = NSMutableString(string: source)
+        for mutation in mutations.reversed() {
+            replacement.replaceCharacters(in: mutation.range, with: mutation.replacement)
         }
         return FindReplaceAllPreview(
             source: source,
             replacement: replacement as String,
+            mutations: mutations,
             matchCount: result.ranges.count
         )
     }
@@ -1112,7 +1150,16 @@ extension ContentView {
             findStatusMessage = "The document changed. Review Replace All again."
             return
         }
-        currentContentBinding.wrappedValue = preview.replacement
+        if let tab = viewModel.selectedTab {
+            postEditorReplacements(preview.mutations, documentID: tab.id)
+            findSession = EditorFindSessionState(
+                presentationRevision: findSession.presentationRevision &+ 1
+            )
+            findMatchCount = 0
+            postEditorFindHighlights()
+        } else {
+            currentContentBinding.wrappedValue = preview.replacement
+        }
 #endif
         findStatusMessage = "Replaced \(preview.matchCount) matches"
     }
@@ -1133,6 +1180,18 @@ extension ContentView {
             name: .replaceEditorRangeRequested,
             object: nil,
             userInfo: userInfo
+        )
+    }
+
+    private func postEditorReplacements(_ mutations: [FindReplaceAllMutation], documentID: UUID) {
+        NotificationCenter.default.post(
+            name: .replaceEditorRangesRequested,
+            object: nil,
+            userInfo: [
+                EditorCommandUserInfo.documentID: documentID.uuidString,
+                EditorCommandUserInfo.replacementRanges: mutations.map { NSValue(range: $0.range) },
+                EditorCommandUserInfo.replacementTexts: mutations.map(\.replacement)
+            ]
         )
     }
 
@@ -1205,14 +1264,24 @@ extension ContentView {
     func applyWindowTranslucency(_ enabled: Bool) {
 #if os(macOS)
         let isDarkMode = colorScheme == .dark
+        let nativeTranslucencyEnabled = ContentView.MacEditorSurfacePolicy.nativeTranslucencyEnabled(
+            translucent: enabled,
+            opaqueEditorCanvas: opaqueEditorSurfaceMac
+        )
+        let effectiveModeRaw = ContentView.MacEditorSurfacePolicy.effectiveTranslucencyModeRaw(
+            translucent: enabled,
+            opaqueEditorCanvas: opaqueEditorSurfaceMac,
+            selectedModeRaw: macTranslucencyModeRaw
+        )
         for window in NSApp.windows {
             // Apply only to editor windows registered by ContentView instances.
             guard WindowViewModelRegistry.shared.viewModel(for: window.windowNumber) != nil else {
                 continue
             }
-            let isOpaque = !enabled
-            let backgroundColor = editorTranslucentBackgroundColor(
-                enabled: enabled,
+            let isOpaque = !nativeTranslucencyEnabled
+            let backgroundColor = ContentView.MacEditorSurfacePolicy.windowBackground(
+                translucent: nativeTranslucencyEnabled,
+                modeRaw: effectiveModeRaw,
                 isDarkMode: isDarkMode
             )
             if window.isOpaque != isOpaque {
@@ -1220,6 +1289,12 @@ extension ContentView {
             }
             if window.backgroundColor != backgroundColor {
                 window.backgroundColor = backgroundColor
+            }
+            if window.contentView?.wantsLayer != true {
+                window.contentView?.wantsLayer = true
+            }
+            if window.contentView?.layer?.backgroundColor != NSColor.clear.cgColor {
+                window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
             }
             // Keep chrome flags constant; toggling these causes visible top-bar jumps.
             if !window.titlebarAppearsTransparent {
@@ -1239,17 +1314,6 @@ extension ContentView {
         }
 #endif
     }
-
-#if os(macOS)
-    private func editorTranslucentBackgroundColor(enabled: Bool, isDarkMode: Bool) -> NSColor {
-        let modeRaw = UserDefaults.standard.string(forKey: "SettingsMacTranslucencyMode") ?? "balanced"
-        return ContentView.MacEditorSurfacePolicy.windowBackground(
-            translucent: enabled,
-            modeRaw: modeRaw,
-            isDarkMode: isDarkMode
-        )
-    }
-#endif
 
     // MARK: - Project Folder Loading
 
@@ -1592,22 +1656,52 @@ extension ContentView {
 
     // MARK: - Project Item Operations
 
-    func openProjectFile(url: URL) {
+    @discardableResult
+    func openProjectFile(url: URL) -> Bool {
         guard EditorViewModel.isSupportedEditorFileURL(url) else {
             presentUnsupportedFileAlert(for: url)
-            return
+            return false
         }
         if !viewModel.openFile(url: url) {
             presentUnsupportedFileAlert(for: url)
-            return
+            return false
         }
         persistSessionIfReady()
+        return true
     }
 
     @MainActor
     func openProjectFileFromProjectSidebar(url: URL) {
         openProjectFile(url: url)
     }
+
+#if os(macOS)
+    @discardableResult
+    func openDroppedFiles(_ urls: [URL]) -> Bool {
+        var didOpenFile = false
+        for url in EditorFileDropPolicy.regularFileURLs(in: urls) {
+            if openProjectFile(url: url) {
+                didOpenFile = true
+            }
+        }
+        return didOpenFile
+    }
+
+    func acceptDroppedFileProviders(_ providers: [NSItemProvider]) -> Bool {
+        let fileProviders = providers.filter {
+            $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+        }
+        for provider in fileProviders {
+            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                guard let url = EditorFileDropPolicy.fileURL(fromDroppedItem: item) else { return }
+                Task { @MainActor in
+                    _ = openDroppedFiles([url])
+                }
+            }
+        }
+        return !fileProviders.isEmpty
+    }
+#endif
 
     func startProjectItemCreation(kind: ProjectSidebarCreationKind, in preferredDirectory: URL?) {
         guard let root = projectRootFolderURL else { return }

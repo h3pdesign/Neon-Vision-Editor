@@ -652,7 +652,7 @@ struct MarkdownProjectPreviewPanel: View {
                     .menuStyle(.borderlessButton)
                     .accessibilityLabel("Sort Markdown cards")
                 }
-                if horizontalSizeClass == .compact {
+                if horizontalSizeClass != .regular {
                     HStack(spacing: 8) {
                         Menu {
                             ForEach(MarkdownProjectPreviewMode.allCases) { value in

@@ -566,14 +566,7 @@ struct CodeSnapshotComposerView: View {
     private var composerSurfaceStyle: AnyShapeStyle {
 #if os(macOS)
         guard usesTranslucentSurface else { return AnyShapeStyle(surfaceBackground) }
-        switch macTranslucencyModeRaw {
-        case "subtle":
-            return AnyShapeStyle(.thickMaterial.opacity(0.92))
-        case "vibrant":
-            return AnyShapeStyle(.regularMaterial.opacity(0.84))
-        default:
-            return AnyShapeStyle(.thickMaterial.opacity(0.88))
-        }
+        return ContentView.MacEditorSurfacePolicy.translucentSurfaceStyle(modeRaw: macTranslucencyModeRaw)
 #else
         return usesTranslucentSurface
             ? AnyShapeStyle(.ultraThinMaterial)
@@ -920,7 +913,7 @@ struct CodeSnapshotComposerView: View {
                 }
                 .padding(20)
             }
-            .frame(width: 340)
+            .frame(minWidth: 280, idealWidth: 340, maxWidth: 380)
             .background(settingsSurfaceStyle)
 
             Divider()
@@ -1053,7 +1046,7 @@ struct CodeSnapshotComposerView: View {
 
     private var usesCompactScrollingLayout: Bool {
 #if os(iOS)
-        return horizontalSizeClass == .compact
+        return horizontalSizeClass != .regular
 #else
         return false
 #endif

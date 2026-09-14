@@ -2336,6 +2336,11 @@ struct CustomTextEditor: UIViewRepresentable {
 
     @MainActor
     class Coordinator: NSObject, UITextViewDelegate, UIGestureRecognizerDelegate {
+        private struct ReplacementBatchMutation: Sendable {
+            let range: NSRange
+            let replacement: String
+        }
+
         var parent: CustomTextEditor
         weak var container: LineNumberedTextViewContainer?
         weak var textView: EditorInputTextView?
@@ -2404,6 +2409,7 @@ struct CustomTextEditor: UIViewRepresentable {
             NotificationCenter.default.addObserver(self, selector: #selector(moveToRange(_:)), name: .moveCursorToRange, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(updateFindHighlights(_:)), name: .updateEditorFindHighlights, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(replaceRange(_:)), name: .replaceEditorRangeRequested, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(replaceRanges(_:)), name: .replaceEditorRangesRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveSelectedLines(_:)), name: .moveSelectedLinesRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(scrollViewportToFraction(_:)), name: .scrollEditorViewportToFraction, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(requestEditorViewport(_:)), name: .requestEditorViewport, object: nil)
@@ -2798,6 +2804,111 @@ struct CustomTextEditor: UIViewRepresentable {
                 selectedRange: insertedRange
             )
             textView.scrollRangeToVisible(insertedRange)
+        }
+
+        @objc private func replaceRanges(_ notification: Notification) {
+            if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+               parent.documentID?.uuidString != targetDocumentID {
+                return
+            }
+            guard let textView,
+                  textView.isEditable,
+                  let documentID = parent.documentID,
+                  let rangeValues = notification.userInfo?[EditorCommandUserInfo.replacementRanges] as? [NSValue],
+                  let replacements = notification.userInfo?[EditorCommandUserInfo.replacementTexts] as? [String],
+                  rangeValues.count == replacements.count,
+                  !rangeValues.isEmpty else { return }
+
+            let mutations = zip(rangeValues.map(\.rangeValue), replacements).map {
+                ReplacementBatchMutation(range: $0.0, replacement: $0.1)
+            }
+            applyReplacementBatch(mutations, to: textView, documentID: documentID)
+        }
+
+        private func applyReplacementBatch(
+            _ mutations: [ReplacementBatchMutation],
+            to textView: EditorInputTextView,
+            documentID: UUID
+        ) {
+            guard let onTextMutation = parent.onTextMutation else { return }
+            let originalLength = textView.textStorage.length
+            var priorEnd = 0
+            for mutation in mutations {
+                guard mutation.range.location >= priorEnd,
+                      mutation.range.length >= 0,
+                      NSMaxRange(mutation.range) <= originalLength else { return }
+                priorEnd = NSMaxRange(mutation.range)
+            }
+
+            let original = textView.text as NSString
+            var cumulativeDelta = 0
+            let inverseMutations = mutations.map { mutation in
+                let replacementLength = (mutation.replacement as NSString).length
+                let inverse = ReplacementBatchMutation(
+                    range: NSRange(
+                        location: mutation.range.location + cumulativeDelta,
+                        length: replacementLength
+                    ),
+                    replacement: original.substring(with: mutation.range)
+                )
+                cumulativeDelta += replacementLength - mutation.range.length
+                return inverse
+            }
+
+            cancelPendingBindingSync()
+            cancelPendingHighlight()
+            let priorSelection = textView.selectedRange
+            let priorOffset = textView.contentOffset
+            textView.textStorage.beginEditing()
+            for snapshot in findHighlightBackgrounds {
+                guard NSMaxRange(snapshot.range) <= textView.textStorage.length else { continue }
+                textView.textStorage.removeAttribute(.backgroundColor, range: snapshot.range)
+                if let value = snapshot.value {
+                    textView.textStorage.addAttribute(.backgroundColor, value: value, range: snapshot.range)
+                }
+            }
+            findHighlightBackgrounds = []
+            for mutation in mutations.reversed() {
+                textView.textStorage.replaceCharacters(in: mutation.range, with: mutation.replacement)
+            }
+            textView.textStorage.endEditing()
+
+            for mutation in mutations.reversed() {
+                onTextMutation(
+                    EditorTextMutation(
+                        documentID: documentID,
+                        range: mutation.range,
+                        replacement: mutation.replacement
+                    )
+                )
+            }
+            textView.undoManager?.registerUndo(withTarget: self) { target in
+                guard let undoTextView = target.textView,
+                      target.parent.documentID == documentID else { return }
+                target.applyReplacementBatch(
+                    inverseMutations,
+                    to: undoTextView,
+                    documentID: documentID
+                )
+            }
+            textView.undoManager?.setActionName("Replace All")
+
+            let resultingLength = textView.textStorage.length
+            let selectedLocation = min(priorSelection.location, resultingLength)
+            textView.selectedRange = NSRange(
+                location: selectedLocation,
+                length: min(priorSelection.length, max(0, resultingLength - selectedLocation))
+            )
+            textView.setContentOffset(priorOffset, animated: false)
+            textView.invalidateTextMetrics()
+            container?.updateLineNumbers(for: textView.text, fontSize: parent.fontSize)
+            pendingEditedRange = (textView.text as NSString).lineRange(
+                for: NSRange(location: selectedLocation, length: 0)
+            )
+            updateCaretStatus()
+            scheduleHighlightIfNeeded(currentText: textView.text)
+            textView.invisibleCharactersOverlayView?.requestRedraw(immediate: true)
+            textView.revealCaretWithContext()
         }
 
         @objc private func moveToLine(_ notification: Notification) {

@@ -26,7 +26,7 @@ struct DiffComparisonView<Footer: View>: View {
 #if os(macOS)
         1180
 #else
-        horizontalSizeClass == .compact ? 0 : 760
+        horizontalSizeClass != .regular ? 0 : 760
 #endif
     }
 
@@ -34,7 +34,7 @@ struct DiffComparisonView<Footer: View>: View {
 #if os(macOS)
         760
 #else
-        horizontalSizeClass == .compact ? 420 : 560
+        horizontalSizeClass != .regular ? 420 : 560
 #endif
     }
 
@@ -42,7 +42,7 @@ struct DiffComparisonView<Footer: View>: View {
 #if os(macOS)
         560
 #else
-        horizontalSizeClass == .compact ? 320 : 360
+        horizontalSizeClass != .regular ? 320 : 360
 #endif
     }
 
@@ -50,7 +50,7 @@ struct DiffComparisonView<Footer: View>: View {
 #if os(macOS)
         false
 #else
-        horizontalSizeClass == .compact
+        horizontalSizeClass != .regular
 #endif
     }
 
@@ -79,37 +79,10 @@ struct DiffComparisonView<Footer: View>: View {
         currentEditorTheme(colorScheme: colorScheme).background
     }
 
-#if os(macOS)
-    private var macTranslucentMaterial: Material {
-        switch macTranslucencyModeRaw {
-        case "vibrant":
-            return .regularMaterial
-        default:
-            return .thickMaterial
-        }
-    }
-
-    private var macTranslucentOpacity: Double {
-        switch macTranslucencyModeRaw {
-        case "subtle": return 0.92
-        case "vibrant": return 0.84
-        default: return 0.88
-        }
-    }
-
-    private var macToolbarOpacity: Double {
-        switch macTranslucencyModeRaw {
-        case "subtle": return 0.76
-        case "vibrant": return 0.56
-        default: return 0.66
-        }
-    }
-#endif
-
     private var surfaceBackgroundStyle: AnyShapeStyle {
 #if os(macOS)
         if translucentWindow {
-            return AnyShapeStyle(macTranslucentMaterial.opacity(macTranslucentOpacity))
+            return ContentView.MacEditorSurfacePolicy.translucentSurfaceStyle(modeRaw: macTranslucencyModeRaw)
         }
         return AnyShapeStyle(editorThemeBackground)
 #else
@@ -123,7 +96,7 @@ struct DiffComparisonView<Footer: View>: View {
     private var headerBackgroundStyle: AnyShapeStyle {
 #if os(macOS)
         if translucentWindow {
-            return AnyShapeStyle(macTranslucentMaterial.opacity(macToolbarOpacity))
+            return ContentView.MacEditorSurfacePolicy.translucentSurfaceStyle(modeRaw: macTranslucencyModeRaw)
         }
 #else
         if translucentWindow {
@@ -305,7 +278,7 @@ struct CompareTabsPickerView: View {
 #if os(macOS)
         640
 #else
-        horizontalSizeClass == .compact ? 0 : 640
+        horizontalSizeClass != .regular ? 0 : 640
 #endif
     }
 
@@ -313,7 +286,7 @@ struct CompareTabsPickerView: View {
 #if os(macOS)
         360
 #else
-        horizontalSizeClass == .compact ? 300 : 360
+        horizontalSizeClass != .regular ? 300 : 360
 #endif
     }
 

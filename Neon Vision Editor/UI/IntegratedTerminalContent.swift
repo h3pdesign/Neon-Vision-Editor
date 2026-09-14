@@ -4,27 +4,78 @@ import Combine
 import Darwin
 
 #if os(macOS) && !APP_STORE_BUILD
+nonisolated struct TerminalProcessedOutput: @unchecked Sendable {
+    let displayText: String
+    let styledText: NSAttributedString
+}
+
+nonisolated enum TerminalOutputCommand: Sendable {
+    case reset
+    case chunk(String, generation: Int)
+}
+
+struct TerminalRenderUpdate {
+    enum Kind {
+        case reset
+        case append(NSAttributedString)
+    }
+
+    let revision: Int
+    let kind: Kind
+}
+
 @MainActor
 final class IntegratedTerminalSession: ObservableObject {
-    private static let maxOutputUTF16Length = 240_000
+    static let maxOutputUTF16Length = 240_000
     nonisolated private static let processGroupTerminationGracePeriod: TimeInterval = 0.5
 
-    @Published var output: String = ""
-    @Published var styledOutput: NSAttributedString = NSAttributedString(string: "")
     @Published var isRunning: Bool = false
     @Published private(set) var usesPTY: Bool = false
+    @Published private(set) var isOutputEmpty: Bool = true
+    @Published private(set) var renderUpdate = TerminalRenderUpdate(revision: 0, kind: .reset)
+
+    var output: String {
+        String(outputBuffer)
+    }
 
     private var shellProcessID: pid_t = -1
     private var masterTerminalHandle: FileHandle?
     private var masterTerminalFileDescriptor: Int32 = -1
     private var generation: Int = 0
-    private var displaySanitizer = TerminalDisplaySanitizer()
-    private var ansiFormatter = TerminalANSIFormatter()
     private let outputBuffer = NSMutableString()
     private let renderedStyledOutput = NSMutableAttributedString()
+    private let pendingStyledOutput = NSMutableAttributedString()
     private var outputPublishWorkItem: DispatchWorkItem?
+    private var renderRevision = 0
+    private let outputContinuation: AsyncStream<TerminalOutputCommand>.Continuation
+    private var outputProcessingTask: Task<Void, Never>?
+
+    init() {
+        let (stream, continuation) = AsyncStream.makeStream(of: TerminalOutputCommand.self)
+        outputContinuation = continuation
+        outputProcessingTask = Task.detached(priority: .userInitiated) { [weak self] in
+            let displaySanitizer = TerminalDisplaySanitizer()
+            let ansiFormatter = TerminalANSIFormatter()
+            for await command in stream {
+                guard !Task.isCancelled else { break }
+                switch command {
+                case .reset:
+                    displaySanitizer.reset()
+                    ansiFormatter.reset()
+                case .chunk(let text, let generation):
+                    let processed = TerminalProcessedOutput(
+                        displayText: displaySanitizer.displayText(from: text),
+                        styledText: ansiFormatter.attributedText(from: text)
+                    )
+                    await self?.appendProcessedOutput(processed, generation: generation)
+                }
+            }
+        }
+    }
 
     deinit {
+        outputContinuation.finish()
+        outputProcessingTask?.cancel()
         masterTerminalHandle?.readabilityHandler = nil
         masterTerminalHandle?.closeFile()
         Self.terminateProcessGroup(shellProcessID)
@@ -43,7 +94,7 @@ final class IntegratedTerminalSession: ObservableObject {
         guard processID >= 0 else {
             isRunning = false
             usesPTY = false
-            appendOutput("Failed to allocate a terminal session.\n")
+            enqueueOutput("Failed to allocate a terminal session.\n", generation: currentGeneration)
             return
         }
 
@@ -72,13 +123,12 @@ final class IntegratedTerminalSession: ObservableObject {
 
         let masterHandle = FileHandle(fileDescriptor: masterFileDescriptor, closeOnDealloc: true)
 
-        masterHandle.readabilityHandler = { [weak self] handle in
+        outputContinuation.yield(.reset)
+        let outputContinuation = outputContinuation
+        masterHandle.readabilityHandler = { handle in
             let data = handle.availableData
             guard !data.isEmpty, let text = String(data: data, encoding: .utf8), !text.isEmpty else { return }
-            Task { @MainActor [weak self] in
-                guard let self, self.generation == currentGeneration else { return }
-                self.appendOutput(text)
-            }
+            outputContinuation.yield(.chunk(text, generation: currentGeneration))
         }
         shellProcessID = processID
         masterTerminalHandle = masterHandle
@@ -86,11 +136,7 @@ final class IntegratedTerminalSession: ObservableObject {
         isRunning = true
         usesPTY = true
         resize(columns: 120, rows: 36)
-        if output == "Ready." {
-            outputBuffer.setString("")
-            output = ""
-        }
-        appendOutput("Started PTY-backed zsh in \(directory.path)\n")
+        enqueueOutput("Started PTY-backed zsh in \(directory.path)\n", generation: currentGeneration)
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
             var status: Int32 = 0
@@ -105,7 +151,7 @@ final class IntegratedTerminalSession: ObservableObject {
                 self.usesPTY = false
                 self.shellProcessID = -1
                 self.closeTerminalHandles()
-                self.appendOutput("\n[terminal exited \(exitStatus)]\n")
+                self.enqueueOutput("\n[terminal exited \(exitStatus)]\n", generation: currentGeneration)
             }
         }
     }
@@ -115,7 +161,7 @@ final class IntegratedTerminalSession: ObservableObject {
         guard !trimmed.isEmpty else { return }
         startIfNeeded(in: directory)
         guard masterTerminalHandle != nil else {
-            appendOutput("Terminal is not ready.\n")
+            enqueueOutput("Terminal is not ready.\n", generation: generation)
             return
         }
         writeToTerminal("\(trimmed)\n")
@@ -141,26 +187,13 @@ final class IntegratedTerminalSession: ObservableObject {
     }
 
     func clear() {
-        outputPublishWorkItem?.cancel()
-        outputPublishWorkItem = nil
-        outputBuffer.setString("")
-        renderedStyledOutput.setAttributedString(NSAttributedString(string: ""))
-        output = ""
-        styledOutput = NSAttributedString(string: "")
-        displaySanitizer.reset()
-        ansiFormatter.reset()
+        resetOutput()
+        outputContinuation.yield(.reset)
     }
 
     func restart(in directory: URL) {
         stop()
-        outputPublishWorkItem?.cancel()
-        outputPublishWorkItem = nil
-        outputBuffer.setString("")
-        renderedStyledOutput.setAttributedString(NSAttributedString(string: ""))
-        output = ""
-        styledOutput = NSAttributedString(string: "")
-        displaySanitizer.reset()
-        ansiFormatter.reset()
+        resetOutput()
         startIfNeeded(in: directory)
     }
 
@@ -201,19 +234,29 @@ final class IntegratedTerminalSession: ObservableObject {
         masterTerminalHandle.write(data)
     }
 
-    private func appendOutput(_ chunk: String) {
-        let displayChunk = displaySanitizer.displayText(from: chunk)
-        outputBuffer.append(displayChunk)
-        let styledChunk = ansiFormatter.attributedText(from: chunk)
-        renderedStyledOutput.append(styledChunk)
+    func styledOutputSnapshot() -> NSAttributedString {
+        NSAttributedString(attributedString: renderedStyledOutput)
+    }
+
+    private func enqueueOutput(_ chunk: String, generation: Int) {
+        outputContinuation.yield(.chunk(chunk, generation: generation))
+    }
+
+    private func appendProcessedOutput(_ processed: TerminalProcessedOutput, generation: Int) {
+        guard self.generation == generation else { return }
+        outputBuffer.append(processed.displayText)
+        pendingStyledOutput.append(processed.styledText)
         if outputBuffer.length > Self.maxOutputUTF16Length {
             let trimTarget = outputBuffer.length - Self.maxOutputUTF16Length
             outputBuffer.deleteCharacters(in: NSRange(location: 0, length: trimTarget))
             outputBuffer.insert("[terminal output truncated]\n", at: 0)
         }
-        if renderedStyledOutput.length > Self.maxOutputUTF16Length {
-            let styledTrimTarget = renderedStyledOutput.length - Self.maxOutputUTF16Length
-            renderedStyledOutput.deleteCharacters(in: NSRange(location: 0, length: styledTrimTarget))
+        if pendingStyledOutput.length > Self.maxOutputUTF16Length {
+            let trimTarget = pendingStyledOutput.length - Self.maxOutputUTF16Length
+            pendingStyledOutput.deleteCharacters(in: NSRange(location: 0, length: trimTarget))
+        }
+        if isOutputEmpty != (outputBuffer.length == 0) {
+            isOutputEmpty = outputBuffer.length == 0
         }
         scheduleOutputPublication()
     }
@@ -222,12 +265,34 @@ final class IntegratedTerminalSession: ObservableObject {
         outputPublishWorkItem?.cancel()
         let workItem = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            self.output = self.outputBuffer.copy() as? String ?? String(self.outputBuffer)
-            self.styledOutput = NSAttributedString(attributedString: self.renderedStyledOutput)
+            guard self.pendingStyledOutput.length > 0 else {
+                self.outputPublishWorkItem = nil
+                return
+            }
+            let appended = NSAttributedString(attributedString: self.pendingStyledOutput)
+            self.pendingStyledOutput.setAttributedString(NSAttributedString(string: ""))
+            self.renderedStyledOutput.append(appended)
+            if self.renderedStyledOutput.length > Self.maxOutputUTF16Length {
+                let trimTarget = self.renderedStyledOutput.length - Self.maxOutputUTF16Length
+                self.renderedStyledOutput.deleteCharacters(in: NSRange(location: 0, length: trimTarget))
+            }
+            self.renderRevision += 1
+            self.renderUpdate = TerminalRenderUpdate(revision: self.renderRevision, kind: .append(appended))
             self.outputPublishWorkItem = nil
         }
         outputPublishWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.016, execute: workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.033, execute: workItem)
+    }
+
+    private func resetOutput() {
+        outputPublishWorkItem?.cancel()
+        outputPublishWorkItem = nil
+        outputBuffer.setString("")
+        pendingStyledOutput.setAttributedString(NSAttributedString(string: ""))
+        renderedStyledOutput.setAttributedString(NSAttributedString(string: ""))
+        isOutputEmpty = true
+        renderRevision += 1
+        renderUpdate = TerminalRenderUpdate(revision: renderRevision, kind: .reset)
     }
 }
 
@@ -270,7 +335,7 @@ enum PythonRuntimeResolver {
 #if os(macOS) && !APP_STORE_BUILD
 /// The panel intentionally renders scrollback as text rather than a terminal grid.
 /// Remove control sequences so supported shell output remains readable.
-final class TerminalDisplaySanitizer {
+nonisolated final class TerminalDisplaySanitizer {
     private enum State {
         case text
         case escape
@@ -327,11 +392,16 @@ final class TerminalDisplaySanitizer {
 }
 
 /// Converts terminal SGR color sequences into attributes while preserving state across PTY chunks.
-final class TerminalANSIFormatter {
+nonisolated final class TerminalANSIFormatter {
     private var state: State = .text
     private var foregroundColor: NSColor?
     private var backgroundColor: NSColor?
     private var isBold = false
+    private let paragraphStyle: NSParagraphStyle = {
+        let style = NSMutableParagraphStyle()
+        style.lineSpacing = 2
+        return style.copy() as! NSParagraphStyle
+    }()
 
     private enum State {
         case text
@@ -361,9 +431,11 @@ final class TerminalANSIFormatter {
             if let backgroundColor {
                 attributes[.backgroundColor] = backgroundColor
             }
-            if isBold {
-                attributes[.font] = NSFont.monospacedSystemFont(ofSize: 13, weight: .bold)
-            }
+            attributes[.font] = NSFont.monospacedSystemFont(
+                ofSize: 14,
+                weight: isBold ? .bold : .regular
+            )
+            attributes[.paragraphStyle] = paragraphStyle
             output.append(NSAttributedString(string: textBuffer, attributes: attributes))
             textBuffer.removeAll(keepingCapacity: true)
         }
@@ -497,6 +569,121 @@ final class TerminalANSIFormatter {
 }
 
 @MainActor
+struct TerminalOutputTextView: NSViewRepresentable {
+    let session: IntegratedTerminalSession
+    let update: TerminalRenderUpdate
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = true
+        scrollView.autohidesScrollers = true
+
+        let textView = NSTextView(frame: scrollView.contentView.bounds)
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.isRichText = true
+        textView.drawsBackground = false
+        textView.textContainerInset = NSSize(width: 16, height: 16)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = true
+        textView.minSize = .zero
+        textView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.textContainer?.containerSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.textContainer?.widthTracksTextView = false
+        textView.setAccessibilityLabel("Terminal output")
+        scrollView.documentView = textView
+
+        context.coordinator.install(
+            session.styledOutputSnapshot(),
+            revision: update.revision,
+            in: textView
+        )
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? NSTextView else { return }
+        context.coordinator.apply(
+            update,
+            fallbackSnapshot: { session.styledOutputSnapshot() },
+            in: textView
+        )
+    }
+
+    final class Coordinator {
+        private var appliedRevision = -1
+
+        func install(_ snapshot: NSAttributedString, revision: Int, in textView: NSTextView) {
+            appliedRevision = revision
+            replaceContents(with: snapshot, in: textView)
+        }
+
+        func apply(
+            _ update: TerminalRenderUpdate,
+            fallbackSnapshot: () -> NSAttributedString,
+            in textView: NSTextView
+        ) {
+            guard update.revision > appliedRevision else { return }
+            switch update.kind {
+            case .reset:
+                replaceContents(with: fallbackSnapshot(), in: textView)
+            case .append(let chunk) where update.revision == appliedRevision + 1:
+                append(chunk, in: textView)
+            case .append:
+                // SwiftUI can coalesce observable updates. Rebuild only when an
+                // intermediate append was skipped, never for the normal path.
+                replaceContents(with: fallbackSnapshot(), in: textView)
+            }
+            appliedRevision = update.revision
+        }
+
+        private func replaceContents(with snapshot: NSAttributedString, in textView: NSTextView) {
+            let contents = snapshot.length == 0
+                ? NSAttributedString(
+                    string: "Ready.",
+                    attributes: [.font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)]
+                )
+                : snapshot
+            textView.textStorage?.setAttributedString(contents)
+        }
+
+        private func append(_ chunk: NSAttributedString, in textView: NSTextView) {
+            guard let storage = textView.textStorage else { return }
+            if storage.string == "Ready." {
+                storage.setAttributedString(NSAttributedString(string: ""))
+            }
+            let visibleBottom = NSMaxY(textView.visibleRect)
+            let wasNearBottom = visibleBottom >= textView.bounds.height - 24
+            storage.append(chunk)
+            if storage.length > IntegratedTerminalSession.maxOutputUTF16Length {
+                storage.deleteCharacters(
+                    in: NSRange(
+                        location: 0,
+                        length: storage.length - IntegratedTerminalSession.maxOutputUTF16Length
+                    )
+                )
+            }
+            if wasNearBottom, storage.length > 0 {
+                textView.scrollRangeToVisible(NSRange(location: storage.length - 1, length: 1))
+            }
+        }
+    }
+}
+
+@MainActor
 struct IntegratedTerminalContent: View {
     let rootFolderURL: URL?
     @ObservedObject var session: IntegratedTerminalSession
@@ -531,17 +718,7 @@ struct IntegratedTerminalContent: View {
                 }
             }
 
-            ScrollView([.vertical, .horizontal]) {
-                Text(AttributedString(session.styledOutput.length == 0
-                    ? NSAttributedString(string: "Ready.")
-                    : session.styledOutput))
-                    .font(.system(size: 14, weight: .regular, design: .monospaced))
-                    .lineSpacing(2)
-                    .foregroundStyle(.primary)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .textSelection(.enabled)
-                    .padding(16)
-            }
+            TerminalOutputTextView(session: session, update: session.renderUpdate)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background {
 #if os(macOS)
@@ -582,7 +759,7 @@ struct IntegratedTerminalContent: View {
                 } label: {
                     Label("Clear", systemImage: "xmark.circle")
                 }
-                .disabled(session.output.isEmpty)
+                .disabled(session.isOutputEmpty)
 
                 Button {
                     command = ""

@@ -139,7 +139,7 @@ extension ContentView {
 
 #if os(iOS) || os(visionOS)
     var shouldEmbedMarkdownFormattingInMobileStatusRow: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone
+        usesCompactIOSLayout
             && shouldPinFloatingStatusToTop
             && shouldShowMarkdownFormattingControls
             && !shouldPlaceMarkdownFormattingBelowTabs
@@ -173,7 +173,7 @@ extension ContentView {
 
     var shouldOverlayMarkdownFormattingControls: Bool {
 #if os(iOS) || os(visionOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
+        if usesCompactIOSLayout {
             return useIOSUnifiedTopHost
                 && shouldShowMarkdownFormattingControls
                 && !shouldEmbedMarkdownFormattingInMobileStatusRow
@@ -187,7 +187,7 @@ extension ContentView {
     var shouldPlaceMarkdownFormattingBelowTabs: Bool {
 #if os(iOS)
         MarkdownFormattingChromePolicy.shouldReserveMobileFormattingRow(
-            isPhone: UIDevice.current.userInterfaceIdiom == .phone,
+            isPhone: usesCompactIOSLayout,
             shouldShow: shouldShowMarkdownFormattingControls,
             isCollapsed: markdownFormattingToolbarCollapsed,
             keepCollapsedBelowTabs: shouldPinFloatingStatusToTop
@@ -210,7 +210,7 @@ extension ContentView {
     @ViewBuilder
     var markdownFormattingControlBar: some View {
 #if os(iOS) || os(visionOS)
-        if UIDevice.current.userInterfaceIdiom == .phone,
+        if usesCompactIOSLayout,
            shouldEmbedMarkdownFormattingInMobileStatusRow {
             EmptyView()
         } else {

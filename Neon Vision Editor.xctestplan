@@ -1,0 +1,25 @@
+{
+  "configurations" : [
+    {
+      "id" : "8DA4B8B7-6A36-42C8-B49F-686B356D79EB",
+      "name" : "Default",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testInteropMode" : "complete"
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : false,
+      "target" : {
+        "containerPath" : "container:Neon Vision Editor.xcodeproj",
+        "identifier" : "50864E55167D4016920786DF",
+        "name" : "Neon Vision EditorTests"
+      }
+    }
+  ],
+  "version" : 1
+}

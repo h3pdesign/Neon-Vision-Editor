@@ -23,15 +23,7 @@ extension ContentView {
     struct IPhoneFullWidthModifier: ViewModifier {
         @ViewBuilder
         func body(content: Content) -> some View {
-#if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .phone {
-                content.ignoresSafeArea(.container, edges: .horizontal)
-            } else {
-                content
-            }
-#else
             content
-#endif
         }
     }
 
@@ -72,8 +64,11 @@ extension ContentView {
                 pinnedPresentation: true
             ) {
                 iOSPinnedEditingStatusRow
-                    // Overlay the editor instead of reserving a separate opaque strip.
-                    .offset(y: 48)
+                    // Align the status below the chrome using its measured height
+                    // instead of assuming a fixed toolbar height.
+                    .alignmentGuide(.bottom) { dimensions in
+                        dimensions[.top]
+                    }
             }
         }
     }
@@ -112,17 +107,17 @@ extension ContentView {
     }
 
     private var isPhoneCompactStatusMode: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone && (isPhoneEditorFocused || isPhoneSoftwareKeyboardVisible)
+        usesCompactIOSLayout && (isPhoneEditorFocused || isPhoneSoftwareKeyboardVisible)
     }
 
     private var shouldUseEditingMobileStatusPreset: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone
+        usesCompactIOSLayout
         && mobileEditingStatusPresetEnabled
         && isPhoneCompactStatusMode
     }
 
     var shouldPinFloatingStatusToTop: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone && isPhoneSoftwareKeyboardVisible
+        usesCompactIOSLayout && isPhoneSoftwareKeyboardVisible
     }
 
     private var floatingStatusPillText: String {
@@ -239,7 +234,7 @@ extension ContentView {
     @MainActor
     func schedulePhoneStatusAutoCollapse() {
         cancelPhoneStatusAutoCollapse()
-        guard UIDevice.current.userInterfaceIdiom == .phone, isPhoneCompactStatusMode else { return }
+        guard usesCompactIOSLayout, isPhoneCompactStatusMode else { return }
         phoneStatusAutoCollapseTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 4_000_000_000)
             guard !Task.isCancelled else { return }
@@ -291,7 +286,7 @@ extension ContentView {
 
 #if os(iOS) || os(visionOS)
     private var mobileStatusBarMaxItemCount: Int {
-        UIDevice.current.userInterfaceIdiom == .pad ? 5 : 3
+        usesRegularIOSLayout ? 5 : 3
     }
 #endif
 
@@ -822,16 +817,18 @@ extension ContentView {
             tabBarBottomDivider
 #endif
         }
-        .frame(minHeight: 42, maxHeight: 42, alignment: .center)
 #if os(macOS)
+        .frame(height: 42, alignment: .center)
         .background(macToolbarBackgroundStyle)
 #elseif os(iOS)
+        .frame(height: min(max(mobileTabBarHeight, 42), 60), alignment: .center)
         .background(
             enableTranslucentWindow
                 ? AnyShapeStyle(.ultraThinMaterial)
                 : AnyShapeStyle(iOSNonTranslucentSurfaceColor)
         )
 #else
+        .frame(height: min(max(mobileTabBarHeight, 42), 60), alignment: .center)
         .background(
             enableTranslucentWindow
             ? AnyShapeStyle(.ultraThinMaterial)
@@ -1031,7 +1028,7 @@ extension ContentView {
         guard vimModeEnabled else { return " • Vim: OFF" }
         return vimInsertMode ? " • Vim: INSERT" : " • Vim: NORMAL"
 #else
-        guard UIDevice.current.userInterfaceIdiom == .pad else { return "" }
+        guard usesRegularIOSLayout else { return "" }
         guard vimModeEnabled else { return " • Vim: OFF" }
         return vimInsertMode ? " • Vim: INSERT" : " • Vim: NORMAL"
 #endif

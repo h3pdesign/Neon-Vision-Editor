@@ -7,7 +7,7 @@ extension ContentView {
     /// entry point on compact layouts.
     var shouldAutomaticallyPresentMarkdownProjectPreview: Bool {
 #if os(iOS)
-        horizontalSizeClass != .compact
+        usesRegularIOSLayout
 #else
         true
 #endif
@@ -146,7 +146,7 @@ extension ContentView {
         // The compact card browser is a sheet on iPhone, so dismiss it after
         // selecting a file. On iPad the cards are a persistent split pane and
         // must remain visible while the editor selection changes.
-        if horizontalSizeClass == .compact {
+        if usesCompactIOSLayout {
             isMarkdownProjectPreviewPresented = false
         }
 #endif

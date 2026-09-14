@@ -267,13 +267,13 @@ extension PlainTextMarkdownConverter {
 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
 import FoundationModels
 
-@available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
+@available(anyAppleOS 26.0, *)
 @Generable(description: "A single source line classified for safe Markdown rendering.")
 private struct MarkdownLinePlan {
     var style: String
 }
 
-@available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
+@available(anyAppleOS 26.0, *)
 @Generable(description: "A source-preserving Markdown conversion plan.")
 private struct MarkdownConversionPlan {
     @Guide(.count(24))
@@ -292,13 +292,13 @@ enum PlainTextMarkdownConverter {
             throw PlainTextMarkdownConversionError.emptyDocument
         }
         guard lines.count <= 4_000 else { throw PlainTextMarkdownConversionError.documentTooLarge }
-        guard #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) else {
+        guard #available(anyAppleOS 26.0, *) else {
             throw PlainTextMarkdownConversionError.unsupportedSystem
         }
         return try await convertOnSupportedSystem(source, lines: lines, onChunkCompleted: onChunkCompleted)
     }
 
-    @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
+    @available(anyAppleOS 26.0, *)
     private static func convertOnSupportedSystem(
         _ source: String,
         lines: [String],

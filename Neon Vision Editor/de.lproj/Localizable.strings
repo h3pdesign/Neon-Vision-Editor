@@ -74,6 +74,16 @@
 "Translucency Mode" = "Transluzenzmodus";
 "Translucent Window" = "Transparentes Fenster";
 "Translucent Window Background" = "Transparenter Fensterhintergrund";
+"Frosted Glass" = "Milchglas";
+"Strong Frosted" = "Starkes Milchglas";
+"Frosted" = "Milchglas";
+"Light Glass" = "Leichtes Glas";
+"Window Surface" = "Fensteroberfläche";
+"Transparent" = "Transparent";
+"Subtle" = "Dezent";
+"Vibrant" = "Intensiv";
+"Adjusts how strongly content behind the window shows through." = "Passt an, wie stark Inhalte hinter dem Fenster durchscheinen.";
+"Adjusts the window surface from frosted glass to transparent." = "Passt die Fensteroberfläche von Milchglas bis transparent an.";
 "Follow System" = "System folgen";
 "Always" = "Immer";
 "Never" = "Nie";

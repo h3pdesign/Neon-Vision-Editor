@@ -364,10 +364,13 @@ struct InlineFindBar: View {
 
     @FocusState private var searchFocused: Bool
     @State private var showsReplace = false
+#if canImport(UIKit)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+#endif
 
     private var isPhone: Bool {
 #if canImport(UIKit)
-        UIDevice.current.userInterfaceIdiom == .phone
+        horizontalSizeClass != .regular
 #else
         false
 #endif
@@ -504,10 +507,13 @@ struct FindReplacePanel: View {
     var focusRequestID: Int = 0
     @FocusState private var findFieldFocused: Bool
     @State private var isReplaceVisible = false
+#if os(iOS) || os(visionOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+#endif
 
     private var usesCompactPhoneLayout: Bool {
 #if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .phone
+        horizontalSizeClass != .regular
 #else
         false
 #endif
@@ -515,7 +521,7 @@ struct FindReplacePanel: View {
 
     private var usesPadLayout: Bool {
 #if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .pad
+        horizontalSizeClass == .regular
 #else
         false
 #endif
@@ -1430,14 +1436,7 @@ struct DetachedPreviewWindowView: View {
 
     private var surfaceBackground: AnyShapeStyle {
         guard usesTranslucency else { return AnyShapeStyle(editorBackground) }
-        switch translucencyModeRaw {
-        case "subtle":
-            return AnyShapeStyle(Material.thick.opacity(0.82))
-        case "vibrant":
-            return AnyShapeStyle(Material.regular.opacity(0.62))
-        default:
-            return AnyShapeStyle(Material.thick.opacity(0.72))
-        }
+        return ContentView.MacEditorSurfacePolicy.translucentSurfaceStyle(modeRaw: translucencyModeRaw)
     }
 }
 #endif
@@ -2094,12 +2093,15 @@ struct FindInFilesPanel: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.searchPanelEmbeddedInSidebar) private var embeddedInSidebar
+#if os(iOS) || os(visionOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+#endif
     @FocusState private var queryFieldFocused: Bool
     @State private var selectedMatchID: FindInFilesMatch.ID?
 
     private var usesCompactPhoneLayout: Bool {
 #if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .phone
+        horizontalSizeClass != .regular
 #else
         false
 #endif
@@ -2163,7 +2165,7 @@ struct FindInFilesPanel: View {
 
     private var usesPadLayout: Bool {
 #if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .pad
+        horizontalSizeClass == .regular
 #else
         false
 #endif
@@ -2787,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.7.6",
-            subtitle: "Release highlights for v1.7.6.",
+            title: "What’s New in v1.8.0",
+            subtitle: "Release highlights for v1.8.0.",
             bullets: [
-                "Editor Improvements: Keeps macOS editor text intact while scrolling long or wrapped documents.",
-                "Workflow Refinements: Restores reliable line rendering when scrolling with the Markdown preview and sidebars open.",
-                "Performance Updates: Preserves the virtual editor's bounded layout and redraw behavior while repairing ordinary scroll updates.",
-                "Usability Updates: Repaints only the visible Core Text canvas region during ordinary scrolling, preserving the fast virtualized layout path.",
-                "Editor Improvements: Prevents stale AppKit backing pixels from covering or clipping editor lines during macOS scrolling.",
-                "Workflow Refinements: Restores reliable drag-to-reorder behavior for native macOS document tabs."
+                "Editor Improvements: Opens files from Finder by dropping them anywhere in the macOS workspace, with each file placed in its own editor tab.",
+                "Editor Performance: Keeps large terminal output, Git diffs, project indexing, and long-document tab switching responsive under sustained…",
+                "Performance Updates: Uses Swift 6.4 and OS 27 Foundation improvements while preserving the existing deployment targets.",
+                "Usability Updates: Adapts editor panes, project tools, settings, previews, and native tabs to the space available on compact, regular, split…",
+                "Editor Improvements: Adds native macOS file drag and drop with modern DropSession handling and a compatible path for older supported macOS…",
+                "Workflow Refinements: Adds a compact five-step macOS window-surface slider that moves from dense native frosted glass to a lighter frosted…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -2861,7 +2863,7 @@ struct WelcomeTourView: View {
             let compactLayout = proxy.size.width < 760
 #if os(iOS) || os(visionOS)
             let regularTouchLayout = !compactLayout
-            let padCompactSheetLayout = compactLayout && UIDevice.current.userInterfaceIdiom == .pad
+            let padCompactSheetLayout = compactLayout && proxy.size.height < 600
 #else
             let regularTouchLayout = false
             let padCompactSheetLayout = false
@@ -4446,6 +4448,7 @@ extension Notification.Name {
     nonisolated static let moveCursorToRange = Notification.Name("moveCursorToRange")
     nonisolated static let updateEditorFindHighlights = Notification.Name("updateEditorFindHighlights")
     nonisolated static let replaceEditorRangeRequested = Notification.Name("replaceEditorRangeRequested")
+    nonisolated static let replaceEditorRangesRequested = Notification.Name("replaceEditorRangesRequested")
     static let toggleVimModeRequested = Notification.Name("toggleVimModeRequested")
     static let vimModeStateDidChange = Notification.Name("vimModeStateDidChange")
     static let droppedFileURL = Notification.Name("droppedFileURL")
@@ -4598,6 +4601,8 @@ enum EditorCommandUserInfo {
     nonisolated static let findMatchRanges = "findMatchRanges"
     nonisolated static let selectedFindMatchRange = "selectedFindMatchRange"
     nonisolated static let replacementText = "replacementText"
+    nonisolated static let replacementRanges = "replacementRanges"
+    nonisolated static let replacementTexts = "replacementTexts"
     nonisolated static let bracketToken = "bracketToken"
     nonisolated static let sourceTextView = "sourceTextView"
     nonisolated static let completionContext = "completionContext"

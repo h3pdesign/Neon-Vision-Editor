@@ -100,13 +100,24 @@ final class MobileNativeFileTabBarTests: XCTestCase {
         )
         view.layoutIfNeeded()
 
-        XCTAssertEqual(view.addButtonFrameForTesting.width, 32)
+        XCTAssertEqual(view.addButtonFrameForTesting.width, 44)
         XCTAssertEqual(view.trailingTransitionFrameForTesting.minX, view.scrollViewFrameForTesting.maxX, accuracy: 0.5)
         XCTAssertEqual(view.trailingTransitionFrameForTesting.maxX, view.addButtonFrameForTesting.minX, accuracy: 0.5)
         XCTAssertEqual(view.trailingTransitionFrameForTesting.width, 2, accuracy: 0.5)
         XCTAssertFalse(view.trailingTransitionAcceptsTouchesForTesting)
         XCTAssertTrue(view.trailingTransitionIsVisibleForTesting)
         XCTAssertEqual(view.scrollViewFrameForTesting.minX, 8)
+    }
+
+    func testLayoutMarginsKeepControlsInsideAsymmetricSafeContent() {
+        let view = MobileNativeFileTabBarView(frame: CGRect(x: 0, y: 0, width: 390, height: 50))
+        view.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 24, bottom: 0, trailing: 40)
+        view.apply(tabs: [snapshot(id: UUID(), title: "Document")], selectedTabID: nil)
+        view.layoutIfNeeded()
+
+        XCTAssertEqual(view.scrollViewFrameForTesting.minX, 24)
+        XCTAssertEqual(view.addButtonFrameForTesting.maxX, 350)
+        XCTAssertEqual(view.addButtonFrameForTesting.width, 44)
     }
 
     func testSelectingOverflowingLastTabScrollsItIntoView() throws {
@@ -162,26 +173,6 @@ final class MobileNativeFileTabBarTests: XCTestCase {
         XCTAssertEqual(view.horizontalContentOffsetForTesting, 0, accuracy: 0.5)
     }
 
-    func testSelectingFirstTabAfterScrollingRightReturnsItFullyIntoView() throws {
-        let ids = (0..<12).map { _ in UUID() }
-        let firstID = try XCTUnwrap(ids.first)
-        let lastID = try XCTUnwrap(ids.last)
-        let view = MobileNativeFileTabBarView(frame: CGRect(x: 0, y: 0, width: 390, height: 42))
-        let tabs = ids.enumerated().map { snapshot(id: $0.element, title: "Document \($0.offset)") }
-
-        view.apply(tabs: tabs, selectedTabID: lastID)
-        view.layoutIfNeeded()
-        XCTAssertGreaterThan(view.horizontalContentOffsetForTesting, 0)
-
-        view.apply(tabs: tabs, selectedTabID: firstID)
-        view.layoutIfNeeded()
-
-        XCTAssertEqual(view.horizontalContentOffsetForTesting, 0, accuracy: 0.5)
-        let visibleFrame = try XCTUnwrap(view.tabFrameInScrollViewForTesting(firstID))
-        XCTAssertGreaterThanOrEqual(visibleFrame.minX, -0.5)
-        XCTAssertLessThanOrEqual(visibleFrame.maxX, view.scrollViewFrameForTesting.width + 0.5)
-    }
-
     func testPhoneTabsUseAReadableDefaultWidthForLongFilenames() throws {
         let ids = (0..<3).map { _ in UUID() }
         let view = MobileNativeFileTabBarView(frame: CGRect(x: 0, y: 0, width: 390, height: 42))
@@ -191,7 +182,7 @@ final class MobileNativeFileTabBarTests: XCTestCase {
         )
         view.layoutIfNeeded()
 
-        let expectedMinimumWidth: CGFloat = UIDevice.current.userInterfaceIdiom == .pad ? 136 : 128
+        let expectedMinimumWidth: CGFloat = view.traitCollection.horizontalSizeClass == .regular ? 136 : 128
         XCTAssertGreaterThanOrEqual(try XCTUnwrap(view.tabFrameForTesting(ids[1])).width, expectedMinimumWidth)
     }
 

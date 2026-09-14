@@ -736,7 +736,7 @@ extension ContentView {
             recentLanguageIDsRaw.split(separator: ",").map(String.init).filter { languageOptions.contains($0) }
         }
 
-        private var isCompactLayout: Bool { horizontalSizeClass == .compact }
+        private var isCompactLayout: Bool { horizontalSizeClass != .regular }
 
         private var gridColumns: [GridItem] {
             isCompactLayout

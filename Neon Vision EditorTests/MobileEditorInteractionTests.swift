@@ -5,10 +5,17 @@ import SwiftUI
 
 @MainActor
 final class MobileEditorInteractionTests: XCTestCase {
-    private func editor(_ text: String, wrap: Bool = false) -> CustomTextEditor {
-        CustomTextEditor(text: .constant(text), document: nil, documentID: nil,
+    private func editor(
+        _ text: String,
+        wrap: Bool = false,
+        documentID: UUID? = nil,
+        language: String = "plain text",
+        onTextMutation: ((EditorTextMutation) -> Void)? = nil
+    ) -> CustomTextEditor {
+        CustomTextEditor(text: .constant(text), document: nil, documentID: documentID,
             documentResourceID: "mobile-regression", storedCaretLocation: nil,
-            externalEditRevision: 0, language: "plain text", colorScheme: .light,
+            externalEditRevision: 0, language: language, colorScheme: .light,
+            ignoreBackgroundOverrides: false,
             fontSize: 16, isLineWrapEnabled: .constant(wrap), isLargeFileMode: false,
             showsCodeMinimap: false, translucentBackgroundEnabled: false,
             showKeyboardAccessoryBar: false, showLineNumbers: true,
@@ -20,7 +27,7 @@ final class MobileEditorInteractionTests: XCTestCase {
             indentStyle: "spaces", indentWidth: 4, autoIndentEnabled: false,
             autoCloseBracketsEnabled: false, highlightRefreshToken: 0,
             isTabLoadingContent: false, isReadOnly: false,
-            onFontSizeChange: nil, onTextMutation: nil)
+            onFontSizeChange: nil, onTextMutation: onTextMutation)
     }
 
     private func withEditor(_ text: String, body: (LineNumberedTextViewContainer) -> Void) {
@@ -208,6 +215,109 @@ final class MobileEditorInteractionTests: XCTestCase {
         coordinator.textViewDidChange(container.textView)
         XCTAssertEqual(container.lineNumberView.lineStarts.count, 52_002)
         XCTAssertEqual(container.lineNumberView.lineStarts[1], 1)
+    }
+
+    func testLargeSQLReplaceAllUsesOneNativeBatchAndPreservesSelection() throws {
+        let documentID = UUID()
+        let sqlLine = "SELECT value FROM demo WHERE id = 123; -- PLSQL fixture\n"
+        let segment = String(repeating: sqlLine, count: 270) + "TARGET_TOKEN\n"
+        let source = String(repeating: segment, count: 40)
+        let replacement = source.replacingOccurrences(of: "TARGET_TOKEN", with: "REPLACED")
+        XCTAssertGreaterThan(source.utf8.count, 600_000)
+        XCTAssertEqual(source.components(separatedBy: "TARGET_TOKEN").count - 1, 40)
+
+        var receivedMutations: [EditorTextMutation] = []
+        let editor = editor(
+            source,
+            documentID: documentID,
+            language: "sql",
+            onTextMutation: { receivedMutations.append($0) }
+        )
+        let coordinator = editor.makeCoordinator()
+        let container = LineNumberedTextViewContainer(frame: CGRect(x: 0, y: 0, width: 1_024, height: 768))
+        coordinator.container = container
+        coordinator.textView = container.textView
+        container.textView.delegate = coordinator
+        container.textView.text = source
+        container.textView.selectedRange = NSRange(location: 12_345, length: 0)
+
+        let matchRanges = ReleaseRuntimePolicy.findMatches(
+            in: source,
+            query: "TARGET_TOKEN",
+            useRegex: false,
+            caseSensitive: true
+        ).ranges
+        NotificationCenter.default.post(
+            name: .replaceEditorRangesRequested,
+            object: nil,
+            userInfo: [
+                EditorCommandUserInfo.documentID: documentID.uuidString,
+                EditorCommandUserInfo.replacementRanges: matchRanges.map { NSValue(range: $0) },
+                EditorCommandUserInfo.replacementTexts: Array(repeating: "REPLACED", count: matchRanges.count)
+            ]
+        )
+
+        XCTAssertEqual(container.textView.text, replacement)
+        XCTAssertEqual(container.textView.selectedRange, NSRange(location: 12_345, length: 0))
+        XCTAssertEqual(receivedMutations.count, 40)
+        XCTAssertEqual(receivedMutations.first?.replacement, "REPLACED")
+        XCTAssertEqual(receivedMutations.last?.replacement, "REPLACED")
+        XCTAssertTrue(isProgrammingSyntaxLanguage("sql"))
+        XCTAssertTrue(supportsViewportSyntaxHighlighting(language: "sql", textLength: source.utf16.count))
+    }
+
+    func testReplaceAllBatchRegistersOneUndoableAction() throws {
+        let documentID = UUID()
+        let source = "one TARGET two TARGET"
+        var modelText = source
+        let editor = editor(source, documentID: documentID) { mutation in
+            modelText = (modelText as NSString).replacingCharacters(
+                in: mutation.range,
+                with: mutation.replacement
+            )
+        }
+        let coordinator = editor.makeCoordinator()
+        let container = LineNumberedTextViewContainer(frame: CGRect(x: 0, y: 0, width: 390, height: 600))
+        coordinator.container = container
+        coordinator.textView = container.textView
+        container.textView.delegate = coordinator
+        container.textView.text = source
+        let host = UIViewController()
+        host.view.addSubview(container)
+        let window = UIWindow(frame: container.frame)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+
+        let ranges = ReleaseRuntimePolicy.findMatches(
+            in: source,
+            query: "TARGET",
+            useRegex: false,
+            caseSensitive: true
+        ).ranges
+        NotificationCenter.default.post(
+            name: .replaceEditorRangesRequested,
+            object: nil,
+            userInfo: [
+                EditorCommandUserInfo.documentID: documentID.uuidString,
+                EditorCommandUserInfo.replacementRanges: ranges.map { NSValue(range: $0) },
+                EditorCommandUserInfo.replacementTexts: ["X", "X"]
+            ]
+        )
+
+        XCTAssertEqual(container.textView.text, "one X two X")
+        XCTAssertEqual(modelText, "one X two X")
+        let undoManager = try XCTUnwrap(container.textView.undoManager)
+        XCTAssertTrue(undoManager.canUndo)
+
+        undoManager.undo()
+        XCTAssertEqual(container.textView.text, source)
+        XCTAssertEqual(modelText, source)
+        XCTAssertTrue(undoManager.canRedo)
+
+        undoManager.redo()
+        XCTAssertEqual(container.textView.text, "one X two X")
+        XCTAssertEqual(modelText, "one X two X")
     }
 }
 #endif

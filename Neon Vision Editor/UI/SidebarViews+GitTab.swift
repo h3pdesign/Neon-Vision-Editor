@@ -52,7 +52,7 @@ struct GitChangesEditorView: View {
 #if os(macOS)
         false
 #else
-        horizontalSizeClass == .compact
+        horizontalSizeClass != .regular
 #endif
     }
 
@@ -967,7 +967,7 @@ struct InlineDiffView: View {
 #if os(macOS)
         false
 #else
-        horizontalSizeClass == .compact
+        horizontalSizeClass != .regular
 #endif
     }
 
@@ -1396,7 +1396,7 @@ struct DiffEditorSurface: View {
 #if os(macOS)
         false
 #else
-        horizontalSizeClass == .compact
+        horizontalSizeClass != .regular
 #endif
     }
 

@@ -102,6 +102,23 @@ enum IOSSplitChromePolicy {
     }
 }
 
+enum IOSAdaptiveLayoutPolicy {
+    nonisolated static func usesRegularLayout(
+        horizontalSizeClass: UserInterfaceSizeClass?,
+        containerWidth: CGFloat
+    ) -> Bool {
+        if let horizontalSizeClass {
+            return horizontalSizeClass == .regular
+        }
+        return containerWidth >= 600
+    }
+
+    nonisolated static func secondaryPaneIdealWidth(containerWidth: CGFloat) -> CGFloat {
+        guard containerWidth > 0 else { return 300 }
+        return min(max(containerWidth * 0.4, 280), 520)
+    }
+}
+
 enum IOSFloatingStatusPolicy {
     nonisolated static func isVisible(
         brainDumpLayoutEnabled: Bool,
@@ -521,6 +538,7 @@ struct ContentView: View {
     @Environment(\.colorScheme) var colorScheme
 #if os(iOS) || os(visionOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @ScaledMetric(relativeTo: .caption) var mobileTabBarHeight: CGFloat = 42
 #endif
 #if os(macOS)
     @Environment(\.openWindow) var openWindow
@@ -1374,7 +1392,7 @@ struct ContentView: View {
         #if os(visionOS)
         return [.large]
         #else
-        if UIDevice.current.userInterfaceIdiom == .pad {
+        if usesRegularIOSLayout {
             return [.fraction(0.72), .large]
         }
         return [.large]
@@ -1405,8 +1423,8 @@ struct ContentView: View {
 #endif
 
     var useIOSUnifiedTopHost: Bool {
-#if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .phone || UIDevice.current.userInterfaceIdiom == .pad
+#if os(iOS)
+        true
 #else
         false
 #endif
@@ -1417,6 +1435,21 @@ struct ContentView: View {
             usesUnifiedTopHost: useIOSUnifiedTopHost,
             usesSplitView: shouldUseSplitView
         )
+    }
+
+    var usesRegularIOSLayout: Bool {
+#if os(iOS) || os(visionOS)
+        IOSAdaptiveLayoutPolicy.usesRegularLayout(
+            horizontalSizeClass: horizontalSizeClass,
+            containerWidth: liveContainerWidth
+        )
+#else
+        true
+#endif
+    }
+
+    var usesCompactIOSLayout: Bool {
+        !usesRegularIOSLayout
     }
 
     var tabBarLeadingPadding: CGFloat {
@@ -3034,7 +3067,7 @@ struct ContentView: View {
             isToolbarCollapsed = startsWithToolbarCollapsed
 #endif
 #if os(iOS) || os(visionOS)
-            if UIDevice.current.userInterfaceIdiom == .pad && projectSidebarWidth < Double(minimumProjectSidebarWidth) {
+            if usesRegularIOSLayout && projectSidebarWidth < Double(minimumProjectSidebarWidth) {
                 projectSidebarWidth = Double(minimumProjectSidebarWidth)
             }
 #endif
@@ -3124,20 +3157,16 @@ struct ContentView: View {
         let contentView: ContentView
 
 #if os(iOS) || os(visionOS)
-        private var isiPhone: Bool {
-            UIDevice.current.userInterfaceIdiom == .phone
-        }
-
         private var findReplaceSheetMaxWidth: CGFloat? {
-            isiPhone ? nil : 480
+            contentView.usesCompactIOSLayout ? nil : 480
         }
 
         private var findReplaceSheetDetents: Set<PresentationDetent> {
-            isiPhone ? [.large] : [.height(600)]
+            contentView.usesCompactIOSLayout ? [.large] : [.fraction(0.72), .large]
         }
 
         private var findInFilesSheetDetents: Set<PresentationDetent> {
-            isiPhone ? [.large] : [.height(700), .large]
+            contentView.usesCompactIOSLayout ? [.large] : [.fraction(0.82), .large]
         }
 
         @ViewBuilder
@@ -3274,7 +3303,7 @@ struct ContentView: View {
                 #if os(visionOS)
                 .presentationContentInteraction(.resizes)
                 #else
-                .presentationContentInteraction(UIDevice.current.userInterfaceIdiom == .pad ? .resizes : .scrolls)
+                .presentationContentInteraction(contentView.usesRegularIOSLayout ? .resizes : .scrolls)
                 #endif
 #endif
             })
@@ -3344,7 +3373,7 @@ struct ContentView: View {
 #elseif os(iOS) || os(visionOS)
             AnyView(view.onChange(of: contentView.showFindInFiles) { _, isPresented in
                 guard isPresented else { return }
-                if contentView.horizontalSizeClass == .compact {
+                if contentView.usesCompactIOSLayout {
                     contentView.showCompactProjectSidebarSheet = true
                 } else {
                     contentView.showProjectStructureSidebar = true
@@ -3560,7 +3589,7 @@ struct ContentView: View {
                             .navigationBarTitleDisplayMode(.inline)
                             .toolbar {
 #if os(iOS) || os(visionOS)
-                                if UIDevice.current.userInterfaceIdiom == .phone && contentView.isMarkdownPreviewDocument {
+                                if contentView.usesCompactIOSLayout && contentView.isMarkdownPreviewDocument {
                                     ToolbarItem(placement: .topBarLeading) {
                                         contentView.markdownPreviewPhoneSettingsMenu
                                     }
@@ -4069,8 +4098,7 @@ struct ContentView: View {
 #if os(macOS)
         return viewModel.showSidebar && !brainDumpLayoutEnabled && !focusModeEnabled
 #else
-        // Keep iPhone layout single-column to avoid horizontal clipping.
-        return viewModel.showSidebar && !brainDumpLayoutEnabled && !focusModeEnabled && horizontalSizeClass == .regular
+        return viewModel.showSidebar && !brainDumpLayoutEnabled && !focusModeEnabled && usesRegularIOSLayout
 #endif
     }
 
@@ -4104,7 +4132,7 @@ struct ContentView: View {
                 translucentBackgroundEnabled: effectiveMobileTranslucencyEnabled,
                 onItemSelected: {
 #if os(iOS)
-                    if horizontalSizeClass == .compact {
+                    if usesCompactIOSLayout {
                         viewModel.showSidebar = false
                     }
 #endif
@@ -4256,7 +4284,7 @@ struct ContentView: View {
         switch largeFileOpenModeRaw {
         case "standard":
 #if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .phone {
+            if usesCompactIOSLayout {
                 return "Std"
             }
 #endif
@@ -4474,7 +4502,7 @@ struct ContentView: View {
             }.value
             await Task.yield()
 #if os(iOS) || os(visionOS)
-            if UIDevice.current.userInterfaceIdiom == .phone {
+            if usesCompactIOSLayout {
                 sidebarCompareDiffPresentation = DocumentDiffPresentation(
                     title: title,
                     leftTitle: leftTitle,
@@ -4578,7 +4606,7 @@ struct ContentView: View {
 
     private func shouldUseOuterNoWrapEditorScroll(lineWrapEnabled: Bool) -> Bool {
 #if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .pad &&
+        usesRegularIOSLayout &&
         !lineWrapEnabled &&
         !effectiveLargeFileModeEnabled
 #else
@@ -5235,10 +5263,14 @@ struct ContentView: View {
                 HStack(spacing: 0) {
                     primaryEditorColumn
 
-                    if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .leading && horizontalSizeClass == .regular {
+                    if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .leading && usesRegularIOSLayout {
                         iOSPaneDivider
                         markdownProjectPreviewPanel
-                            .frame(width: 300)
+                            .frame(
+                                minWidth: 240,
+                                idealWidth: IOSAdaptiveLayoutPolicy.secondaryPaneIdealWidth(containerWidth: liveContainerWidth),
+                                maxWidth: 520
+                            )
                     }
 
                     if isMarkdownPreviewSplitVisible {
@@ -5255,10 +5287,14 @@ struct ContentView: View {
                         pdfPreviewSplitPane
                     }
 
-                    if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing && horizontalSizeClass == .regular {
+                    if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing && usesRegularIOSLayout {
                         iOSPaneDivider
                         markdownProjectPreviewPanel
-                            .frame(width: 300)
+                            .frame(
+                                minWidth: 240,
+                                idealWidth: IOSAdaptiveLayoutPolicy.secondaryPaneIdealWidth(containerWidth: liveContainerWidth),
+                                maxWidth: 520
+                            )
                     }
                 }
             )
@@ -5395,15 +5431,10 @@ struct ContentView: View {
 #if os(iOS) || os(visionOS)
         let eventAwareContent = AnyView(
             applyingKeyboardAccessoryHandlers(to: eventAwareContentBase)
-        .onChange(of: horizontalSizeClass) { _, newClass in
-            if UIDevice.current.userInterfaceIdiom == .pad && newClass != .regular && isPreviewVisible {
-                closeCurrentPreview()
-            }
-        }
         .onChange(of: showSettingsSheet) { _, isPresented in
             if isPresented {
 #if os(iOS) || os(visionOS)
-                if UIDevice.current.userInterfaceIdiom == .pad {
+                if usesRegularIOSLayout {
                     settingsSheetDetent = .large
                 }
 #endif
@@ -5461,7 +5492,7 @@ struct ContentView: View {
         .sheet(
             isPresented: Binding(
                 get: {
-                    horizontalSizeClass == .compact && isMarkdownProjectPreviewVisible
+                    usesCompactIOSLayout && isMarkdownProjectPreviewVisible
                 },
                 set: { isPresented in
                     if !isPresented {

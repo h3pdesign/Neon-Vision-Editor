@@ -660,11 +660,7 @@ extension ContentView {
     }
 
     var isIPadToolbarLayout: Bool {
-        guard UIDevice.current.userInterfaceIdiom == .pad else { return false }
-        // During first render on iOS, horizontalSizeClass can transiently be nil.
-        // Treat nil as regular so the full iPad toolbar appears immediately.
-        if horizontalSizeClass == .compact { return false }
-        return true
+        usesRegularIOSLayout
     }
 
     private enum IOSPrimaryToolbarAction: String, CaseIterable, Hashable {
@@ -2278,7 +2274,7 @@ extension ContentView {
             }
         }
         .padding(16)
-        .frame(width: 360)
+        .frame(minWidth: 280, idealWidth: 360, maxWidth: 360)
     }
 
     @ViewBuilder

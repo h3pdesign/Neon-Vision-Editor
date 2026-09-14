@@ -272,11 +272,11 @@ extension ContentView {
 
 #if os(iOS) || os(visionOS)
     private var canShowPreviewOnCurrentDevice: Bool {
-        horizontalSizeClass == .regular
+        usesRegularIOSLayout
     }
 
     private var shouldPresentPreviewSheetOnIPhone: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone &&
+        usesCompactIOSLayout &&
         isPreviewVisible &&
         isPreviewSupportedDocument &&
         !isSafeModeActive &&

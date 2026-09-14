@@ -63,6 +63,8 @@ final class MobileNativeFileTabBarView: UIView, UIScrollViewDelegate {
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .clear
+        directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8)
+        insetsLayoutMarginsFromSafeArea = true
 
         scrollView.backgroundColor = .clear
         scrollView.alwaysBounceHorizontal = false
@@ -102,13 +104,18 @@ final class MobileNativeFileTabBarView: UIView, UIScrollViewDelegate {
         nil
     }
 
+    override func layoutMarginsDidChange() {
+        super.layoutMarginsDidChange()
+        setNeedsLayout()
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
         let scale = max(1, traitCollection.displayScale)
         let separatorHeight = 1 / scale
-        let leadingInset: CGFloat = 8
-        let buttonWidth: CGFloat = 32
-        let trailingInset: CGFloat = 0
+        let leadingInset = directionalLayoutMargins.leading
+        let buttonWidth: CGFloat = 44
+        let trailingInset = directionalLayoutMargins.trailing
         let transitionWidth: CGFloat = 2
         let buttonX = max(leadingInset, bounds.width - trailingInset - buttonWidth)
 
@@ -132,6 +139,11 @@ final class MobileNativeFileTabBarView: UIView, UIScrollViewDelegate {
         // preserve an old content offset. Re-apply the selected-tab invariant
         // after the new viewport has been laid out.
         scrollSelectedTabToVisible()
+        updateTrailingTransitionVisibility()
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        updateTrailingTransitionVisibility()
     }
 
     func setTrailingTransitionColor(_ color: UIColor, opacity: CGFloat) {
@@ -198,7 +210,7 @@ final class MobileNativeFileTabBarView: UIView, UIScrollViewDelegate {
         let spacing: CGFloat = 5
         let totalSpacing = spacing * CGFloat(max(0, count - 1))
         let maximumWidth: CGFloat = 188
-        let minimumWidth: CGFloat = traitCollection.userInterfaceIdiom == .pad ? 136 : 104
+        let minimumWidth: CGFloat = traitCollection.horizontalSizeClass == .regular ? 136 : 104
         let tabWidths = orderedTabIDs.map { id in
             guard let tabView = tabViewsByID[id] else { return minimumWidth }
             return min(maximumWidth, max(minimumWidth, tabView.preferredTabWidth))
@@ -252,6 +264,11 @@ final class MobileNativeFileTabBarView: UIView, UIScrollViewDelegate {
             // animation can leave the leading tab partially clipped.
             animated: false
         )
+    }
+
+    private func updateTrailingTransitionVisibility() {
+        let maximumOffset = max(0, scrollView.contentSize.width - scrollView.bounds.width)
+        trailingTransitionView.isHidden = maximumOffset <= 0 || scrollView.contentOffset.x >= maximumOffset - 0.5
     }
 
     func selectTabForTesting(_ id: UUID) { onSelect?(id) }
@@ -345,7 +362,11 @@ private final class MobileNativeFileTabItemView: UIControl, UIDragInteractionDel
         addTarget(self, action: #selector(selectTab), for: .touchUpInside)
 
         remoteLabel.text = "Remote"
-        remoteLabel.font = .systemFont(ofSize: 9, weight: .semibold)
+        remoteLabel.font = UIFontMetrics(forTextStyle: .caption2).scaledFont(
+            for: .systemFont(ofSize: 9, weight: .semibold),
+            maximumPointSize: 13
+        )
+        remoteLabel.adjustsFontForContentSizeCategory = true
         remoteLabel.textColor = .secondaryLabel
         remoteLabel.textAlignment = .center
         remoteLabel.layer.cornerRadius = 5
@@ -354,7 +375,8 @@ private final class MobileNativeFileTabItemView: UIControl, UIDragInteractionDel
         remoteLabel.isAccessibilityElement = false
         addSubview(remoteLabel)
 
-        titleLabel.font = .systemFont(ofSize: 12)
+        titleLabel.font = scaledTitleFont(weight: .regular)
+        titleLabel.adjustsFontForContentSizeCategory = true
         titleLabel.textColor = .secondaryLabel
         titleLabel.lineBreakMode = .byTruncatingMiddle
         titleLabel.numberOfLines = 1
@@ -396,7 +418,7 @@ private final class MobileNativeFileTabItemView: UIControl, UIDragInteractionDel
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        let closeWidth: CGFloat = 36
+        let closeWidth: CGFloat = 44
         let sidePadding: CGFloat = 10
         let remoteWidth: CGFloat = snapshot?.isRemote == true ? 43 : 0
         let lockWidth: CGFloat = snapshot?.isReadOnly == true ? 13 : 0
@@ -406,16 +428,28 @@ private final class MobileNativeFileTabItemView: UIControl, UIDragInteractionDel
         let dirtyGap: CGFloat = dirtyWidth > 0 ? 5 : 0
 
         closeButton.frame = CGRect(x: bounds.width - closeWidth, y: 0, width: closeWidth, height: bounds.height)
-        remoteLabel.frame = CGRect(x: sidePadding, y: max(7, bounds.height - 22), width: remoteWidth, height: 15)
+        let remoteHeight = min(bounds.height, ceil(remoteLabel.intrinsicContentSize.height) + 4)
+        remoteLabel.frame = CGRect(
+            x: sidePadding,
+            y: max(0, (bounds.height - remoteHeight) / 2),
+            width: remoteWidth,
+            height: remoteHeight
+        )
         let titleX = sidePadding + remoteWidth + remoteGap
         let reservedWidth = closeWidth + lockWidth + lockGap + dirtyWidth + dirtyGap + 4
+        let titleHeight = min(bounds.height, ceil(titleLabel.intrinsicContentSize.height) + 2)
         titleLabel.frame = CGRect(
             x: titleX,
-            y: max(6, bounds.height - 23),
+            y: max(0, (bounds.height - titleHeight) / 2),
             width: max(12, bounds.width - titleX - reservedWidth),
-            height: 18
+            height: titleHeight
         )
-        lockImage.frame = CGRect(x: titleLabel.frame.maxX + lockGap, y: max(8, bounds.height - 20), width: lockWidth, height: 13)
+        lockImage.frame = CGRect(
+            x: titleLabel.frame.maxX + lockGap,
+            y: max(0, bounds.midY - 6.5),
+            width: lockWidth,
+            height: 13
+        )
         dirtyIndicator.frame = CGRect(x: lockImage.frame.maxX + dirtyGap, y: bounds.midY - 3, width: dirtyWidth, height: dirtyWidth)
         selectionIndicator.frame = CGRect(x: 8, y: bounds.height - 2, width: max(0, bounds.width - 16), height: 2)
 
@@ -437,7 +471,7 @@ private final class MobileNativeFileTabItemView: UIControl, UIDragInteractionDel
         self.snapshot = snapshot
         isCurrentSelection = isSelected
         titleLabel.text = snapshot.title
-        titleLabel.font = .systemFont(ofSize: 12, weight: isSelected ? .semibold : .regular)
+        titleLabel.font = scaledTitleFont(weight: isSelected ? .semibold : .regular)
         // Secondary-label gray is too faint over the light editor surface.
         // Keep inactive tabs subordinate without sacrificing filename
         // readability in light mode.
@@ -455,6 +489,13 @@ private final class MobileNativeFileTabItemView: UIControl, UIDragInteractionDel
         self.allowsReordering = allowsReordering
         updateAppearance()
         setNeedsLayout()
+    }
+
+    private func scaledTitleFont(weight: UIFont.Weight) -> UIFont {
+        UIFontMetrics(forTextStyle: .caption1).scaledFont(
+            for: .systemFont(ofSize: 12, weight: weight),
+            maximumPointSize: 18
+        )
     }
 
     override var isHighlighted: Bool {

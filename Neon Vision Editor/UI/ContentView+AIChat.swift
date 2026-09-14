@@ -67,8 +67,7 @@ extension ContentView {
     func showAIChat() {
         utilitySidebarMode = .assistant
 #if os(iOS) || os(visionOS)
-        let isPhone = UIDevice.current.userInterfaceIdiom == .phone
-        if isPhone || horizontalSizeClass == .compact || horizontalSizeClass == nil {
+        if usesCompactIOSLayout {
             showCompactProjectSidebarSheet = true
             return
         }

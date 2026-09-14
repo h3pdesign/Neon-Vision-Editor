@@ -20,18 +20,19 @@ extension ContentView {
     private var delimitedModeControl: some View {
         Group {
 #if canImport(UIKit)
-            if UIDevice.current.userInterfaceIdiom == .phone && liveContainerWidth < 430 {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    delimitedModePicker
+                    structuredDelimitedStatus
+                    Spacer(minLength: 0)
+                }
+                .fixedSize(horizontal: true, vertical: false)
+
                 VStack(alignment: .leading, spacing: 8) {
                     delimitedModePicker
                         .frame(maxWidth: .infinity)
                     structuredDelimitedStatus
                         .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            } else {
-                HStack(spacing: 10) {
-                    delimitedModePicker
-                    structuredDelimitedStatus
-                    Spacer(minLength: 0)
                 }
             }
 #else
@@ -42,6 +43,7 @@ extension ContentView {
             }
 #endif
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background {
@@ -53,18 +55,19 @@ extension ContentView {
     private var plistModeControl: some View {
         Group {
 #if canImport(UIKit)
-            if UIDevice.current.userInterfaceIdiom == .phone && liveContainerWidth < 430 {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    plistModePicker
+                    structuredPlistStatus
+                    Spacer(minLength: 0)
+                }
+                .fixedSize(horizontal: true, vertical: false)
+
                 VStack(alignment: .leading, spacing: 8) {
                     plistModePicker
                         .frame(maxWidth: .infinity)
                     structuredPlistStatus
                         .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            } else {
-                HStack(spacing: 10) {
-                    plistModePicker
-                    structuredPlistStatus
-                    Spacer(minLength: 0)
                 }
             }
 #else
@@ -75,6 +78,7 @@ extension ContentView {
             }
 #endif
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background {

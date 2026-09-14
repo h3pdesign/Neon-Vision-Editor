@@ -696,7 +696,7 @@ extension ContentView {
 
     func toggleSidebarFromToolbar() {
 #if os(iOS) || os(visionOS)
-        if horizontalSizeClass == .compact {
+        if usesCompactIOSLayout {
             showCompactSidebarSheet.toggle()
             return
         }
@@ -710,8 +710,7 @@ extension ContentView {
 
     func toggleProjectSidebarFromToolbar() {
 #if os(iOS) || os(visionOS)
-        let isPhone = UIDevice.current.userInterfaceIdiom == .phone
-        if isPhone || horizontalSizeClass == .compact || horizontalSizeClass == nil {
+        if usesCompactIOSLayout {
             DispatchQueue.main.async {
                 showCompactProjectSidebarSheet.toggle()
             }
@@ -775,10 +774,10 @@ extension ContentView {
         previewMode = previewMode.toggled(for: requestedMode)
         let isOpeningPreview = previewMode != .none
 #if os(iOS) || os(visionOS)
-        if UIDevice.current.userInterfaceIdiom == .pad && isOpeningPreview {
+        if usesRegularIOSLayout && isOpeningPreview {
             showProjectStructureSidebar = false
             showCompactProjectSidebarSheet = false
-        } else if UIDevice.current.userInterfaceIdiom == .phone && isOpeningPreview {
+        } else if usesCompactIOSLayout && isOpeningPreview {
             markdownPreviewSheetDetent = .large
             dismissKeyboard()
         }

@@ -602,7 +602,7 @@ struct NeonSettingsView: View {
 
     private var isCompactSettingsLayout: Bool {
 #if os(iOS) || os(visionOS)
-        horizontalSizeClass == .compact
+        horizontalSizeClass != .regular
 #else
         false
 #endif
@@ -636,7 +636,7 @@ struct NeonSettingsView: View {
 
     private var isIPadDevice: Bool {
 #if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .pad
+        useTwoColumnSettingsLayout
 #else
         false
 #endif

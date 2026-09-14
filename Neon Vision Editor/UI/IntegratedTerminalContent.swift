@@ -427,12 +427,14 @@ nonisolated final class TerminalANSIFormatter {
             var attributes: [NSAttributedString.Key: Any] = [:]
             if let foregroundColor {
                 attributes[.foregroundColor] = foregroundColor
+            } else {
+                attributes[.foregroundColor] = NSColor.textColor
             }
             if let backgroundColor {
                 attributes[.backgroundColor] = backgroundColor
             }
             attributes[.font] = NSFont.monospacedSystemFont(
-                ofSize: 14,
+                ofSize: 12,
                 weight: isBold ? .bold : .regular
             )
             attributes[.paragraphStyle] = paragraphStyle
@@ -579,31 +581,8 @@ struct TerminalOutputTextView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
-        scrollView.drawsBackground = false
-        scrollView.borderType = .noBorder
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = true
-        scrollView.autohidesScrollers = true
-
         let textView = NSTextView(frame: scrollView.contentView.bounds)
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.isRichText = true
-        textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 16, height: 16)
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = true
-        textView.minSize = .zero
-        textView.maxSize = NSSize(
-            width: CGFloat.greatestFiniteMagnitude,
-            height: CGFloat.greatestFiniteMagnitude
-        )
-        textView.textContainer?.containerSize = NSSize(
-            width: CGFloat.greatestFiniteMagnitude,
-            height: CGFloat.greatestFiniteMagnitude
-        )
-        textView.textContainer?.widthTracksTextView = false
-        textView.setAccessibilityLabel("Terminal output")
+        Self.configure(scrollView: scrollView, textView: textView)
         scrollView.documentView = textView
 
         context.coordinator.install(
@@ -612,6 +591,35 @@ struct TerminalOutputTextView: NSViewRepresentable {
             in: textView
         )
         return scrollView
+    }
+
+    static func configure(scrollView: NSScrollView, textView: NSTextView) {
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.isRichText = true
+        textView.drawsBackground = false
+        textView.textColor = .textColor
+        textView.textContainerInset = NSSize(width: 16, height: 16)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.minSize = .zero
+        textView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.textContainer?.containerSize = NSSize(
+            width: scrollView.contentSize.width,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.textContainer?.widthTracksTextView = true
+        textView.setAccessibilityLabel("Terminal output")
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
@@ -654,7 +662,10 @@ struct TerminalOutputTextView: NSViewRepresentable {
             let contents = snapshot.length == 0
                 ? NSAttributedString(
                     string: "Ready.",
-                    attributes: [.font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)]
+                    attributes: [
+                        .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular),
+                        .foregroundColor: NSColor.textColor
+                    ]
                 )
                 : snapshot
             textView.textStorage?.setAttributedString(contents)

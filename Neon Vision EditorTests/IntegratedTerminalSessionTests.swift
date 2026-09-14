@@ -25,7 +25,27 @@ final class IntegratedTerminalSessionTests: XCTestCase {
 
         XCTAssertEqual(combined.string, "red text plain")
         XCTAssertNotNil(combined.attribute(.foregroundColor, at: 0, effectiveRange: nil))
-        XCTAssertNil(combined.attribute(.foregroundColor, at: combined.length - 1, effectiveRange: nil))
+        XCTAssertEqual(
+            combined.attribute(.foregroundColor, at: combined.length - 1, effectiveRange: nil) as? NSColor,
+            .textColor
+        )
+        XCTAssertEqual(
+            (combined.attribute(.font, at: combined.length - 1, effectiveRange: nil) as? NSFont)?.pointSize,
+            12
+        )
+    }
+
+    func testTerminalOutputTextViewWrapsAndUsesSemanticTextColor() {
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 320, height: 240))
+        let textView = NSTextView(frame: scrollView.contentView.bounds)
+
+        TerminalOutputTextView.configure(scrollView: scrollView, textView: textView)
+
+        XCTAssertFalse(scrollView.hasHorizontalScroller)
+        XCTAssertFalse(textView.isHorizontallyResizable)
+        XCTAssertTrue(textView.autoresizingMask.contains(.width))
+        XCTAssertTrue(textView.textContainer?.widthTracksTextView == true)
+        XCTAssertEqual(textView.textColor, .textColor)
     }
 
     func testPythonRuntimeShellQuotePreservesSpecialCharacters() {
@@ -139,6 +159,14 @@ final class IntegratedTerminalSessionTests: XCTestCase {
         let coordinator = TerminalOutputTextView.Coordinator()
         coordinator.install(NSAttributedString(string: ""), revision: 0, in: textView)
         XCTAssertEqual(textView.string, "Ready.")
+        XCTAssertEqual(
+            textView.textStorage?.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor,
+            .textColor
+        )
+        XCTAssertEqual(
+            (textView.textStorage?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.pointSize,
+            12
+        )
 
         coordinator.apply(
             TerminalRenderUpdate(revision: 1, kind: .append(NSAttributedString(string: "first"))),

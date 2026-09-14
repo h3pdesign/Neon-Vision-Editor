@@ -6,6 +6,35 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- Opens files from Finder by dropping them anywhere in the macOS workspace, with each file placed in its own editor tab.
+- Keeps large terminal output, Git diffs, project indexing, and long-document tab switching responsive under sustained workloads.
+- Uses Swift 6.4 and OS 27 Foundation improvements while preserving the existing deployment targets.
+
+### Highlights
+
+- Adds native macOS file drag and drop with modern DropSession handling and a compatible path for older supported macOS releases.
+- Streams terminal output incrementally into a native text view and precomputes stable Git diff rows.
+- Reduces repeated URL normalization during project scans and uses the measured faster byte-iteration path for large files.
+
+### Fixes
+
+- Keeps a newly selected long document's complete content visible instead of applying a stale scroll position from the previous tab.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
+### Maintenance
+
+- Adds incremental Swift Testing interoperability and makes ignored throwing-task diagnostics a platform-matrix failure.
+- Keeps stateful AppKit, WebKit, StoreKit, and PTY XCTest suites serial while independent Swift Testing cases remain parallel-capable.
+
 ## [v1.7.6] - 2026-09-12
 
 ### Why Upgrade

@@ -2584,7 +2584,7 @@ struct ContentView: View {
 
     // Layout: NavigationSplitView with optional sidebar and the primary code editor.
     var body: some View {
-        lifecycleConfiguredRootView
+        fileDropConfiguredRootView
         // VisionOS reading surfaces own the editor appearance. Keep the
         // system-glass and light presets from inheriting a dark window scheme,
         // while Dark/Ink continue to render as a coherent dark surface.
@@ -2636,6 +2636,25 @@ struct ContentView: View {
         .onChange(of: remotePreparedTarget) { _, _ in
             updateWindowSubtitle()
         }
+#endif
+    }
+
+    @ViewBuilder
+    private var fileDropConfiguredRootView: some View {
+#if os(macOS)
+        if #available(macOS 26.0, *) {
+            lifecycleConfiguredRootView
+                .dropDestination(for: URL.self, isEnabled: true) { urls, _ in
+                    _ = openDroppedFiles(urls)
+                }
+        } else {
+            lifecycleConfiguredRootView
+                .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+                    acceptDroppedFileProviders(providers)
+                }
+        }
+#else
+        lifecycleConfiguredRootView
 #endif
     }
 

@@ -1586,6 +1586,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 // The viewport is already available, so start syntax work with
                 // the activation instead of waiting for the first draw pass.
                 installViewport(cached, deferExpensiveWork: false)
+                setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
+                restoreScrollPositionForActivatedDocument(at: targetLine)
             } else {
                 scheduleDeferredViewportLoad(
                     anchorLine: targetLine,
@@ -1596,6 +1598,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         } else {
             reloadViewport(anchorLine: targetLine)
             setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
+            if isNewDocument {
+                restoreScrollPositionForActivatedDocument(at: targetLine)
+            }
             scheduleVisualMetricsRecalculation()
         }
         needsDisplay = true
@@ -3046,6 +3051,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         scrollView.reflectScrolledClipView(scrollView.contentView)
     }
 
+    private func restoreScrollPositionForActivatedDocument(at line: Int) {
+        ensureLineVisible(line)
+        guard let scrollView = enclosingScrollView else { return }
+        lastScrollY = scrollView.contentView.bounds.minY
+        lastReloadAnchorLine = viewportLineOrigin
+    }
+
     func reloadViewportIfNeeded(scrollY: CGFloat) {
         let visibleHeight = enclosingScrollView?.contentView.bounds.height ?? 0
         let maximumY = max(0, logicalHeight - visibleHeight)
@@ -3100,6 +3112,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             // let highlighting begin as soon as the new viewport is installed.
             self.installViewport(next, deferExpensiveWork: false)
             self.setFrameSize(NSSize(width: self.contentWidth, height: self.logicalHeight))
+            self.restoreScrollPositionForActivatedDocument(at: anchorLine)
             self.needsLayout = true
             self.needsDisplay = true
             self.deferredViewportTask = nil

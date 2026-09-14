@@ -537,6 +537,56 @@ final class VirtualEditorLayoutTests: XCTestCase {
         }
     }
 
+    func testSwitchingTabsDoesNotReuseThePreviousTabsScrollOffset() throws {
+        let firstDocument = FileBackedTextDocument(content: (0..<3_000).map { "first-\($0)\n" }.joined())
+        let secondDocument = FileBackedTextDocument(content: (0..<3_000).map { "second-\($0)\n" }.joined())
+        let scrollView = VirtualEditorScrollView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+
+        func configure(_ document: FileBackedTextDocument, id: UUID, resourceID: String) {
+            scrollView.configure(
+                document: document,
+                documentID: id,
+                resourceID: resourceID,
+                displayName: resourceID,
+                contentRevision: 0,
+                externalContentRevision: 0,
+                caret: 0,
+                language: "text",
+                colorScheme: .light,
+                fontSize: 14,
+                fontName: "",
+                lineHeightMultiplier: 1,
+                isReadOnly: false,
+                translucentBackgroundEnabled: false,
+                showsLineNumbers: true,
+                highlightCurrentLine: false,
+                lineWrapEnabled: true,
+                showsInvisibleCharacters: false,
+                showsIndentationGuides: false,
+                showsScopeGuides: false,
+                highlightsScopeBackground: false,
+                highlightsMatchingBrackets: false,
+                autoIndentEnabled: true,
+                autoCloseBracketsEnabled: false,
+                isSplitPaneResizeInProgress: false,
+                onFontSizeChange: nil,
+                onTextMutation: nil
+            )
+        }
+
+        configure(firstDocument, id: UUID(), resourceID: "first")
+        scrollView.contentView.scroll(to: NSPoint(x: 0, y: 10_000))
+        XCTAssertGreaterThan(scrollView.contentView.bounds.minY, 0)
+
+        configure(secondDocument, id: UUID(), resourceID: "second")
+
+        XCTAssertEqual(scrollView.contentView.bounds.minY, 0, accuracy: 0.5)
+        let canvas = try XCTUnwrap(scrollView.documentView as? VirtualEditorCanvas)
+        scrollView.contentView.scroll(to: NSPoint(x: 0, y: canvas.logicalHeight))
+        scrollView.updateForVisibleBoundsChange()
+        XCTAssertTrue((canvas.accessibilityValue() as? String)?.contains("second-2999") == true)
+    }
+
     func testAccessibilityContextIncludesDocumentPositionEditabilityAndSelection() {
         let context = VirtualEditorAccessibilityContext(
             documentName: "Notes.md",

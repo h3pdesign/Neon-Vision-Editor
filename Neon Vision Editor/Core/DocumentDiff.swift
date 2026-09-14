@@ -37,12 +37,36 @@ struct DocumentDiff: Sendable {
 }
 
 struct DocumentDiffPresentation: Identifiable, Sendable {
+    enum UnifiedLineSide: Sendable {
+        case removed
+        case inserted
+    }
+
+    enum DisplayRow: Identifiable, Sendable {
+        case fileHeader(DocumentDiff.Row)
+        case changeLine(DocumentDiff.Row)
+        case unifiedLine(DocumentDiff.Row, UnifiedLineSide)
+        case unchanged(Int, Int)
+
+        var id: String {
+            switch self {
+            case .fileHeader(let row): "file-\(row.id)"
+            case .changeLine(let row): "change-\(row.id)"
+            case .unifiedLine(let row, let side):
+                "unified-\(row.id)-\(side == .removed ? "removed" : "inserted")"
+            case .unchanged(let index, let count): "unchanged-\(index)-\(count)"
+            }
+        }
+    }
+
     let id: UUID
     let title: String
     let leftTitle: String
     let rightTitle: String
     let diff: DocumentDiff
     let changedRows: [DocumentDiff.Row]
+    let sideBySideRows: [DisplayRow]
+    let inlineRows: [DisplayRow]
     let language: String?
 
     nonisolated init(
@@ -58,7 +82,68 @@ struct DocumentDiffPresentation: Identifiable, Sendable {
         self.rightTitle = rightTitle
         self.diff = diff
         self.changedRows = diff.rows.filter(\.isChanged)
+        (self.sideBySideRows, self.inlineRows) = Self.makeDisplayRows(from: diff.rows)
         self.language = language
+    }
+
+    private nonisolated static func makeDisplayRows(
+        from rows: [DocumentDiff.Row]
+    ) -> (sideBySide: [DisplayRow], inline: [DisplayRow]) {
+        var sideBySide: [DisplayRow] = []
+        var inline: [DisplayRow] = []
+        sideBySide.reserveCapacity(rows.count)
+        inline.reserveCapacity(rows.count)
+        var index = 0
+        var unchangedGroupIndex = 0
+
+        while index < rows.count {
+            let row = rows[index]
+            if case .equal = row.kind {
+                if row.leftText.hasPrefix("--- ") {
+                    sideBySide.append(.fileHeader(row))
+                    inline.append(.fileHeader(row))
+                    index += 1
+                    continue
+                }
+                var end = index
+                while end < rows.count {
+                    guard case .equal = rows[end].kind else { break }
+                    end += 1
+                }
+                let count = end - index
+                if count > 2 {
+                    let collapsed = DisplayRow.unchanged(unchangedGroupIndex, count)
+                    sideBySide.append(collapsed)
+                    inline.append(collapsed)
+                    unchangedGroupIndex += 1
+                } else {
+                    for equalRow in rows[index..<end] {
+                        let displayRow = DisplayRow.changeLine(equalRow)
+                        sideBySide.append(displayRow)
+                        inline.append(displayRow)
+                    }
+                }
+                index = end
+                continue
+            }
+
+            var end = index
+            while end < rows.count {
+                if case .equal = rows[end].kind { break }
+                end += 1
+            }
+            for changedRow in rows[index..<end] {
+                sideBySide.append(.changeLine(changedRow))
+                if changedRow.leftLineNumber != nil {
+                    inline.append(.unifiedLine(changedRow, .removed))
+                }
+            }
+            for changedRow in rows[index..<end] where changedRow.rightLineNumber != nil {
+                inline.append(.unifiedLine(changedRow, .inserted))
+            }
+            index = end
+        }
+        return (sideBySide, inline)
     }
 }
 

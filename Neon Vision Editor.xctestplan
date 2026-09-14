@@ -13,7 +13,7 @@
   },
   "testTargets" : [
     {
-      "parallelizable" : true,
+      "parallelizable" : false,
       "target" : {
         "containerPath" : "container:Neon Vision Editor.xcodeproj",
         "identifier" : "50864E55167D4016920786DF",

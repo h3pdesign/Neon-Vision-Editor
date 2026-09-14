@@ -58,6 +58,42 @@ final class ContentViewLayoutTests: XCTestCase {
         )
     }
 
+    func testAdaptiveLayoutUsesSizeClassInsteadOfPhoneIdiomAssumptions() {
+        XCTAssertTrue(
+            IOSAdaptiveLayoutPolicy.usesRegularLayout(
+                horizontalSizeClass: .regular,
+                containerWidth: 390
+            )
+        )
+        XCTAssertFalse(
+            IOSAdaptiveLayoutPolicy.usesRegularLayout(
+                horizontalSizeClass: .compact,
+                containerWidth: 1_024
+            )
+        )
+    }
+
+    func testAdaptiveLayoutFallsBackToMeasuredWidthBeforeSizeClassArrives() {
+        XCTAssertFalse(
+            IOSAdaptiveLayoutPolicy.usesRegularLayout(
+                horizontalSizeClass: nil,
+                containerWidth: 390
+            )
+        )
+        XCTAssertTrue(
+            IOSAdaptiveLayoutPolicy.usesRegularLayout(
+                horizontalSizeClass: nil,
+                containerWidth: 744
+            )
+        )
+    }
+
+    func testSecondaryPaneWidthScalesAndRemainsBounded() {
+        XCTAssertEqual(IOSAdaptiveLayoutPolicy.secondaryPaneIdealWidth(containerWidth: 390), 280)
+        XCTAssertEqual(IOSAdaptiveLayoutPolicy.secondaryPaneIdealWidth(containerWidth: 900), 360)
+        XCTAssertEqual(IOSAdaptiveLayoutPolicy.secondaryPaneIdealWidth(containerWidth: 1_600), 520)
+    }
+
     func testFindChromeSuppressesFloatingAndPinnedStatus() {
         XCTAssertFalse(
             IOSFloatingStatusPolicy.isVisible(

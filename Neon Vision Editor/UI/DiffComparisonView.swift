@@ -26,7 +26,7 @@ struct DiffComparisonView<Footer: View>: View {
 #if os(macOS)
         1180
 #else
-        horizontalSizeClass == .compact ? 0 : 760
+        horizontalSizeClass != .regular ? 0 : 760
 #endif
     }
 
@@ -34,7 +34,7 @@ struct DiffComparisonView<Footer: View>: View {
 #if os(macOS)
         760
 #else
-        horizontalSizeClass == .compact ? 420 : 560
+        horizontalSizeClass != .regular ? 420 : 560
 #endif
     }
 
@@ -42,7 +42,7 @@ struct DiffComparisonView<Footer: View>: View {
 #if os(macOS)
         560
 #else
-        horizontalSizeClass == .compact ? 320 : 360
+        horizontalSizeClass != .regular ? 320 : 360
 #endif
     }
 
@@ -50,7 +50,7 @@ struct DiffComparisonView<Footer: View>: View {
 #if os(macOS)
         false
 #else
-        horizontalSizeClass == .compact
+        horizontalSizeClass != .regular
 #endif
     }
 
@@ -305,7 +305,7 @@ struct CompareTabsPickerView: View {
 #if os(macOS)
         640
 #else
-        horizontalSizeClass == .compact ? 0 : 640
+        horizontalSizeClass != .regular ? 0 : 640
 #endif
     }
 
@@ -313,7 +313,7 @@ struct CompareTabsPickerView: View {
 #if os(macOS)
         360
 #else
-        horizontalSizeClass == .compact ? 300 : 360
+        horizontalSizeClass != .regular ? 300 : 360
 #endif
     }
 

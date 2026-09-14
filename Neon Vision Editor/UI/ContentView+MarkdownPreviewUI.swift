@@ -99,7 +99,7 @@ extension ContentView {
                 .accessibilityLabel(isMarkdownProjectPreviewPresented ? "Hide project Markdown cards" : "Show project Markdown cards")
             }
 #if canImport(UIKit)
-            if UIDevice.current.userInterfaceIdiom != .phone {
+            if usesRegularIOSLayout {
                 Toggle(isOn: $markdownPreviewSynchronousScroll) {
                     Image(systemName: "arrow.up.and.down")
                 }
@@ -232,7 +232,7 @@ extension ContentView {
     @ViewBuilder
     private var markdownPreviewWebViewHost: some View {
 #if os(iOS) || os(visionOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
+        if usesCompactIOSLayout {
             markdownPreviewWebViewContent
                 .padding(.horizontal, iPhoneMarkdownPreviewWebViewHorizontalInset)
                 .padding(.bottom, 8)
@@ -269,7 +269,7 @@ extension ContentView {
     @ViewBuilder
     private var markdownPreviewHeader: some View {
 #if os(iOS) || os(visionOS)
-        if UIDevice.current.userInterfaceIdiom == .pad {
+        if usesRegularIOSLayout {
             markdownPreviewIPadHeader
         } else {
             markdownPreviewRegularHeader
@@ -578,7 +578,7 @@ extension ContentView {
 
 #if os(iOS) || os(visionOS)
     private var markdownPreviewPickerCardSpacing: CGFloat {
-        if UIDevice.current.userInterfaceIdiom == .phone {
+        if usesCompactIOSLayout {
             return 12
         }
         if markdownPreviewUsesStackedIPadPickerLayout {
@@ -588,7 +588,7 @@ extension ContentView {
     }
 
     private var markdownPreviewPickerCardHorizontalPadding: CGFloat {
-        if UIDevice.current.userInterfaceIdiom == .phone {
+        if usesCompactIOSLayout {
             return 12
         }
         if markdownPreviewUsesStackedIPadPickerLayout {
@@ -598,7 +598,7 @@ extension ContentView {
     }
 
     private var markdownPreviewPickerCardMaxWidth: CGFloat? {
-        UIDevice.current.userInterfaceIdiom == .phone ? nil : 420
+        usesCompactIOSLayout ? nil : 420
     }
 #else
     private var markdownPreviewPickerCardSpacing: CGFloat { markdownPreviewShowsInlineExportControl ? 16 : 18 }
@@ -615,7 +615,7 @@ extension ContentView {
 
     private var markdownPreviewUsesStackedIPadPickerLayout: Bool {
 #if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .pad
+        usesRegularIOSLayout
 #else
         false
 #endif
@@ -654,7 +654,7 @@ extension ContentView {
     @ViewBuilder
     private var markdownPreviewSecondaryActionRow: some View {
 #if os(iOS) || os(visionOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
+        if usesCompactIOSLayout {
             EmptyView()
         } else {
             markdownPreviewActionRow {
@@ -686,7 +686,7 @@ extension ContentView {
 #else
     @ViewBuilder
     private var markdownPreviewSecondaryButtons: some View {
-        if UIDevice.current.userInterfaceIdiom == .pad {
+        if usesRegularIOSLayout {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 10) {
                     markdownPreviewShareButton

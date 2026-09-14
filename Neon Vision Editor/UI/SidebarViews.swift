@@ -311,7 +311,7 @@ struct SidebarView: View {
 
     private var isCompactTOCWidth: Bool {
 #if os(iOS)
-        horizontalSizeClass == .compact
+        horizontalSizeClass != .regular
 #else
         false
 #endif
@@ -321,7 +321,7 @@ struct SidebarView: View {
 #if os(iOS)
         // Match the project sidebar's iPad card inset on every edge so the
         // TOC surface shares its height and boundary with the adjacent bar.
-        UIDevice.current.userInterfaceIdiom == .pad
+        horizontalSizeClass == .regular
             ? EdgeInsets(top: 0, leading: 6, bottom: 0, trailing: 6)
             : EdgeInsets(top: 0, leading: 10, bottom: 10, trailing: 10)
 #else
@@ -1640,7 +1640,7 @@ struct ProjectStructureSidebarView: View {
 
     private var isCompactWidth: Bool {
 #if os(iOS)
-        horizontalSizeClass == .compact
+        horizontalSizeClass != .regular
 #else
         false
 #endif
@@ -1648,7 +1648,7 @@ struct ProjectStructureSidebarView: View {
 
     private var isPhoneLayout: Bool {
 #if os(iOS)
-        UIDevice.current.userInterfaceIdiom == .phone
+        isCompactWidth
 #else
         false
 #endif
@@ -1664,7 +1664,7 @@ struct ProjectStructureSidebarView: View {
 
     private var isRegularPadLayout: Bool {
 #if os(iOS)
-        UIDevice.current.userInterfaceIdiom == .pad && !isCompactWidth
+        !isCompactWidth
 #else
         false
 #endif
@@ -1690,13 +1690,7 @@ struct ProjectStructureSidebarView: View {
 #if os(macOS)
         AnyShape(RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous))
 #elseif os(iOS)
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            AnyShape(RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous))
-        } else {
-            AnyShape(
-                RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous)
-            )
-        }
+        AnyShape(RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous))
 #else
         AnyShape(RoundedRectangle(cornerRadius: sidebarCornerRadius, style: .continuous))
 #endif
@@ -1722,7 +1716,7 @@ struct ProjectStructureSidebarView: View {
     private var sidebarOuterPadding: CGFloat {
 #if os(iOS)
         if isCompactProjectLayout { return 4 }
-        return UIDevice.current.userInterfaceIdiom == .pad ? 6 : 8
+        return isRegularPadLayout ? 6 : 8
 #else
         8
 #endif
@@ -2225,7 +2219,7 @@ struct ProjectStructureSidebarView: View {
 
     private var showsInlineSidebarTitle: Bool {
 #if os(iOS)
-        UIDevice.current.userInterfaceIdiom != .phone
+        isRegularPadLayout
 #else
         true
 #endif
@@ -2664,7 +2658,7 @@ private struct SidebarCompareDiffView: View {
 
     private var isCompactWidth: Bool {
 #if os(iOS)
-        horizontalSizeClass == .compact
+        horizontalSizeClass != .regular
 #else
         false
 #endif

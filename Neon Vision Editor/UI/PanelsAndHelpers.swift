@@ -364,10 +364,13 @@ struct InlineFindBar: View {
 
     @FocusState private var searchFocused: Bool
     @State private var showsReplace = false
+#if canImport(UIKit)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+#endif
 
     private var isPhone: Bool {
 #if canImport(UIKit)
-        UIDevice.current.userInterfaceIdiom == .phone
+        horizontalSizeClass != .regular
 #else
         false
 #endif
@@ -504,10 +507,13 @@ struct FindReplacePanel: View {
     var focusRequestID: Int = 0
     @FocusState private var findFieldFocused: Bool
     @State private var isReplaceVisible = false
+#if os(iOS) || os(visionOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+#endif
 
     private var usesCompactPhoneLayout: Bool {
 #if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .phone
+        horizontalSizeClass != .regular
 #else
         false
 #endif
@@ -515,7 +521,7 @@ struct FindReplacePanel: View {
 
     private var usesPadLayout: Bool {
 #if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .pad
+        horizontalSizeClass == .regular
 #else
         false
 #endif
@@ -2094,12 +2100,15 @@ struct FindInFilesPanel: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.searchPanelEmbeddedInSidebar) private var embeddedInSidebar
+#if os(iOS) || os(visionOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+#endif
     @FocusState private var queryFieldFocused: Bool
     @State private var selectedMatchID: FindInFilesMatch.ID?
 
     private var usesCompactPhoneLayout: Bool {
 #if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .phone
+        horizontalSizeClass != .regular
 #else
         false
 #endif
@@ -2163,7 +2172,7 @@ struct FindInFilesPanel: View {
 
     private var usesPadLayout: Bool {
 #if os(iOS) || os(visionOS)
-        UIDevice.current.userInterfaceIdiom == .pad
+        horizontalSizeClass == .regular
 #else
         false
 #endif
@@ -2861,7 +2870,7 @@ struct WelcomeTourView: View {
             let compactLayout = proxy.size.width < 760
 #if os(iOS) || os(visionOS)
             let regularTouchLayout = !compactLayout
-            let padCompactSheetLayout = compactLayout && UIDevice.current.userInterfaceIdiom == .pad
+            let padCompactSheetLayout = compactLayout && proxy.size.height < 600
 #else
             let regularTouchLayout = false
             let padCompactSheetLayout = false

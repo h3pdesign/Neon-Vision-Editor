@@ -920,7 +920,7 @@ struct CodeSnapshotComposerView: View {
                 }
                 .padding(20)
             }
-            .frame(width: 340)
+            .frame(minWidth: 280, idealWidth: 340, maxWidth: 380)
             .background(settingsSurfaceStyle)
 
             Divider()
@@ -1053,7 +1053,7 @@ struct CodeSnapshotComposerView: View {
 
     private var usesCompactScrollingLayout: Bool {
 #if os(iOS)
-        return horizontalSizeClass == .compact
+        return horizontalSizeClass != .regular
 #else
         return false
 #endif

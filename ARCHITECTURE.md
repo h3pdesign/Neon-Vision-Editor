@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-09-12 (v1.7.6 release-aligned architecture)
+Last updated: 2026-09-14 (v1.8.0 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -9,17 +9,18 @@ The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/a
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
+### v1.8.0 (2026-09-14)
+
+- Adds native macOS file drag and drop with modern DropSession handling and a compatible path for older supported macOS releases.
+- Adds a compact five-step macOS window-surface slider that moves from dense native frosted glass to a lighter frosted surface while preserving background blur.
+- Streams terminal output incrementally into a native text view and precomputes stable Git diff rows.
+- Reduces repeated URL normalization during project scans and uses the measured faster byte-iteration path for large files.
+- Keeps a newly selected long document's complete content visible instead of applying a stale scroll position from the previous tab.
+
 ### v1.7.6 (2026-09-12)
 
 - Repaints only the visible Core Text canvas region during ordinary scrolling, preserving the fast virtualized layout path.
 - Prevents stale AppKit backing pixels from covering or clipping editor lines during macOS scrolling.
-
-### v1.7.5 (2026-09-11)
-
-- Reuses prepared Core Text rows across fine-grained scrolling while retaining an ahead-of-viewport render window.
-- Prevents native tab items from being treated as draggable window background instead of receiving their own reorder gesture.
-- Stops ordinary macOS editor scrolling from invalidating the complete canvas and rebuilding visual rows for subpoint movement.
-- Coalesces editor viewport publications and avoids duplicate SwiftUI minimap state updates.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

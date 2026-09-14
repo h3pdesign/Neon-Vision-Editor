@@ -29,7 +29,7 @@ enum PlainTextJSONStructureError: LocalizedError, Equatable {
 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
 import FoundationModels
 
-@available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
+@available(anyAppleOS 26.0, *)
 @Generable(description: "A validated JSON value that structures the supplied source text.")
 private struct AppleJSONStructureOutput {
     @Guide(description: "A JSON object or array only, without Markdown fences or surrounding prose.")
@@ -106,7 +106,7 @@ enum PlainTextJSONConverter {
         guard lines.count <= 4_000 else {
             throw PlainTextJSONStructureError.documentTooLarge
         }
-        guard #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) else {
+        guard #available(anyAppleOS 26.0, *) else {
             throw PlainTextJSONStructureError.appleIntelligenceUnavailable
         }
         return try await convertWithAppleIntelligenceOnSupportedSystem(source, mode: mode)
@@ -194,7 +194,7 @@ enum PlainTextJSONConverter {
         return 0
     }
 
-    @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
+    @available(anyAppleOS 26.0, *)
     private static func convertWithAppleIntelligenceOnSupportedSystem(
         _ source: String,
         mode: PlainTextJSONStructureMode

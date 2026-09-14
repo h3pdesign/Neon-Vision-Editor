@@ -47,3 +47,7 @@ Describe:
 - The project is built with Swift and AppKit.
 - Ensure the app builds and runs locally before opening a PR.
 - Avoid committing Xcode user state or DerivedData artifacts (see `.gitignore`).
+
+## Tests
+
+Use Swift Testing for new deterministic unit tests of platform-agnostic helpers. Keep XCTest for UI, performance, fixture-heavy, and lifecycle-sensitive tests. Existing XCTest coverage does not need to be migrated when adding related Swift Testing coverage.

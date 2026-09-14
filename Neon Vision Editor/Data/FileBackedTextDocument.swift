@@ -1307,19 +1307,23 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         includesByteOrderMark: Bool = false
     ) -> [Int] {
         if let endian = utf16Endianness(for: encoding) {
-            var result: [Int] = []
-            var offset = includesByteOrderMark ? utf16BOMLength(for: encoding, data: data) : 0
-            while offset + 1 < data.count {
-                let unit = endian == .littleEndian
-                    ? UInt16(data[offset]) | (UInt16(data[offset + 1]) << 8)
-                    : (UInt16(data[offset]) << 8) | UInt16(data[offset + 1])
-                if unit == 0x000A { result.append(start + offset + 2) }
-                offset += 2
+            return data.withUnsafeBytes { bytes in
+                var result: [Int] = []
+                var offset = includesByteOrderMark ? utf16BOMLength(for: encoding, data: data) : 0
+                while offset + 1 < bytes.count {
+                    let unit = endian == .littleEndian
+                        ? UInt16(bytes[offset]) | (UInt16(bytes[offset + 1]) << 8)
+                        : (UInt16(bytes[offset]) << 8) | UInt16(bytes[offset + 1])
+                    if unit == 0x000A { result.append(start + offset + 2) }
+                    offset += 2
+                }
+                return result
             }
-            return result
         }
-        return data.enumerated().compactMap { offset, byte in
-            byte == 0x0A ? start + offset + 1 : nil
+        return data.withUnsafeBytes { bytes in
+            bytes.enumerated().compactMap { offset, byte in
+                byte == 0x0A ? start + offset + 1 : nil
+            }
         }
     }
 
@@ -1347,35 +1351,39 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         let bom = includesByteOrderMark ? byteOrderMarkLength(for: encoding) : 0
         guard target > 0 else { return bom }
         if let endian = utf16Endianness(for: encoding) {
-            var units = 0
-            var offset = bom
-            while offset + 1 < data.count {
-                let unit = endian == .littleEndian
-                    ? UInt16(data[offset]) | (UInt16(data[offset + 1]) << 8)
-                    : (UInt16(data[offset]) << 8) | UInt16(data[offset + 1])
-                let width = (unit >= 0xD800 && unit <= 0xDBFF && offset + 3 < data.count) ? 2 : 1
-                if units + width > target { return offset }
-                units += width
-                offset += width * 2
-                if units == target { return offset }
+            return data.withUnsafeBytes { bytes in
+                var units = 0
+                var offset = bom
+                while offset + 1 < bytes.count {
+                    let unit = endian == .littleEndian
+                        ? UInt16(bytes[offset]) | (UInt16(bytes[offset + 1]) << 8)
+                        : (UInt16(bytes[offset]) << 8) | UInt16(bytes[offset + 1])
+                    let width = (unit >= 0xD800 && unit <= 0xDBFF && offset + 3 < bytes.count) ? 2 : 1
+                    if units + width > target { return offset }
+                    units += width
+                    offset += width * 2
+                    if units == target { return offset }
+                }
+                return bytes.count
             }
-            return data.count
         }
         guard encoding.identifier == .utf8 || encoding.identifier == .utf8WithBOM else {
             return min(data.count, bom + target)
         }
-        var units = 0
-        var offset = bom
-        while offset < data.count {
-            let first = data[offset]
-            let width = first < 0x80 ? 1 : (first < 0xE0 ? 2 : (first < 0xF0 ? 3 : 4))
-            let unitWidth = width == 4 ? 2 : 1
-            if units + unitWidth > target { return offset }
-            units += unitWidth
-            offset += min(width, data.count - offset)
-            if units == target { return offset }
+        return data.withUnsafeBytes { bytes in
+            var units = 0
+            var offset = bom
+            while offset < bytes.count {
+                let first = bytes[offset]
+                let width = first < 0x80 ? 1 : (first < 0xE0 ? 2 : (first < 0xF0 ? 3 : 4))
+                let unitWidth = width == 4 ? 2 : 1
+                if units + unitWidth > target { return offset }
+                units += unitWidth
+                offset += min(width, bytes.count - offset)
+                if units == target { return offset }
+            }
+            return bytes.count
         }
-        return data.count
     }
 
     private func firstLineStart(after offset: Int) -> Int {
@@ -1397,27 +1405,31 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
             return byteLineStarts(in: data)
         }
         let bomLength = utf16BOMLength(for: encoding, data: data)
-        var starts = [0]
-        var offset = bomLength
-        while offset + 1 < data.count {
-            let unit: UInt16
-            if utf16Endianness == .littleEndian {
-                unit = UInt16(data[offset]) | (UInt16(data[offset + 1]) << 8)
-            } else {
-                unit = (UInt16(data[offset]) << 8) | UInt16(data[offset + 1])
+        return data.withUnsafeBytes { bytes in
+            var starts = [0]
+            var offset = bomLength
+            while offset + 1 < bytes.count {
+                let unit: UInt16
+                if utf16Endianness == .littleEndian {
+                    unit = UInt16(bytes[offset]) | (UInt16(bytes[offset + 1]) << 8)
+                } else {
+                    unit = (UInt16(bytes[offset]) << 8) | UInt16(bytes[offset + 1])
+                }
+                if unit == 0x000A { starts.append(offset + 2) }
+                offset += 2
             }
-            if unit == 0x000A { starts.append(offset + 2) }
-            offset += 2
+            return starts
         }
-        return starts
     }
 
     private static func byteLineStarts(in data: Data) -> [Int] {
-        var starts = [0]
-        for (offset, byte) in data.enumerated() where byte == 0x0A {
-            starts.append(offset + 1)
+        data.withUnsafeBytes { bytes in
+            var starts = [0]
+            for (offset, byte) in bytes.enumerated() where byte == 0x0A {
+                starts.append(offset + 1)
+            }
+            return starts
         }
-        return starts
     }
 
     private static func byteOrderMarkLength(for descriptor: TextEncodingDescriptor) -> Int {
@@ -1451,26 +1463,30 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
 
     private static func lineEnding(in data: Data, encoding: TextEncodingDescriptor) -> LineEnding {
         guard let endianness = utf16Endianness(for: encoding) else {
-            for index in data.indices where data[index] == 0x0A {
-                if index > data.startIndex, data[data.index(before: index)] == 0x0D {
-                    return .crlf
+            return data.withUnsafeBytes { bytes in
+                for index in bytes.indices where bytes[index] == 0x0A {
+                    if index > bytes.startIndex, bytes[bytes.index(before: index)] == 0x0D {
+                        return .crlf
+                    }
+                    return .lf
                 }
-                return .lf
+                return bytes.contains(0x0D) ? .cr : .lf
             }
-            return data.contains(0x0D) ? .cr : .lf
         }
 
-        var sawCarriageReturn = false
-        var offset = utf16BOMLength(for: encoding, data: data)
-        while offset + 1 < data.count {
-            let unit = endianness == .littleEndian
-                ? UInt16(data[offset]) | (UInt16(data[offset + 1]) << 8)
-                : (UInt16(data[offset]) << 8) | UInt16(data[offset + 1])
-            if unit == 0x000A { return sawCarriageReturn ? .crlf : .lf }
-            sawCarriageReturn = unit == 0x000D
-            offset += 2
+        return data.withUnsafeBytes { bytes in
+            var sawCarriageReturn = false
+            var offset = utf16BOMLength(for: encoding, data: data)
+            while offset + 1 < bytes.count {
+                let unit = endianness == .littleEndian
+                    ? UInt16(bytes[offset]) | (UInt16(bytes[offset + 1]) << 8)
+                    : (UInt16(bytes[offset]) << 8) | UInt16(bytes[offset + 1])
+                if unit == 0x000A { return sawCarriageReturn ? .crlf : .lf }
+                sawCarriageReturn = unit == 0x000D
+                offset += 2
+            }
+            return sawCarriageReturn ? .cr : .lf
         }
-        return sawCarriageReturn ? .cr : .lf
     }
 
     private static func normalizedLineEndings(in text: String, to lineEnding: LineEnding) -> String {

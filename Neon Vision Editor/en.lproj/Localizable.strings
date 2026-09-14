@@ -71,6 +71,16 @@
 "Translucency Mode" = "Translucency Mode";
 "Translucent Window" = "Translucent Window";
 "Translucent Window Background" = "Translucent Window Background";
+"Frosted Glass" = "Frosted Glass";
+"Strong Frosted" = "Strong Frosted";
+"Frosted" = "Frosted";
+"Light Glass" = "Light Glass";
+"Window Surface" = "Window Surface";
+"Transparent" = "Transparent";
+"Subtle" = "Subtle";
+"Vibrant" = "Vibrant";
+"Adjusts how strongly content behind the window shows through." = "Adjusts how strongly content behind the window shows through.";
+"Adjusts the window surface from frosted glass to transparent." = "Adjusts the window surface from frosted glass to transparent.";
 "Follow System" = "Follow System";
 "Always" = "Always";
 "Never" = "Never";

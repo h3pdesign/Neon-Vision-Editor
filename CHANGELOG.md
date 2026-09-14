@@ -16,6 +16,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Highlights
 
 - Adds native macOS file drag and drop with modern DropSession handling and a compatible path for older supported macOS releases.
+- Adds a compact five-step macOS window-surface slider that moves from dense native frosted glass to a lighter frosted surface while preserving background blur.
 - Streams terminal output incrementally into a native text view and precomputes stable Git diff rows.
 - Reduces repeated URL normalization during project scans and uses the measured faster byte-iteration path for large files.
 - Uses measured size classes, flexible pane widths, scaled tab typography, and safe-area-aware margins instead of assuming a specific iPhone or iPad shape.

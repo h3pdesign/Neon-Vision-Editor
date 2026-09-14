@@ -25,6 +25,16 @@
 "Black" = "黑色";
 "Translucent Window" = "半透明窗口";
 "Translucency Mode" = "半透明模式";
+"Frosted Glass" = "磨砂玻璃";
+"Strong Frosted" = "强磨砂";
+"Frosted" = "磨砂";
+"Light Glass" = "轻玻璃";
+"Window Surface" = "窗口表面";
+"Transparent" = "透明";
+"Subtle" = "轻柔";
+"Vibrant" = "鲜明";
+"Adjusts how strongly content behind the window shows through." = "调整窗口后方内容的透显强度。";
+"Adjusts the window surface from frosted glass to transparent." = "将窗口表面从磨砂玻璃调整为透明。";
 
 "Editor Font" = "编辑器字体";
 "Use System Font" = "使用系统字体";

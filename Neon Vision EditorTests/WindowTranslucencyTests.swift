@@ -11,6 +11,49 @@ import SwiftUI
 /// MARK: - Tests
 
 final class WindowTranslucencyTests: XCTestCase {
+    func testFrostedGlassSliderMapsToExistingTranslucencyModes() {
+        XCTAssertEqual(NeonSettingsView.MacTranslucencyModeOption.frosted.sliderValue, 0)
+        XCTAssertEqual(NeonSettingsView.MacTranslucencyModeOption.subtle.sliderValue, 1)
+        XCTAssertEqual(NeonSettingsView.MacTranslucencyModeOption.balanced.sliderValue, 2)
+        XCTAssertEqual(NeonSettingsView.MacTranslucencyModeOption.light.sliderValue, 3)
+        XCTAssertEqual(NeonSettingsView.MacTranslucencyModeOption.vibrant.sliderValue, 4)
+
+        XCTAssertEqual(NeonSettingsView.MacTranslucencyModeOption.resolving(sliderValue: -1), .frosted)
+        XCTAssertEqual(NeonSettingsView.MacTranslucencyModeOption.resolving(sliderValue: 2), .balanced)
+        XCTAssertEqual(NeonSettingsView.MacTranslucencyModeOption.resolving(sliderValue: 8), .vibrant)
+
+        XCTAssertEqual(ContentView.MacEditorSurfacePolicy.translucentSurfaceKind(modeRaw: "frosted"), .stronglyFrosted)
+        XCTAssertEqual(ContentView.MacEditorSurfacePolicy.translucentSurfaceKind(modeRaw: "subtle"), .frosted)
+        XCTAssertEqual(ContentView.MacEditorSurfacePolicy.translucentSurfaceKind(modeRaw: "balanced"), .balanced)
+        XCTAssertEqual(ContentView.MacEditorSurfacePolicy.translucentSurfaceKind(modeRaw: "light"), .light)
+        XCTAssertEqual(ContentView.MacEditorSurfacePolicy.translucentSurfaceKind(modeRaw: "vibrant"), .transparent)
+    }
+
+    func testTransparentCanvasWithoutTranslucentToggleUsesStrongFrostedSurface() {
+        XCTAssertTrue(
+            ContentView.MacEditorSurfacePolicy.nativeTranslucencyEnabled(
+                translucent: false,
+                opaqueEditorCanvas: false
+            )
+        )
+        XCTAssertEqual(
+            ContentView.MacEditorSurfacePolicy.effectiveTranslucencyModeRaw(
+                translucent: false,
+                opaqueEditorCanvas: false,
+                selectedModeRaw: "vibrant"
+            ),
+            "frosted"
+        )
+        XCTAssertEqual(
+            ContentView.MacEditorSurfacePolicy.effectiveTranslucencyModeRaw(
+                translucent: true,
+                opaqueEditorCanvas: false,
+                selectedModeRaw: "light"
+            ),
+            "light"
+        )
+    }
+
     func testEditorWindowAllowsDraggingFromCustomHeaderBackground() {
         let testWindow = NSWindow(
             contentRect: NSRect(x: 40, y: 40, width: 480, height: 320),
@@ -67,12 +110,19 @@ final class WindowTranslucencyTests: XCTestCase {
     func testApplyWindowTranslucencyUpdatesMacWindowFlags() {
         let defaults = UserDefaults.standard
         let originalMode = defaults.object(forKey: "SettingsMacTranslucencyMode")
+        let originalOpaqueEditorCanvas = defaults.object(forKey: "SettingsOpaqueEditorSurfaceMac")
         defaults.set("balanced", forKey: "SettingsMacTranslucencyMode")
+        defaults.set(true, forKey: "SettingsOpaqueEditorSurfaceMac")
         defer {
             if let originalMode {
                 defaults.set(originalMode, forKey: "SettingsMacTranslucencyMode")
             } else {
                 defaults.removeObject(forKey: "SettingsMacTranslucencyMode")
+            }
+            if let originalOpaqueEditorCanvas {
+                defaults.set(originalOpaqueEditorCanvas, forKey: "SettingsOpaqueEditorSurfaceMac")
+            } else {
+                defaults.removeObject(forKey: "SettingsOpaqueEditorSurfaceMac")
             }
         }
 
@@ -124,7 +174,7 @@ final class WindowTranslucencyTests: XCTestCase {
         XCTAssertGreaterThan(sizePolicy.ideal.height, sizePolicy.min.height)
     }
 
-    func testMacSettingsWindowTranslucencyUsesVisibleAlpha() {
+    func testMacSettingsWindowTranslucencyLeavesNativeBackdropVisible() {
         let subtle = SettingsWindowConfigurator.settingsWindowBackgroundColor(
             translucentEnabled: true,
             translucencyModeRaw: "subtle",
@@ -150,12 +200,73 @@ final class WindowTranslucencyTests: XCTestCase {
             effectiveColorScheme: .dark
         )
 
-        XCTAssertEqual(subtle.alphaComponent, 0.96, accuracy: 0.001)
-        XCTAssertEqual(balanced.alphaComponent, 0.93, accuracy: 0.001)
-        XCTAssertEqual(vibrant.alphaComponent, 0.90, accuracy: 0.001)
-        XCTAssertGreaterThan(subtle.alphaComponent, balanced.alphaComponent)
-        XCTAssertLessThan(vibrant.alphaComponent, balanced.alphaComponent)
+        XCTAssertEqual(subtle.alphaComponent, 0, accuracy: 0.001)
+        XCTAssertEqual(balanced.alphaComponent, 0, accuracy: 0.001)
+        XCTAssertEqual(vibrant.alphaComponent, 0, accuracy: 0.001)
         XCTAssertEqual(disabled, NSColor.windowBackgroundColor)
+    }
+
+    func testNativeBackdropMovesFromFrostedToTransparentInBothAppearances() {
+        let view = NSVisualEffectView(frame: .zero)
+
+        for isDarkMode in [false, true] {
+            MacWindowBackdropView.configure(
+                view,
+                enabled: true,
+                modeRaw: "frosted",
+                isDarkMode: isDarkMode
+            )
+            XCTAssertFalse(view.isHidden)
+            XCTAssertEqual(view.blendingMode, .behindWindow)
+            XCTAssertEqual(view.material, .underWindowBackground)
+            XCTAssertEqual(view.alphaValue, 1)
+            XCTAssertEqual(view.appearance?.name, isDarkMode ? .darkAqua : .aqua)
+            XCTAssertEqual(view.layer?.backgroundColor?.alpha ?? -1, 0.55, accuracy: 0.001)
+
+            MacWindowBackdropView.configure(
+                view,
+                enabled: true,
+                modeRaw: "subtle",
+                isDarkMode: isDarkMode
+            )
+            XCTAssertFalse(view.isHidden)
+            XCTAssertEqual(view.material, .underWindowBackground)
+            XCTAssertEqual(view.alphaValue, 0.98, accuracy: 0.001)
+            XCTAssertEqual(view.layer?.backgroundColor?.alpha ?? -1, 0.48, accuracy: 0.001)
+
+            MacWindowBackdropView.configure(
+                view,
+                enabled: true,
+                modeRaw: "balanced",
+                isDarkMode: isDarkMode
+            )
+            XCTAssertFalse(view.isHidden)
+            XCTAssertEqual(view.material, .underWindowBackground)
+            XCTAssertEqual(view.alphaValue, 0.96, accuracy: 0.001)
+            XCTAssertEqual(view.layer?.backgroundColor?.alpha ?? -1, 0.42, accuracy: 0.001)
+
+            MacWindowBackdropView.configure(
+                view,
+                enabled: true,
+                modeRaw: "light",
+                isDarkMode: isDarkMode
+            )
+            XCTAssertFalse(view.isHidden)
+            XCTAssertEqual(view.material, .underWindowBackground)
+            XCTAssertEqual(view.alphaValue, 0.94, accuracy: 0.001)
+            XCTAssertEqual(view.layer?.backgroundColor?.alpha ?? -1, 0.36, accuracy: 0.001)
+
+            MacWindowBackdropView.configure(
+                view,
+                enabled: true,
+                modeRaw: "vibrant",
+                isDarkMode: isDarkMode
+            )
+            XCTAssertFalse(view.isHidden)
+            XCTAssertEqual(view.material, .underWindowBackground)
+            XCTAssertEqual(view.alphaValue, 0.92, accuracy: 0.001)
+            XCTAssertEqual(view.layer?.backgroundColor?.alpha ?? -1, 0.30, accuracy: 0.001)
+        }
     }
 
     func testSettingsSurfaceIgnoresThemeBackgroundWhenItCannotAffectTheWindow() {

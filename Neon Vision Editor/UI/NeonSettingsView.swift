@@ -673,6 +673,20 @@ struct NeonSettingsView: View {
 #endif
     }
 
+#if os(macOS)
+    private var selectedMacTranslucencyMode: MacTranslucencyModeOption {
+        MacTranslucencyModeOption(rawValue: macTranslucencyModeRaw) ?? .balanced
+    }
+
+    private var macFrostedGlassSliderValue: Binding<Double> {
+        Binding(
+            get: { selectedMacTranslucencyMode.sliderValue },
+            set: { macTranslucencyModeRaw = MacTranslucencyModeOption.resolving(sliderValue: $0).rawValue }
+        )
+    }
+
+#endif
+
     private var macSettingsControlMaxWidth: CGFloat {
 #if os(macOS)
         return 180
@@ -763,20 +777,35 @@ struct NeonSettingsView: View {
 #endif
 
 #if os(macOS)
-    private enum MacTranslucencyModeOption: String, CaseIterable, Identifiable {
+    enum MacTranslucencyModeOption: String, CaseIterable, Identifiable {
+        case frosted
         case subtle
         case balanced
+        case light
         case vibrant
 
         var id: String { rawValue }
 
         var title: String {
             switch self {
-            case .subtle: return "Subtle"
+            case .frosted: return "Strong Frosted"
+            case .subtle: return "Frosted"
             case .balanced: return "Balanced"
-            case .vibrant: return "Vibrant"
+            case .light: return "Light Glass"
+            case .vibrant: return "Transparent"
             }
         }
+
+        var sliderValue: Double {
+            Double(Self.allCases.firstIndex(of: self) ?? 1)
+        }
+
+        static func resolving(sliderValue: Double) -> Self {
+            let upperBound = Double(allCases.count - 1)
+            let boundedValue = min(max(sliderValue.rounded(), 0), upperBound)
+            return allCases[Int(boundedValue)]
+        }
+
     }
 #endif
 
@@ -2278,16 +2307,26 @@ struct NeonSettingsView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .disabled(translucentWindow)
 
-                    HStack(alignment: .center, spacing: UI.space12) {
-                        Text(localized("Translucency Mode"))
+                    HStack(alignment: .center, spacing: UI.space8) {
+                        Text(localized("Window Surface"))
                             .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
-                        Picker("", selection: $macTranslucencyModeRaw) {
-                            ForEach(MacTranslucencyModeOption.allCases) { option in
-                                Text(localized(option.title)).tag(option.rawValue)
-                            }
-                        }
-                        .pickerStyle(.segmented)
+                        Text(localized("Frosted Glass"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Slider(
+                            value: macFrostedGlassSliderValue,
+                            in: 0...4,
+                            step: 1
+                        )
+                        .frame(maxWidth: macSettingsControlMaxWidth)
                         .disabled(!translucentWindow)
+                        .help(localized("Adjusts the window surface from frosted glass to transparent."))
+                        .accessibilityLabel(localized("Window Surface"))
+                        .accessibilityValue(localized(selectedMacTranslucencyMode.title))
+                        .accessibilityHint(localized("Adjusts the window surface from frosted glass to transparent."))
+                        Text(localized("Transparent"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -6577,10 +6616,17 @@ struct NeonSettingsView: View {
     @ViewBuilder
     private var settingsContainerBackground: some View {
 #if os(macOS)
-        // The editor applies one material to its chrome and another to each pane.
-        // Give each Settings page the same composed surface so content does not
-        // appear more transparent than the editor behind the window.
-        Color.clear.background(settingsWindowBackground)
+        if usesTranslucentSettingsSurface {
+            MacWindowBackdropView(
+                enabled: true,
+                modeRaw: effectiveMacTranslucencyModeRaw,
+                isDarkMode: effectiveSettingsColorScheme == .dark
+            )
+            .allowsHitTesting(false)
+            .ignoresSafeArea()
+        } else {
+            Color.clear.background(settingsWindowBackground)
+        }
 #elseif os(visionOS)
         Color.clear
 #else
@@ -6590,7 +6636,20 @@ struct NeonSettingsView: View {
 
 #if os(macOS)
     private var usesTranslucentSettingsSurface: Bool {
-        supportsTranslucency && translucentWindow && !reduceTransparency
+        supportsTranslucency
+            && ContentView.MacEditorSurfacePolicy.nativeTranslucencyEnabled(
+                translucent: translucentWindow,
+                opaqueEditorCanvas: opaqueEditorSurfaceMac
+            )
+            && !reduceTransparency
+    }
+
+    private var effectiveMacTranslucencyModeRaw: String {
+        ContentView.MacEditorSurfacePolicy.effectiveTranslucencyModeRaw(
+            translucent: translucentWindow,
+            opaqueEditorCanvas: opaqueEditorSurfaceMac,
+            selectedModeRaw: macTranslucencyModeRaw
+        )
     }
 
     private var settingsWindowBackground: AnyShapeStyle {
@@ -7562,29 +7621,7 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
         effectiveColorScheme: ColorScheme
     ) -> NSColor {
         guard translucentEnabled else { return NSColor.windowBackgroundColor }
-        let isDark: Bool
-        switch appearanceRaw {
-        case "light":
-            isDark = false
-        case "dark":
-            isDark = true
-        default:
-            isDark = effectiveColorScheme == .dark
-        }
-        let whiteLevel: CGFloat
-        let alpha: CGFloat
-        switch translucencyModeRaw {
-        case "subtle":
-            whiteLevel = isDark ? 0.18 : 0.90
-            alpha = 0.96
-        case "vibrant":
-            whiteLevel = isDark ? 0.12 : 0.82
-            alpha = 0.90
-        default:
-            whiteLevel = isDark ? 0.15 : 0.86
-            alpha = 0.93
-        }
-        return NSColor(calibratedWhite: whiteLevel, alpha: alpha)
+        return .clear
     }
 
     private func translucencyEnabledColor(enabled: Bool) -> NSColor {

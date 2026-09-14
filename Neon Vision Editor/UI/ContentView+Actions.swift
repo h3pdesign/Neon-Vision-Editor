@@ -1264,14 +1264,24 @@ extension ContentView {
     func applyWindowTranslucency(_ enabled: Bool) {
 #if os(macOS)
         let isDarkMode = colorScheme == .dark
+        let nativeTranslucencyEnabled = ContentView.MacEditorSurfacePolicy.nativeTranslucencyEnabled(
+            translucent: enabled,
+            opaqueEditorCanvas: opaqueEditorSurfaceMac
+        )
+        let effectiveModeRaw = ContentView.MacEditorSurfacePolicy.effectiveTranslucencyModeRaw(
+            translucent: enabled,
+            opaqueEditorCanvas: opaqueEditorSurfaceMac,
+            selectedModeRaw: macTranslucencyModeRaw
+        )
         for window in NSApp.windows {
             // Apply only to editor windows registered by ContentView instances.
             guard WindowViewModelRegistry.shared.viewModel(for: window.windowNumber) != nil else {
                 continue
             }
-            let isOpaque = !enabled
-            let backgroundColor = editorTranslucentBackgroundColor(
-                enabled: enabled,
+            let isOpaque = !nativeTranslucencyEnabled
+            let backgroundColor = ContentView.MacEditorSurfacePolicy.windowBackground(
+                translucent: nativeTranslucencyEnabled,
+                modeRaw: effectiveModeRaw,
                 isDarkMode: isDarkMode
             )
             if window.isOpaque != isOpaque {
@@ -1279,6 +1289,12 @@ extension ContentView {
             }
             if window.backgroundColor != backgroundColor {
                 window.backgroundColor = backgroundColor
+            }
+            if window.contentView?.wantsLayer != true {
+                window.contentView?.wantsLayer = true
+            }
+            if window.contentView?.layer?.backgroundColor != NSColor.clear.cgColor {
+                window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
             }
             // Keep chrome flags constant; toggling these causes visible top-bar jumps.
             if !window.titlebarAppearsTransparent {
@@ -1298,17 +1314,6 @@ extension ContentView {
         }
 #endif
     }
-
-#if os(macOS)
-    private func editorTranslucentBackgroundColor(enabled: Bool, isDarkMode: Bool) -> NSColor {
-        let modeRaw = UserDefaults.standard.string(forKey: "SettingsMacTranslucencyMode") ?? "balanced"
-        return ContentView.MacEditorSurfacePolicy.windowBackground(
-            translucent: enabled,
-            modeRaw: modeRaw,
-            isDarkMode: isDarkMode
-        )
-    }
-#endif
 
     // MARK: - Project Folder Loading
 

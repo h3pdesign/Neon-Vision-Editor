@@ -1436,14 +1436,7 @@ struct DetachedPreviewWindowView: View {
 
     private var surfaceBackground: AnyShapeStyle {
         guard usesTranslucency else { return AnyShapeStyle(editorBackground) }
-        switch translucencyModeRaw {
-        case "subtle":
-            return AnyShapeStyle(Material.thick.opacity(0.82))
-        case "vibrant":
-            return AnyShapeStyle(Material.regular.opacity(0.62))
-        default:
-            return AnyShapeStyle(Material.thick.opacity(0.72))
-        }
+        return ContentView.MacEditorSurfacePolicy.translucentSurfaceStyle(modeRaw: translucencyModeRaw)
     }
 }
 #endif

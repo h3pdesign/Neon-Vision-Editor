@@ -14,6 +14,71 @@ import AppKit
 #elseif canImport(UIKit)
 import UIKit
 #endif
+
+#if os(macOS)
+@MainActor
+struct MacWindowBackdropView: NSViewRepresentable {
+    let enabled: Bool
+    let modeRaw: String
+    let isDarkMode: Bool
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView(frame: .zero)
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.isEmphasized = true
+        Self.configure(view, enabled: enabled, modeRaw: modeRaw, isDarkMode: isDarkMode)
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        Self.configure(nsView, enabled: enabled, modeRaw: modeRaw, isDarkMode: isDarkMode)
+    }
+
+    static func configure(
+        _ view: NSVisualEffectView,
+        enabled: Bool,
+        modeRaw: String,
+        isDarkMode: Bool
+    ) {
+        let kind = ContentView.MacEditorSurfacePolicy.translucentSurfaceKind(modeRaw: modeRaw)
+        view.wantsLayer = true
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.isEmphasized = true
+        view.isHidden = !enabled
+        let tintAlpha: CGFloat
+        switch kind {
+        case .stronglyFrosted:
+            view.material = .underWindowBackground
+            view.alphaValue = 1
+            tintAlpha = 0.55
+        case .frosted:
+            view.material = .underWindowBackground
+            view.alphaValue = 0.98
+            tintAlpha = 0.48
+        case .balanced:
+            view.material = .underWindowBackground
+            view.alphaValue = 0.96
+            tintAlpha = 0.42
+        case .light:
+            view.material = .underWindowBackground
+            view.alphaValue = 0.94
+            tintAlpha = 0.36
+        case .transparent:
+            view.material = .underWindowBackground
+            view.alphaValue = 0.92
+            tintAlpha = 0.30
+        }
+        let tintWhite: CGFloat = isDarkMode ? 0.06 : 0.96
+        view.layer?.backgroundColor = NSColor(
+            calibratedWhite: tintWhite,
+            alpha: enabled ? tintAlpha : 0
+        ).cgColor
+        view.appearance = NSAppearance(named: isDarkMode ? .darkAqua : .aqua)
+    }
+}
+#endif
 #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -1143,6 +1208,14 @@ struct ContentView: View {
 }
 
     enum MacEditorSurfacePolicy {
+        enum TranslucentSurfaceKind: Equatable {
+            case stronglyFrosted
+            case frosted
+            case balanced
+            case light
+            case transparent
+        }
+
         /// Allows empty areas of the native titlebar/toolbar to initiate a window drag.
         /// AppKit still routes clicks on toolbar controls to those controls.
         private static var dragMonitors: [Int: Any] = [:]
@@ -1197,6 +1270,46 @@ struct ContentView: View {
             translucent ? .clear : solid
         }
 
+        static func translucentSurfaceKind(modeRaw: String) -> TranslucentSurfaceKind {
+            switch modeRaw {
+            case "frosted": return .stronglyFrosted
+            case "subtle": return .frosted
+            case "light": return .light
+            case "vibrant": return .transparent
+            default: return .balanced
+            }
+        }
+
+        static func nativeTranslucencyEnabled(
+            translucent: Bool,
+            opaqueEditorCanvas: Bool
+        ) -> Bool {
+            translucent || !opaqueEditorCanvas
+        }
+
+        static func effectiveTranslucencyModeRaw(
+            translucent: Bool,
+            opaqueEditorCanvas: Bool,
+            selectedModeRaw: String
+        ) -> String {
+            !translucent && !opaqueEditorCanvas ? "frosted" : selectedModeRaw
+        }
+
+        static func translucentSurfaceStyle(modeRaw: String) -> AnyShapeStyle {
+            switch translucentSurfaceKind(modeRaw: modeRaw) {
+            case .stronglyFrosted:
+                return AnyShapeStyle(.thickMaterial)
+            case .frosted:
+                return AnyShapeStyle(.regularMaterial)
+            case .balanced:
+                return AnyShapeStyle(.thinMaterial)
+            case .light:
+                return AnyShapeStyle(.ultraThinMaterial)
+            case .transparent:
+                return AnyShapeStyle(Color.clear)
+            }
+        }
+
         static func interPaneBackground(
             translucent: Bool,
             opaqueEditorCanvas: Bool,
@@ -1210,30 +1323,37 @@ struct ContentView: View {
         }
 
         static func windowBackground(translucent: Bool, modeRaw: String, isDarkMode: Bool) -> NSColor {
+            if translucent {
+                return .clear
+            }
             let whiteLevel: CGFloat
-            let translucentAlpha: CGFloat
             switch modeRaw {
             case "subtle":
                 whiteLevel = isDarkMode ? 0.18 : 0.90
-                translucentAlpha = 0.96
             case "vibrant":
                 whiteLevel = isDarkMode ? 0.12 : 0.82
-                translucentAlpha = 0.90
             default:
                 whiteLevel = isDarkMode ? 0.15 : 0.86
-                translucentAlpha = 0.93
             }
-            return NSColor(calibratedWhite: whiteLevel, alpha: translucent ? translucentAlpha : 1)
+            return NSColor(calibratedWhite: whiteLevel, alpha: 1)
         }
     }
 
     private let bracketHelperTokens: [String] = ["(", ")", "{", "}", "[", "]", "<", ">", "'", "\"", "`", "()", "{}", "[]", "\"\"", "''"]
     private var macUnifiedTranslucentMaterialStyle: AnyShapeStyle {
-        AnyShapeStyle(
-            MacEditorSurfacePolicy.paneBackground(
-                translucent: enableTranslucentWindow,
-                solid: macSolidSurfaceColor
-            )
+        AnyShapeStyle(Color.clear)
+    }
+    private var macNativeTranslucencyEnabled: Bool {
+        MacEditorSurfacePolicy.nativeTranslucencyEnabled(
+            translucent: enableTranslucentWindow,
+            opaqueEditorCanvas: opaqueEditorSurfaceMac
+        )
+    }
+    private var macEffectiveTranslucencyModeRaw: String {
+        MacEditorSurfacePolicy.effectiveTranslucencyModeRaw(
+            translucent: enableTranslucentWindow,
+            opaqueEditorCanvas: opaqueEditorSurfaceMac,
+            selectedModeRaw: macTranslucencyModeRaw
         )
     }
     private var macSolidSurfaceColor: Color {
@@ -1254,8 +1374,8 @@ struct ContentView: View {
         currentEditorTheme(colorScheme: colorScheme).background.opacity(0.90)
     }
     private var macEditorSurfaceBackgroundStyle: AnyShapeStyle {
-        if enableTranslucentWindow {
-            return AnyShapeStyle(Color.clear)
+        if macNativeTranslucencyEnabled {
+            return macUnifiedTranslucentMaterialStyle
         }
         if opaqueEditorSurfaceMac {
             return AnyShapeStyle(macOpaqueEditorCanvasColor)
@@ -1263,14 +1383,14 @@ struct ContentView: View {
         return AnyShapeStyle(macSolidSurfaceColor)
     }
     private var macChromeBackgroundStyle: AnyShapeStyle {
-        if enableTranslucentWindow {
+        if macNativeTranslucencyEnabled {
             return macUnifiedTranslucentMaterialStyle
         }
         return AnyShapeStyle(macSolidSurfaceColor)
     }
 
     var macToolbarBackgroundStyle: AnyShapeStyle {
-        if enableTranslucentWindow {
+        if macNativeTranslucencyEnabled {
             // The NSWindow owns the translucent chrome surface. Keep SwiftUI
             // clear here so the toolbar and tab strip reveal that same window
             // material instead of stacking an opaque bar material over it.
@@ -1297,7 +1417,7 @@ struct ContentView: View {
     private var macInterPaneBackgroundStyle: AnyShapeStyle {
         AnyShapeStyle(
             MacEditorSurfacePolicy.interPaneBackground(
-                translucent: enableTranslucentWindow,
+                translucent: macNativeTranslucencyEnabled,
                 opaqueEditorCanvas: opaqueEditorSurfaceMac,
                 editor: macOpaqueEditorCanvasColor,
                 solid: macSolidSurfaceColor
@@ -2639,12 +2759,22 @@ struct ContentView: View {
             if showFindReplace { refreshFindPreview() }
         }
 #if os(macOS)
-        .background(
-            WindowAccessor { window in
-                updateWindowRegistration(window)
+        .background {
+            ZStack {
+                MacWindowBackdropView(
+                    enabled: macNativeTranslucencyEnabled,
+                    modeRaw: macEffectiveTranslucencyModeRaw,
+                    isDarkMode: effectiveEditorColorScheme == .dark
+                )
+                .allowsHitTesting(false)
+                .ignoresSafeArea()
+
+                WindowAccessor { window in
+                    updateWindowRegistration(window)
+                }
+                .frame(width: 0, height: 0)
             }
-            .frame(width: 0, height: 0)
-        )
+        }
         .onDisappear {
             handleWindowDisappear()
         }
@@ -5474,6 +5604,9 @@ struct ContentView: View {
             eventAwareContentBase
         .onChange(of: macTranslucencyModeRaw) { _, _ in
             // Keep all chrome/background surfaces in lockstep when mode changes.
+            applyWindowTranslucency(enableTranslucentWindow)
+        }
+        .onChange(of: opaqueEditorSurfaceMac) { _, _ in
             applyWindowTranslucency(enableTranslucentWindow)
         }
         .onChange(of: colorScheme) { _, _ in

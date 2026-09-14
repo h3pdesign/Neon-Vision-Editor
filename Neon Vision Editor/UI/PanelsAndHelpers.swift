@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.7.6",
-            subtitle: "Release highlights for v1.7.6.",
+            title: "What’s New in v1.8.0",
+            subtitle: "Release highlights for v1.8.0.",
             bullets: [
-                "Editor Improvements: Keeps macOS editor text intact while scrolling long or wrapped documents.",
-                "Workflow Refinements: Restores reliable line rendering when scrolling with the Markdown preview and sidebars open.",
-                "Performance Updates: Preserves the virtual editor's bounded layout and redraw behavior while repairing ordinary scroll updates.",
-                "Usability Updates: Repaints only the visible Core Text canvas region during ordinary scrolling, preserving the fast virtualized layout path.",
-                "Editor Improvements: Prevents stale AppKit backing pixels from covering or clipping editor lines during macOS scrolling.",
-                "Workflow Refinements: Restores reliable drag-to-reorder behavior for native macOS document tabs."
+                "Editor Improvements: Opens files from Finder by dropping them anywhere in the macOS workspace, with each file placed in its own editor tab.",
+                "Editor Performance: Keeps large terminal output, Git diffs, project indexing, and long-document tab switching responsive under sustained…",
+                "Performance Updates: Uses Swift 6.4 and OS 27 Foundation improvements while preserving the existing deployment targets.",
+                "Usability Updates: Adapts editor panes, project tools, settings, previews, and native tabs to the space available on compact, regular, split…",
+                "Editor Improvements: Adds native macOS file drag and drop with modern DropSession handling and a compatible path for older supported macOS…",
+                "Workflow Refinements: Adds a compact five-step macOS window-surface slider that moves from dense native frosted glass to a lighter frosted…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

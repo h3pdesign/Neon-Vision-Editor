@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.8.0] - 2026-09-14
+
 ### Why Upgrade
 
 - Opens files from Finder by dropping them anywhere in the macOS workspace, with each file placed in its own editor tab.

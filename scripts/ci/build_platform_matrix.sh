@@ -15,6 +15,7 @@ CODE_SIGNING_ALLOWED="${CODE_SIGNING_ALLOWED:-NO}"
 LOCK_DIR="${LOCK_DIR:-/tmp/nve_xcodebuild.lock}"
 DERIVED_DATA_ROOT="${DERIVED_DATA_ROOT:-$ROOT/.DerivedDataMatrix}"
 RETRIES="${RETRIES:-2}"
+SWIFT_DIAGNOSTIC_BUILD_SETTING='OTHER_SWIFT_FLAGS=$(inherited) -Werror NoUseUnstructuredThrowingTask'
 
 usage() {
   cat <<'EOF'
@@ -106,6 +107,7 @@ run_build() {
         -configuration "$CONFIGURATION" \
         -derivedDataPath "$derived_data_path" \
         CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED" \
+        "$SWIFT_DIAGNOSTIC_BUILD_SETTING" \
         "$@" 2>&1 | tee "$log_file"; then
         build_succeeded=1
       fi
@@ -116,6 +118,7 @@ run_build() {
         -configuration "$CONFIGURATION" \
         -derivedDataPath "$derived_data_path" \
         CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED" \
+        "$SWIFT_DIAGNOSTIC_BUILD_SETTING" \
         "$@" >"$log_file" 2>&1; then
         build_succeeded=1
       fi

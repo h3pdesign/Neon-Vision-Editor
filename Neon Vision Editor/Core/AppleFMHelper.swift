@@ -2,7 +2,7 @@
 import Foundation
 import FoundationModels
 
-@available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
+@available(anyAppleOS 26.0, *)
 @Generable(description: "Plain generated text")
 
 
@@ -19,7 +19,7 @@ public enum AppleFM {
     }
 
     public static var availabilityMessage: String? {
-        guard #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) else {
+        guard #available(anyAppleOS 26.0, *) else {
             return "Apple Intelligence requires iOS 26, macOS 26, or visionOS 26 or later."
         }
         switch SystemLanguageModel.default.availability {
@@ -41,7 +41,7 @@ public enum AppleFM {
             AsyncStream { continuation in
                 Task { @MainActor in
                     lastErrorMessage = nil
-                    guard #available(iOS 26.0, macOS 26.0, visionOS 26.0, *),
+                    guard #available(anyAppleOS 26.0, *),
                           AppleFM.isAvailable else {
                         continuation.finish()
                         return
@@ -82,7 +82,7 @@ public enum AppleFM {
         }
     }
 
-    @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
+    @available(anyAppleOS 26.0, *)
     @MainActor
     private final class FoundationSessionBox: NSObject {
         let session = LanguageModelSession()
@@ -100,7 +100,7 @@ public enum AppleFM {
     }
 
     public static func appleFMHealthCheck() async throws -> String {
-        if #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) {
+        if #available(anyAppleOS 26.0, *) {
             // Ensure the system model is available before attempting to respond
             let model = SystemLanguageModel.default
             guard case .available = model.availability else {
@@ -115,7 +115,7 @@ public enum AppleFM {
     }
 
     public static func appleFMComplete(prompt: String) async throws -> String {
-        if #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) {
+        if #available(anyAppleOS 26.0, *) {
             let model = SystemLanguageModel.default
             guard case .available = model.availability else {
                 throw NSError(domain: "AppleFM", code: -2, userInfo: [NSLocalizedDescriptionKey: "Apple Intelligence model unavailable: \(String(describing: model.availability))"]) 
@@ -129,7 +129,7 @@ public enum AppleFM {
     }
 
     public static func appleFMStream(prompt: String) -> AsyncStream<String> {
-        if #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) {
+        if #available(anyAppleOS 26.0, *) {
             let model = SystemLanguageModel.default
             guard case .available = model.availability else {
                 return AsyncStream { $0.finish() }

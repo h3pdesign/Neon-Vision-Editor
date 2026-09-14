@@ -1,7 +1,10 @@
 import XCTest
+import Combine
 @testable import Neon_Vision_Editor
 
 #if os(macOS)
+import AppKit
+
 @MainActor
 final class IntegratedTerminalSessionTests: XCTestCase {
     func testTerminalDisplaySanitizerRemovesANSIControlSequencesAcrossChunks() {
@@ -95,6 +98,61 @@ final class IntegratedTerminalSessionTests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }
         XCTAssertEqual(kill(pid, 0), -1)
+    }
+
+    func testHighVolumeOutputPublishesBoundedIncrementalChunks() {
+        let session = IntegratedTerminalSession()
+        let marker = "NVE_PTY_VOLUME_\(UUID().uuidString)"
+        var appendLengths: [Int] = []
+        let observation = session.$renderUpdate.dropFirst().sink { update in
+            if case .append(let chunk) = update.kind {
+                appendLengths.append(chunk.length)
+            }
+        }
+
+        session.startIfNeeded(in: FileManager.default.temporaryDirectory)
+        session.send(
+            "i=0; while [ $i -lt 16000 ]; do printf 'line-%05d-abcdefghijklmnopqrstuvwxyz\\n' $i; i=$((i+1)); done; printf '\(marker)\\n'",
+            in: FileManager.default.temporaryDirectory
+        )
+
+        let deadline = Date().addingTimeInterval(15)
+        while !session.output.contains(marker), Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        let publicationDeadline = Date().addingTimeInterval(2)
+        while appendLengths.isEmpty, Date() < publicationDeadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+        }
+
+        XCTAssertTrue(session.output.contains(marker))
+        XCTAssertLessThanOrEqual((session.output as NSString).length, IntegratedTerminalSession.maxOutputUTF16Length + 30)
+        XCTAssertLessThanOrEqual(session.styledOutputSnapshot().length, IntegratedTerminalSession.maxOutputUTF16Length)
+        XCTAssertFalse(appendLengths.isEmpty)
+        XCTAssertLessThanOrEqual(appendLengths.max() ?? 0, IntegratedTerminalSession.maxOutputUTF16Length)
+        observation.cancel()
+        session.stop()
+    }
+
+    func testTerminalOutputTextViewAppliesIncrementalUpdatesAndRecoversSkippedRevisions() {
+        let textView = NSTextView()
+        let coordinator = TerminalOutputTextView.Coordinator()
+        coordinator.install(NSAttributedString(string: ""), revision: 0, in: textView)
+        XCTAssertEqual(textView.string, "Ready.")
+
+        coordinator.apply(
+            TerminalRenderUpdate(revision: 1, kind: .append(NSAttributedString(string: "first"))),
+            fallbackSnapshot: { NSAttributedString(string: "unused") },
+            in: textView
+        )
+        XCTAssertEqual(textView.string, "first")
+
+        coordinator.apply(
+            TerminalRenderUpdate(revision: 3, kind: .append(NSAttributedString(string: "third"))),
+            fallbackSnapshot: { NSAttributedString(string: "recovered") },
+            in: textView
+        )
+        XCTAssertEqual(textView.string, "recovered")
     }
 
     private func childPID(in output: String, marker: String) -> pid_t? {

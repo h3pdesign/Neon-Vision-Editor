@@ -78,6 +78,36 @@ final class DocumentDiffTests: XCTestCase {
         XCTAssertGreaterThan(diff.hunks.count, 1)
     }
 
+    func testPresentationPrecomputesStableRowsForBothDisplayModes() {
+        let diff = DocumentDiffBuilder.build(
+            leftContent: "header\nold\ncontext one\ncontext two\ncontext three",
+            rightContent: "header\nnew\ncontext one\ncontext two\ncontext three"
+        )
+
+        let presentation = DocumentDiffPresentation(
+            title: "Comparison",
+            leftTitle: "Before",
+            rightTitle: "After",
+            diff: diff
+        )
+
+        XCTAssertEqual(presentation.changedRows.map(\.id), diff.rows.filter(\.isChanged).map(\.id))
+        XCTAssertEqual(Set(presentation.sideBySideRows.map(\.id)).count, presentation.sideBySideRows.count)
+        XCTAssertEqual(Set(presentation.inlineRows.map(\.id)).count, presentation.inlineRows.count)
+        XCTAssertTrue(presentation.sideBySideRows.contains { row in
+            if case .unchanged = row { return true }
+            return false
+        })
+        XCTAssertTrue(presentation.inlineRows.contains { row in
+            if case .unifiedLine(_, .removed) = row { return true }
+            return false
+        })
+        XCTAssertTrue(presentation.inlineRows.contains { row in
+            if case .unifiedLine(_, .inserted) = row { return true }
+            return false
+        })
+    }
+
     private func isEqual(_ kind: DocumentDiff.RowKind) -> Bool {
         if case .equal = kind { return true }
         return false

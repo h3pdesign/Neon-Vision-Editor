@@ -24,6 +24,35 @@ struct FindReplaceAllMutation {
     let replacement: String
 }
 
+#if os(macOS)
+enum EditorFileDropPolicy {
+    nonisolated static func regularFileURLs(in urls: [URL]) -> [URL] {
+        urls.filter { url in
+            guard url.isFileURL else { return false }
+            return (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+        }
+    }
+
+    nonisolated static func fileURL(fromDroppedItem item: NSSecureCoding?) -> URL? {
+        if let url = item as? URL, url.isFileURL {
+            return url
+        }
+        if let data = item as? Data,
+           let value = String(data: data, encoding: .utf8),
+           let url = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
+           url.isFileURL {
+            return url
+        }
+        if let value = item as? String,
+           let url = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
+           url.isFileURL {
+            return url
+        }
+        return nil
+    }
+}
+#endif
+
 
 // MARK: - Content View Actions
 
@@ -1623,22 +1652,52 @@ extension ContentView {
 
     // MARK: - Project Item Operations
 
-    func openProjectFile(url: URL) {
+    @discardableResult
+    func openProjectFile(url: URL) -> Bool {
         guard EditorViewModel.isSupportedEditorFileURL(url) else {
             presentUnsupportedFileAlert(for: url)
-            return
+            return false
         }
         if !viewModel.openFile(url: url) {
             presentUnsupportedFileAlert(for: url)
-            return
+            return false
         }
         persistSessionIfReady()
+        return true
     }
 
     @MainActor
     func openProjectFileFromProjectSidebar(url: URL) {
         openProjectFile(url: url)
     }
+
+#if os(macOS)
+    @discardableResult
+    func openDroppedFiles(_ urls: [URL]) -> Bool {
+        var didOpenFile = false
+        for url in EditorFileDropPolicy.regularFileURLs(in: urls) {
+            if openProjectFile(url: url) {
+                didOpenFile = true
+            }
+        }
+        return didOpenFile
+    }
+
+    func acceptDroppedFileProviders(_ providers: [NSItemProvider]) -> Bool {
+        let fileProviders = providers.filter {
+            $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+        }
+        for provider in fileProviders {
+            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                guard let url = EditorFileDropPolicy.fileURL(fromDroppedItem: item) else { return }
+                Task { @MainActor in
+                    _ = openDroppedFiles([url])
+                }
+            }
+        }
+        return !fileProviders.isEmpty
+    }
+#endif
 
     func startProjectItemCreation(kind: ProjectSidebarCreationKind, in preferredDirectory: URL?) {
         guard let root = projectRootFolderURL else { return }

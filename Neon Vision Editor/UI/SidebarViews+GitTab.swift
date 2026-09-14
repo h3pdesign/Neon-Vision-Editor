@@ -940,27 +940,6 @@ private enum DiffDisplayMode: String, Equatable {
     case sideBySide
 }
 
-private enum UnifiedLineSide {
-    case removed
-    case inserted
-}
-
-private enum InlineDiffDisplayRow: Identifiable {
-    case fileHeader(DocumentDiff.Row)
-    case changeLine(DocumentDiff.Row)
-    case unifiedLine(DocumentDiff.Row, UnifiedLineSide)
-    case unchanged(Int, Int)
-
-    var id: String {
-        switch self {
-        case .fileHeader(let row): "file-\(row.id)"
-        case .changeLine(let row): "change-\(row.id)"
-        case .unifiedLine(let row, let side): "unified-\(row.id)-\(side == .removed ? "removed" : "inserted")"
-        case .unchanged(let index, let count): "unchanged-\(index)-\(count)"
-        }
-    }
-}
-
 struct InlineDiffView: View {
     let presentation: DocumentDiffPresentation
     let translucentBackgroundEnabled: Bool
@@ -981,7 +960,7 @@ struct InlineDiffView: View {
     }
 
     private var changedRows: [DocumentDiff.Row] {
-        presentation.diff.rows.filter(\.isChanged)
+        presentation.changedRows
     }
 
     private var isCompactWidth: Bool {
@@ -992,48 +971,8 @@ struct InlineDiffView: View {
 #endif
     }
 
-    private var displayRows: [InlineDiffDisplayRow] {
-        var result: [InlineDiffDisplayRow] = []
-        var index = 0
-        var unchangedGroupIndex = 0
-        while index < presentation.diff.rows.count {
-            let row = presentation.diff.rows[index]
-            if case .equal = row.kind {
-                if row.leftText.hasPrefix("--- ") {
-                    result.append(.fileHeader(row))
-                    index += 1
-                    continue
-                }
-                var end = index
-                while end < presentation.diff.rows.count {
-                    guard case .equal = presentation.diff.rows[end].kind else { break }
-                    end += 1
-                }
-                let unchangedRows = Array(presentation.diff.rows[index..<end])
-                if unchangedRows.count > 2 {
-                    result.append(.unchanged(unchangedGroupIndex, unchangedRows.count))
-                    unchangedGroupIndex += 1
-                } else {
-                    result.append(contentsOf: unchangedRows.map { .changeLine($0) })
-                }
-                index = end
-            } else {
-                var end = index
-                while end < presentation.diff.rows.count {
-                    if case .equal = presentation.diff.rows[end].kind { break }
-                    end += 1
-                }
-                let changedRows = Array(presentation.diff.rows[index..<end])
-                if displayMode == .inline {
-                    result.append(contentsOf: changedRows.filter { $0.leftLineNumber != nil }.map { .unifiedLine($0, .removed) })
-                    result.append(contentsOf: changedRows.filter { $0.rightLineNumber != nil }.map { .unifiedLine($0, .inserted) })
-                } else {
-                    result.append(contentsOf: changedRows.map { .changeLine($0) })
-                }
-                index = end
-            }
-        }
-        return result
+    private var displayRows: [DocumentDiffPresentation.DisplayRow] {
+        displayMode == .inline ? presentation.inlineRows : presentation.sideBySideRows
     }
 
     var body: some View {
@@ -1083,7 +1022,7 @@ struct InlineDiffView: View {
     }
 
     private func displayRowView(
-        _ row: InlineDiffDisplayRow,
+        _ row: DocumentDiffPresentation.DisplayRow,
         isInline: Bool,
         width: CGFloat
     ) -> AnyView {
@@ -1105,11 +1044,11 @@ struct InlineDiffView: View {
 
     private func diffRowsView(contentWidth: CGFloat, isInline: Bool) -> AnyView {
         let axes: Axis.Set = isInline ? .vertical : [.horizontal, .vertical]
-        let rows: [InlineDiffDisplayRow] = displayRows
+        let rows = displayRows
         let scrollView = ScrollView(axes) {
             LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(rows.indices, id: \.self) { index in
-                    displayRowView(rows[index], isInline: isInline, width: contentWidth)
+                ForEach(rows) { row in
+                    displayRowView(row, isInline: isInline, width: contentWidth)
                 }
             }
             .padding(12)
@@ -1299,7 +1238,7 @@ struct InlineDiffView: View {
 
     private func unifiedDiffLine(
         _ row: DocumentDiff.Row,
-        side: UnifiedLineSide,
+        side: DocumentDiffPresentation.UnifiedLineSide,
         minWidth: CGFloat
     ) -> some View {
         let isRemoved = side == .removed

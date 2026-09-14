@@ -89,8 +89,13 @@ struct ProjectFileIndex {
             .skipsHiddenFiles,
             .skipsPackageDescendants
         ]
+        // Keep the scan on Foundation's native URL path and normalize the root
+        // once. OS 27 supplies the faster URL/CFURL implementation at runtime;
+        // avoiding redundant normalization keeps the hot path small.
+        let standardizedRoot = root.standardizedFileURL
+        let rootPath = standardizedRoot.path
         guard let enumerator = FileManager.default.enumerator(
-            at: root,
+            at: standardizedRoot,
             includingPropertiesForKeys: Array(resourceKeys),
             options: options
         ) else {
@@ -127,6 +132,7 @@ struct ProjectFileIndex {
             let standardizedPath = standardizedURL.path
             let modificationDate = values.contentModificationDate
             let fileSize = values.fileSize.map(Int64.init)
+            let displayName = values.name ?? standardizedURL.lastPathComponent
 
             if let previousEntry = previousByPath[standardizedPath],
                previousEntry.contentModificationDate == modificationDate,
@@ -135,13 +141,17 @@ struct ProjectFileIndex {
                 continue
             }
 
-            let relativePath = relativePathForFile(standardizedURL, root: root)
+            let relativePath = relativePathForFile(
+                standardizedPath,
+                displayName: displayName,
+                rootPath: rootPath
+            )
             refreshedEntries.append(
                 Entry(
                     url: standardizedURL,
                     standardizedPath: standardizedPath,
                     relativePath: relativePath,
-                    displayName: values.name ?? standardizedURL.lastPathComponent,
+                    displayName: displayName,
                     contentModificationDate: modificationDate,
                     fileSize: fileSize
                 )
@@ -154,11 +164,14 @@ struct ProjectFileIndex {
         return Snapshot(entries: refreshedEntries)
     }
 
-    private nonisolated static func relativePathForFile(_ fileURL: URL, root: URL) -> String {
-        let rootPath = root.standardizedFileURL.path
-        let filePath = fileURL.standardizedFileURL.path
-        guard filePath.hasPrefix(rootPath) else { return fileURL.lastPathComponent }
+    private nonisolated static func relativePathForFile(
+        _ filePath: String,
+        displayName: String,
+        rootPath: String
+    ) -> String {
+        let rootPrefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+        guard filePath.hasPrefix(rootPrefix) else { return displayName }
         let trimmed = String(filePath.dropFirst(rootPath.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        return trimmed.isEmpty ? fileURL.lastPathComponent : trimmed
+        return trimmed.isEmpty ? displayName : trimmed
     }
 }

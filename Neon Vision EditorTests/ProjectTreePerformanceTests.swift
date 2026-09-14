@@ -132,4 +132,26 @@ final class ProjectTreePerformanceTests: XCTestCase {
 
         XCTAssertEqual(snapshot.entries.map(\.relativePath), ["Sources/App.swift"])
     }
+
+    func testProjectFileIndexNormalizesTheRootOnceForNativeURLScanning() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("project-index-normalized-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let sources = root.appendingPathComponent("Sources", isDirectory: true)
+        try FileManager.default.createDirectory(at: sources, withIntermediateDirectories: true)
+        let source = sources.appendingPathComponent("App.swift")
+        try Data("print(\"native URL scan\")".utf8).write(to: source)
+
+        let nonstandardRoot = sources.appendingPathComponent("..", isDirectory: true)
+        let snapshot = await ProjectFileIndex.buildSnapshot(
+            at: nonstandardRoot,
+            supportedOnly: false,
+            isSupportedFile: { _ in true }
+        )
+
+        let entry = try XCTUnwrap(snapshot.entries.first)
+        XCTAssertEqual(snapshot.entries.count, 1)
+        XCTAssertEqual(entry.relativePath, "Sources/App.swift")
+        XCTAssertEqual(entry.standardizedPath, source.standardizedFileURL.path)
+    }
 }

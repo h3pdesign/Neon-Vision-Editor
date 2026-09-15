@@ -14,8 +14,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PREVIEW_EXPORT = ROOT / "Neon Vision Editor" / "UI" / "ContentView+MarkdownPreviewExport.swift"
-PREVIEW_UI = ROOT / "Neon Vision Editor" / "UI" / "ContentView+MarkdownPreviewUI.swift"
+SOURCE_ROOT = ROOT / "Project" / "Sources" / "Neon Vision Editor"
+PREVIEW_EXPORT = SOURCE_ROOT / "UI" / "ContentView+MarkdownPreviewExport.swift"
+PREVIEW_UI = SOURCE_ROOT / "UI" / "ContentView+MarkdownPreviewUI.swift"
 CLIPPING_FIXTURE = ROOT / "samples" / "markdown-fixtures" / "compact-preview-clipping-regression.md"
 
 REQUIRED_SOURCE_FRAGMENTS = {

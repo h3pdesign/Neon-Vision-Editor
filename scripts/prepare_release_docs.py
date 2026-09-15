@@ -26,7 +26,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
 RELEASE_STATE = ROOT / "release" / "prepared-release.json"
-ARCHITECTURE = ROOT / "ARCHITECTURE.md"
+ARCHITECTURE = ROOT / "docs" / "ARCHITECTURE.md"
 WEBSITE = ROOT / "site" / "index.html"
 CHANGELOG_PAGE = ROOT / "site" / "changelog.html"
 LOCALIZED_WEBSITES = {
@@ -37,7 +37,7 @@ LOCALIZED_WEBSITES = {
     "ja": ROOT / "site" / "ja" / "index.html",
     "zh-Hans": ROOT / "site" / "zh-Hans" / "index.html",
 }
-WELCOME_TOUR_SWIFT = ROOT / "Neon Vision Editor" / "UI" / "PanelsAndHelpers.swift"
+WELCOME_TOUR_SWIFT = ROOT / "Project" / "Sources" / "Neon Vision Editor" / "UI" / "PanelsAndHelpers.swift"
 WELCOME_TOUR_CARD_COUNT = 6
 WELCOME_TOUR_CARD_TEXT_BUDGET = 126
 RELEASE_TIMELINE_COUNT = 5
@@ -108,7 +108,7 @@ def readme_feature_coverage(changelog: str, tag: str) -> str:
 
 def update_readme_durable_documentation(readme: str, changelog: str, tag: str) -> str:
     readme = readme.replace("```bash\n```bash\n", "```bash\n")
-    architecture_row = "| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Current cross-platform architecture, ownership boundaries, performance rules, and verification model |"
+    architecture_row = "| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Current cross-platform architecture, ownership boundaries, performance rules, and verification model |"
     if architecture_row not in readme:
         changelog_row = "| [`CHANGELOG.md`](CHANGELOG.md) | Full release history and milestone issue coverage |"
         if changelog_row not in readme:

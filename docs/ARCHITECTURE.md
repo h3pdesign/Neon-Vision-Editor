@@ -4,7 +4,7 @@ Last updated: 2026-09-14 (v1.8.0 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
-The visual summary in [`docs/images/architecture-at-a-glance.svg`](docs/images/architecture-at-a-glance.svg) is the stable architecture snapshot for the README and release documentation. Update it when ownership boundaries or platform services change.
+The visual summary in [`images/architecture-at-a-glance.svg`](images/architecture-at-a-glance.svg) is the stable architecture snapshot for the README and release documentation. Update it when ownership boundaries or platform services change.
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
@@ -233,7 +233,7 @@ Parsing and snapshot construction run away from the main actor for non-trivial i
 - iPhone and compact-width iPad use a condensed project header and tighter file rows so more of the hierarchy remains visible. macOS keeps its desktop spacing and two-line project-path presentation.
 - `UI/ContentView+QuickSwitcherFind.swift` owns Quick Open, symbol navigation, comparison entry points, and Find in Files presentation.
 - `UI/ContentView+Actions.swift` owns project setup, file search execution, file opening, Copy Current Editor Reference, and document-transform command handlers.
-- The command palette exposes Sort Lines and Sort & Deduplicate Lines through the same transform path; line-sort behavior is covered by `Neon Vision EditorTests/LineSortTests.swift`.
+- The command palette exposes Sort Lines and Sort & Deduplicate Lines through the same transform path; line-sort behavior is covered by `Project/Tests/Neon Vision EditorTests/LineSortTests.swift`.
 - `UI/ContentView+TabChromeStatus.swift` owns tab selection/reordering chrome, selected/previous-tab markers, external-refresh status, and status-bar presentation.
 
 Find in Files prefers `rg` on macOS when available and falls back to bounded Swift scanning. Search locations use cached line-start offsets. Project tree/index work must retain cancellation and ignored-folder filtering so dependency and build folders do not dominate refresh work.
@@ -267,7 +267,7 @@ Diff building remains detached for non-trivial inputs. External-file and remote-
 - `UI/ContentView+MarkdownPreviewExport.swift` owns HTML generation, copy/export helpers, and PDF options.
 - `UI/MarkdownPreviewPDFRenderer.swift` renders one-page or paginated PDF output.
 - `UI/ContentView+DocumentPreviewUI.swift` selects native PDF/PNG preview surfaces and automatic activation paths.
-- `Neon Vision Editor Quick Look/PreviewViewController.swift` owns the Finder Quick Look extension lifecycle. `PreviewModel.swift`, `MarkdownQuickLookView.swift`, and `EditorView.swift` provide bounded read-only Markdown and source previews without launching the main editor or modifying files.
+- `Project/Sources/Neon Vision Editor Quick Look/PreviewViewController.swift` owns the Finder Quick Look extension lifecycle. `PreviewModel.swift`, `MarkdownQuickLookView.swift`, and `EditorView.swift` provide bounded read-only Markdown and source previews without launching the main editor or modifying files.
 
 Markdown, HTML, and SVG previews are opt-in. PDF and PNG previews open automatically when their documents are opened. Compact iPhone layouts use a sheet; macOS, regular-width iPad, and visionOS can use inline panes. Preview reloads are coalesced and preserve relative scroll position.
 
@@ -324,7 +324,7 @@ The App Store and direct macOS products deliberately use separate native targets
 - `Neon Vision Editor Direct` is used by the direct GitHub scheme. It links Sparkle only for macOS and consumes the signed `appcast.xml` published through GitHub Pages.
 - `Core/SparkleUpdateController.swift` compiles a no-op implementation for App Store builds or when Sparkle cannot be imported, and the supported Sparkle controller only for direct macOS builds.
 - `Core/AppUpdateManager.swift` remains the update UI/diagnostics façade and release-comparison layer; direct macOS check paths delegate to Sparkle, while `ReleaseRuntimePolicy` hides updater surfaces for App Store and non-macOS distributions.
-- `Info-macOS.plist` supplies the appcast URL for direct builds. Appcast release notes carry an `nve-build` marker so same-version replacement builds compare by `CFBundleVersion`.
+- `Project/Configuration/Info-macOS.plist` supplies the appcast URL for direct builds. Appcast release notes carry an `nve-build` marker so same-version replacement builds compare by `CFBundleVersion`.
 - `Package.resolved` is committed under the project workspace because Xcode Cloud may disable automatic dependency resolution even though only the direct target links Sparkle.
 
 Do not reattach Sparkle to the shared/App Store target to simplify project configuration. The framework graph, compilation conditions, runtime policy, archive output, and App Store Connect preparation must agree on the distribution boundary.

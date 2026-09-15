@@ -217,10 +217,10 @@ sync_develop_with_origin() {
 is_allowed_release_dirty_path() {
   local path="$1"
   case "$path" in
-    CHANGELOG.md|README.md|ARCHITECTURE.md|site/index.html|site/changelog.html|\
+    CHANGELOG.md|README.md|docs/ARCHITECTURE.md|site/index.html|site/changelog.html|\
     site/de/index.html|site/da/index.html|site/fr/index.html|\
     site/es/index.html|site/ja/index.html|site/zh-Hans/index.html|\
-    "Neon Vision Editor/UI/PanelsAndHelpers.swift"|\
+    "Project/Sources/Neon Vision Editor/UI/PanelsAndHelpers.swift"|\
     "Neon Vision Editor.xcodeproj/project.pbxproj"|\
     docs/images/neon-vision-release-history-0.1-to-0.5.svg|\
     docs/images/neon-vision-release-history-0.1-to-0.5-light.svg|\

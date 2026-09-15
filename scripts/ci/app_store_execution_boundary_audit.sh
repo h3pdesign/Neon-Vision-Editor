@@ -17,22 +17,22 @@ require_pattern() {
 echo "[app-store-execution-boundary-audit] checking executable-code boundaries"
 
 require_pattern '#if os\(macOS\) && !APP_STORE_BUILD' \
-  "Neon Vision Editor/UI/IntegratedTerminalContent.swift" \
+  "Project/Sources/Neon Vision Editor/UI/IntegratedTerminalContent.swift" \
   "integrated PTY terminal excluded from App Store builds"
 require_pattern '#if os\(macOS\) && !APP_STORE_BUILD' \
-  "Neon Vision Editor/UI/ContentView+Actions.swift" \
+  "Project/Sources/Neon Vision Editor/UI/ContentView+Actions.swift" \
   "Python project creation excluded from App Store builds"
 require_pattern '#if os\(macOS\) && !APP_STORE_BUILD' \
-  "Neon Vision Editor/UI/ContentView.swift" \
+  "Project/Sources/Neon Vision Editor/UI/ContentView.swift" \
   "Python project sheet excluded from App Store builds"
 require_pattern '#if os\(macOS\) && !APP_STORE_BUILD' \
-  "Neon Vision Editor/UI/SidebarViews.swift" \
+  "Project/Sources/Neon Vision Editor/UI/SidebarViews.swift" \
   "Python project action excluded from App Store builds"
 require_pattern '#if os\(macOS\) && !APP_STORE_BUILD' \
-  "Neon Vision Editor/UI/NeonSettingsView.swift" \
+  "Project/Sources/Neon Vision Editor/UI/NeonSettingsView.swift" \
   "Python interpreter settings excluded from App Store builds"
 require_pattern '#if !os\(macOS\) \|\| APP_STORE_BUILD' \
-  "Neon Vision Editor/Core/EditorAgentVerificationRunner.swift" \
+  "Project/Sources/Neon Vision Editor/Core/EditorAgentVerificationRunner.swift" \
   "agent verification process execution excluded from App Store builds"
 require_pattern 'SWIFT_ACTIVE_COMPILATION_CONDITIONS\[sdk=macosx27\.\*\].*MACOS_27_AGENTIC_EDITOR' \
   "Neon Vision Editor.xcodeproj/project.pbxproj" \

@@ -57,7 +57,7 @@
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.8.0** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-09-14** for latest release **v1.8.0**
+> Last updated (README): **2026-09-15** for latest release **v1.8.0**
 
 ## What's New Since v1.7.6
 
@@ -154,7 +154,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=11735&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=11943&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -169,12 +169,12 @@
 
 <p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>
 <p align="center">
-  <img alt="Unique cloners (14d)" src="https://img.shields.io/static/v1?label=Unique+cloners+%2814d%29&message=573&color=7C3AED&style=for-the-badge">
-  <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=338&color=0EA5E9&style=for-the-badge">
+  <img alt="Unique cloners (14d)" src="https://img.shields.io/static/v1?label=Unique+cloners+%2814d%29&message=605&color=7C3AED&style=for-the-badge">
+  <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=356&color=0EA5E9&style=for-the-badge">
 </p>
 <p align="center">
-  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-09-14&color=334155&style=flat-square">
-  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-09-14&color=334155&style=flat-square">
+  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-09-15&color=334155&style=flat-square">
+  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-09-15&color=334155&style=flat-square">
 </p>
 
 ## Project Documentation
@@ -183,11 +183,23 @@
 |---|---|
 | [`CHANGELOG.md`](CHANGELOG.md) | Full release history and milestone issue coverage |
 | [`release/RELEASE-WORKFLOW.md`](release/RELEASE-WORKFLOW.md) | Isolated release preparation, changelog/README generation, offline dry runs, and publication checks |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Current cross-platform architecture, ownership boundaries, performance rules, and verification model |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Current cross-platform architecture, ownership boundaries, performance rules, and verification model |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Local setup, build, and contribution workflow |
 | [`PRIVACY.md`](PRIVACY.md) | Privacy guarantees and data-handling policy |
 | [`SECURITY.md`](SECURITY.md) | Security policy and responsible disclosure |
 | [`release/`](release/) | TestFlight, App Store, and release preflight checklists |
+
+### Repository Layout
+
+| Path | Contents |
+|---|---|
+| [`Project/Sources/`](Project/Sources/) | Main app, extensions, Neon Pulse products, and shared Swift source |
+| [`Project/Tests/`](Project/Tests/) | Cross-platform test target and shared test plan |
+| [`Project/Configuration/`](Project/Configuration/) | Platform and widget property lists |
+| [`docs/`](docs/) | Architecture, engineering documentation, and media |
+| [`samples/`](samples/) | Language, Markdown, and PDF regression fixtures |
+| [`scripts/`](scripts/) | Build, validation, release, and maintenance automation |
+| [`site/`](site/) | Localized GitHub Pages website |
 
 ## Who Is This For?
 
@@ -268,8 +280,8 @@ The direct macOS build from GitHub bundles an optional `nve` helper for terminal
 
 ```bash
 nve README.md
-nve --wait --new-window "Neon Vision Editor/UI/ContentView.swift"
-nve --line 42 "Neon Vision Editor/UI/ContentView.swift" # validates the line flag; cursor placement is not yet supported
+nve --wait --new-window "Project/Sources/Neon Vision Editor/UI/ContentView.swift"
+nve --line 42 "Project/Sources/Neon Vision Editor/UI/ContentView.swift" # validates the line flag; cursor placement is not yet supported
 ```
 
 Development builds can also link the repository copy:
@@ -459,7 +471,7 @@ The current stable editor separates scene presentation, document ownership, nati
 - **Distribution:** App Store builds use Apple updates. The separate direct macOS product adds Sparkle with a signed appcast, the PTY terminal, Python workflow and `nve` helper. `ReleaseRuntimePolicy` gates distribution-specific behavior.
 - Color key: blue = platform shell, green = app orchestration, orange = core services, purple = infrastructure, pink = distribution products.
 
-Full architecture reference: [`ARCHITECTURE.md`](ARCHITECTURE.md). The reference tracks the current Swift 6 cross-platform structure, platform guards, editor rendering paths, performance rules, distribution boundaries, and release verification workflow.
+Full architecture reference: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The reference tracks the current Swift 6 cross-platform structure, platform guards, editor rendering paths, performance rules, distribution boundaries, and release verification workflow.
 
 Implementation entry points: [tab/document orchestration](Neon%20Vision%20Editor/Data/EditorViewModel.swift), [document contract](Neon%20Vision%20Editor/Data/EditorDocument.swift), [storage](Neon%20Vision%20Editor/Data/FileBackedTextDocument.swift), [macOS canvas](Neon%20Vision%20Editor/UI/VirtualEditorView+macOS.swift), [UIKit editor](Neon%20Vision%20Editor/UI/EditorTextView+iOS.swift), and [distribution policy](Neon%20Vision%20Editor/Core/ReleaseRuntimePolicy.swift).
 

@@ -4067,8 +4067,12 @@ struct EditorHelpView: View {
 
 #if os(macOS)
     @AppStorage("SettingsToolbarPresetMac") private var toolbarPresetMacRaw: String = ToolbarPreset.standard.rawValue
+    @AppStorage("SettingsToolbarUseCustomMac") private var toolbarUseCustomMac: Bool = false
+    @AppStorage("SettingsToolbarCustomIDsMac") private var toolbarCustomIDsMac: String = ""
 #else
     @AppStorage("SettingsToolbarPresetIOS") private var toolbarPresetIOSRaw: String = ToolbarPreset.standard.rawValue
+    @AppStorage("SettingsToolbarUseCustomFiveIOS") private var toolbarUseCustomFiveIOS: Bool = false
+    @AppStorage("SettingsToolbarCustomFiveIDsIOS") private var toolbarCustomFiveIDsIOS: String = ""
 #endif
 
     private struct HelpItem: Identifiable {
@@ -4114,25 +4118,31 @@ struct EditorHelpView: View {
 
     private var currentToolbarPreset: ToolbarPreset {
 #if os(macOS)
-        ToolbarPreset(rawValue: toolbarPresetMacRaw) ?? .standard
+        toolbarUseCustomMac ? .custom : ToolbarPreset(rawValue: toolbarPresetMacRaw) ?? .standard
 #else
-        ToolbarPreset(rawValue: toolbarPresetIOSRaw) ?? .standard
+        toolbarUseCustomFiveIOS ? .custom : ToolbarPreset(rawValue: toolbarPresetIOSRaw) ?? .standard
+#endif
+    }
+
+    private var currentToolbarActionIDs: [String] {
+#if os(macOS)
+        currentToolbarPreset == .custom
+            ? ToolbarActionSelection.orderedIDs(from: toolbarCustomIDsMac, fallback: [])
+            : currentToolbarPreset.macOSIDs
+#else
+        currentToolbarPreset == .custom
+            ? ToolbarActionSelection.orderedIDs(from: toolbarCustomFiveIDsIOS, fallback: [])
+            : currentToolbarPreset.mobileIDs
 #endif
     }
 
     private var toolbarPresetSection: HelpSection {
         HelpSection(
-            title: "Toolbar Presets",
-            iconName: "square.grid.3x3",
-            items: ToolbarPreset.allCases.map { preset in
-                let selected = preset == currentToolbarPreset
-                let actions: [String]
-#if os(macOS)
-                actions = preset.macOSIDs
-#else
-                actions = preset.mobileIDs
-#endif
-                let title = selected ? "\(preset.title) (Current)" : preset.title
+            title: "\(currentToolbarPreset.title) Toolbar",
+            iconName: currentToolbarPreset.icon,
+            items: [
+                {
+                let preset = currentToolbarPreset
                 let description: String
                 switch preset {
                 case .standard:
@@ -4151,13 +4161,14 @@ struct EditorHelpView: View {
                     description = "Your manually selected actions and order from Settings > Toolbar."
                 }
                 return HelpItem(
-                    title: title,
-                    description: "\(description) Available here: \(Self.presetActionNames(actions)).",
+                    title: preset.title,
+                    description: "\(description) Visible actions: \(Self.presetActionNames(currentToolbarActionIDs)). Settings and this preset help are always available.",
                     shortcutMac: "None",
                     shortcutPad: "None",
                     iconName: preset.icon
                 )
-            }
+                }()
+            ]
         )
     }
 
@@ -4327,7 +4338,7 @@ struct EditorHelpView: View {
                         .font(.system(size: compact ? 27 : 34, weight: .bold))
                         .lineLimit(2)
                         .minimumScaleFactor(0.84)
-                    Text("Every toolbar symbol, preset, and available shortcut across macOS, iPadOS, iOS, and visionOS hardware keyboards.")
+                    Text("Actions and shortcuts for the active \(currentToolbarPreset.title) toolbar preset.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

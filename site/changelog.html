@@ -1321,11 +1321,19 @@
   <footer><div class="shell">Neon Vision Editor · <a href="./">Back to the main site</a> · <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/CHANGELOG.md">Complete changelog on GitHub</a> · <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">View releases on GitHub</a></div></footer>
   <script>
     const toggle = document.querySelector('[data-theme-toggle]');
-    toggle?.addEventListener('click', () => {
-      const dark = document.documentElement.dataset.theme !== 'dark';
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme = (dark) => {
       document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      if (!toggle) return;
       toggle.textContent = dark ? 'Light mode' : 'Dark mode';
       toggle.setAttribute('aria-pressed', String(dark));
+    };
+
+    applyTheme(systemTheme.matches);
+    systemTheme.addEventListener('change', ({ matches }) => applyTheme(matches));
+    toggle?.addEventListener('click', () => {
+      const dark = document.documentElement.dataset.theme !== 'dark';
+      applyTheme(dark);
     });
   </script>
 </body>

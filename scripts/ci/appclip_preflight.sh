@@ -4,9 +4,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
-INFO_PLIST="Neon Vision Editor App Clip/Info.plist"
-APP_CLIP_ENTITLEMENTS="Neon Vision Editor App Clip/Neon Vision Editor App Clip.entitlements"
-PARENT_IOS_ENTITLEMENTS="Neon Vision Editor/Neon Vision Editor iOS.entitlements"
+INFO_PLIST="Project/Sources/Neon Vision Editor App Clip/Info.plist"
+APP_CLIP_ENTITLEMENTS="Project/Sources/Neon Vision Editor App Clip/Neon Vision Editor App Clip.entitlements"
+PARENT_IOS_ENTITLEMENTS="Project/Sources/Neon Vision Editor/Neon Vision Editor iOS.entitlements"
 CARD_PNG="release/app-store/appclip/neon-vision-editor-app-clip-card.png"
 CARD_JPG="release/app-store/appclip/neon-vision-editor-app-clip-card.jpg"
 APP_CLIP_DOMAIN="${NVE_APP_CLIP_DOMAIN:-apps-h3p.com}"

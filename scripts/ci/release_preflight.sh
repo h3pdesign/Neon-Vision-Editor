@@ -95,7 +95,7 @@ mkdir -p "$WORK_DIR"
 
 section "Quick Look syntax routes"
 xcrun swiftc \
-  "Neon Vision Editor Quick Look/TokenKind.swift" \
+  "Project/Sources/Neon Vision Editor Quick Look/TokenKind.swift" \
   scripts/ci/quicklook_syntax_regressions.swift \
   -o "${WORK_DIR}/quicklook-syntax-regressions"
 "${WORK_DIR}/quicklook-syntax-regressions"

@@ -254,8 +254,8 @@ def validate_state(state: dict) -> None:
 
 
 def assert_release_only_changes(root: Path, base: str = "HEAD") -> None:
-    allowed = {STATE, PROJECT, "CHANGELOG.md", "README.md", "ARCHITECTURE.md",
-               "Neon Vision Editor/UI/PanelsAndHelpers.swift", "site/index.html", "site/changelog.html",
+    allowed = {STATE, PROJECT, "CHANGELOG.md", "README.md", "docs/ARCHITECTURE.md",
+               "Project/Sources/Neon Vision Editor/UI/PanelsAndHelpers.swift", "site/index.html", "site/changelog.html",
                *(f"site/{locale}/index.html" for locale in ("de", "da", "fr", "es", "ja", "zh-Hans")),
                "docs/images/neon-vision-release-history-0.1-to-0.5.svg",
                "docs/images/neon-vision-release-history-0.1-to-0.5-light.svg"}

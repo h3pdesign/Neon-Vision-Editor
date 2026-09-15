@@ -30,7 +30,7 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <TestPlans>
          <TestPlanReference
-            reference = "container:Neon Vision Editor.xctestplan"
+            reference = "container:Project/Tests/Neon Vision Editor.xctestplan"
             default = "YES">
          </TestPlanReference>
       </TestPlans>
@@ -58,7 +58,7 @@
          </BuildableReference>
       </BuildableProductRunnable>
       <StoreKitConfigurationFileReference
-         identifier = "../../Neon Vision Editor/SupportOptional.storekit">
+         identifier = "../../Project/Sources/Neon Vision Editor/SupportOptional.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction

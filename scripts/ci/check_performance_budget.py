@@ -53,8 +53,9 @@ def main() -> None:
             fail(f"missing {fixture_name} benchmark fixture")
 
     limits = baseline["enforcedLimits"]
-    git_service = ROOT / "Neon Vision Editor" / "Core" / "GitService.swift"
-    persistence = ROOT / "Neon Vision Editor" / "UI" / "ContentView+SessionPersistence.swift"
+    source_root = ROOT / "Project" / "Sources" / "Neon Vision Editor"
+    git_service = source_root / "Core" / "GitService.swift"
+    persistence = source_root / "UI" / "ContentView+SessionPersistence.swift"
     require_literal(git_service, r"commitDiffFileLimit = (\d+)", limits["gitCommitDiffFileCount"], "Git diff file limit")
     require_literal(git_service, r"commitDiffBlobByteLimit = ([\d_]+)", limits["gitCommitDiffBlobBytes"], "Git diff blob limit")
     require_literal(git_service, r"maximumRetainedBytes = ([\d_]+) \* 1024 \* 1024", limits["gitRetainedOutputBytes"] // (1024 * 1024), "Git output limit in MiB")
@@ -73,7 +74,7 @@ def main() -> None:
         fail("interaction latency budgets must cover typing, scrolling, selection, and viewport reload")
     if any(not isinstance(value, (int, float)) or value <= 0 for value in latency_budgets.values()):
         fail("interaction latency budgets must be positive seconds")
-    benchmark_tests = ROOT / "Neon Vision EditorTests" / "VirtualEditorPerformanceTests.swift"
+    benchmark_tests = ROOT / "Project" / "Tests" / "Neon Vision EditorTests" / "VirtualEditorPerformanceTests.swift"
     benchmark_source = benchmark_tests.read_text(encoding="utf-8")
     required_interactions = {
         "testLargeDocumentTypingLatencyBenchmark",

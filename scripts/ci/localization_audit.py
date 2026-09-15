@@ -9,7 +9,7 @@ import sys
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-LOCALE_ROOT = ROOT / "Neon Vision Editor"
+LOCALE_ROOT = ROOT / "Project" / "Sources" / "Neon Vision Editor"
 ENTRY_RE = re.compile(r'^\s*"((?:\\.|[^"\\])*)"\s*=\s*"((?:\\.|[^"\\])*)"\s*;\s*$')
 PLACEHOLDER_RE = re.compile(r"%(?:\d+\$)?[@dfiuqxXsScCpPeEgGaA]|%%")
 

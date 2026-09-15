@@ -109,7 +109,7 @@ jobs:
           paths=(
             release/prepared-release.json
             README.md
-            ARCHITECTURE.md
+            docs/ARCHITECTURE.md
             CHANGELOG.md
             site/index.html
             site/changelog.html
@@ -119,7 +119,7 @@ jobs:
             site/es/index.html
             site/ja/index.html
             site/zh-Hans/index.html
-            "Neon Vision Editor/UI/PanelsAndHelpers.swift"
+            "Project/Sources/Neon Vision Editor/UI/PanelsAndHelpers.swift"
           )
           if git diff --quiet -- "${paths[@]}"; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -170,7 +170,7 @@ jobs:
           paths=(
             release/prepared-release.json
             README.md
-            ARCHITECTURE.md
+            docs/ARCHITECTURE.md
             CHANGELOG.md
             site/index.html
             site/changelog.html
@@ -180,7 +180,7 @@ jobs:
             site/es/index.html
             site/ja/index.html
             site/zh-Hans/index.html
-            "Neon Vision Editor/UI/PanelsAndHelpers.swift"
+            "Project/Sources/Neon Vision Editor/UI/PanelsAndHelpers.swift"
           )
 
           # Older releases predate the allocation manifest.

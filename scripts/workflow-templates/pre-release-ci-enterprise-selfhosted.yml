@@ -61,7 +61,7 @@ jobs:
         if: ${{ steps.xcode_select.outputs.legacy_icon_mode == 'true' }}
         run: |
           set -euo pipefail
-          ICON_DIR="Neon Vision Editor/Resources"
+          ICON_DIR="Project/Sources/Neon Vision Editor/Resources"
           if [[ -d "${ICON_DIR}/AppIcon.icon" ]]; then
             mv "${ICON_DIR}/AppIcon.icon" "${ICON_DIR}/AppIcon.icon.disabled"
           fi

@@ -9,13 +9,14 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PRIVACY_MANIFEST = ROOT / "Neon Vision Editor" / "Resources" / "PrivacyInfo.xcprivacy"
+SOURCE_ROOT = ROOT / "Project" / "Sources" / "Neon Vision Editor"
+PRIVACY_MANIFEST = SOURCE_ROOT / "Resources" / "PrivacyInfo.xcprivacy"
 PRIVACY_DOC = ROOT / "PRIVACY.md"
 SECURITY_DOC = ROOT / "SECURITY.md"
 REVIEW_NOTES = ROOT / "docs" / "AppStoreReviewNotes.md"
 READINESS = ROOT / "release" / "App-Store-Readiness.md"
-AI_CLIENT = ROOT / "Neon Vision Editor" / "AI" / "AIClient.swift"
-SETTINGS_VIEW = ROOT / "Neon Vision Editor" / "UI" / "NeonSettingsView.swift"
+AI_CLIENT = SOURCE_ROOT / "AI" / "AIClient.swift"
+SETTINGS_VIEW = SOURCE_ROOT / "UI" / "NeonSettingsView.swift"
 
 
 def fail(message: str) -> None:

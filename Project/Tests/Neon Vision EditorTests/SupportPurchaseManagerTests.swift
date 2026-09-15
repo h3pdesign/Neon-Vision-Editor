@@ -51,7 +51,7 @@ final class SupportPurchaseManagerTests: XCTestCase {
     func testSettingsAlertUsesLocalPresentationState() throws {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Neon Vision Editor/UI/NeonSettingsView.swift")
+            .appendingPathComponent("Project/Sources/Neon Vision Editor/UI/NeonSettingsView.swift")
         let source = try String(contentsOf: sourceURL, encoding: .utf8)
         // Structural guard for the framework-owned presentation setter: it must
         // not synchronously publish through SupportPurchaseManager.
@@ -94,7 +94,7 @@ final class SupportPurchaseManagerTests: XCTestCase {
     private func makeSession() throws -> SKTestSession {
         let configuration = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Neon Vision Editor/SupportOptional.storekit")
+            .appendingPathComponent("Project/Sources/Neon Vision Editor/SupportOptional.storekit")
         let session = try SKTestSession(contentsOf: configuration)
         session.resetToDefaultState()
         session.disableDialogs = true

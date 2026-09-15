@@ -34,8 +34,8 @@ cloud_module = load("cloud_counter", "scripts/cloud_build_number.py")
 
 
 def fixture(root):
-    inputs = [".gitignore", "README.md", "CHANGELOG.md", "ARCHITECTURE.md", prep.PROJECT,
-              "Neon Vision Editor/UI/PanelsAndHelpers.swift", "site/index.html", "site/changelog.html",
+    inputs = [".gitignore", "README.md", "CHANGELOG.md", "docs/ARCHITECTURE.md", prep.PROJECT,
+              "Project/Sources/Neon Vision Editor/UI/PanelsAndHelpers.swift", "site/index.html", "site/changelog.html",
               *(f"site/{locale}/index.html" for locale in docs.LOCALIZED_WEBSITES),
               "scripts/prepare_release_docs.py", "scripts/release_prepare.py", "scripts/release_prep.sh", "scripts/release_all.sh", "scripts/cloud_build_number.py",
               "scripts/extract_changelog_section.sh", "scripts/ci/release_milestone_preflight.sh",
@@ -272,7 +272,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
                          *(f"site/{locale}/index.html" for locale in docs.LOCALIZED_WEBSITES)]:
                 self.assertNotIn("releases/tag/v1.6.2", (root / name).read_text(), name)
             self.assertIn("Prepared release: **v1.6.2**", (root / "README.md").read_text())
-            self.assertIn("What’s New in v1.6.2", (root / "Neon Vision Editor/UI/PanelsAndHelpers.swift").read_text())
+            self.assertIn("What’s New in v1.6.2", (root / "Project/Sources/Neon Vision Editor/UI/PanelsAndHelpers.swift").read_text())
             self.assertEqual(prep.project_build((root / prep.PROJECT).read_text()), 1018)
             prep.run("python3", "scripts/prepare_release_docs.py", "v1.6.2", "--published", cwd=root)
             prep.run("python3", "scripts/prepare_release_docs.py", "v1.6.2", "--check", cwd=root)

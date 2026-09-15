@@ -34,8 +34,8 @@ If a future release replaces the shell wrapper with a compiled helper tool, Appl
 
 ```bash
 nve README.md
-nve --wait --new-window "Neon Vision Editor/UI/ContentView.swift"
-nve --line 42 "Neon Vision Editor/UI/ContentView.swift"
+nve --wait --new-window "Project/Sources/Neon Vision Editor/UI/ContentView.swift"
+nve --line 42 "Project/Sources/Neon Vision Editor/UI/ContentView.swift"
 ```
 
 ## User-local link

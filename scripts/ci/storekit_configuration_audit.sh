@@ -2,10 +2,10 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-STOREKIT_FILE="$ROOT/Neon Vision Editor/SupportOptional.storekit"
-SETTINGS_FILE="$ROOT/Neon Vision Editor/UI/NeonSettingsView.swift"
-PURCHASE_MANAGER_FILE="$ROOT/Neon Vision Editor/Data/SupportPurchaseManager.swift"
-EXPECTED_REFERENCE='identifier = "../../Neon Vision Editor/SupportOptional.storekit"'
+STOREKIT_FILE="$ROOT/Project/Sources/Neon Vision Editor/SupportOptional.storekit"
+SETTINGS_FILE="$ROOT/Project/Sources/Neon Vision Editor/UI/NeonSettingsView.swift"
+PURCHASE_MANAGER_FILE="$ROOT/Project/Sources/Neon Vision Editor/Data/SupportPurchaseManager.swift"
+EXPECTED_REFERENCE='identifier = "../../Project/Sources/Neon Vision Editor/SupportOptional.storekit"'
 EXPECTED_PRODUCT_ID="002420160"
 
 fail() {

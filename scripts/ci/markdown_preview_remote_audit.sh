@@ -4,9 +4,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
-PREVIEW_WEBVIEW="Neon Vision Editor/UI/MarkdownPreviewWebView.swift"
-PREVIEW_EXPORT="Neon Vision Editor/UI/ContentView+MarkdownPreviewExport.swift"
-PREVIEW_UI="Neon Vision Editor/UI/ContentView+MarkdownPreviewUI.swift"
+PREVIEW_WEBVIEW="Project/Sources/Neon Vision Editor/UI/MarkdownPreviewWebView.swift"
+PREVIEW_EXPORT="Project/Sources/Neon Vision Editor/UI/ContentView+MarkdownPreviewExport.swift"
+PREVIEW_UI="Project/Sources/Neon Vision Editor/UI/ContentView+MarkdownPreviewUI.swift"
 
 echo "[markdown-preview-remote-audit] checking remote preview guardrails"
 

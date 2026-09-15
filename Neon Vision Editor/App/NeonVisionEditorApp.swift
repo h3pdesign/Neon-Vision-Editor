@@ -80,9 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var viewModel: EditorViewModel? {
         didSet {
             guard let viewModel else { return }
-            Task { @MainActor in
-                self.flushPendingURLs(into: viewModel)
-            }
+            flushPendingURLs(into: viewModel)
         }
     }
     weak var appUpdateManager: AppUpdateManager?
@@ -90,9 +88,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var pendingProjectFolderURLs: [URL] = []
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        Task { @MainActor in
-            handleExternalOpenURLs(urls)
-        }
+        handleExternalOpenURLs(urls)
     }
 
     func handleExternalOpenURLs(_ urls: [URL]) {

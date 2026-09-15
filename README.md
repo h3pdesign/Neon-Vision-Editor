@@ -432,7 +432,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 ### Customization & Diagnostics
 
-- Choose from 30 built-in editor palettes plus Custom colors, including Neon Glow, Plasma Storm, AMOLED Neon, Dracula, Monokai, GitHub Dark, Nord, Tokyo Night, Gruvbox, and Mocha. The canonical palette list lives in [ThemeSettings.swift](Neon%20Vision%20Editor/UI/ThemeSettings.swift).
+- Choose from 30 built-in editor palettes plus Custom colors, including Neon Glow, Plasma Storm, AMOLED Neon, Dracula, Monokai, GitHub Dark, Nord, Tokyo Night, Gruvbox, and Mocha. The canonical palette list lives in [ThemeSettings.swift](Project/Sources/Neon%20Vision%20Editor/UI/ThemeSettings.swift).
 - Grouped settings include theme and formatting controls, optional iCloud appearance sync, shortcut customization, and platform-specific preview presentation.
 - Code Snapshot exports styled editor captures; AI Activity Log diagnostics remain available on macOS.
 
@@ -473,7 +473,7 @@ The current stable editor separates scene presentation, document ownership, nati
 
 Full architecture reference: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The reference tracks the current Swift 6 cross-platform structure, platform guards, editor rendering paths, performance rules, distribution boundaries, and release verification workflow.
 
-Implementation entry points: [tab/document orchestration](Neon%20Vision%20Editor/Data/EditorViewModel.swift), [document contract](Neon%20Vision%20Editor/Data/EditorDocument.swift), [storage](Neon%20Vision%20Editor/Data/FileBackedTextDocument.swift), [macOS canvas](Neon%20Vision%20Editor/UI/VirtualEditorView+macOS.swift), [UIKit editor](Neon%20Vision%20Editor/UI/EditorTextView+iOS.swift), and [distribution policy](Neon%20Vision%20Editor/Core/ReleaseRuntimePolicy.swift).
+Implementation entry points: [tab/document orchestration](Project/Sources/Neon%20Vision%20Editor/Data/EditorViewModel.swift), [document contract](Project/Sources/Neon%20Vision%20Editor/Data/EditorDocument.swift), [storage](Project/Sources/Neon%20Vision%20Editor/Data/FileBackedTextDocument.swift), [macOS canvas](Project/Sources/Neon%20Vision%20Editor/UI/VirtualEditorView+macOS.swift), [UIKit editor](Project/Sources/Neon%20Vision%20Editor/UI/EditorTextView+iOS.swift), and [distribution policy](Project/Sources/Neon%20Vision%20Editor/Core/ReleaseRuntimePolicy.swift).
 
 ### Architecture principles
 

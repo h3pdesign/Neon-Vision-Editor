@@ -2041,19 +2041,14 @@
       };
 
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
-      let savedTheme;
-      try { savedTheme = localStorage.getItem('nve-site-theme'); } catch {}
-
-      applyTheme(savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : (systemTheme.matches ? 'dark' : 'light'));
+      applyTheme(systemTheme.matches ? 'dark' : 'light');
       systemTheme.addEventListener('change', ({ matches }) => {
-        if (savedTheme !== 'dark' && savedTheme !== 'light') applyTheme(matches ? 'dark' : 'light');
+        applyTheme(matches ? 'dark' : 'light');
       });
 
       toggle.addEventListener('click', () => {
         const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
         applyTheme(nextTheme);
-        savedTheme = nextTheme;
-        try { localStorage.setItem('nve-site-theme', nextTheme); } catch {}
       });
     })();
   </script>

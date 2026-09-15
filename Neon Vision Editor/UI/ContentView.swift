@@ -4863,7 +4863,7 @@ struct ContentView: View {
             translucentBackgroundEnabled: editorTranslucentBackgroundEnabled,
             showKeyboardAccessoryBar: {
 #if os(iOS) || os(visionOS)
-                showKeyboardAccessoryBarIOS || keyboardShortcutAccessoryBarIsVisible
+                showKeyboardAccessoryBarIOS
 #else
                 true
 #endif
@@ -4935,13 +4935,13 @@ struct ContentView: View {
     private func applyingKeyboardAccessoryHandlers<Content: View>(to content: Content) -> some View {
         content
             .onChange(of: showKeyboardAccessoryBarIOS) { _, isVisible in
-                postKeyboardAccessoryVisibility(isVisible || keyboardShortcutAccessoryBarIsVisible)
+                postKeyboardAccessoryVisibility(isVisible)
             }
             .onChange(of: keyboardShortcutAccessoryBarEnabledIOS) { _, _ in
-                postKeyboardAccessoryVisibility(showKeyboardAccessoryBarIOS || keyboardShortcutAccessoryBarIsVisible)
+                postKeyboardAccessoryVisibility(showKeyboardAccessoryBarIOS)
             }
             .onChange(of: keyboardShortcutAccessoryActionsIOS) { _, _ in
-                postKeyboardAccessoryVisibility(showKeyboardAccessoryBarIOS || keyboardShortcutAccessoryBarIsVisible)
+                postKeyboardAccessoryVisibility(showKeyboardAccessoryBarIOS)
             }
             .onReceive(NotificationCenter.default.publisher(for: .keyboardAccessoryActionRequested)) { notification in
                 guard let rawValue = notification.object as? String,

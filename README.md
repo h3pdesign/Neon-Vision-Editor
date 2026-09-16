@@ -54,12 +54,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.8.0**
+> Latest release: **v1.8.1**
 > Next release target: **v1.8.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: tested / Intel: not tested
 > Direct GitHub release: **v1.8.0** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-09-16** for latest release **v1.8.0**
+> Last updated (README): **2026-09-16** for latest release **v1.8.1**
 
 ## What's New Since v1.7.6
 
@@ -156,7 +156,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=12040&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=12049&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -778,7 +778,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.7.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.7.5) | **Windows that remember** — Restores reliable drag-to-reorder behavior for native macOS document tabs. | Prevents native tab items from being treated as draggable window background instead of receiving their own reorder gesture. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.8.0**
+- Latest release: **v1.8.1**
 - Compare recent changes: [v1.7.6...v1.8.0](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.7.6...v1.8.0)
 
 ## Known Limitations

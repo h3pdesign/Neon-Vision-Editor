@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.8.1] - 2026-09-16
+
 ### Why Upgrade
 
 - Gives iPhone and iPad a compact bottom editor toolbar with easier access to tools while keeping more code visible.

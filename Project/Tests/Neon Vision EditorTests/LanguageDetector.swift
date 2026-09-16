@@ -1,1 +1,1 @@
-../Neon Vision Editor/Core/LanguageDetector.swift
+../../Sources/Neon Vision Editor/Core/LanguageDetector.swift

@@ -116,6 +116,7 @@ enum EditorLargeTextFormatting {
 }
 
 final class EditorInputTextView: UITextView {
+    static let keyboardToolbarHeight: CGFloat = 46
     private struct NoWrapWidthCache {
         let revision: Int
         let visibleWidth: CGFloat
@@ -416,12 +417,51 @@ final class EditorInputTextView: UITextView {
         }
     }
 
-    private func makeKeyboardAccessoryView() -> UIView {
+    fileprivate func makeKeyboardAccessoryView(isEditorOverlay: Bool = false) -> UIView {
+#if os(iOS)
+        let usesNativeGlass: Bool
+        if #available(iOS 26.0, *) {
+            usesNativeGlass = true
+        } else {
+            usesNativeGlass = false
+        }
+#else
+        let usesNativeGlass = false
+#endif
         let host = UIView()
-        host.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.95)
+        host.isOpaque = false
+        host.backgroundColor = !usesNativeGlass && UIAccessibility.isReduceTransparencyEnabled
+            ? keyboardAccessoryBackgroundColor : .clear
         host.translatesAutoresizingMaskIntoConstraints = false
 
+        let frostedBackground = isEditorOverlay || usesNativeGlass ? nil : UIVisualEffectView()
+        if let frostedBackground {
+            frostedBackground.isOpaque = false
+            if !UIAccessibility.isReduceTransparencyEnabled {
+                frostedBackground.effect = UIBlurEffect(style: .systemUltraThinMaterial)
+                frostedBackground.contentView.backgroundColor = keyboardAccessoryBackgroundColor.withAlphaComponent(0.2)
+            }
+            frostedBackground.translatesAutoresizingMaskIntoConstraints = false
+        }
+
+        let glass = UIVisualEffectView()
+        glass.isOpaque = false
+        glass.layer.cornerRadius = 21
+        glass.clipsToBounds = true
+#if os(iOS)
+        IOSClearGlassAppearance.apply(to: glass)
+#else
+        if UIAccessibility.isReduceTransparencyEnabled {
+            glass.backgroundColor = .secondarySystemBackground
+        } else {
+            glass.effect = UIBlurEffect(style: .systemChromeMaterial)
+        }
+#endif
+        glass.translatesAutoresizingMaskIntoConstraints = false
+
         let scroll = UIScrollView()
+        scroll.isOpaque = false
+        scroll.backgroundColor = .clear
         scroll.showsHorizontalScrollIndicator = false
         scroll.translatesAutoresizingMaskIntoConstraints = false
 
@@ -431,9 +471,10 @@ final class EditorInputTextView: UITextView {
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        let accessoryActions = KeyboardAccessoryAction.configuredActions(
-            rawValue: UserDefaults.standard.string(forKey: KeyboardAccessoryAction.storageKey)
-        )
+        let accessoryActions = keyboardShortcutAccessoryEnabled
+            ? KeyboardAccessoryAction.configuredActions(
+                rawValue: UserDefaults.standard.string(forKey: KeyboardAccessoryAction.storageKey)
+            ) : []
         for action in accessoryActions {
             let button = UIButton(type: .system)
             button.accessibilityIdentifier = "keyboard-accessory-\(action.rawValue)"
@@ -477,16 +518,25 @@ final class EditorInputTextView: UITextView {
             stack.addArrangedSubview(button)
         }
 
-        host.addSubview(scroll)
+        if let frostedBackground {
+            host.addSubview(frostedBackground)
+        }
+        host.addSubview(glass)
+        glass.contentView.addSubview(scroll)
         scroll.addSubview(stack)
 
         NSLayoutConstraint.activate([
-            host.heightAnchor.constraint(equalToConstant: 46),
+            host.heightAnchor.constraint(equalToConstant: Self.keyboardToolbarHeight),
 
-            scroll.leadingAnchor.constraint(equalTo: host.leadingAnchor, constant: 10),
-            scroll.trailingAnchor.constraint(equalTo: host.trailingAnchor, constant: -10),
-            scroll.topAnchor.constraint(equalTo: host.topAnchor, constant: 6),
-            scroll.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -6),
+            glass.leadingAnchor.constraint(equalTo: host.leadingAnchor, constant: 8),
+            glass.trailingAnchor.constraint(equalTo: host.trailingAnchor, constant: -8),
+            glass.topAnchor.constraint(equalTo: host.topAnchor, constant: 2),
+            glass.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -2),
+
+            scroll.leadingAnchor.constraint(equalTo: glass.contentView.leadingAnchor, constant: 10),
+            scroll.trailingAnchor.constraint(equalTo: glass.contentView.trailingAnchor, constant: -10),
+            scroll.topAnchor.constraint(equalTo: glass.contentView.topAnchor, constant: 4),
+            scroll.bottomAnchor.constraint(equalTo: glass.contentView.bottomAnchor, constant: -4),
 
             stack.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
@@ -494,17 +544,29 @@ final class EditorInputTextView: UITextView {
             stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor),
             stack.heightAnchor.constraint(equalTo: scroll.frameLayoutGuide.heightAnchor)
         ])
+        if let frostedBackground {
+            NSLayoutConstraint.activate([
+                frostedBackground.leadingAnchor.constraint(equalTo: host.leadingAnchor),
+                frostedBackground.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+                frostedBackground.topAnchor.constraint(equalTo: host.topAnchor),
+                frostedBackground.bottomAnchor.constraint(equalTo: host.bottomAnchor)
+            ])
+        }
 
         return host
     }
     private var isBracketAccessoryVisible: Bool = true
     private var keyboardAccessoryActionsStorageValue: String?
+    private var keyboardShortcutAccessoryEnabled: Bool = true
+    private var keyboardAccessoryBackgroundColor: UIColor = .clear
 
     override init(frame: CGRect, textContainer: NSTextContainer?) {
         super.init(frame: frame, textContainer: textContainer)
         installLineSelectionGesture()
         #if !os(visionOS)
-        inputAccessoryView = makeKeyboardAccessoryView()
+        if UIDevice.current.userInterfaceIdiom != .phone {
+            inputAccessoryView = makeKeyboardAccessoryView()
+        }
         #endif
         syncVimModeFromDefaults()
         NotificationCenter.default.addObserver(
@@ -519,7 +581,9 @@ final class EditorInputTextView: UITextView {
         super.init(coder: coder)
         installLineSelectionGesture()
         #if !os(visionOS)
-        inputAccessoryView = makeKeyboardAccessoryView()
+        if UIDevice.current.userInterfaceIdiom != .phone {
+            inputAccessoryView = makeKeyboardAccessoryView()
+        }
         #endif
         syncVimModeFromDefaults()
         NotificationCenter.default.addObserver(
@@ -610,18 +674,69 @@ final class EditorInputTextView: UITextView {
 
     func setBracketAccessoryVisible(_ visible: Bool) {
         let actionsStorageValue = UserDefaults.standard.string(forKey: KeyboardAccessoryAction.storageKey)
-        guard isBracketAccessoryVisible != visible ||
-                keyboardAccessoryActionsStorageValue != actionsStorageValue else {
-            return
-        }
+        let actionsEnabled = UserDefaults.standard.object(forKey: "SettingsKeyboardShortcutAccessoryBarIOS") as? Bool ?? true
+        let needsUpdate = isBracketAccessoryVisible != visible ||
+            keyboardAccessoryActionsStorageValue != actionsStorageValue ||
+            keyboardShortcutAccessoryEnabled != actionsEnabled
         isBracketAccessoryVisible = visible
         keyboardAccessoryActionsStorageValue = actionsStorageValue
+        keyboardShortcutAccessoryEnabled = actionsEnabled
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            (superview as? LineNumberedTextViewContainer)?.setKeyboardAccessoryRequested(visible, rebuild: needsUpdate)
+            return
+        }
+        #endif
+        guard needsUpdate else { return }
         #if !os(visionOS)
         inputAccessoryView = visible ? makeKeyboardAccessoryView() : nil
         #endif
         if isFirstResponder {
             reloadInputViews()
         }
+    }
+
+    func setKeyboardAccessoryBackgroundColor(_ color: UIColor) {
+        keyboardAccessoryBackgroundColor = color
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            (superview as? LineNumberedTextViewContainer)?.updateKeyboardAccessoryColor(color)
+            return
+        }
+        #endif
+        #if !os(visionOS)
+#if os(iOS)
+        if #available(iOS 26.0, *) {
+            inputAccessoryView?.backgroundColor = .clear
+            return
+        }
+#endif
+        inputAccessoryView?.backgroundColor = UIAccessibility.isReduceTransparencyEnabled ? color : .clear
+        if let frostedBackground = inputAccessoryView?.subviews.first as? UIVisualEffectView {
+            frostedBackground.contentView.backgroundColor = UIAccessibility.isReduceTransparencyEnabled
+                ? .clear : color.withAlphaComponent(0.2)
+        }
+        #endif
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let becameFirstResponder = super.becomeFirstResponder()
+        #if os(iOS)
+        if becameFirstResponder {
+            (superview as? LineNumberedTextViewContainer)?.refreshKeyboardAccessoryOverlay()
+        }
+        #endif
+        return becameFirstResponder
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        #if os(iOS)
+        if resigned {
+            (superview as? LineNumberedTextViewContainer)?.refreshKeyboardAccessoryOverlay()
+        }
+        #endif
+        return resigned
     }
 
     @objc private func performKeyboardAccessoryAction(_ sender: UIButton) {
@@ -1133,7 +1248,7 @@ final class InvisibleCharacterOverlayView: UIView {
 extension EditorInputTextView {
     @objc private func insertBracketToken(_ sender: UIButton) {
         guard isEditable, let token = sender.accessibilityIdentifier else { return }
-        becomeFirstResponder()
+        _ = becomeFirstResponder()
 
         let selection = selectedRange
         if let pair = pairForToken(token) {
@@ -1631,6 +1746,11 @@ final class LineNumberedTextViewContainer: UIView {
     private var cachedFontPointSize: CGFloat = 0
     private var cachedLineNumberWidth: CGFloat = 46
     private var cachedTextLength: Int = 0
+#if os(iOS)
+    private var keyboardAccessoryRequested = false
+    private var softwareKeyboardVisible = false
+    private(set) var keyboardAccessoryOverlay: UIView?
+#endif
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -1702,6 +1822,50 @@ final class LineNumberedTextViewContainer: UIView {
         widthConstraint.isActive = true
         lineNumberWidthConstraint = widthConstraint
     }
+
+#if os(iOS)
+    func setKeyboardAccessoryRequested(_ requested: Bool, rebuild: Bool) {
+        keyboardAccessoryRequested = requested
+        if rebuild {
+            keyboardAccessoryOverlay?.removeFromSuperview()
+            keyboardAccessoryOverlay = nil
+        }
+        refreshKeyboardAccessoryOverlay()
+    }
+
+    func setSoftwareKeyboardVisible(_ visible: Bool) {
+        softwareKeyboardVisible = visible
+        refreshKeyboardAccessoryOverlay()
+    }
+
+    func updateKeyboardAccessoryColor(_ color: UIColor) {
+        guard let overlay = keyboardAccessoryOverlay else { return }
+        if #available(iOS 26.0, *) {
+            overlay.backgroundColor = .clear
+        } else {
+            overlay.backgroundColor = UIAccessibility.isReduceTransparencyEnabled ? color : .clear
+        }
+    }
+
+    func refreshKeyboardAccessoryOverlay() {
+        let shouldShow = keyboardAccessoryRequested && softwareKeyboardVisible && textView.isFirstResponder
+        guard shouldShow else {
+            keyboardAccessoryOverlay?.isHidden = true
+            return
+        }
+        if keyboardAccessoryOverlay == nil {
+            let overlay = textView.makeKeyboardAccessoryView(isEditorOverlay: true)
+            addSubview(overlay)
+            NSLayoutConstraint.activate([
+                overlay.leadingAnchor.constraint(equalTo: leadingAnchor),
+                overlay.trailingAnchor.constraint(equalTo: trailingAnchor),
+                overlay.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor)
+            ])
+            keyboardAccessoryOverlay = overlay
+        }
+        keyboardAccessoryOverlay?.isHidden = false
+    }
+#endif
 
     func applyLineNumberColors(editorBackground: UIColor, textColor: UIColor, translucentBackgroundEnabled: Bool) {
         backgroundColor = translucentBackgroundEnabled ? .clear : editorBackground
@@ -1828,6 +1992,7 @@ struct CustomTextEditor: UIViewRepresentable {
     let showsCodeMinimap: Bool
     let translucentBackgroundEnabled: Bool
     let showKeyboardAccessoryBar: Bool
+    let softwareKeyboardVisible: Bool
     let showLineNumbers: Bool
     let formattingPreferences: EditorFormattingPreferences
     let showInvisibleCharacters: Bool
@@ -2111,6 +2276,12 @@ struct CustomTextEditor: UIViewRepresentable {
             translucentBackgroundEnabled: translucentBackgroundEnabled
         )
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
+        textView.setKeyboardAccessoryBackgroundColor(UIColor(theme.background))
+#if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            container.setSoftwareKeyboardVisible(softwareKeyboardVisible)
+        }
+#endif
         configurePointerSelectionBehavior(textView)
 #if os(iOS)
         textView.installPencilInputIfNeeded()
@@ -2281,6 +2452,12 @@ struct CustomTextEditor: UIViewRepresentable {
             translucentBackgroundEnabled: translucentBackgroundEnabled
         )
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
+        textView.setKeyboardAccessoryBackgroundColor(UIColor(theme.background))
+#if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            uiView.setSoftwareKeyboardVisible(softwareKeyboardVisible)
+        }
+#endif
         let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
         if !isInteractivePhoneEditing {
             applyWrapMode(
@@ -2388,6 +2565,8 @@ struct CustomTextEditor: UIViewRepresentable {
         private var pinchStartFontSize: CGFloat?
         private var lastPinchFontSize: CGFloat?
         private var lastScrollOffsetY: CGFloat?
+        private var lastUserScrollOffsetY: CGFloat?
+        private var accumulatedUserScrollDelta: CGFloat = 0
         private var pendingShiftScrollFontSizeDelta: CGFloat = 0
         private var isRestoringShiftScrollOffset = false
         private var findHighlightBackgrounds: [(range: NSRange, value: Any?)] = []
@@ -2596,7 +2775,7 @@ struct CustomTextEditor: UIViewRepresentable {
                         textView.setContentOffset(priorOffset, animated: false)
                     }
                     if wasFirstResponder && preserveSelection {
-                        textView.becomeFirstResponder()
+                        _ = textView.becomeFirstResponder()
                     }
                     self.updateCaretStatus()
                     self.scheduleHighlightIfNeeded(currentText: target, immediate: true)
@@ -2658,13 +2837,15 @@ struct CustomTextEditor: UIViewRepresentable {
             if let explicit = notification.object as? Bool {
                 isVisible = explicit
             } else {
-                isVisible = UserDefaults.standard.object(forKey: "SettingsShowKeyboardAccessoryBarIOS") as? Bool ?? false
+                isVisible = UserDefaults.standard.object(forKey: "SettingsShowKeyboardAccessoryBarIOS") as? Bool ?? true
             }
             textView.setBracketAccessoryVisible(isVisible)
             if isVisible && !textView.isFirstResponder {
-                textView.becomeFirstResponder()
+                _ = textView.becomeFirstResponder()
             }
-            textView.reloadInputViews()
+            if UIDevice.current.userInterfaceIdiom != .phone {
+                textView.reloadInputViews()
+            }
         }
 
         @objc private func moveSelectedLines(_ notification: Notification) {
@@ -2715,7 +2896,7 @@ struct CustomTextEditor: UIViewRepresentable {
             let shouldCenterSelection = notification.userInfo?[EditorCommandUserInfo.centerSelection] as? Bool ?? false
             DispatchQueue.main.async {
                 if shouldFocusEditor {
-                    textView.becomeFirstResponder()
+                    _ = textView.becomeFirstResponder()
                 }
                 textView.selectedRange = range
                 if shouldCenterSelection {
@@ -2937,9 +3118,9 @@ struct CustomTextEditor: UIViewRepresentable {
                 explicitValue: notification.userInfo?[EditorCommandUserInfo.focusEditor] as? Bool
             )
             if shouldFocusEditor {
-                textView.becomeFirstResponder()
+                _ = textView.becomeFirstResponder()
             } else if textView.isFirstResponder {
-                textView.resignFirstResponder()
+                _ = textView.resignFirstResponder()
             }
             textView.selectedRange = target
             centerEditorLine(at: target, in: textView)
@@ -3863,6 +4044,7 @@ struct CustomTextEditor: UIViewRepresentable {
             if consumeIPadShiftScroll(in: scrollView, textView: textView) {
                 return
             }
+            postUserScrollDirectionIfNeeded(scrollView)
             let panState = scrollView.panGestureRecognizer.state
             if panState == .began || panState == .changed {
                 cancelMinimapViewportReconciliation()
@@ -3885,6 +4067,35 @@ struct CustomTextEditor: UIViewRepresentable {
                 guard !isPhoneActivelyEditing else { return }
                 scheduleHighlightIfNeeded(currentText: textView.text)
             }
+        }
+
+        private func postUserScrollDirectionIfNeeded(_ scrollView: UIScrollView) {
+            guard UIDevice.current.userInterfaceIdiom == .phone,
+                  let documentID = parent.documentID,
+                  scrollView.panGestureRecognizer.state == .changed else {
+                lastUserScrollOffsetY = nil
+                accumulatedUserScrollDelta = 0
+                return
+            }
+            let offset = scrollView.contentOffset.y
+            defer { lastUserScrollOffsetY = offset }
+            guard let previousOffset = lastUserScrollOffsetY else { return }
+            let delta = offset - previousOffset
+            guard abs(delta) > 0.5, abs(delta) < 80 else { return }
+            if accumulatedUserScrollDelta.sign != delta.sign {
+                accumulatedUserScrollDelta = 0
+            }
+            accumulatedUserScrollDelta += delta
+            guard abs(accumulatedUserScrollDelta) >= 24 else { return }
+            NotificationCenter.default.post(
+                name: .editorUserDidScroll,
+                object: nil,
+                userInfo: [
+                    EditorCommandUserInfo.documentID: documentID.uuidString,
+                    EditorCommandUserInfo.scrollingDown: accumulatedUserScrollDelta > 0
+                ]
+            )
+            accumulatedUserScrollDelta = 0
         }
 
         private func consumeIPadShiftScroll(in scrollView: UIScrollView, textView: EditorInputTextView) -> Bool {

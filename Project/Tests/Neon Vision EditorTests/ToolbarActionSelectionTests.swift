@@ -126,6 +126,8 @@ final class ToolbarActionSelectionTests: XCTestCase {
 
     func testToolbarPresetsExposeStablePlatformActions() {
         XCTAssertEqual(ToolbarPreset.standard.macOSIDs.first, "openFile")
+        XCTAssertTrue(ToolbarPreset.standard.macOSIDs.contains("undo"))
+        XCTAssertTrue(ToolbarPreset.standard.macOSIDs.contains("markdownPreview"))
         XCTAssertTrue(ToolbarPreset.standard.macOSIDs.contains("markdownProjectPreview"))
         XCTAssertTrue(ToolbarPreset.developer.macOSIDs.contains("gitChanges"))
         XCTAssertTrue(ToolbarPreset.writing.mobileIDs.contains("markdownPreview"))
@@ -172,6 +174,23 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertTrue(Set(visible).isDisjoint(with: Set(overflow)))
     }
 
+    func testCompactActionsKeepPriorityAndLeaveTheRestAccessible() {
+        let enabled = TestAction.allCases
+        let compact = ToolbarActionSelection.compactActions(
+            enabledActions: enabled,
+            priority: [.saveFile, .findReplace, .saveFile, .newTab],
+            limit: 3
+        )
+        let remaining = ToolbarActionSelection.overflowActions(
+            enabledActions: enabled,
+            visibleActions: compact
+        )
+
+        XCTAssertEqual(compact, [.saveFile, .findReplace, .newTab])
+        XCTAssertTrue(Set(compact).isDisjoint(with: Set(remaining)))
+        XCTAssertEqual(Set(compact + remaining), Set(enabled))
+    }
+
     func testPrimaryAndOverflowActionsGiveEachActionOneRoute() {
         let enabled = TestAction.allCases
         let primary = ToolbarActionSelection.visibleActions(
@@ -195,15 +214,15 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertTrue(ToolbarActionSelection.honorsSectionVisibility(preset: .custom))
     }
 
-    func testSettingsAndHelpAlwaysHonorTheirVisibilitySettings() {
-        XCTAssertFalse(
+    func testSettingsRemainVisibleAndNamedPresetsIgnoreLegacyVisibility() {
+        XCTAssertTrue(
             ToolbarActionSelection.shouldIncludeConfiguredAction(
                 actionID: "settings",
                 isConfiguredVisible: false,
-                preset: .standard
+                preset: .custom
             )
         )
-        XCTAssertFalse(
+        XCTAssertTrue(
             ToolbarActionSelection.shouldIncludeConfiguredAction(
                 actionID: "help",
                 isConfiguredVisible: false,
@@ -215,6 +234,13 @@ final class ToolbarActionSelectionTests: XCTestCase {
                 actionID: "openFile",
                 isConfiguredVisible: false,
                 preset: .standard
+            )
+        )
+        XCTAssertFalse(
+            ToolbarActionSelection.shouldIncludeConfiguredAction(
+                actionID: "help",
+                isConfiguredVisible: false,
+                preset: .custom
             )
         )
     }

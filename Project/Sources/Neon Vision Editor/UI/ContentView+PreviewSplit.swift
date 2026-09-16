@@ -18,7 +18,81 @@ enum PreviewPaneResizeGeometry {
 
 // MARK: - Preview Split Coordination
 
+struct PreviewPaneHeader<Actions: View>: View {
+    let title: String
+    let iconName: String
+    let metadata: String?
+    let backgroundStyle: AnyShapeStyle
+    let onClose: (() -> Void)?
+    let actions: Actions
+
+    init(
+        title: String,
+        iconName: String,
+        metadata: String?,
+        backgroundStyle: AnyShapeStyle,
+        onClose: (() -> Void)? = nil,
+        @ViewBuilder actions: () -> Actions
+    ) {
+        self.title = title
+        self.iconName = iconName
+        self.metadata = metadata
+        self.backgroundStyle = backgroundStyle
+        self.onClose = onClose
+        self.actions = actions()
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: iconName)
+                .imageScale(.small)
+                .foregroundStyle(.secondary)
+            Text(title)
+                .font(.headline)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            if let metadata {
+                Text(metadata)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+            }
+            actions
+            if let onClose {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close \(title)")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(backgroundStyle)
+    }
+}
+
 extension ContentView {
+    func previewPaneHeader<Actions: View>(
+        title: String,
+        iconName: String,
+        metadata: String?,
+        onClose: @escaping () -> Void,
+        @ViewBuilder actions: () -> Actions
+    ) -> some View {
+        PreviewPaneHeader(
+            title: title,
+            iconName: iconName,
+            metadata: metadata,
+            backgroundStyle: editorSurfaceBackgroundStyle,
+            onClose: onClose
+        ) {
+            actions()
+        }
+    }
+
     /// Opens previews for binary documents regardless of whether the tab was
     /// created by the toolbar, Launch Services, paste/drop, or session restore.
     /// This only changes the mode when the current document has a native binary

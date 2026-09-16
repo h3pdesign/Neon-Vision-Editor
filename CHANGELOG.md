@@ -6,6 +6,36 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.8.1] - 2026-09-16
+
+### Why Upgrade
+
+- Gives iPhone and iPad a compact bottom editor toolbar with easier access to tools while keeping more code visible.
+- Makes editor controls, status, and keyboard shortcuts easier to read in light and dark appearances.
+- Brings preview and terminal surfaces into line with the selected editor theme.
+
+### Highlights
+
+- Adds a horizontally scrollable iPhone toolbar and an adaptive-width iPad toolbar; compact controls appear while scrolling.
+- Keeps the mobile editor keyboard toolbar visible by default and adds a setting to control it.
+- Uses system Liquid Glass for supported controls and respects system glass and accessibility appearance settings.
+- Adds Markdown theme selection to the iPad preview menu.
+
+### Fixes
+
+- Keeps the mobile keyboard toolbar clear of the editor and on-screen keyboard, with a frosted surface in light and dark mode.
+- Centers and collapses the mobile editor status above the bottom toolbar, then hides it while scrolling.
+- Aligns preview headers and uses the editor theme for project cards and terminal surfaces.
+- Improves filename readability in iPhone tabs and unifies toolbar icon color.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
 ## [v1.8.0] - 2026-09-14
 
 ### Why Upgrade

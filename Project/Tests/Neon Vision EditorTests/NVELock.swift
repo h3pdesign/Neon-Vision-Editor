@@ -1,1 +1,1 @@
-../Neon Vision Editor/Core/NVELock.swift
+../../Sources/Neon Vision Editor/Core/NVELock.swift

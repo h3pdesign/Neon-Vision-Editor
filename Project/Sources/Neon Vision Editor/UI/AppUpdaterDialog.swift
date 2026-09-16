@@ -20,7 +20,11 @@ struct AppUpdaterDialog: View {
         appUpdateManager.latestRelease?.title ?? "Latest Release"
     }
     private var shouldUsePanelGlass: Bool {
-        translucentWindow && liquidGlassEnabled && !reduceTransparency
+        guard translucentWindow && liquidGlassEnabled else { return false }
+#if os(macOS) || os(iOS)
+        if #available(macOS 26.0, iOS 26.0, *) { return true }
+#endif
+        return !reduceTransparency
     }
     var body: some View {
         GlassSurface(

@@ -193,6 +193,7 @@ struct NeonSettingsView: View {
     @State private var remoteBrowserPathDraft: String = "~"
     @State private var shortcutDrafts: [EditorShortcutAction: String] = [:]
 #if os(iOS)
+    @AppStorage("SettingsShowKeyboardAccessoryBarIOS") private var showKeyboardAccessoryBarIOS: Bool = true
     @AppStorage("SettingsKeyboardShortcutAccessoryBarIOS") private var keyboardShortcutAccessoryBarEnabledIOS: Bool = true
     @AppStorage(KeyboardAccessoryAction.storageKey) private var keyboardShortcutAccessoryActionsIOS: String = KeyboardAccessoryAction.storageValue(for: KeyboardAccessoryAction.defaultActions)
 #endif
@@ -1909,15 +1910,25 @@ struct NeonSettingsView: View {
                 icon: "rectangle.topthird.inset.filled"
             )
             visionFormSection(title: localized("Visible Controls")) {
-                Toggle(localized("Open File Icon"), isOn: $toolbarShowOpenFileIOS)
-                Toggle(localized("Undo Icon"), isOn: $toolbarShowUndoIOS)
-                Toggle(localized("Settings Icon"), isOn: $toolbarShowSettingsIOS)
-                Toggle(localized("Help Icon"), isOn: $toolbarShowHelpIOS)
-                Toggle(localized("Search"), isOn: $toolbarShowSearchIOS)
-                Toggle(localized("Compare"), isOn: $toolbarShowCompareIOS)
-                Toggle(localized("Editor Tools"), isOn: $toolbarShowEditorUtilityIOS)
-                Toggle(localized("Preview & Appearance"), isOn: $toolbarShowAppearanceIOS)
+                visionSettingsMenu(
+                    selection: toolbarPresetBinding,
+                    options: ToolbarPreset.allCases.map(\.rawValue),
+                    label: { ToolbarPreset(rawValue: $0)?.title ?? $0 },
+                    maxWidth: .infinity
+                )
+                Text(localized("Each preset shows its own fixed set of toolbar symbols. Settings and preset help remain available in every preset."))
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                if toolbarUseCustomFiveIOS {
+                    Button(action: { showToolbarIconChooser = true }) {
+                        Label(localized("Choose Custom Toolbar Icons"), systemImage: "line.3.horizontal.decrease.circle")
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
+        }
+        .sheet(isPresented: $showToolbarIconChooser) {
+            toolbarIconChooserSheet
         }
     }
 
@@ -2035,14 +2046,17 @@ struct NeonSettingsView: View {
                     maxWidth: .infinity
                 )
             }
-            iOSToggleRow(LocalizedStringKey(localized("Open File Icon")), isOn: $toolbarShowOpenFileIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Undo Icon")), isOn: $toolbarShowUndoIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Settings Icon")), isOn: $toolbarShowSettingsIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Help Icon")), isOn: $toolbarShowHelpIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Search")), isOn: $toolbarShowSearchIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Compare")), isOn: $toolbarShowCompareIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Editor Tools")), isOn: $toolbarShowEditorUtilityIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Preview & Appearance")), isOn: $toolbarShowAppearanceIOS)
+            Text(localized("Each preset shows its own fixed set of toolbar symbols. Settings and preset help remain available in every preset."))
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
+            if toolbarUseCustomFiveIOS {
+                iOSLabeledRow(LocalizedStringKey(localized("Selected Icons"))) {
+                    Button(action: { showToolbarIconChooser = true }) {
+                        Label(toolbarCustomSelectionSummary, systemImage: "line.3.horizontal.decrease.circle")
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
         }
 #elseif os(iOS)
         settingsCardSection(
@@ -2064,28 +2078,22 @@ struct NeonSettingsView: View {
                     toolbarPresetPicker(useCompactTitle: false)
                 }
             }
-            iOSLabeledRow(LocalizedStringKey(localized("Visible Toolbar Actions"))) {
-                Picker("", selection: $toolbarFavoriteCountIOS) {
-                    Text("4").tag(4)
-                    Text("5").tag(5)
-                    Text("6").tag(6)
-                    Text("7").tag(7)
-                    Text("8").tag(8)
-                    Text("10").tag(10)
-                    Text(localized("All")).tag(99)
-                }
-                .pickerStyle(.segmented)
-            }
-            iOSToggleRow(LocalizedStringKey(localized("Open File Icon")), isOn: $toolbarShowOpenFileIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Undo Icon")), isOn: $toolbarShowUndoIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Settings Icon")), isOn: $toolbarShowSettingsIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Help Icon")), isOn: $toolbarShowHelpIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Search")), isOn: $toolbarShowSearchIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Compare")), isOn: $toolbarShowCompareIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Editor Tools")), isOn: $toolbarShowEditorUtilityIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Preview & Appearance")), isOn: $toolbarShowAppearanceIOS)
-            iOSToggleRow(LocalizedStringKey(localized("Use Custom Icons")), isOn: $toolbarUseCustomFiveIOS)
+            Text(localized("Each preset shows its own fixed set of toolbar symbols. Settings and preset help remain available in every preset."))
+                .font(Typography.footnote)
+                .foregroundStyle(.secondary)
             if toolbarUseCustomFiveIOS {
+                iOSLabeledRow(LocalizedStringKey(localized("Visible Toolbar Actions"))) {
+                    Picker("", selection: $toolbarFavoriteCountIOS) {
+                        Text("4").tag(4)
+                        Text("5").tag(5)
+                        Text("6").tag(6)
+                        Text("7").tag(7)
+                        Text("8").tag(8)
+                        Text("10").tag(10)
+                        Text(localized("All")).tag(99)
+                    }
+                    .pickerStyle(.segmented)
+                }
                 iOSLabeledRow(LocalizedStringKey(localized("Selected Icons"))) {
                     Button(action: { showToolbarIconChooser = true }) {
                         HStack(spacing: 8) {
@@ -2131,7 +2139,7 @@ struct NeonSettingsView: View {
 
             GroupBox(localized("Individual toolbar settings")) {
                 VStack(alignment: .leading, spacing: UI.space10) {
-                    Text(localized("Choose Custom to control each action independently. Actions remain available through the toolbar overflow menu when they are not pinned."))
+                    Text(localized("Choose Custom to control each workflow action independently. Settings and preset help always remain visible."))
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
 
@@ -2604,6 +2612,7 @@ struct NeonSettingsView: View {
 
     private var toolbarCustomSelectedIDs: Set<String> {
         ToolbarActionSelection.selectedIDs(from: toolbarCustomFiveIDsIOS)
+            .subtracting(ToolbarActionSelection.universallyAvailableMobileActionIDs)
     }
 
     private var toolbarCustomSelectionSummary: String {
@@ -2611,10 +2620,10 @@ struct NeonSettingsView: View {
     }
 
     private var toolbarCustomIconLimit: Int {
-        ToolbarActionSelection.visibleLimit(
+        max(0, ToolbarActionSelection.visibleLimit(
             requestedCount: toolbarFavoriteCountIOS,
             fallback: ToolbarPreset.mobileSelectableIDs.count
-        )
+        ) - ToolbarActionSelection.universallyAvailableMobileActionIDs.count)
     }
 
     @ViewBuilder
@@ -2622,7 +2631,10 @@ struct NeonSettingsView: View {
         NavigationStack {
             List {
                 Section("Choose up to \(toolbarCustomIconLimit) icons") {
-                    ForEach(ToolbarIconOption.allCases.filter { ToolbarPreset.mobileSelectableIDs.contains($0.rawValue) }) { option in
+                    ForEach(ToolbarIconOption.allCases.filter {
+                        ToolbarPreset.mobileSelectableIDs.contains($0.rawValue)
+                            && !ToolbarActionSelection.universallyAvailableMobileActionIDs.contains($0.rawValue)
+                    }) { option in
                         Button(action: { toggleToolbarCustomIcon(option.rawValue) }) {
                             HStack {
                                 Text(option.title)
@@ -2655,9 +2667,14 @@ struct NeonSettingsView: View {
     }
 
     private func toggleToolbarCustomIcon(_ rawValue: String) {
+        let configurableIDs = ToolbarActionSelection.orderedIDs(
+            from: toolbarCustomFiveIDsIOS,
+            fallback: []
+        )
+        .filter { !ToolbarActionSelection.universallyAvailableMobileActionIDs.contains($0) }
         toolbarCustomFiveIDsIOS = ToolbarActionSelection.toggledSelectionRawValue(
             toggledID: rawValue,
-            currentRawValue: toolbarCustomFiveIDsIOS,
+            currentRawValue: configurableIDs.joined(separator: ","),
             orderedIDs: ToolbarPreset.mobileSelectableIDs,
             limit: toolbarCustomIconLimit
         )
@@ -2904,10 +2921,9 @@ struct NeonSettingsView: View {
 
 #if os(macOS)
     private let macToolbarSelectableIDs: [String] = [
-        "openFile", "newTab", "closeAllTabs", "saveFile", "codeSnapshot", "editorLayout",
-        "previewActions", "findReplace", "findInFiles", "compare", "splitEditor", "gitChanges",
-        "codeMinimap", "toggleSidebar", "toggleProjectSidebar", "brainDump", "languageIndicator",
-        "settings", "help"
+        "openFile", "undo", "newTab", "closeAllTabs", "saveFile", "saveFileAs", "newWindow", "codeSnapshot", "editorLayout",
+        "markdownPreview", "markdownProjectPreview", "previewActions", "findReplace", "findInFiles", "compare", "splitEditor", "gitChanges",
+        "codeMinimap", "toggleSidebar", "toggleProjectSidebar", "brainDump", "languageIndicator"
     ]
 
     private var macToolbarSelectionSummaryText: String {
@@ -7015,8 +7031,10 @@ struct NeonSettingsView: View {
                 .foregroundStyle(.secondary)
 #if os(iOS)
             Divider()
+            Toggle("Show editor toolbar above the on-screen keyboard", isOn: $showKeyboardAccessoryBarIOS)
             Toggle("Show shortcut actions above the on-screen keyboard", isOn: $keyboardShortcutAccessoryBarEnabledIOS)
-            if keyboardShortcutAccessoryBarEnabledIOS {
+                .disabled(!showKeyboardAccessoryBarIOS)
+            if showKeyboardAccessoryBarIOS && keyboardShortcutAccessoryBarEnabledIOS {
                 ForEach(KeyboardAccessoryAction.allCases) { action in
                     Toggle(action.title, isOn: keyboardAccessoryActionBinding(for: action))
                 }

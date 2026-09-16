@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.8.0",
-            subtitle: "Release highlights for v1.8.0.",
+            title: "What’s New in v1.8.1",
+            subtitle: "Release highlights for v1.8.1.",
             bullets: [
-                "Editor Improvements: Opens files from Finder by dropping them anywhere in the macOS workspace, with each file placed in its own editor tab.",
-                "Editor Performance: Keeps large terminal output, Git diffs, project indexing, and long-document tab switching responsive under sustained…",
-                "Performance Updates: Uses Swift 6.4 and OS 27 Foundation improvements while preserving the existing deployment targets.",
-                "Usability Updates: Adapts editor panes, project tools, settings, previews, and native tabs to the space available on compact, regular, split…",
-                "Editor Improvements: Adds native macOS file drag and drop with modern DropSession handling and a compatible path for older supported macOS…",
-                "Workflow Refinements: Adds a compact five-step macOS window-surface slider that moves from dense native frosted glass to a lighter frosted…"
+                "Editor Improvements: Gives iPhone and iPad a compact bottom editor toolbar with easier access to tools while keeping more code visible.",
+                "Workflow Refinements: Makes editor controls, status, and keyboard shortcuts easier to read in light and dark appearances.",
+                "Performance Updates: Brings preview and terminal surfaces into line with the selected editor theme.",
+                "Usability Updates: Adds a horizontally scrollable iPhone toolbar and an adaptive-width iPad toolbar; compact controls appear while scrolling.",
+                "Editor Improvements: Keeps the mobile editor keyboard toolbar visible by default and adds a setting to control it.",
+                "Accessible Controls: Uses system Liquid Glass for supported controls and respects system glass and accessibility appearance settings."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4067,8 +4067,12 @@ struct EditorHelpView: View {
 
 #if os(macOS)
     @AppStorage("SettingsToolbarPresetMac") private var toolbarPresetMacRaw: String = ToolbarPreset.standard.rawValue
+    @AppStorage("SettingsToolbarUseCustomMac") private var toolbarUseCustomMac: Bool = false
+    @AppStorage("SettingsToolbarCustomIDsMac") private var toolbarCustomIDsMac: String = ""
 #else
     @AppStorage("SettingsToolbarPresetIOS") private var toolbarPresetIOSRaw: String = ToolbarPreset.standard.rawValue
+    @AppStorage("SettingsToolbarUseCustomFiveIOS") private var toolbarUseCustomFiveIOS: Bool = false
+    @AppStorage("SettingsToolbarCustomFiveIDsIOS") private var toolbarCustomFiveIDsIOS: String = ""
 #endif
 
     private struct HelpItem: Identifiable {
@@ -4114,25 +4118,31 @@ struct EditorHelpView: View {
 
     private var currentToolbarPreset: ToolbarPreset {
 #if os(macOS)
-        ToolbarPreset(rawValue: toolbarPresetMacRaw) ?? .standard
+        toolbarUseCustomMac ? .custom : ToolbarPreset(rawValue: toolbarPresetMacRaw) ?? .standard
 #else
-        ToolbarPreset(rawValue: toolbarPresetIOSRaw) ?? .standard
+        toolbarUseCustomFiveIOS ? .custom : ToolbarPreset(rawValue: toolbarPresetIOSRaw) ?? .standard
+#endif
+    }
+
+    private var currentToolbarActionIDs: [String] {
+#if os(macOS)
+        currentToolbarPreset == .custom
+            ? ToolbarActionSelection.orderedIDs(from: toolbarCustomIDsMac, fallback: [])
+            : currentToolbarPreset.macOSIDs
+#else
+        currentToolbarPreset == .custom
+            ? ToolbarActionSelection.orderedIDs(from: toolbarCustomFiveIDsIOS, fallback: [])
+            : currentToolbarPreset.mobileIDs
 #endif
     }
 
     private var toolbarPresetSection: HelpSection {
         HelpSection(
-            title: "Toolbar Presets",
-            iconName: "square.grid.3x3",
-            items: ToolbarPreset.allCases.map { preset in
-                let selected = preset == currentToolbarPreset
-                let actions: [String]
-#if os(macOS)
-                actions = preset.macOSIDs
-#else
-                actions = preset.mobileIDs
-#endif
-                let title = selected ? "\(preset.title) (Current)" : preset.title
+            title: "\(currentToolbarPreset.title) Toolbar",
+            iconName: currentToolbarPreset.icon,
+            items: [
+                {
+                let preset = currentToolbarPreset
                 let description: String
                 switch preset {
                 case .standard:
@@ -4151,13 +4161,14 @@ struct EditorHelpView: View {
                     description = "Your manually selected actions and order from Settings > Toolbar."
                 }
                 return HelpItem(
-                    title: title,
-                    description: "\(description) Available here: \(Self.presetActionNames(actions)).",
+                    title: preset.title,
+                    description: "\(description) Visible actions: \(Self.presetActionNames(currentToolbarActionIDs)). Settings and this preset help are always available.",
                     shortcutMac: "None",
                     shortcutPad: "None",
                     iconName: preset.icon
                 )
-            }
+                }()
+            ]
         )
     }
 
@@ -4327,7 +4338,7 @@ struct EditorHelpView: View {
                         .font(.system(size: compact ? 27 : 34, weight: .bold))
                         .lineLimit(2)
                         .minimumScaleFactor(0.84)
-                    Text("Every toolbar symbol, preset, and available shortcut across macOS, iPadOS, iOS, and visionOS hardware keyboards.")
+                    Text("Actions and shortcuts for the active \(currentToolbarPreset.title) toolbar preset.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -4481,6 +4492,7 @@ extension Notification.Name {
     static let toggleCodeMinimapRequested = Notification.Name("toggleCodeMinimapRequested")
     static let toggleFocusModeRequested = Notification.Name("toggleFocusModeRequested")
     static let editorViewportDidChange = Notification.Name("editorViewportDidChange")
+    static let editorUserDidScroll = Notification.Name("editorUserDidScroll")
     static let requestEditorViewport = Notification.Name("requestEditorViewport")
     static let virtualEditorTextDidChange = Notification.Name("virtualEditorTextDidChange")
     static let showVirtualEditorInlineSuggestion = Notification.Name("showVirtualEditorInlineSuggestion")
@@ -4596,6 +4608,7 @@ enum EditorCommandUserInfo {
     nonisolated static let rangeLength = "rangeLength"
     nonisolated static let viewportTopFraction = "viewportTopFraction"
     nonisolated static let viewportHeightFraction = "viewportHeightFraction"
+    nonisolated static let scrollingDown = "scrollingDown"
     nonisolated static let focusEditor = "focusEditor"
     nonisolated static let centerSelection = "centerSelection"
     nonisolated static let findMatchRanges = "findMatchRanges"

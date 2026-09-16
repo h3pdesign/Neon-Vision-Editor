@@ -953,6 +953,7 @@ struct ContentView: View {
     @AppStorage("SettingsToolbarPresetIOS") var toolbarPresetIOSRaw: String = ToolbarPreset.standard.rawValue
     @State var isPhoneEditorFocused: Bool = false
     @State var isPhoneSoftwareKeyboardVisible: Bool = false
+    @State var isPhoneToolbarExpanded: Bool = false
     @State var isPhoneStatusBarExpanded: Bool = false
     @State var phoneStatusAutoCollapseTask: Task<Void, Never>? = nil
 #endif
@@ -2704,7 +2705,9 @@ struct ContentView: View {
                 if shouldUseSplitView {
                     VStack(spacing: 0) {
                         if usesAppOwnedIOSSplitChromeLayout {
-                            iOSUnifiedToolbarHost
+                            if !usesIPhoneBottomToolbar {
+                                iOSUnifiedToolbarHost
+                            }
                             iOSUnifiedDocumentChromeHost
                         }
                         NavigationSplitView {
@@ -2731,6 +2734,11 @@ struct ContentView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if usesIPhoneBottomToolbar && !showFindReplace {
+                iOSUnifiedToolbarHost
+            }
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 #endif
     }
@@ -2744,6 +2752,9 @@ struct ContentView: View {
         .environment(\.colorScheme, effectiveEditorColorScheme)
         .onChange(of: showFindReplace) { _, isPresented in
             if isPresented {
+#if os(iOS) || os(visionOS)
+                isPhoneToolbarExpanded = false
+#endif
                 refreshFindPreview()
             } else {
                 findRefreshTask?.cancel()
@@ -5581,6 +5592,7 @@ struct ContentView: View {
             let isFocused = (notif.object as? Bool) ?? false
             isPhoneEditorFocused = isFocused
             if isFocused {
+                isPhoneToolbarExpanded = false
                 cancelPhoneStatusAutoCollapse()
                 isPhoneStatusBarExpanded = false
             } else {
@@ -5588,6 +5600,7 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isPhoneToolbarExpanded = false
             handlePhoneKeyboardVisibilityChange(isVisible: true)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
@@ -5658,7 +5671,7 @@ struct ContentView: View {
                     shouldPinToTop: shouldPinFloatingStatusToTop,
                     findPresented: showFindReplace,
                     pinnedPresentation: false
-                ),
+                ) && !usesIPhoneBottomToolbar,
                 status: AnyView(floatingStatusPill)
             )
         )

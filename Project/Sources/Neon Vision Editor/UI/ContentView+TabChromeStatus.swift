@@ -20,6 +20,14 @@ private struct FileTabBarScrollFadeMask<Mask: View>: ViewModifier {
 
 extension ContentView {
 #if os(iOS) || os(visionOS)
+    var usesIPhoneBottomToolbar: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+#else
+        false
+#endif
+    }
+
     struct IPhoneFullWidthModifier: ViewModifier {
         @ViewBuilder
         func body(content: Content) -> some View {
@@ -29,22 +37,41 @@ extension ContentView {
 
     @ViewBuilder
     var iOSUnifiedToolbarHost: some View {
-        if isIPadToolbarLayout {
+        if usesIPhoneBottomToolbar {
+            VStack(alignment: .trailing, spacing: 4) {
+                if IOSFloatingStatusPolicy.isVisible(
+                    brainDumpLayoutEnabled: brainDumpLayoutEnabled,
+                    shouldPinToTop: shouldPinFloatingStatusToTop,
+                    findPresented: showFindReplace,
+                    pinnedPresentation: false
+                ) {
+                    floatingStatusPill
+                        .padding(.trailing, 4)
+                }
+                iPhoneToolbarGlassSurface
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+        } else if isIPadToolbarLayout {
             iPadUnifiedToolbarRow
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
         } else {
-            GlassSurface(
-                enabled: enableTranslucentWindow || visionOSSystemGlassEnabled,
-                material: primaryGlassMaterial,
-                fallbackColor: iOSNonTranslucentSurfaceColor,
-                shape: .capsule,
-                chromeStyle: .single
-            ) {
-                iPhoneUnifiedToolbarRow
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            iPhoneToolbarGlassSurface
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+        }
+    }
+
+    private var iPhoneToolbarGlassSurface: some View {
+        GlassSurface(
+            enabled: usesIPhoneBottomToolbar || enableTranslucentWindow || visionOSSystemGlassEnabled,
+            material: usesIPhoneBottomToolbar ? .ultraThinMaterial : primaryGlassMaterial,
+            fallbackColor: iOSNonTranslucentSurfaceColor,
+            shape: isPhoneToolbarExpanded ? .rounded(20) : .capsule,
+            chromeStyle: .single
+        ) {
+            iPhoneUnifiedToolbarRow
         }
     }
 
@@ -75,7 +102,9 @@ extension ContentView {
 
     var iOSUnifiedTopChromeHost: some View {
         VStack(spacing: 0) {
-            iOSUnifiedToolbarHost
+            if !usesIPhoneBottomToolbar {
+                iOSUnifiedToolbarHost
+            }
             iOSUnifiedDocumentChromeHost
         }
     }

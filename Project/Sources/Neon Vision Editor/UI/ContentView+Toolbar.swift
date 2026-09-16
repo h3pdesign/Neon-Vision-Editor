@@ -74,6 +74,20 @@ struct ToolbarActionSelection {
         return enabledActions.filter { !visible.contains($0) }
     }
 
+    static func compactActions<Action: Hashable>(
+        enabledActions: [Action],
+        priority: [Action],
+        limit: Int
+    ) -> [Action] {
+        let enabled = Set(enabledActions)
+        var result: [Action] = []
+        for action in priority where enabled.contains(action) && !result.contains(action) {
+            result.append(action)
+            if result.count == limit { break }
+        }
+        return result
+    }
+
     static func honorsSectionVisibility(preset: ToolbarPreset) -> Bool {
         preset == .custom
     }
@@ -787,7 +801,32 @@ extension ContentView {
     private var iPhoneMoreActions: [IOSPrimaryToolbarAction] {
         ToolbarActionSelection.overflowActions(
             enabledActions: enabledIOSPrimaryToolbarActions,
-            visibleActions: visibleIOSPrimaryToolbarActions
+            visibleActions: iPhoneCompactToolbarActions
+        )
+    }
+
+    private var iPhoneCompactToolbarActions: [IOSPrimaryToolbarAction] {
+        let priority: [IOSPrimaryToolbarAction]
+        switch effectiveIOSToolbarPreset {
+        case .standard, .all:
+            priority = [
+                .saveFile, .findReplace, .toggleSidebar, .toggleProjectSidebar,
+                isPreviewSupportedDocument ? .markdownPreview : .markdownProjectPreview,
+                supportsCodeMinimap(language: currentLanguage) ? .codeMinimap : .markdownProjectPreview
+            ]
+        case .writing, .focus:
+            priority = [.saveFile, .findReplace, .markdownPreview]
+        case .developer:
+            priority = [.saveFile, .findReplace, .gitChanges]
+        case .review:
+            priority = [.findReplace, .gitChanges, .compareTabs]
+        case .custom:
+            priority = visibleIOSPrimaryToolbarActions
+        }
+        return ToolbarActionSelection.compactActions(
+            enabledActions: enabledIOSPrimaryToolbarActions,
+            priority: priority,
+            limit: effectiveIOSToolbarPreset == .custom ? 4 : 6
         )
     }
 
@@ -2045,34 +2084,48 @@ extension ContentView {
 
     // MARK: - iPhone Toolbar Composition
 
-    @ViewBuilder
-    private var iPhonePrimaryToolbarCluster: some View {
-        HStack(spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
+    var iPhoneUnifiedToolbarRow: some View {
+        VStack(spacing: 8) {
+            if isPhoneToolbarExpanded {
                 HStack(spacing: 12) {
                     languagePickerControl
                     toolbarPresetMenuControl
-                    ForEach(visibleIOSPrimaryToolbarActions, id: \.self) { action in
-                        iOSPrimaryToolbarActionControl(action)
-                    }
+                    Text(currentToolbarPreset.title)
+                        .font(.subheadline.weight(.semibold))
+                    Spacer(minLength: 0)
                 }
-                .padding(.leading, 12)
-                .padding(.trailing, 12)
-                .padding(.vertical, 8)
-                .fixedSize(horizontal: true, vertical: false)
-            }
-            .defaultScrollAnchor(.leading)
-            if !iPhoneMoreActions.isEmpty {
-                moreActionsControl
-                    .padding(.trailing, 12)
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-    }
+                .padding(.horizontal, 12)
 
-    var iPhoneUnifiedToolbarRow: some View {
-        iPhonePrimaryToolbarCluster
-            .frame(maxWidth: .infinity, alignment: .center)
+                ScrollView(.vertical) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 5), spacing: 8) {
+                        ForEach(iPhoneMoreActions, id: \.self) { action in
+                            iOSPrimaryToolbarActionControl(action)
+                                .frame(minWidth: 44, minHeight: 44)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                }
+                .frame(maxHeight: 220)
+            }
+
+            HStack(spacing: 0) {
+                ForEach(iPhoneCompactToolbarActions, id: \.self) { action in
+                    iOSPrimaryToolbarActionControl(action)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isPhoneToolbarExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: isPhoneToolbarExpanded ? "chevron.down" : "chevron.up")
+                }
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .accessibilityLabel(isPhoneToolbarExpanded ? "Collapse editor actions" : "Expand editor actions")
+            }
+            .padding(.horizontal, 4)
+        }
+            .padding(.vertical, 6)
             .tint(iOSToolbarTintColor)
     }
 

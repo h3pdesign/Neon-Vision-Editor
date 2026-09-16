@@ -2734,11 +2734,6 @@ struct ContentView: View {
                 }
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if usesIPhoneBottomToolbar && !showFindReplace {
-                iOSUnifiedToolbarHost
-            }
-        }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 #endif
     }
@@ -5671,7 +5666,7 @@ struct ContentView: View {
                     shouldPinToTop: shouldPinFloatingStatusToTop,
                     findPresented: showFindReplace,
                     pinnedPresentation: false
-                ) && !usesIPhoneBottomToolbar,
+                ),
                 status: AnyView(floatingStatusPill)
             )
         )

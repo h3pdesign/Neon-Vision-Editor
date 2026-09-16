@@ -1835,6 +1835,24 @@ extension ContentView {
     @ViewBuilder
     private var moreActionsControl: some View {
         Menu {
+            if usesIPhoneBottomToolbar {
+                Menu {
+                    ForEach(ToolbarPreset.allCases) { preset in
+                        Button {
+                            selectToolbarPreset(preset)
+                        } label: {
+                            Label(preset.title, systemImage: preset.icon)
+                            if currentToolbarPreset == preset {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Toolbar Preset", systemImage: currentToolbarPreset.icon)
+                }
+                languagePickerControl
+                Divider()
+            }
             iOSOverflowItem("settings") { Button(action: {
                 openSettings()
             }) {
@@ -2377,6 +2395,18 @@ extension ContentView {
             visionOSToolbarControls
         }
 #elseif os(iOS)
+        if usesIPhoneBottomToolbar && !showFindReplace {
+            ToolbarItem(placement: .bottomBar) {
+                HStack(spacing: 0) {
+                    ForEach(iPhoneCompactToolbarActions, id: \.self) { action in
+                        iOSPrimaryToolbarActionControl(action)
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    moreActionsControl
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+            }
+        }
         if isIPadToolbarLayout && !useIOSUnifiedTopHost {
             if #available(iOS 26.0, *) {
                 ToolbarItem(placement: .topBarTrailing) {

@@ -5672,13 +5672,20 @@ struct ContentView: View {
         }
 #if os(iOS)
         .overlay(alignment: .bottom) {
-            if usesIPadBottomToolbar && !showFindReplace && !isPhoneSoftwareKeyboardVisible {
+            if usesIOSBottomToolbar && !showFindReplace && !isPhoneSoftwareKeyboardVisible {
                 GeometryReader { proxy in
                     VStack(spacing: 0) {
                         Spacer(minLength: 0)
-                        iPadUnifiedToolbarRow(availableWidth: proxy.size.width)
-                            .frame(maxWidth: .infinity)
-                            .padding(.bottom, 8)
+                        if usesIPhoneBottomToolbar {
+                            iPhoneScrollableBottomToolbar
+                                .frame(width: max(0, proxy.size.width - 24))
+                                .frame(maxWidth: .infinity)
+                                .padding(.bottom, 8)
+                        } else {
+                            iPadUnifiedToolbarRow(availableWidth: proxy.size.width)
+                                .frame(maxWidth: .infinity)
+                                .padding(.bottom, 8)
+                        }
                     }
                 }
             }
@@ -5725,7 +5732,7 @@ struct ContentView: View {
                 centered: usesIOSBottomToolbar,
                 bottomInset: usesIOSBottomToolbar && isPhoneSoftwareKeyboardVisible
                     ? EditorInputTextView.keyboardToolbarHeight
-                    : (usesIPadBottomToolbar ? 64 : 0),
+                    : (usesIOSBottomToolbar ? 64 : 0),
                 status: AnyView(floatingStatusPill)
             )
         )

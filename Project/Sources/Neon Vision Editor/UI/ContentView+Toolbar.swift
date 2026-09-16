@@ -804,6 +804,13 @@ extension ContentView {
         )
     }
 
+    private var iPhoneScrollableToolbarActions: [IOSPrimaryToolbarAction] {
+        let compactActions = iPhoneCompactToolbarActions
+        return compactActions + enabledIOSPrimaryToolbarActions.filter {
+            !compactActions.contains($0)
+        }
+    }
+
     private func iOSPrimaryToolbarActionControl(_ action: IOSPrimaryToolbarAction) -> AnyView {
         // This factory is used inside the iPhone toolbar's ForEach. Keeping its
         // 38 branches as one opaque result type causes recursive Swift metadata
@@ -2112,6 +2119,60 @@ extension ContentView {
             .tint(iOSToolbarTintColor)
     }
 
+#if os(iOS)
+    @ViewBuilder
+    var iPhoneScrollableBottomToolbar: some View {
+        Group {
+            if isPhoneBottomToolbarMinimized {
+                HStack(spacing: 4) {
+                    settingsControl
+                        .frame(minWidth: 44, minHeight: 44)
+                    languagePickerControl
+                        .frame(minWidth: 44, minHeight: 44)
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isPhoneBottomToolbarMinimized = false
+                        }
+                    } label: {
+                        Image(systemName: "slider.horizontal.3")
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .accessibilityLabel("Expand editor actions")
+                }
+                .padding(.horizontal, 8)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        languagePickerControl
+                            .frame(minWidth: 44, minHeight: 44)
+                        toolbarPresetMenuControl
+                            .frame(minWidth: 44, minHeight: 44)
+                        ForEach(iPhoneScrollableToolbarActions, id: \.self) { action in
+                            iOSPrimaryToolbarActionControl(action)
+                                .frame(minWidth: 44, minHeight: 44)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .fixedSize(horizontal: true, vertical: false)
+                }
+                .defaultScrollAnchor(.leading)
+            }
+        }
+        .frame(maxWidth: isPhoneBottomToolbarMinimized ? nil : .infinity)
+        .frame(minHeight: 52)
+        .background {
+            IOSClearGlassBackground()
+                .clipShape(Capsule())
+        }
+        .clipShape(Capsule())
+        .tint(iOSToolbarTintColor)
+        .foregroundStyle(iOSToolbarTintColor)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Editor toolbar")
+        .accessibilityHint("Swipe horizontally to reveal more editor actions")
+    }
+#endif
+
     @ViewBuilder
     private var iPadDistributedToolbarControls: some View {
         languagePickerControl
@@ -2390,24 +2451,6 @@ extension ContentView {
             visionOSToolbarControls
         }
 #elseif os(iOS)
-        if usesIPhoneBottomToolbar && !showFindReplace && !isPhoneSoftwareKeyboardVisible {
-            ToolbarItem(placement: .bottomBar) {
-                HStack(spacing: 0) {
-                    languagePickerControl
-                        .frame(minWidth: 44, minHeight: 44)
-                    if !isPhoneBottomToolbarMinimized {
-                        ForEach(iPhoneCompactToolbarActions, id: \.self) { action in
-                            iOSPrimaryToolbarActionControl(action)
-                                .frame(minWidth: 44, minHeight: 44)
-                        }
-                    }
-                    moreActionsControl
-                        .frame(minWidth: 44, minHeight: 44)
-                }
-                .tint(iOSToolbarTintColor)
-                .foregroundStyle(iOSToolbarTintColor)
-            }
-        }
         if isIPadToolbarLayout && !usesIPadBottomToolbar && !useIOSUnifiedTopHost {
             if #available(iOS 26.0, *) {
                 ToolbarItem(placement: .topBarTrailing) {

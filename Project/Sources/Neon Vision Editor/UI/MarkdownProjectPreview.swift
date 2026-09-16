@@ -777,11 +777,6 @@ struct MarkdownProjectPreviewPanel: View {
                 .accessibilityLabel(!isIndexReady || isIndexing ? "Indexing project files" : previewStatus)
             }
         }
-        .background {
-            if !translucentBackgroundEnabled {
-                Color.clear.background(.ultraThinMaterial)
-            }
-        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Markdown files in current project")
     }
@@ -867,7 +862,7 @@ private struct MarkdownProjectPreviewCard: View {
             .background(
                 (isCurrentPreview
                     ? Color.accentColor.opacity(0.16)
-                    : (isHovered ? Color.accentColor.opacity(0.10) : Color.primary.opacity(0.045))),
+                    : (isHovered ? Color.accentColor.opacity(0.10) : Color.clear)),
                 in: RoundedRectangle(cornerRadius: 14, style: .continuous)
             )
             .overlay {

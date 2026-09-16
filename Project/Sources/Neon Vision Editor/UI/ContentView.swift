@@ -189,9 +189,10 @@ enum IOSFloatingStatusPolicy {
         brainDumpLayoutEnabled: Bool,
         shouldPinToTop: Bool,
         findPresented: Bool,
-        pinnedPresentation: Bool
+        pinnedPresentation: Bool,
+        phoneToolbarMinimized: Bool = false
     ) -> Bool {
-        guard !brainDumpLayoutEnabled, !findPresented else { return false }
+        guard !brainDumpLayoutEnabled, !findPresented, !phoneToolbarMinimized else { return false }
         return shouldPinToTop == pinnedPresentation
     }
 
@@ -5625,11 +5626,14 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .editorUserDidScroll)) { notif in
             guard usesIPhoneBottomToolbar,
-                  !isPhoneSoftwareKeyboardVisible,
                   let documentID = (notif.userInfo?[EditorCommandUserInfo.documentID] as? String).flatMap(UUID.init(uuidString:)),
                   documentID == viewModel.selectedTab?.id,
                   let scrollingDown = notif.userInfo?[EditorCommandUserInfo.scrollingDown] as? Bool else { return }
             isPhoneBottomToolbarMinimized = scrollingDown
+            if scrollingDown {
+                cancelPhoneStatusAutoCollapse()
+                isPhoneStatusBarExpanded = false
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             isPhoneToolbarExpanded = false
@@ -5703,7 +5707,8 @@ struct ContentView: View {
                     brainDumpLayoutEnabled: brainDumpLayoutEnabled,
                     shouldPinToTop: shouldPinFloatingStatusToTop,
                     findPresented: showFindReplace,
-                    pinnedPresentation: false
+                    pinnedPresentation: false,
+                    phoneToolbarMinimized: usesIPhoneBottomToolbar && isPhoneBottomToolbarMinimized
                 ),
                 centered: usesIPhoneBottomToolbar,
                 bottomInset: usesIPhoneBottomToolbar && isPhoneSoftwareKeyboardVisible

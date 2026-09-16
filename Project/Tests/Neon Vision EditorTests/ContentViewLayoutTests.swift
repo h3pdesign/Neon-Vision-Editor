@@ -132,6 +132,27 @@ final class ContentViewLayoutTests: XCTestCase {
         )
     }
 
+    func testPhoneStatusHidesWithMinimizedToolbarAndReturnsOnScrollUp() {
+        XCTAssertFalse(
+            IOSFloatingStatusPolicy.isVisible(
+                brainDumpLayoutEnabled: false,
+                shouldPinToTop: false,
+                findPresented: false,
+                pinnedPresentation: false,
+                phoneToolbarMinimized: true
+            )
+        )
+        XCTAssertTrue(
+            IOSFloatingStatusPolicy.isVisible(
+                brainDumpLayoutEnabled: false,
+                shouldPinToTop: false,
+                findPresented: false,
+                pinnedPresentation: false,
+                phoneToolbarMinimized: false
+            )
+        )
+    }
+
     func testPhoneStatusStartsCompactAndStaysAtBottomWithKeyboard() {
         XCTAssertEqual(
             IOSFloatingStatusPolicy.itemLimit(

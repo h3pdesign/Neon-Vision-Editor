@@ -523,7 +523,7 @@ struct MarkdownProjectPreviewPanel: View {
     let onRefresh: () -> Void
 
     private var headerBackgroundStyle: AnyShapeStyle {
-        translucentBackgroundEnabled ? AnyShapeStyle(Color.clear) : AnyShapeStyle(.thinMaterial)
+        AnyShapeStyle(Color.clear)
     }
 
     init(

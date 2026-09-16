@@ -74,6 +74,20 @@ struct ToolbarActionSelection {
         return enabledActions.filter { !visible.contains($0) }
     }
 
+    static func compactActions<Action: Hashable>(
+        enabledActions: [Action],
+        priority: [Action],
+        limit: Int
+    ) -> [Action] {
+        let enabled = Set(enabledActions)
+        var result: [Action] = []
+        for action in priority where enabled.contains(action) && !result.contains(action) {
+            result.append(action)
+            if result.count == limit { break }
+        }
+        return result
+    }
+
     static func honorsSectionVisibility(preset: ToolbarPreset) -> Bool {
         preset == .custom
     }
@@ -566,7 +580,7 @@ extension ContentView {
             .frame(minWidth: 64, alignment: .center)
 #else
             Image(systemName: currentToolbarPreset.icon)
-                .foregroundStyle(currentToolbarPreset.tint)
+                .foregroundStyle(iOSToolbarTintColor)
 #endif
         }
         .help("Choose Toolbar Preset")
@@ -648,6 +662,13 @@ extension ContentView {
 
 #if os(iOS) || os(visionOS)
     // MARK: - iOS Toolbar Layout Metrics
+
+    enum IPadBottomToolbarWidthPolicy {
+        nonisolated static func width(availableWidth: CGFloat, minimized: Bool) -> CGFloat {
+            let usableWidth = max(0, availableWidth - 64)
+            return min(usableWidth, minimized ? 176 : min(max(availableWidth * 0.68, 400), 760))
+        }
+    }
 
     private var iOSToolbarChromeStyle: GlassChromeStyle { .single }
     private var iOSToolbarTintColor: Color {
@@ -754,8 +775,40 @@ extension ContentView {
     private var iPhoneMoreActions: [IOSPrimaryToolbarAction] {
         ToolbarActionSelection.overflowActions(
             enabledActions: enabledIOSPrimaryToolbarActions,
-            visibleActions: visibleIOSPrimaryToolbarActions
+            visibleActions: isPhoneBottomToolbarMinimized ? [] : iPhoneCompactToolbarActions
         )
+    }
+
+    private var iPhoneCompactToolbarActions: [IOSPrimaryToolbarAction] {
+        let priority: [IOSPrimaryToolbarAction]
+        switch effectiveIOSToolbarPreset {
+        case .standard, .all:
+            priority = [
+                .saveFile, .findReplace, .toggleSidebar, .toggleProjectSidebar,
+                isPreviewSupportedDocument ? .markdownPreview : .markdownProjectPreview,
+                supportsCodeMinimap(language: currentLanguage) ? .codeMinimap : .markdownProjectPreview
+            ]
+        case .writing, .focus:
+            priority = [.saveFile, .findReplace, .markdownPreview]
+        case .developer:
+            priority = [.saveFile, .findReplace, .gitChanges]
+        case .review:
+            priority = [.findReplace, .gitChanges, .compareTabs]
+        case .custom:
+            priority = visibleIOSPrimaryToolbarActions
+        }
+        return ToolbarActionSelection.compactActions(
+            enabledActions: enabledIOSPrimaryToolbarActions,
+            priority: priority,
+            limit: effectiveIOSToolbarPreset == .custom ? 4 : 6
+        )
+    }
+
+    private var iPhoneScrollableToolbarActions: [IOSPrimaryToolbarAction] {
+        let compactActions = iPhoneCompactToolbarActions
+        return compactActions + enabledIOSPrimaryToolbarActions.filter {
+            !compactActions.contains($0)
+        }
     }
 
     private func iOSPrimaryToolbarActionControl(_ action: IOSPrimaryToolbarAction) -> AnyView {
@@ -1315,7 +1368,6 @@ extension ContentView {
         }) {
             Image(systemName: previewToolbarIconName)
         }
-        .foregroundStyle(isPreviewVisible ? Color.accentColor : Color.primary)
         .disabled(!isPreviewSupportedDocument)
         .help(isPreviewVisible ? "Hide \(previewTitle)" : "Show \(previewTitle)")
         .accessibilityLabel(previewTitle)
@@ -1328,7 +1380,6 @@ extension ContentView {
         } label: {
             Image(systemName: isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2")
         }
-        .foregroundStyle(isMarkdownProjectPreviewPresented ? Color.accentColor : Color.primary)
         .disabled(projectRootFolderURL == nil || !hasMarkdownOrPDFProjectPreviewFiles || isSafeModeActive)
         .help(isMarkdownProjectPreviewPresented ? "Hide Project Cards" : "Show Project Cards")
         .accessibilityLabel("Project Cards")
@@ -1546,6 +1597,22 @@ extension ContentView {
     @ViewBuilder
     private func iPadOverflowMenuControl(actions: [IPadToolbarAction]) -> some View {
         Menu {
+                if usesIPadBottomToolbar && isPhoneBottomToolbarMinimized {
+                    Menu {
+                        ForEach(ToolbarPreset.allCases) { preset in
+                            Button {
+                                selectToolbarPreset(preset)
+                            } label: {
+                                Label(preset.title, systemImage: preset.icon)
+                                if currentToolbarPreset == preset {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("Toolbar Preset", systemImage: currentToolbarPreset.icon)
+                    }
+                }
                 ForEach(actions, id: \.self) { action in
                     switch action {
                     case .openFile:
@@ -1746,6 +1813,23 @@ extension ContentView {
     @ViewBuilder
     private var moreActionsControl: some View {
         Menu {
+            if usesIPhoneBottomToolbar {
+                Menu {
+                    ForEach(ToolbarPreset.allCases) { preset in
+                        Button {
+                            selectToolbarPreset(preset)
+                        } label: {
+                            Label(preset.title, systemImage: preset.icon)
+                            if currentToolbarPreset == preset {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Toolbar Preset", systemImage: currentToolbarPreset.icon)
+                }
+                Divider()
+            }
             iOSOverflowItem("settings") { Button(action: {
                 openSettings()
             }) {
@@ -1767,10 +1851,6 @@ extension ContentView {
             iOSOverflowItem("insertTemplate") { Button(action: { insertTemplateForCurrentLanguage() }) {
                 Label("Insert Template", systemImage: "doc.badge.plus")
             } }
-
-            Button(action: { presentLanguageSearchSheet() }) {
-                Label("Language…", systemImage: "magnifyingglass")
-            }
 
             iOSOverflowItem("newTab") { Button(action: { viewModel.addNewTab() }) {
                 Label("New Tab", systemImage: "plus.square.on.square")
@@ -1987,7 +2067,7 @@ extension ContentView {
 #endif
 
         } label: {
-            Image(systemName: "ellipsis.circle")
+            Image(systemName: isPhoneBottomToolbarMinimized ? "slider.horizontal.3" : "ellipsis.circle")
         }
         .help("More Actions")
         .accessibilityLabel("More Actions")
@@ -1995,36 +2075,103 @@ extension ContentView {
 
     // MARK: - iPhone Toolbar Composition
 
-    @ViewBuilder
-    private var iPhonePrimaryToolbarCluster: some View {
-        HStack(spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    languagePickerControl
-                    toolbarPresetMenuControl
-                    ForEach(visibleIOSPrimaryToolbarActions, id: \.self) { action in
-                        iOSPrimaryToolbarActionControl(action)
-                    }
-                }
-                .padding(.leading, 12)
-                .padding(.trailing, 12)
-                .padding(.vertical, 8)
-                .fixedSize(horizontal: true, vertical: false)
-            }
-            .defaultScrollAnchor(.leading)
-            if !iPhoneMoreActions.isEmpty {
-                moreActionsControl
-                    .padding(.trailing, 12)
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-    }
-
     var iPhoneUnifiedToolbarRow: some View {
-        iPhonePrimaryToolbarCluster
-            .frame(maxWidth: .infinity, alignment: .center)
+        VStack(spacing: 8) {
+            if isPhoneToolbarExpanded {
+                HStack(spacing: 12) {
+                    toolbarPresetMenuControl
+                    Text(currentToolbarPreset.title)
+                        .font(.subheadline.weight(.semibold))
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 12)
+
+                ScrollView(.vertical) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 5), spacing: 8) {
+                        ForEach(iPhoneMoreActions, id: \.self) { action in
+                            iOSPrimaryToolbarActionControl(action)
+                                .frame(minWidth: 44, minHeight: 44)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                }
+                .frame(maxHeight: 220)
+            }
+
+            HStack(spacing: 0) {
+                ForEach(iPhoneCompactToolbarActions, id: \.self) { action in
+                    iOSPrimaryToolbarActionControl(action)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isPhoneToolbarExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: isPhoneToolbarExpanded ? "chevron.down" : "chevron.up")
+                }
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .accessibilityLabel(isPhoneToolbarExpanded ? "Collapse editor actions" : "Expand editor actions")
+            }
+            .padding(.horizontal, 4)
+        }
+            .padding(.vertical, 6)
             .tint(iOSToolbarTintColor)
     }
+
+#if os(iOS)
+    @ViewBuilder
+    var iPhoneScrollableBottomToolbar: some View {
+        Group {
+            if isPhoneBottomToolbarMinimized {
+                HStack(spacing: 4) {
+                    settingsControl
+                        .frame(minWidth: 44, minHeight: 44)
+                    languagePickerControl
+                        .frame(minWidth: 44, minHeight: 44)
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isPhoneBottomToolbarMinimized = false
+                        }
+                    } label: {
+                        Image(systemName: "slider.horizontal.3")
+                    }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .accessibilityLabel("Expand editor actions")
+                }
+                .padding(.horizontal, 8)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        languagePickerControl
+                            .frame(minWidth: 44, minHeight: 44)
+                        toolbarPresetMenuControl
+                            .frame(minWidth: 44, minHeight: 44)
+                        ForEach(iPhoneScrollableToolbarActions, id: \.self) { action in
+                            iOSPrimaryToolbarActionControl(action)
+                                .frame(minWidth: 44, minHeight: 44)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .fixedSize(horizontal: true, vertical: false)
+                }
+                .defaultScrollAnchor(.leading)
+            }
+        }
+        .frame(maxWidth: isPhoneBottomToolbarMinimized ? nil : .infinity)
+        .frame(minHeight: 52)
+        .background {
+            IOSClearGlassBackground()
+                .clipShape(Capsule())
+        }
+        .clipShape(Capsule())
+        .tint(iOSToolbarTintColor)
+        .foregroundStyle(iOSToolbarTintColor)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Editor toolbar")
+        .accessibilityHint("Swipe horizontally to reveal more editor actions")
+    }
+#endif
 
     @ViewBuilder
     private var iPadDistributedToolbarControls: some View {
@@ -2067,7 +2214,36 @@ extension ContentView {
     }
 
     @ViewBuilder
-    var iPadUnifiedToolbarRow: some View {
+    func iPadUnifiedToolbarRow(availableWidth: CGFloat) -> some View {
+#if os(iOS)
+        Group {
+            if isPhoneBottomToolbarMinimized {
+                HStack(spacing: 4) {
+                    settingsControl
+                        .frame(minWidth: 44, minHeight: 44)
+                    languagePickerControl
+                        .frame(minWidth: 44, minHeight: 44)
+                    iPadOverflowMenuControl(actions: enabledIPadActionPriority.filter { $0 != .settings })
+                }
+                .padding(.horizontal, 8)
+                .frame(minHeight: 52)
+            } else {
+                iPadScrollableToolbarControls
+            }
+        }
+        .frame(width: IPadBottomToolbarWidthPolicy.width(
+            availableWidth: availableWidth,
+            minimized: isPhoneBottomToolbarMinimized
+        ))
+        .background {
+            IOSClearGlassBackground()
+                .clipShape(Capsule())
+        }
+        .tint(iOSToolbarTintColor)
+        .foregroundStyle(iOSToolbarTintColor)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Editor toolbar")
+#else
         GlassSurface(
             enabled: enableTranslucentWindow || visionOSSystemGlassEnabled,
             material: primaryGlassMaterial,
@@ -2083,6 +2259,7 @@ extension ContentView {
         .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
         .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
         .tint(iOSToolbarTintColor)
+#endif
     }
 
 #if os(visionOS)
@@ -2274,7 +2451,7 @@ extension ContentView {
             visionOSToolbarControls
         }
 #elseif os(iOS)
-        if isIPadToolbarLayout && !useIOSUnifiedTopHost {
+        if isIPadToolbarLayout && !usesIPadBottomToolbar && !useIOSUnifiedTopHost {
             if #available(iOS 26.0, *) {
                 ToolbarItem(placement: .topBarTrailing) {
                     GlassSurface(

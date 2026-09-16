@@ -709,6 +709,7 @@ struct TerminalOutputTextView: NSViewRepresentable {
 struct IntegratedTerminalContent: View {
     let rootFolderURL: URL?
     @ObservedObject var session: IntegratedTerminalSession
+    let translucentBackgroundEnabled: Bool
     var selectedFileURL: URL? = nil
     var showsCloseButton: Bool = false
     var onClose: (() -> Void)? = nil
@@ -716,6 +717,7 @@ struct IntegratedTerminalContent: View {
     @State private var workingDirectoryOverride: URL? = nil
     @FocusState private var commandFieldIsFocused: Bool
     @AppStorage(SettingsPreferenceKey.pythonInterpreterPath) private var pythonInterpreterPath: String = ""
+    @Environment(\.colorScheme) private var colorScheme
 
     private var workingDirectory: URL {
         workingDirectoryOverride ?? rootFolderURL ?? FileManager.default.homeDirectoryForCurrentUser
@@ -743,13 +745,14 @@ struct IntegratedTerminalContent: View {
             TerminalOutputTextView(session: session, update: session.renderUpdate)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background {
-#if os(macOS)
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color(nsColor: .textBackgroundColor))
-#else
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.secondary.opacity(0.10))
-#endif
+                    .fill(translucentBackgroundEnabled
+                        ? Color.clear
+                        : currentEditorTheme(colorScheme: colorScheme).background)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.black.opacity(translucentBackgroundEnabled ? 0.06 : 0.05))
+                    }
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)

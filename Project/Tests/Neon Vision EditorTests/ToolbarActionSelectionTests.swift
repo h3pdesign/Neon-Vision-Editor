@@ -174,6 +174,23 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertTrue(Set(visible).isDisjoint(with: Set(overflow)))
     }
 
+    func testCompactActionsKeepPriorityAndLeaveTheRestAccessible() {
+        let enabled = TestAction.allCases
+        let compact = ToolbarActionSelection.compactActions(
+            enabledActions: enabled,
+            priority: [.saveFile, .findReplace, .saveFile, .newTab],
+            limit: 3
+        )
+        let remaining = ToolbarActionSelection.overflowActions(
+            enabledActions: enabled,
+            visibleActions: compact
+        )
+
+        XCTAssertEqual(compact, [.saveFile, .findReplace, .newTab])
+        XCTAssertTrue(Set(compact).isDisjoint(with: Set(remaining)))
+        XCTAssertEqual(Set(compact + remaining), Set(enabled))
+    }
+
     func testPrimaryAndOverflowActionsGiveEachActionOneRoute() {
         let enabled = TestAction.allCases
         let primary = ToolbarActionSelection.visibleActions(

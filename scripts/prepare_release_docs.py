@@ -597,6 +597,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v1.8.1": ("Mobile Symbolleisten und natives Glas", "Kompakte Symbolleisten für iPhone und iPad halten den Editor sichtbar. Tastaturaktionen, Status und Vorschauen passen sich dem Editor-Theme und den Systemeinstellungen für Glas an.", ["Editor", "Symbolleiste", "iPhone und iPad"]),
         "v1.8.0": ("Schnellere Dateien und anpassbares Fensterglas", "Öffnet Dateien per Drag-and-drop, beschleunigt Datei- und Projektarbeit mit Swift 6.4 und OS 27, hält lange Dokumente vollständig sichtbar und passt Layouts sowie natives Fensterglas flexibel an.", ["Editor", "Leistung", "macOS"]),
         "v1.7.6": ("Stabile Editorzeilen beim Scrollen", "Zeichnet beim Scrollen den sichtbaren Core-Text-Bereich neu und verhindert überlagerte oder abgeschnittene Zeilen in langen und umbrochenen Dokumenten.", ["Editor", "Scrollen", "macOS"]),
         "v1.7.5": ("Flüssigeres Scrollen und zuverlässige Tabs", "Hält feine Scrollbewegungen auf dem schnellen AppKit-Pfad, vermeidet redundante Minimap-Aktualisierungen und stellt das Verschieben nativer macOS-Tabs wieder her.", ["Editor", "Leistung", "Tabs"]),
@@ -627,6 +628,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v1.8.1": ("Mobile værktøjslinjer og indbygget glas", "Kompakte værktøjslinjer til iPhone og iPad holder editoren synlig. Tastaturhandlinger, status og forhåndsvisninger følger editorens tema og systemets glasindstillinger.", ["Editor", "Værktøjslinje", "iPhone og iPad"]),
         "v1.8.0": ("Hurtigere filer og justerbart vinduesglas", "Åbner filer med træk og slip, fremskynder fil- og projektarbejde med Swift 6.4 og OS 27, holder lange dokumenter komplette og tilpasser layout samt native vinduesglas fleksibelt.", ["Editor", "Ydeevne", "macOS"]),
         "v1.7.6": ("Stabile editorlinjer under rulning", "Gentegner det synlige Core Text-område under rulning og forhindrer overlappende eller afskårne linjer i lange dokumenter med linjeombrydning.", ["Editor", "Rulning", "macOS"]),
         "v1.7.5": ("Mere flydende rulning og pålidelige faner", "Holder fine rullebevægelser på den hurtige AppKit-sti, undgår overflødige minimap-opdateringer og gendanner flytning af native macOS-faner.", ["Editor", "Ydeevne", "Faner"]),
@@ -657,6 +659,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v1.8.1": ("Barres d’outils mobiles et verre natif", "Des barres d’outils compactes sur iPhone et iPad laissent l’éditeur visible. Les commandes du clavier, l’état et les aperçus suivent le thème de l’éditeur et les réglages système du verre.", ["Éditeur", "Barre d’outils", "iPhone et iPad"]),
         "v1.8.0": ("Fichiers plus rapides et verre réglable", "Ouvre les fichiers par glisser-déposer, accélère les opérations de fichiers et de projets avec Swift 6.4 et OS 27, conserve les longs documents complets et adapte la disposition ainsi que le verre natif.", ["Éditeur", "Performances", "macOS"]),
         "v1.7.6": ("Lignes stables pendant le défilement", "Redessine la zone Core Text visible pendant le défilement et évite les lignes superposées ou tronquées dans les documents longs avec retour à la ligne.", ["Éditeur", "Défilement", "macOS"]),
         "v1.7.5": ("Défilement plus fluide et onglets fiables", "Conserve les petits défilements sur le chemin AppKit rapide, évite les mises à jour redondantes de la minicarte et rétablit le déplacement des onglets natifs macOS.", ["Éditeur", "Performances", "Onglets"]),
@@ -687,6 +690,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v1.8.1": ("Barras móviles y cristal nativo", "Las barras compactas de iPhone y iPad dejan visible el editor. Los controles del teclado, el estado y las vistas previas siguen el tema del editor y los ajustes de cristal del sistema.", ["Editor", "Barra de herramientas", "iPhone y iPad"]),
         "v1.8.0": ("Archivos más rápidos y cristal ajustable", "Abre archivos mediante arrastrar y soltar, acelera el trabajo con archivos y proyectos usando Swift 6.4 y OS 27, mantiene completos los documentos largos y adapta el diseño y el cristal nativo.", ["Editor", "Rendimiento", "macOS"]),
         "v1.7.6": ("Líneas estables al desplazarse", "Redibuja la región visible de Core Text durante el desplazamiento y evita líneas superpuestas o recortadas en documentos largos con ajuste de línea.", ["Editor", "Desplazamiento", "macOS"]),
         "v1.7.5": ("Desplazamiento más fluido y pestañas fiables", "Mantiene los pequeños desplazamientos en la ruta rápida de AppKit, evita actualizaciones redundantes del minimapa y restaura el movimiento de pestañas nativas de macOS.", ["Editor", "Rendimiento", "Pestañas"]),
@@ -717,6 +721,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v1.8.1": ("モバイルツールバーとネイティブガラス", "iPhone と iPad のコンパクトなツールバーでエディタを広く表示。キーボード操作、ステータス、プレビューがエディタのテーマとシステムのガラス設定に合わせて変化します。", ["エディタ", "ツールバー", "iPhone と iPad"]),
         "v1.8.0": ("高速なファイル処理と調整可能なウインドウガラス", "ドラッグ＆ドロップでファイルを開き、Swift 6.4 と OS 27 でファイルとプロジェクトの処理を高速化。長い文書を最後まで表示し、レイアウトとネイティブガラスを柔軟に調整します。", ["エディタ", "パフォーマンス", "macOS"]),
         "v1.7.6": ("スクロール中も安定したエディタ行", "スクロール時に表示中の Core Text 領域だけを再描画し、長い折り返し文書で行が重なったり欠けたりする問題を防ぎます。", ["エディタ", "スクロール", "macOS"]),
         "v1.7.5": ("より滑らかなスクロールと確実なタブ操作", "細かなスクロールを高速な AppKit 経路で処理し、不要なミニマップ更新を避け、macOS のネイティブタブ移動を復元します。", ["エディタ", "パフォーマンス", "タブ"]),
@@ -747,6 +752,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v1.8.1": ("移动工具栏与原生玻璃效果", "iPhone 和 iPad 的紧凑工具栏让编辑器保留更多可见空间。键盘操作、状态信息和预览会适应编辑器主题及系统玻璃效果设置。", ["编辑器", "工具栏", "iPhone 和 iPad"]),
         "v1.8.0": ("更快的文件处理与可调窗口玻璃效果", "支持拖放打开文件，利用 Swift 6.4 和 OS 27 加速文件与项目操作，完整显示长文档，并让布局和原生窗口玻璃效果灵活适配可用空间。", ["编辑器", "性能", "macOS"]),
         "v1.7.6": ("滚动时保持编辑器行稳定", "滚动时仅重绘可见的 Core Text 区域，避免长文档和自动换行文档中的文本行重叠或被裁切。", ["编辑器", "滚动", "macOS"]),
         "v1.7.5": ("更流畅的滚动与可靠的标签页", "让细微滚动保持在快速的 AppKit 路径上，避免重复更新小地图，并恢复 macOS 原生标签页拖动排序。", ["编辑器", "性能", "标签页"]),

@@ -1,4 +1,36 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+
+enum IOSClearGlassAppearance {
+    static func apply(to view: UIVisualEffectView) {
+        view.isOpaque = false
+        if #available(iOS 26.0, *) {
+            // Let the system adjust its glass for Clear/Tinted and accessibility settings.
+            view.backgroundColor = .clear
+            view.effect = UIGlassEffect(style: .clear)
+        } else if UIAccessibility.isReduceTransparencyEnabled {
+            view.effect = nil
+            view.backgroundColor = .secondarySystemBackground
+        } else {
+            view.backgroundColor = .clear
+            view.effect = UIBlurEffect(style: .systemChromeMaterial)
+        }
+    }
+}
+
+struct IOSClearGlassBackground: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        let view = UIVisualEffectView()
+        IOSClearGlassAppearance.apply(to: view)
+        return view
+    }
+
+    func updateUIView(_ view: UIVisualEffectView, context: Context) {
+        IOSClearGlassAppearance.apply(to: view)
+    }
+}
+#endif
 
 
 
@@ -76,12 +108,39 @@ struct GlassSurface<Content: View>: View {
                 .overlay(secondaryChromeShape)
         }
 #else
+#if os(macOS) || os(iOS)
+        if enabled, #available(macOS 26.0, iOS 26.0, *) {
+            nativeGlassContent
+        } else {
+            legacyGlassContent
+        }
+#else
+        legacyGlassContent
+#endif
+#endif
+    }
+
+    private var legacyGlassContent: some View {
         content
             .background(backgroundStyle)
             .overlay(primaryChromeShape)
             .overlay(secondaryChromeShape)
-#endif
     }
+
+#if os(macOS) || os(iOS)
+    @available(macOS 26.0, iOS 26.0, *)
+    @ViewBuilder
+    private var nativeGlassContent: some View {
+        switch shape {
+        case .capsule:
+            content.glassEffect(.regular, in: Capsule())
+        case .circle:
+            content.glassEffect(.regular, in: Circle())
+        case .rounded(let radius):
+            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+        }
+    }
+#endif
 
     @ViewBuilder
     private var backgroundStyle: some View {

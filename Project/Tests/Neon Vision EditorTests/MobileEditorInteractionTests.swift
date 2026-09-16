@@ -10,6 +10,8 @@ final class MobileEditorInteractionTests: XCTestCase {
         wrap: Bool = false,
         documentID: UUID? = nil,
         language: String = "plain text",
+        showKeyboardAccessoryBar: Bool = false,
+        softwareKeyboardVisible: Bool = false,
         onTextMutation: ((EditorTextMutation) -> Void)? = nil
     ) -> CustomTextEditor {
         CustomTextEditor(text: .constant(text), document: nil, documentID: documentID,
@@ -18,7 +20,8 @@ final class MobileEditorInteractionTests: XCTestCase {
             ignoreBackgroundOverrides: false,
             fontSize: 16, isLineWrapEnabled: .constant(wrap), isLargeFileMode: false,
             showsCodeMinimap: false, translucentBackgroundEnabled: false,
-            showKeyboardAccessoryBar: false, showLineNumbers: true,
+            showKeyboardAccessoryBar: showKeyboardAccessoryBar,
+            softwareKeyboardVisible: softwareKeyboardVisible, showLineNumbers: true,
             formattingPreferences: .init(boldKeywords: false, italicComments: false,
                 underlineLinks: false, boldMarkdownHeadings: false),
             showInvisibleCharacters: false, highlightCurrentLine: false,
@@ -30,9 +33,22 @@ final class MobileEditorInteractionTests: XCTestCase {
             onFontSizeChange: nil, onTextMutation: onTextMutation)
     }
 
-    private func withEditor(_ text: String, body: (LineNumberedTextViewContainer) -> Void) {
-        let host = UIHostingController(rootView: editor(text))
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 600))
+    private func withEditor(
+        _ text: String,
+        showKeyboardAccessoryBar: Bool = false,
+        softwareKeyboardVisible: Bool = false,
+        body: (LineNumberedTextViewContainer) -> Void
+    ) {
+        let host = UIHostingController(rootView: editor(
+            text,
+            showKeyboardAccessoryBar: showKeyboardAccessoryBar,
+            softwareKeyboardVisible: softwareKeyboardVisible
+        ))
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first else {
+            return XCTFail("Missing iPhone window scene")
+        }
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
         window.rootViewController = host
         window.makeKeyAndVisible()
         host.view.layoutIfNeeded()
@@ -96,6 +112,143 @@ final class MobileEditorInteractionTests: XCTestCase {
         withEditor("one\ntwo") { container in
             XCTAssertGreaterThanOrEqual(container.textView.textContainerInset.bottom,
                 (container.textView.font?.lineHeight ?? 0) * 3)
+        }
+    }
+
+    func testPhoneKeyboardToolbarUsesClearEditorOverlay() {
+        withEditor("Code behind toolbar", showKeyboardAccessoryBar: true, softwareKeyboardVisible: true) { container in
+            let view = container.textView
+            XCTAssertTrue(view.becomeFirstResponder())
+            guard let accessory = container.keyboardAccessoryOverlay,
+                  accessory.subviews.count == 1,
+                  let glass = accessory.subviews.first as? UIVisualEffectView,
+                  let scroll = glass.contentView.subviews.compactMap({ $0 as? UIScrollView }).first else {
+                return XCTFail("Missing keyboard glass overlay")
+            }
+            XCTAssertNil(view.inputAccessoryView, "The keyboard host must not own the phone toolbar")
+            XCTAssertTrue(accessory.superview === container)
+            XCTAssertFalse(accessory.isOpaque)
+            XCTAssertEqual(accessory.backgroundColor, .clear)
+            XCTAssertFalse(glass.isOpaque)
+            XCTAssertEqual(glass.layer.cornerRadius, 21)
+            XCTAssertTrue(glass.clipsToBounds)
+            XCTAssertFalse(scroll.isOpaque)
+            XCTAssertEqual(scroll.backgroundColor, .clear)
+            if #available(iOS 26.0, *) {
+                XCTAssertTrue(glass.effect is UIGlassEffect)
+            }
+        }
+    }
+
+    func testIPadKeyboardAccessoryDoesNotCoverNativeGlassWithLegacyBlur() {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return }
+        withEditor("Code behind toolbar", showKeyboardAccessoryBar: true) { container in
+            let view = container.textView
+            view.setBracketAccessoryVisible(true)
+            guard let accessory = view.inputAccessoryView,
+                  let glass = accessory.subviews.first as? UIVisualEffectView else {
+                return XCTFail("Missing iPad keyboard glass")
+            }
+            if #available(iOS 26.0, *) {
+                XCTAssertEqual(accessory.subviews.count, 1)
+                XCTAssertTrue(glass.effect is UIGlassEffect)
+                view.setKeyboardAccessoryBackgroundColor(.red)
+                XCTAssertEqual(accessory.backgroundColor, .clear)
+            }
+        }
+    }
+
+    func testKeyboardShortcutActionsFollowTheirVisibilitySetting() {
+        let defaults = UserDefaults.standard
+        let enabledKey = "SettingsKeyboardShortcutAccessoryBarIOS"
+        let actionsKey = KeyboardAccessoryAction.storageKey
+        let previousEnabled = defaults.object(forKey: enabledKey)
+        let previousActions = defaults.object(forKey: actionsKey)
+        defer {
+            if let previousEnabled { defaults.set(previousEnabled, forKey: enabledKey) }
+            else { defaults.removeObject(forKey: enabledKey) }
+            if let previousActions { defaults.set(previousActions, forKey: actionsKey) }
+            else { defaults.removeObject(forKey: actionsKey) }
+        }
+        defaults.set(KeyboardAccessoryAction.storageValue(for: KeyboardAccessoryAction.defaultActions), forKey: actionsKey)
+        defaults.set(false, forKey: enabledKey)
+
+        withEditor("Code behind toolbar", showKeyboardAccessoryBar: true, softwareKeyboardVisible: true) { container in
+            let view = container.textView
+            XCTAssertTrue(view.becomeFirstResponder())
+            func shortcutButtons(in root: UIView?) -> [UIButton] {
+                guard let root else { return [] }
+                let current = (root as? UIButton).flatMap {
+                    $0.accessibilityIdentifier?.hasPrefix("keyboard-accessory-") == true ? $0 : nil
+                }
+                return (current.map { [$0] } ?? []) + root.subviews.flatMap { shortcutButtons(in: $0) }
+            }
+            let accessory = UIDevice.current.userInterfaceIdiom == .phone
+                ? container.keyboardAccessoryOverlay : view.inputAccessoryView
+            XCTAssertTrue(shortcutButtons(in: accessory).isEmpty)
+
+            defaults.set(true, forKey: enabledKey)
+            view.setBracketAccessoryVisible(true)
+            let updatedAccessory = UIDevice.current.userInterfaceIdiom == .phone
+                ? container.keyboardAccessoryOverlay : view.inputAccessoryView
+            XCTAssertFalse(shortcutButtons(in: updatedAccessory).isEmpty)
+        }
+    }
+
+    func testPhoneKeyboardOverlayRemainsClearAcrossRebuilds() {
+        withEditor("Code behind toolbar", showKeyboardAccessoryBar: true, softwareKeyboardVisible: true) { container in
+            let view = container.textView
+            let editorBackground = UIColor(red: 0.92, green: 0.84, blue: 0.96, alpha: 1)
+            view.setKeyboardAccessoryBackgroundColor(editorBackground)
+            XCTAssertTrue(view.becomeFirstResponder())
+            assertAccessoryBackground(container, matches: editorBackground)
+
+            view.setBracketAccessoryVisible(false)
+            XCTAssertTrue(container.keyboardAccessoryOverlay?.isHidden ?? true)
+            view.setBracketAccessoryVisible(true)
+            assertAccessoryBackground(container, matches: editorBackground)
+            container.setSoftwareKeyboardVisible(false)
+            XCTAssertTrue(container.keyboardAccessoryOverlay?.isHidden ?? true)
+        }
+    }
+
+    func testKeyboardOverlayAnchorsToKeyboardLayoutGuide() {
+        withEditor(
+            String(repeating: "Editor content behind glass\n", count: 30),
+            showKeyboardAccessoryBar: true,
+            softwareKeyboardVisible: true
+        ) { container in
+            let view = container.textView
+            XCTAssertTrue(view.becomeFirstResponder())
+            container.layoutIfNeeded()
+            guard let overlay = container.keyboardAccessoryOverlay else {
+                return XCTFail("Missing editor keyboard overlay")
+            }
+            XCTAssertNotNil(container.window)
+            XCTAssertNotNil(overlay.window)
+            XCTAssertFalse(overlay.isHidden)
+            XCTAssertGreaterThan(overlay.bounds.height, 40)
+            XCTAssertLessThan(overlay.frame.minY, container.bounds.height)
+            XCTAssertTrue(overlay.window === container.window)
+            XCTAssertEqual(overlay.frame.maxY, container.keyboardLayoutGuide.layoutFrame.minY, accuracy: 1)
+        }
+    }
+
+    private func assertAccessoryBackground(_ container: LineNumberedTextViewContainer, matches editorBackground: UIColor) {
+        guard let accessory = container.keyboardAccessoryOverlay,
+              let glass = accessory.subviews.first as? UIVisualEffectView else {
+            return XCTFail("Missing glass keyboard overlay")
+        }
+        XCTAssertFalse(accessory.isHidden)
+        if #available(iOS 26.0, *) {
+            XCTAssertEqual(accessory.backgroundColor, .clear)
+            XCTAssertTrue(glass.effect is UIGlassEffect)
+        } else if UIAccessibility.isReduceTransparencyEnabled {
+            XCTAssertEqual(accessory.backgroundColor, editorBackground)
+            XCTAssertNil(glass.effect)
+        } else {
+            XCTAssertEqual(accessory.backgroundColor, .clear)
+            XCTAssertTrue(glass.effect is UIBlurEffect)
         }
     }
 

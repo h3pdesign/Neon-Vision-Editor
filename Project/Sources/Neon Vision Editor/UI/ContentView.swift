@@ -189,24 +189,46 @@ enum IOSFloatingStatusPolicy {
         brainDumpLayoutEnabled: Bool,
         shouldPinToTop: Bool,
         findPresented: Bool,
-        pinnedPresentation: Bool
+        pinnedPresentation: Bool,
+        phoneToolbarMinimized: Bool = false
     ) -> Bool {
-        guard !brainDumpLayoutEnabled, !findPresented else { return false }
+        guard !brainDumpLayoutEnabled, !findPresented, !phoneToolbarMinimized else { return false }
         return shouldPinToTop == pinnedPresentation
+    }
+
+    nonisolated static func shouldPinToTop(
+        isPhoneBottomToolbar: Bool,
+        compactLayout: Bool,
+        keyboardVisible: Bool
+    ) -> Bool {
+        !isPhoneBottomToolbar && compactLayout && keyboardVisible
+    }
+
+    nonisolated static func itemLimit(
+        isPhoneBottomToolbar: Bool,
+        compactEditing: Bool,
+        expanded: Bool,
+        regularLimit: Int
+    ) -> Int? {
+        if isPhoneBottomToolbar { return expanded ? nil : 1 }
+        if compactEditing { return expanded ? regularLimit : 1 }
+        return regularLimit
     }
 }
 
 #if os(iOS) || os(visionOS)
 private struct MobileFloatingStatusOverlayModifier: ViewModifier {
     let showsStatus: Bool
+    let centered: Bool
+    let bottomInset: CGFloat
     let status: AnyView
 
     func body(content: Content) -> some View {
-        content.overlay(alignment: .bottomTrailing) {
+        content.overlay(alignment: centered ? .bottom : .bottomTrailing) {
             if showsStatus {
                 status
-                    .padding(.trailing, 12)
-                    .padding(.bottom, 12)
+                    .padding(.trailing, centered ? 0 : 12)
+                    .padding(.bottom, 12 + bottomInset)
             }
         }
     }
@@ -239,7 +261,17 @@ private struct DroppedFileProgressOverlayModifier: ViewModifier {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
-                .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+                .background {
+#if os(macOS) || os(iOS)
+                    if #available(macOS 26.0, iOS 26.0, *) {
+                        Color.clear.glassEffect(.regular, in: Capsule(style: .continuous))
+                    } else {
+                        Color.clear.background(.ultraThinMaterial, in: Capsule(style: .continuous))
+                    }
+#else
+                    Color.clear.background(.ultraThinMaterial, in: Capsule(style: .continuous))
+#endif
+                }
                 .padding(.top, topPadding)
                 .padding(.trailing, 12)
             }
@@ -931,7 +963,7 @@ struct ContentView: View {
 #if os(iOS) || os(visionOS)
     @AppStorage("SettingsForceLargeFileMode") var forceLargeFileMode: Bool = false
     @AppStorage("SettingsMobileEditingStatusPresetEnabled") var mobileEditingStatusPresetEnabled: Bool = false
-    @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = false
+    @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = true
 #if os(iOS) || os(visionOS)
     @AppStorage("SettingsKeyboardShortcutAccessoryBarIOS") var keyboardShortcutAccessoryBarEnabledIOS: Bool = true
     @AppStorage(KeyboardAccessoryAction.storageKey) var keyboardShortcutAccessoryActionsIOS: String = KeyboardAccessoryAction.storageValue(for: KeyboardAccessoryAction.defaultActions)
@@ -953,6 +985,8 @@ struct ContentView: View {
     @AppStorage("SettingsToolbarPresetIOS") var toolbarPresetIOSRaw: String = ToolbarPreset.standard.rawValue
     @State var isPhoneEditorFocused: Bool = false
     @State var isPhoneSoftwareKeyboardVisible: Bool = false
+    @State var isPhoneBottomToolbarMinimized: Bool = false
+    @State var isPhoneToolbarExpanded: Bool = false
     @State var isPhoneStatusBarExpanded: Bool = false
     @State var phoneStatusAutoCollapseTask: Task<Void, Never>? = nil
 #endif
@@ -2704,7 +2738,9 @@ struct ContentView: View {
                 if shouldUseSplitView {
                     VStack(spacing: 0) {
                         if usesAppOwnedIOSSplitChromeLayout {
-                            iOSUnifiedToolbarHost
+                            if !usesIOSBottomToolbar {
+                                iOSUnifiedToolbarHost
+                            }
                             iOSUnifiedDocumentChromeHost
                         }
                         NavigationSplitView {
@@ -2744,6 +2780,9 @@ struct ContentView: View {
         .environment(\.colorScheme, effectiveEditorColorScheme)
         .onChange(of: showFindReplace) { _, isPresented in
             if isPresented {
+#if os(iOS) || os(visionOS)
+                isPhoneToolbarExpanded = false
+#endif
                 refreshFindPreview()
             } else {
                 findRefreshTask?.cancel()
@@ -2753,6 +2792,9 @@ struct ContentView: View {
             }
         }
         .onChange(of: viewModel.selectedTabID) { _, _ in
+#if os(iOS) || os(visionOS)
+            isPhoneBottomToolbarMinimized = false
+#endif
             if showFindReplace { refreshFindPreview() }
         }
         .onChange(of: viewModel.selectedTab?.contentRevision) { _, _ in
@@ -3166,7 +3208,7 @@ struct ContentView: View {
         }
 #if os(iOS) || os(visionOS)
         if defaults.object(forKey: "SettingsShowKeyboardAccessoryBarIOS") == nil {
-            showKeyboardAccessoryBarIOS = false
+            showKeyboardAccessoryBarIOS = true
         }
 #endif
 #if os(macOS)
@@ -4868,6 +4910,7 @@ struct ContentView: View {
                 true
 #endif
             }(),
+            softwareKeyboardVisible: isPhoneSoftwareKeyboardVisible,
             showLineNumbers: showLineNumbers,
             formattingPreferences: EditorFormattingPreferences(
                 boldKeywords: settingsThemeBoldKeywords,
@@ -5466,9 +5509,12 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
 #if os(iOS) || os(visionOS)
+        let bottomUnderlayContent = usesIOSBottomToolbar
+            ? AnyView(content.ignoresSafeArea(.container, edges: .bottom))
+            : AnyView(content)
         let contentWithTopChrome = useIOSUnifiedTopHost && !usesAppOwnedIOSSplitChromeLayout
             ? AnyView(
-                content.safeAreaInset(edge: .top, spacing: 0) {
+                bottomUnderlayContent.safeAreaInset(edge: .top, spacing: 0) {
                     if usesAppOwnedIOSSplitChromeLayout {
                         iOSUnifiedDocumentChromeHost
                     } else {
@@ -5477,7 +5523,7 @@ struct ContentView: View {
                 }
                 .modifier(IPhoneFullWidthModifier())
             )
-            : AnyView(content)
+            : bottomUnderlayContent
 #else
         let contentWithTopChrome = AnyView(content)
 #endif
@@ -5581,13 +5627,26 @@ struct ContentView: View {
             let isFocused = (notif.object as? Bool) ?? false
             isPhoneEditorFocused = isFocused
             if isFocused {
+                isPhoneToolbarExpanded = false
                 cancelPhoneStatusAutoCollapse()
                 isPhoneStatusBarExpanded = false
             } else {
                 cancelPhoneStatusAutoCollapse()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .editorUserDidScroll)) { notif in
+            guard usesIOSBottomToolbar,
+                  let documentID = (notif.userInfo?[EditorCommandUserInfo.documentID] as? String).flatMap(UUID.init(uuidString:)),
+                  documentID == viewModel.selectedTab?.id,
+                  let scrollingDown = notif.userInfo?[EditorCommandUserInfo.scrollingDown] as? Bool else { return }
+            isPhoneBottomToolbarMinimized = scrollingDown
+            if scrollingDown {
+                cancelPhoneStatusAutoCollapse()
+                isPhoneStatusBarExpanded = false
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isPhoneToolbarExpanded = false
             handlePhoneKeyboardVisibilityChange(isVisible: true)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
@@ -5622,6 +5681,26 @@ struct ContentView: View {
             editorToolbarContent
         }
 #if os(iOS)
+        .overlay(alignment: .bottom) {
+            if usesIOSBottomToolbar && !showFindReplace && !isPhoneSoftwareKeyboardVisible {
+                GeometryReader { proxy in
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        if usesIPhoneBottomToolbar {
+                            iPhoneScrollableBottomToolbar
+                                .frame(width: max(0, proxy.size.width - (isPhoneBottomToolbarMinimized ? 24 : 74)))
+                                .frame(maxWidth: .infinity)
+                                .padding(.bottom, 8)
+                        } else {
+                            iPadUnifiedToolbarRow(availableWidth: proxy.size.width)
+                                .frame(maxWidth: .infinity)
+                                .padding(.bottom, 8)
+                        }
+                    }
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .bottomBar)
         .sheet(
             isPresented: Binding(
                 get: {
@@ -5657,8 +5736,13 @@ struct ContentView: View {
                     brainDumpLayoutEnabled: brainDumpLayoutEnabled,
                     shouldPinToTop: shouldPinFloatingStatusToTop,
                     findPresented: showFindReplace,
-                    pinnedPresentation: false
+                    pinnedPresentation: false,
+                    phoneToolbarMinimized: usesIOSBottomToolbar && isPhoneBottomToolbarMinimized
                 ),
+                centered: usesIOSBottomToolbar,
+                bottomInset: usesIOSBottomToolbar && isPhoneSoftwareKeyboardVisible
+                    ? EditorInputTextView.keyboardToolbarHeight
+                    : (usesIOSBottomToolbar ? 64 : 0),
                 status: AnyView(floatingStatusPill)
             )
         )

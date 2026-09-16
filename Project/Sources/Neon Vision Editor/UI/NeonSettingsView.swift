@@ -193,6 +193,7 @@ struct NeonSettingsView: View {
     @State private var remoteBrowserPathDraft: String = "~"
     @State private var shortcutDrafts: [EditorShortcutAction: String] = [:]
 #if os(iOS)
+    @AppStorage("SettingsShowKeyboardAccessoryBarIOS") private var showKeyboardAccessoryBarIOS: Bool = true
     @AppStorage("SettingsKeyboardShortcutAccessoryBarIOS") private var keyboardShortcutAccessoryBarEnabledIOS: Bool = true
     @AppStorage(KeyboardAccessoryAction.storageKey) private var keyboardShortcutAccessoryActionsIOS: String = KeyboardAccessoryAction.storageValue(for: KeyboardAccessoryAction.defaultActions)
 #endif
@@ -7030,8 +7031,10 @@ struct NeonSettingsView: View {
                 .foregroundStyle(.secondary)
 #if os(iOS)
             Divider()
+            Toggle("Show editor toolbar above the on-screen keyboard", isOn: $showKeyboardAccessoryBarIOS)
             Toggle("Show shortcut actions above the on-screen keyboard", isOn: $keyboardShortcutAccessoryBarEnabledIOS)
-            if keyboardShortcutAccessoryBarEnabledIOS {
+                .disabled(!showKeyboardAccessoryBarIOS)
+            if showKeyboardAccessoryBarIOS && keyboardShortcutAccessoryBarEnabledIOS {
                 ForEach(KeyboardAccessoryAction.allCases) { action in
                     Toggle(action.title, isOn: keyboardAccessoryActionBinding(for: action))
                 }

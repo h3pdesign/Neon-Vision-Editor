@@ -198,6 +198,24 @@ final class EditorSettingsDefaultsTests: XCTestCase {
     }
 
 #if os(iOS)
+    func testKeyboardToolbarIsOnForNewSettingsAndHonorsSavedOffChoice() {
+        let defaults = UserDefaults.standard
+        let key = "SettingsShowKeyboardAccessoryBarIOS"
+        let previousValue = defaults.object(forKey: key)
+        defer {
+            if let previousValue {
+                defaults.set(previousValue, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+        }
+
+        defaults.removeObject(forKey: key)
+        XCTAssertTrue(ContentView().showKeyboardAccessoryBarIOS)
+        defaults.set(false, forKey: key)
+        XCTAssertFalse(ContentView().showKeyboardAccessoryBarIOS)
+    }
+
     func testIPadShiftScrollConvertsBothScrollDirectionsToFontDeltas() {
         XCTAssertEqual(iPadShiftScrollFontSizeDelta(contentOffsetDeltaY: -25), 1, accuracy: 0.0001)
         XCTAssertEqual(iPadShiftScrollFontSizeDelta(contentOffsetDeltaY: 25), -1, accuracy: 0.0001)

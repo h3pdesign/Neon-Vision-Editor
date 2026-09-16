@@ -209,11 +209,12 @@ final class MobileNativeFileTabBarView: UIView, UIScrollViewDelegate {
 
         let spacing: CGFloat = 5
         let totalSpacing = spacing * CGFloat(max(0, count - 1))
-        let maximumWidth: CGFloat = 188
-        let minimumWidth: CGFloat = traitCollection.horizontalSizeClass == .regular ? 136 : 104
+        let isPhone = traitCollection.userInterfaceIdiom == .phone
+        let maximumWidth: CGFloat = isPhone ? 240 : 188
+        let minimumWidth: CGFloat = isPhone ? 160 : (traitCollection.horizontalSizeClass == .regular ? 136 : 104)
         let tabWidths = orderedTabIDs.map { id in
             guard let tabView = tabViewsByID[id] else { return minimumWidth }
-            return min(maximumWidth, max(minimumWidth, tabView.preferredTabWidth))
+            return min(maximumWidth, max(minimumWidth, tabView.preferredTabWidth + (isPhone ? 14 : 0)))
         }
         let contentWidth = max(viewportWidth, tabWidths.reduce(0, +) + totalSpacing)
         tabsView.frame = CGRect(x: 0, y: 0, width: contentWidth, height: scrollView.bounds.height)

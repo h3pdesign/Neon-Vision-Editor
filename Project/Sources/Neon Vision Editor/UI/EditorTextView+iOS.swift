@@ -418,8 +418,30 @@ final class EditorInputTextView: UITextView {
 
     private func makeKeyboardAccessoryView() -> UIView {
         let host = UIView()
-        host.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.95)
+        host.backgroundColor = .clear
         host.translatesAutoresizingMaskIntoConstraints = false
+
+        let glass = UIVisualEffectView()
+        if UIAccessibility.isReduceTransparencyEnabled {
+            glass.backgroundColor = .secondarySystemBackground
+            glass.layer.cornerRadius = 21
+            glass.clipsToBounds = true
+        } else {
+#if os(iOS)
+            if #available(iOS 26.0, *) {
+                glass.effect = UIGlassEffect()
+            } else {
+                glass.effect = UIBlurEffect(style: .systemChromeMaterial)
+                glass.layer.cornerRadius = 21
+                glass.clipsToBounds = true
+            }
+#else
+            glass.effect = UIBlurEffect(style: .systemChromeMaterial)
+            glass.layer.cornerRadius = 21
+            glass.clipsToBounds = true
+#endif
+        }
+        glass.translatesAutoresizingMaskIntoConstraints = false
 
         let scroll = UIScrollView()
         scroll.showsHorizontalScrollIndicator = false
@@ -477,16 +499,22 @@ final class EditorInputTextView: UITextView {
             stack.addArrangedSubview(button)
         }
 
-        host.addSubview(scroll)
+        host.addSubview(glass)
+        glass.contentView.addSubview(scroll)
         scroll.addSubview(stack)
 
         NSLayoutConstraint.activate([
             host.heightAnchor.constraint(equalToConstant: 46),
 
-            scroll.leadingAnchor.constraint(equalTo: host.leadingAnchor, constant: 10),
-            scroll.trailingAnchor.constraint(equalTo: host.trailingAnchor, constant: -10),
-            scroll.topAnchor.constraint(equalTo: host.topAnchor, constant: 6),
-            scroll.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -6),
+            glass.leadingAnchor.constraint(equalTo: host.leadingAnchor, constant: 8),
+            glass.trailingAnchor.constraint(equalTo: host.trailingAnchor, constant: -8),
+            glass.topAnchor.constraint(equalTo: host.topAnchor, constant: 2),
+            glass.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -2),
+
+            scroll.leadingAnchor.constraint(equalTo: glass.contentView.leadingAnchor, constant: 10),
+            scroll.trailingAnchor.constraint(equalTo: glass.contentView.trailingAnchor, constant: -10),
+            scroll.topAnchor.constraint(equalTo: glass.contentView.topAnchor, constant: 4),
+            scroll.bottomAnchor.constraint(equalTo: glass.contentView.bottomAnchor, constant: -4),
 
             stack.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),

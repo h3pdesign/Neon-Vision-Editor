@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-09-14 (v1.8.0 release-aligned architecture)
+Last updated: 2026-09-16 (v1.8.1 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -9,6 +9,15 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
+### v1.8.1 (2026-09-16)
+
+- Adds a horizontally scrollable iPhone toolbar and an adaptive-width iPad toolbar; compact controls appear while scrolling.
+- Keeps the mobile editor keyboard toolbar visible by default and adds a setting to control it.
+- Uses system Liquid Glass for supported controls and respects system glass and accessibility appearance settings.
+- Adds Markdown theme selection to the iPad preview menu.
+- Keeps the mobile keyboard toolbar clear of the editor and on-screen keyboard, with a frosted surface in light and dark mode.
+- Centers and collapses the mobile editor status above the bottom toolbar, then hides it while scrolling.
+
 ### v1.8.0 (2026-09-14)
 
 - Adds native macOS file drag and drop with modern DropSession handling and a compatible path for older supported macOS releases.
@@ -16,11 +25,6 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 - Streams terminal output incrementally into a native text view and precomputes stable Git diff rows.
 - Reduces repeated URL normalization during project scans and uses the measured faster byte-iteration path for large files.
 - Keeps a newly selected long document's complete content visible instead of applying a stale scroll position from the previous tab.
-
-### v1.7.6 (2026-09-12)
-
-- Repaints only the visible Core Text canvas region during ordinary scrolling, preserving the fast virtualized layout path.
-- Prevents stale AppKit backing pixels from covering or clipping editor lines during macOS scrolling.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

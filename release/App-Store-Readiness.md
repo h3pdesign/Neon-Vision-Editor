@@ -2,7 +2,7 @@
 
 ## Completed in codebase
 - API tokens moved from `UserDefaults` to Keychain (`SecureTokenStore`).
-- Added privacy manifest: `Project/Sources/Neon Vision Editor/PrivacyInfo.xcprivacy`.
+- Added privacy manifest: `Project/Sources/Neon Vision Editor/Resources/PrivacyInfo.xcprivacy`.
 - Disabled unnecessary incoming-network sandbox entitlement.
 - Disabled app-group registration entitlement (not used by app).
 - Added `ITSAppUsesNonExemptEncryption = NO` in generated Info.plist settings.

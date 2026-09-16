@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.8.1] - 2026-09-16
+
 ### Why Upgrade
 
 - Gives iPhone and iPad a compact bottom editor toolbar with easier access to tools while keeping more code visible.
@@ -2437,7 +2439,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ## [v0.5.6] - 2026-03-17
 
 ### Hero Screenshot
-- ![v0.5.6 hero screenshot](docs/images/iphone-themes-light.png)
+- ![v0.5.6 hero screenshot](docs/images/iphone-themes-light-frame.png)
 
 ### Why Upgrade
 - Safe Mode now recovers from repeated failed launches without getting stuck on every normal restart.

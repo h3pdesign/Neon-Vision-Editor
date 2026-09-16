@@ -123,6 +123,11 @@ extension ContentView {
             Divider()
             markdownPreviewPaneExportMenu
             markdownPreviewPaneStyleMenu
+#elseif os(iOS)
+            if usesRegularIOSLayout {
+                Divider()
+                markdownPreviewPaneStyleMenu
+            }
 #endif
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -176,7 +181,9 @@ extension ContentView {
         .help(NSLocalizedString("Markdown Preview Export Options", comment: ""))
         .accessibilityLabel(NSLocalizedString("Export Markdown preview as PDF", comment: ""))
     }
+#endif
 
+#if os(macOS) || os(iOS)
     private var markdownPreviewPaneStyleMenu: some View {
         Menu {
             ForEach(Self.markdownPreviewTemplateOptions) { option in

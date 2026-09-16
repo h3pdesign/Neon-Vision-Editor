@@ -134,9 +134,64 @@ final class MobileEditorInteractionTests: XCTestCase {
             XCTAssertTrue(glass.clipsToBounds)
             XCTAssertFalse(scroll.isOpaque)
             XCTAssertEqual(scroll.backgroundColor, .clear)
-            if #available(iOS 26.0, *), !UIAccessibility.isReduceTransparencyEnabled {
+            if #available(iOS 26.0, *) {
                 XCTAssertTrue(glass.effect is UIGlassEffect)
             }
+        }
+    }
+
+    func testIPadKeyboardAccessoryDoesNotCoverNativeGlassWithLegacyBlur() {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return }
+        withEditor("Code behind toolbar", showKeyboardAccessoryBar: true) { container in
+            let view = container.textView
+            view.setBracketAccessoryVisible(true)
+            guard let accessory = view.inputAccessoryView,
+                  let glass = accessory.subviews.first as? UIVisualEffectView else {
+                return XCTFail("Missing iPad keyboard glass")
+            }
+            if #available(iOS 26.0, *) {
+                XCTAssertEqual(accessory.subviews.count, 1)
+                XCTAssertTrue(glass.effect is UIGlassEffect)
+                view.setKeyboardAccessoryBackgroundColor(.red)
+                XCTAssertEqual(accessory.backgroundColor, .clear)
+            }
+        }
+    }
+
+    func testKeyboardShortcutActionsFollowTheirVisibilitySetting() {
+        let defaults = UserDefaults.standard
+        let enabledKey = "SettingsKeyboardShortcutAccessoryBarIOS"
+        let actionsKey = KeyboardAccessoryAction.storageKey
+        let previousEnabled = defaults.object(forKey: enabledKey)
+        let previousActions = defaults.object(forKey: actionsKey)
+        defer {
+            if let previousEnabled { defaults.set(previousEnabled, forKey: enabledKey) }
+            else { defaults.removeObject(forKey: enabledKey) }
+            if let previousActions { defaults.set(previousActions, forKey: actionsKey) }
+            else { defaults.removeObject(forKey: actionsKey) }
+        }
+        defaults.set(KeyboardAccessoryAction.storageValue(for: KeyboardAccessoryAction.defaultActions), forKey: actionsKey)
+        defaults.set(false, forKey: enabledKey)
+
+        withEditor("Code behind toolbar", showKeyboardAccessoryBar: true, softwareKeyboardVisible: true) { container in
+            let view = container.textView
+            XCTAssertTrue(view.becomeFirstResponder())
+            func shortcutButtons(in root: UIView?) -> [UIButton] {
+                guard let root else { return [] }
+                let current = (root as? UIButton).flatMap {
+                    $0.accessibilityIdentifier?.hasPrefix("keyboard-accessory-") == true ? $0 : nil
+                }
+                return (current.map { [$0] } ?? []) + root.subviews.flatMap { shortcutButtons(in: $0) }
+            }
+            let accessory = UIDevice.current.userInterfaceIdiom == .phone
+                ? container.keyboardAccessoryOverlay : view.inputAccessoryView
+            XCTAssertTrue(shortcutButtons(in: accessory).isEmpty)
+
+            defaults.set(true, forKey: enabledKey)
+            view.setBracketAccessoryVisible(true)
+            let updatedAccessory = UIDevice.current.userInterfaceIdiom == .phone
+                ? container.keyboardAccessoryOverlay : view.inputAccessoryView
+            XCTAssertFalse(shortcutButtons(in: updatedAccessory).isEmpty)
         }
     }
 
@@ -185,16 +240,15 @@ final class MobileEditorInteractionTests: XCTestCase {
             return XCTFail("Missing glass keyboard overlay")
         }
         XCTAssertFalse(accessory.isHidden)
-        if UIAccessibility.isReduceTransparencyEnabled {
+        if #available(iOS 26.0, *) {
+            XCTAssertEqual(accessory.backgroundColor, .clear)
+            XCTAssertTrue(glass.effect is UIGlassEffect)
+        } else if UIAccessibility.isReduceTransparencyEnabled {
             XCTAssertEqual(accessory.backgroundColor, editorBackground)
             XCTAssertNil(glass.effect)
         } else {
             XCTAssertEqual(accessory.backgroundColor, .clear)
-            if #available(iOS 26.0, *) {
-                XCTAssertTrue(glass.effect is UIGlassEffect)
-            } else {
-                XCTAssertTrue(glass.effect is UIBlurEffect)
-            }
+            XCTAssertTrue(glass.effect is UIBlurEffect)
         }
     }
 

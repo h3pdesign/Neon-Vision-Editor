@@ -261,7 +261,17 @@ private struct DroppedFileProgressOverlayModifier: ViewModifier {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
-                .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+                .background {
+#if os(macOS) || os(iOS)
+                    if #available(macOS 26.0, iOS 26.0, *) {
+                        Color.clear.glassEffect(.regular, in: Capsule(style: .continuous))
+                    } else {
+                        Color.clear.background(.ultraThinMaterial, in: Capsule(style: .continuous))
+                    }
+#else
+                    Color.clear.background(.ultraThinMaterial, in: Capsule(style: .continuous))
+#endif
+                }
                 .padding(.top, topPadding)
                 .padding(.trailing, 12)
             }
@@ -953,7 +963,7 @@ struct ContentView: View {
 #if os(iOS) || os(visionOS)
     @AppStorage("SettingsForceLargeFileMode") var forceLargeFileMode: Bool = false
     @AppStorage("SettingsMobileEditingStatusPresetEnabled") var mobileEditingStatusPresetEnabled: Bool = false
-    @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = false
+    @AppStorage("SettingsShowKeyboardAccessoryBarIOS") var showKeyboardAccessoryBarIOS: Bool = true
 #if os(iOS) || os(visionOS)
     @AppStorage("SettingsKeyboardShortcutAccessoryBarIOS") var keyboardShortcutAccessoryBarEnabledIOS: Bool = true
     @AppStorage(KeyboardAccessoryAction.storageKey) var keyboardShortcutAccessoryActionsIOS: String = KeyboardAccessoryAction.storageValue(for: KeyboardAccessoryAction.defaultActions)
@@ -3198,7 +3208,7 @@ struct ContentView: View {
         }
 #if os(iOS) || os(visionOS)
         if defaults.object(forKey: "SettingsShowKeyboardAccessoryBarIOS") == nil {
-            showKeyboardAccessoryBarIOS = false
+            showKeyboardAccessoryBarIOS = true
         }
 #endif
 #if os(macOS)

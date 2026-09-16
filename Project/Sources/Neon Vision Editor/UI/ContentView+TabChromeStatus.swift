@@ -709,7 +709,17 @@ extension ContentView {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+            .background {
+#if os(macOS) || os(iOS)
+                if #available(macOS 26.0, iOS 26.0, *) {
+                    Color.clear.glassEffect(.regular, in: Capsule(style: .continuous))
+                } else {
+                    Color.clear.background(.ultraThinMaterial, in: Capsule(style: .continuous))
+                }
+#else
+                Color.clear.background(.ultraThinMaterial, in: Capsule(style: .continuous))
+#endif
+            }
         }
         .menuStyle(.borderlessButton)
         .accessibilityLabel("Large file session")

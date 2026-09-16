@@ -418,12 +418,23 @@ final class EditorInputTextView: UITextView {
     }
 
     fileprivate func makeKeyboardAccessoryView(isEditorOverlay: Bool = false) -> UIView {
+#if os(iOS)
+        let usesNativeGlass: Bool
+        if #available(iOS 26.0, *) {
+            usesNativeGlass = true
+        } else {
+            usesNativeGlass = false
+        }
+#else
+        let usesNativeGlass = false
+#endif
         let host = UIView()
         host.isOpaque = false
-        host.backgroundColor = UIAccessibility.isReduceTransparencyEnabled ? keyboardAccessoryBackgroundColor : .clear
+        host.backgroundColor = !usesNativeGlass && UIAccessibility.isReduceTransparencyEnabled
+            ? keyboardAccessoryBackgroundColor : .clear
         host.translatesAutoresizingMaskIntoConstraints = false
 
-        let frostedBackground = isEditorOverlay ? nil : UIVisualEffectView()
+        let frostedBackground = isEditorOverlay || usesNativeGlass ? nil : UIVisualEffectView()
         if let frostedBackground {
             frostedBackground.isOpaque = false
             if !UIAccessibility.isReduceTransparencyEnabled {
@@ -460,9 +471,10 @@ final class EditorInputTextView: UITextView {
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        let accessoryActions = KeyboardAccessoryAction.configuredActions(
-            rawValue: UserDefaults.standard.string(forKey: KeyboardAccessoryAction.storageKey)
-        )
+        let accessoryActions = keyboardShortcutAccessoryEnabled
+            ? KeyboardAccessoryAction.configuredActions(
+                rawValue: UserDefaults.standard.string(forKey: KeyboardAccessoryAction.storageKey)
+            ) : []
         for action in accessoryActions {
             let button = UIButton(type: .system)
             button.accessibilityIdentifier = "keyboard-accessory-\(action.rawValue)"
@@ -545,6 +557,7 @@ final class EditorInputTextView: UITextView {
     }
     private var isBracketAccessoryVisible: Bool = true
     private var keyboardAccessoryActionsStorageValue: String?
+    private var keyboardShortcutAccessoryEnabled: Bool = true
     private var keyboardAccessoryBackgroundColor: UIColor = .clear
 
     override init(frame: CGRect, textContainer: NSTextContainer?) {
@@ -661,10 +674,13 @@ final class EditorInputTextView: UITextView {
 
     func setBracketAccessoryVisible(_ visible: Bool) {
         let actionsStorageValue = UserDefaults.standard.string(forKey: KeyboardAccessoryAction.storageKey)
+        let actionsEnabled = UserDefaults.standard.object(forKey: "SettingsKeyboardShortcutAccessoryBarIOS") as? Bool ?? true
         let needsUpdate = isBracketAccessoryVisible != visible ||
-            keyboardAccessoryActionsStorageValue != actionsStorageValue
+            keyboardAccessoryActionsStorageValue != actionsStorageValue ||
+            keyboardShortcutAccessoryEnabled != actionsEnabled
         isBracketAccessoryVisible = visible
         keyboardAccessoryActionsStorageValue = actionsStorageValue
+        keyboardShortcutAccessoryEnabled = actionsEnabled
         #if os(iOS)
         if UIDevice.current.userInterfaceIdiom == .phone {
             (superview as? LineNumberedTextViewContainer)?.setKeyboardAccessoryRequested(visible, rebuild: needsUpdate)
@@ -689,6 +705,12 @@ final class EditorInputTextView: UITextView {
         }
         #endif
         #if !os(visionOS)
+#if os(iOS)
+        if #available(iOS 26.0, *) {
+            inputAccessoryView?.backgroundColor = .clear
+            return
+        }
+#endif
         inputAccessoryView?.backgroundColor = UIAccessibility.isReduceTransparencyEnabled ? color : .clear
         if let frostedBackground = inputAccessoryView?.subviews.first as? UIVisualEffectView {
             frostedBackground.contentView.backgroundColor = UIAccessibility.isReduceTransparencyEnabled
@@ -1818,7 +1840,11 @@ final class LineNumberedTextViewContainer: UIView {
 
     func updateKeyboardAccessoryColor(_ color: UIColor) {
         guard let overlay = keyboardAccessoryOverlay else { return }
-        overlay.backgroundColor = UIAccessibility.isReduceTransparencyEnabled ? color : .clear
+        if #available(iOS 26.0, *) {
+            overlay.backgroundColor = .clear
+        } else {
+            overlay.backgroundColor = UIAccessibility.isReduceTransparencyEnabled ? color : .clear
+        }
     }
 
     func refreshKeyboardAccessoryOverlay() {
@@ -2811,7 +2837,7 @@ struct CustomTextEditor: UIViewRepresentable {
             if let explicit = notification.object as? Bool {
                 isVisible = explicit
             } else {
-                isVisible = UserDefaults.standard.object(forKey: "SettingsShowKeyboardAccessoryBarIOS") as? Bool ?? false
+                isVisible = UserDefaults.standard.object(forKey: "SettingsShowKeyboardAccessoryBarIOS") as? Bool ?? true
             }
             textView.setBracketAccessoryVisible(isVisible)
             if isVisible && !textView.isFirstResponder {

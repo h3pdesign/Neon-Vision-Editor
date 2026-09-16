@@ -218,12 +218,17 @@ extension ContentView {
             iPhoneMarkdownFormattingChrome
         }
 #else
-        markdownFormattingToolbar
-            .background(.regularMaterial, in: Capsule(style: .continuous))
-            .overlay(
-                Capsule(style: .continuous)
-                    .strokeBorder(.primary.opacity(0.12))
-            )
+        if #available(macOS 26.0, *) {
+            markdownFormattingToolbar
+                .glassEffect(.regular, in: Capsule(style: .continuous))
+        } else {
+            markdownFormattingToolbar
+                .background(.regularMaterial, in: Capsule(style: .continuous))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(.primary.opacity(0.12))
+                )
+        }
 #endif
     }
 

@@ -953,6 +953,7 @@ struct ContentView: View {
     @AppStorage("SettingsToolbarPresetIOS") var toolbarPresetIOSRaw: String = ToolbarPreset.standard.rawValue
     @State var isPhoneEditorFocused: Bool = false
     @State var isPhoneSoftwareKeyboardVisible: Bool = false
+    @State var isPhoneBottomToolbarMinimized: Bool = false
     @State var isPhoneToolbarExpanded: Bool = false
     @State var isPhoneStatusBarExpanded: Bool = false
     @State var phoneStatusAutoCollapseTask: Task<Void, Never>? = nil
@@ -2759,6 +2760,9 @@ struct ContentView: View {
             }
         }
         .onChange(of: viewModel.selectedTabID) { _, _ in
+#if os(iOS) || os(visionOS)
+            isPhoneBottomToolbarMinimized = false
+#endif
             if showFindReplace { refreshFindPreview() }
         }
         .onChange(of: viewModel.selectedTab?.contentRevision) { _, _ in
@@ -5472,9 +5476,12 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
 #if os(iOS) || os(visionOS)
+        let bottomUnderlayContent = usesIPhoneBottomToolbar
+            ? AnyView(content.ignoresSafeArea(.container, edges: .bottom))
+            : AnyView(content)
         let contentWithTopChrome = useIOSUnifiedTopHost && !usesAppOwnedIOSSplitChromeLayout
             ? AnyView(
-                content.safeAreaInset(edge: .top, spacing: 0) {
+                bottomUnderlayContent.safeAreaInset(edge: .top, spacing: 0) {
                     if usesAppOwnedIOSSplitChromeLayout {
                         iOSUnifiedDocumentChromeHost
                     } else {
@@ -5483,7 +5490,7 @@ struct ContentView: View {
                 }
                 .modifier(IPhoneFullWidthModifier())
             )
-            : AnyView(content)
+            : bottomUnderlayContent
 #else
         let contentWithTopChrome = AnyView(content)
 #endif
@@ -5594,6 +5601,14 @@ struct ContentView: View {
                 cancelPhoneStatusAutoCollapse()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .editorUserDidScroll)) { notif in
+            guard usesIPhoneBottomToolbar,
+                  !isPhoneSoftwareKeyboardVisible,
+                  let documentID = (notif.userInfo?[EditorCommandUserInfo.documentID] as? String).flatMap(UUID.init(uuidString:)),
+                  documentID == viewModel.selectedTab?.id,
+                  let scrollingDown = notif.userInfo?[EditorCommandUserInfo.scrollingDown] as? Bool else { return }
+            isPhoneBottomToolbarMinimized = scrollingDown
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             isPhoneToolbarExpanded = false
             handlePhoneKeyboardVisibilityChange(isVisible: true)
@@ -5630,6 +5645,7 @@ struct ContentView: View {
             editorToolbarContent
         }
 #if os(iOS)
+        .toolbarBackground(.hidden, for: .bottomBar)
         .sheet(
             isPresented: Binding(
                 get: {

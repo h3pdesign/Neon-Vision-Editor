@@ -801,7 +801,7 @@ extension ContentView {
     private var iPhoneMoreActions: [IOSPrimaryToolbarAction] {
         ToolbarActionSelection.overflowActions(
             enabledActions: enabledIOSPrimaryToolbarActions,
-            visibleActions: iPhoneCompactToolbarActions
+            visibleActions: isPhoneBottomToolbarMinimized ? [] : iPhoneCompactToolbarActions
         )
     }
 
@@ -2395,12 +2395,14 @@ extension ContentView {
             visionOSToolbarControls
         }
 #elseif os(iOS)
-        if usesIPhoneBottomToolbar && !showFindReplace {
+        if usesIPhoneBottomToolbar && !showFindReplace && !isPhoneSoftwareKeyboardVisible {
             ToolbarItem(placement: .bottomBar) {
                 HStack(spacing: 0) {
-                    ForEach(iPhoneCompactToolbarActions, id: \.self) { action in
-                        iOSPrimaryToolbarActionControl(action)
-                            .frame(minWidth: 44, minHeight: 44)
+                    if !isPhoneBottomToolbarMinimized {
+                        ForEach(iPhoneCompactToolbarActions, id: \.self) { action in
+                            iOSPrimaryToolbarActionControl(action)
+                                .frame(minWidth: 44, minHeight: 44)
+                        }
                     }
                     moreActionsControl
                         .frame(minWidth: 44, minHeight: 44)

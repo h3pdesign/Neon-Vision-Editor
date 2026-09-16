@@ -2388,6 +2388,8 @@ struct CustomTextEditor: UIViewRepresentable {
         private var pinchStartFontSize: CGFloat?
         private var lastPinchFontSize: CGFloat?
         private var lastScrollOffsetY: CGFloat?
+        private var lastUserScrollOffsetY: CGFloat?
+        private var accumulatedUserScrollDelta: CGFloat = 0
         private var pendingShiftScrollFontSizeDelta: CGFloat = 0
         private var isRestoringShiftScrollOffset = false
         private var findHighlightBackgrounds: [(range: NSRange, value: Any?)] = []
@@ -3863,6 +3865,7 @@ struct CustomTextEditor: UIViewRepresentable {
             if consumeIPadShiftScroll(in: scrollView, textView: textView) {
                 return
             }
+            postUserScrollDirectionIfNeeded(scrollView)
             let panState = scrollView.panGestureRecognizer.state
             if panState == .began || panState == .changed {
                 cancelMinimapViewportReconciliation()
@@ -3885,6 +3888,35 @@ struct CustomTextEditor: UIViewRepresentable {
                 guard !isPhoneActivelyEditing else { return }
                 scheduleHighlightIfNeeded(currentText: textView.text)
             }
+        }
+
+        private func postUserScrollDirectionIfNeeded(_ scrollView: UIScrollView) {
+            guard UIDevice.current.userInterfaceIdiom == .phone,
+                  let documentID = parent.documentID,
+                  scrollView.panGestureRecognizer.state == .changed else {
+                lastUserScrollOffsetY = nil
+                accumulatedUserScrollDelta = 0
+                return
+            }
+            let offset = scrollView.contentOffset.y
+            defer { lastUserScrollOffsetY = offset }
+            guard let previousOffset = lastUserScrollOffsetY else { return }
+            let delta = offset - previousOffset
+            guard abs(delta) > 0.5, abs(delta) < 80 else { return }
+            if accumulatedUserScrollDelta.sign != delta.sign {
+                accumulatedUserScrollDelta = 0
+            }
+            accumulatedUserScrollDelta += delta
+            guard abs(accumulatedUserScrollDelta) >= 24 else { return }
+            NotificationCenter.default.post(
+                name: .editorUserDidScroll,
+                object: nil,
+                userInfo: [
+                    EditorCommandUserInfo.documentID: documentID.uuidString,
+                    EditorCommandUserInfo.scrollingDown: accumulatedUserScrollDelta > 0
+                ]
+            )
+            accumulatedUserScrollDelta = 0
         }
 
         private func consumeIPadShiftScroll(in scrollView: UIScrollView, textView: EditorInputTextView) -> Bool {

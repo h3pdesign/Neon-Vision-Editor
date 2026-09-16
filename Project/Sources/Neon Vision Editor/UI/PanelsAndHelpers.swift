@@ -4481,6 +4481,7 @@ extension Notification.Name {
     static let toggleCodeMinimapRequested = Notification.Name("toggleCodeMinimapRequested")
     static let toggleFocusModeRequested = Notification.Name("toggleFocusModeRequested")
     static let editorViewportDidChange = Notification.Name("editorViewportDidChange")
+    static let editorUserDidScroll = Notification.Name("editorUserDidScroll")
     static let requestEditorViewport = Notification.Name("requestEditorViewport")
     static let virtualEditorTextDidChange = Notification.Name("virtualEditorTextDidChange")
     static let showVirtualEditorInlineSuggestion = Notification.Name("showVirtualEditorInlineSuggestion")
@@ -4596,6 +4597,7 @@ enum EditorCommandUserInfo {
     nonisolated static let rangeLength = "rangeLength"
     nonisolated static let viewportTopFraction = "viewportTopFraction"
     nonisolated static let viewportHeightFraction = "viewportHeightFraction"
+    nonisolated static let scrollingDown = "scrollingDown"
     nonisolated static let focusEditor = "focusEditor"
     nonisolated static let centerSelection = "centerSelection"
     nonisolated static let findMatchRanges = "findMatchRanges"

@@ -1,4 +1,36 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+
+enum IOSClearGlassAppearance {
+    static func apply(to view: UIVisualEffectView) {
+        view.isOpaque = false
+        if UIAccessibility.isReduceTransparencyEnabled {
+            view.effect = nil
+            view.backgroundColor = .secondarySystemBackground
+        } else {
+            view.backgroundColor = .clear
+            if #available(iOS 26.0, *) {
+                view.effect = UIGlassEffect(style: .clear)
+            } else {
+                view.effect = UIBlurEffect(style: .systemChromeMaterial)
+            }
+        }
+    }
+}
+
+struct IOSClearGlassBackground: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        let view = UIVisualEffectView()
+        IOSClearGlassAppearance.apply(to: view)
+        return view
+    }
+
+    func updateUIView(_ view: UIVisualEffectView, context: Context) {
+        IOSClearGlassAppearance.apply(to: view)
+    }
+}
+#endif
 
 
 

@@ -437,19 +437,15 @@ final class EditorInputTextView: UITextView {
         glass.isOpaque = false
         glass.layer.cornerRadius = 21
         glass.clipsToBounds = true
+#if os(iOS)
+        IOSClearGlassAppearance.apply(to: glass)
+#else
         if UIAccessibility.isReduceTransparencyEnabled {
             glass.backgroundColor = .secondarySystemBackground
         } else {
-#if os(iOS)
-            if #available(iOS 26.0, *) {
-                glass.effect = UIGlassEffect(style: .clear)
-            } else {
-                glass.effect = UIBlurEffect(style: .systemChromeMaterial)
-            }
-#else
             glass.effect = UIBlurEffect(style: .systemChromeMaterial)
-#endif
         }
+#endif
         glass.translatesAutoresizingMaskIntoConstraints = false
 
         let scroll = UIScrollView()
@@ -1230,7 +1226,7 @@ final class InvisibleCharacterOverlayView: UIView {
 extension EditorInputTextView {
     @objc private func insertBracketToken(_ sender: UIButton) {
         guard isEditable, let token = sender.accessibilityIdentifier else { return }
-        becomeFirstResponder()
+        _ = becomeFirstResponder()
 
         let selection = selectedRange
         if let pair = pairForToken(token) {
@@ -2753,7 +2749,7 @@ struct CustomTextEditor: UIViewRepresentable {
                         textView.setContentOffset(priorOffset, animated: false)
                     }
                     if wasFirstResponder && preserveSelection {
-                        textView.becomeFirstResponder()
+                        _ = textView.becomeFirstResponder()
                     }
                     self.updateCaretStatus()
                     self.scheduleHighlightIfNeeded(currentText: target, immediate: true)
@@ -2819,7 +2815,7 @@ struct CustomTextEditor: UIViewRepresentable {
             }
             textView.setBracketAccessoryVisible(isVisible)
             if isVisible && !textView.isFirstResponder {
-                textView.becomeFirstResponder()
+                _ = textView.becomeFirstResponder()
             }
             if UIDevice.current.userInterfaceIdiom != .phone {
                 textView.reloadInputViews()
@@ -2874,7 +2870,7 @@ struct CustomTextEditor: UIViewRepresentable {
             let shouldCenterSelection = notification.userInfo?[EditorCommandUserInfo.centerSelection] as? Bool ?? false
             DispatchQueue.main.async {
                 if shouldFocusEditor {
-                    textView.becomeFirstResponder()
+                    _ = textView.becomeFirstResponder()
                 }
                 textView.selectedRange = range
                 if shouldCenterSelection {
@@ -3096,9 +3092,9 @@ struct CustomTextEditor: UIViewRepresentable {
                 explicitValue: notification.userInfo?[EditorCommandUserInfo.focusEditor] as? Bool
             )
             if shouldFocusEditor {
-                textView.becomeFirstResponder()
+                _ = textView.becomeFirstResponder()
             } else if textView.isFirstResponder {
-                textView.resignFirstResponder()
+                _ = textView.resignFirstResponder()
             }
             textView.selectedRange = target
             centerEditorLine(at: target, in: textView)

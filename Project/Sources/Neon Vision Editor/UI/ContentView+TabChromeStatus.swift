@@ -164,6 +164,40 @@ extension ContentView {
     }
 
     var floatingStatusPill: some View {
+        floatingStatusPillSurface
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard usesIPhoneBottomToolbar || isPhoneCompactStatusMode else { return }
+                isPhoneStatusBarExpanded.toggle()
+                if isPhoneStatusBarExpanded {
+                    schedulePhoneStatusAutoCollapse()
+                } else {
+                    cancelPhoneStatusAutoCollapse()
+                }
+            }
+            .accessibilityLabel("Editor status")
+            .accessibilityValue(floatingStatusPillText)
+            .accessibilityHint(usesIPhoneBottomToolbar || isPhoneCompactStatusMode ? "Double tap to expand or collapse editor status details" : "")
+    }
+
+    @ViewBuilder
+    private var floatingStatusPillSurface: some View {
+#if os(iOS)
+        if usesIPhoneBottomToolbar {
+            floatingStatusPillLabel
+                .background {
+                    IOSClearGlassBackground()
+                        .clipShape(Capsule())
+                }
+        } else {
+            floatingStatusMaterialPill
+        }
+#else
+        floatingStatusMaterialPill
+#endif
+    }
+
+    private var floatingStatusMaterialPill: some View {
         GlassSurface(
             enabled: shouldUseLiquidGlass,
             material: primaryGlassMaterial,
@@ -171,27 +205,18 @@ extension ContentView {
             shape: .capsule,
             chromeStyle: .single
         ) {
-            Text(floatingStatusPillText)
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-                .foregroundStyle(iOSToolbarForegroundColor)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+            floatingStatusPillLabel
         }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            guard usesIPhoneBottomToolbar || isPhoneCompactStatusMode else { return }
-            isPhoneStatusBarExpanded.toggle()
-            if isPhoneStatusBarExpanded {
-                schedulePhoneStatusAutoCollapse()
-            } else {
-                cancelPhoneStatusAutoCollapse()
-            }
-        }
-        .accessibilityLabel("Editor status")
-        .accessibilityValue(floatingStatusPillText)
-        .accessibilityHint(usesIPhoneBottomToolbar || isPhoneCompactStatusMode ? "Double tap to expand or collapse editor status details" : "")
+    }
+
+    private var floatingStatusPillLabel: some View {
+        Text(floatingStatusPillText)
+            .font(.system(size: 12, weight: .medium, design: .monospaced))
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
+            .foregroundStyle(iOSToolbarForegroundColor)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
     }
 
     var iOSToolbarForegroundColor: Color {

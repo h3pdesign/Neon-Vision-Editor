@@ -1404,7 +1404,6 @@ extension ContentView {
         }) {
             Image(systemName: previewToolbarIconName)
         }
-        .foregroundStyle(isPreviewVisible ? Color.accentColor : Color.primary)
         .disabled(!isPreviewSupportedDocument)
         .help(isPreviewVisible ? "Hide \(previewTitle)" : "Show \(previewTitle)")
         .accessibilityLabel(previewTitle)
@@ -1417,7 +1416,6 @@ extension ContentView {
         } label: {
             Image(systemName: isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2")
         }
-        .foregroundStyle(isMarkdownProjectPreviewPresented ? Color.accentColor : Color.primary)
         .disabled(projectRootFolderURL == nil || !hasMarkdownOrPDFProjectPreviewFiles || isSafeModeActive)
         .help(isMarkdownProjectPreviewPresented ? "Hide Project Cards" : "Show Project Cards")
         .accessibilityLabel("Project Cards")
@@ -1850,7 +1848,6 @@ extension ContentView {
                 } label: {
                     Label("Toolbar Preset", systemImage: currentToolbarPreset.icon)
                 }
-                languagePickerControl
                 Divider()
             }
             iOSOverflowItem("settings") { Button(action: {
@@ -1874,10 +1871,6 @@ extension ContentView {
             iOSOverflowItem("insertTemplate") { Button(action: { insertTemplateForCurrentLanguage() }) {
                 Label("Insert Template", systemImage: "doc.badge.plus")
             } }
-
-            Button(action: { presentLanguageSearchSheet() }) {
-                Label("Language…", systemImage: "magnifyingglass")
-            }
 
             iOSOverflowItem("newTab") { Button(action: { viewModel.addNewTab() }) {
                 Label("New Tab", systemImage: "plus.square.on.square")
@@ -2106,7 +2099,6 @@ extension ContentView {
         VStack(spacing: 8) {
             if isPhoneToolbarExpanded {
                 HStack(spacing: 12) {
-                    languagePickerControl
                     toolbarPresetMenuControl
                     Text(currentToolbarPreset.title)
                         .font(.subheadline.weight(.semibold))
@@ -2398,6 +2390,8 @@ extension ContentView {
         if usesIPhoneBottomToolbar && !showFindReplace && !isPhoneSoftwareKeyboardVisible {
             ToolbarItem(placement: .bottomBar) {
                 HStack(spacing: 0) {
+                    languagePickerControl
+                        .frame(minWidth: 44, minHeight: 44)
                     if !isPhoneBottomToolbarMinimized {
                         ForEach(iPhoneCompactToolbarActions, id: \.self) { action in
                             iOSPrimaryToolbarActionControl(action)
@@ -2407,6 +2401,8 @@ extension ContentView {
                     moreActionsControl
                         .frame(minWidth: 44, minHeight: 44)
                 }
+                .tint(iOSToolbarTintColor)
+                .foregroundStyle(iOSToolbarTintColor)
             }
         }
         if isIPadToolbarLayout && !useIOSUnifiedTopHost {

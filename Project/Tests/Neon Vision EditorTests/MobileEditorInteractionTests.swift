@@ -99,6 +99,23 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
+    func testKeyboardAccessoryLeavesItsGlassSurroundTransparent() {
+        let view = EditorInputTextView()
+        guard let accessory = view.inputAccessoryView,
+              let glass = accessory.subviews.compactMap({ $0 as? UIVisualEffectView }).first,
+              let scroll = glass.contentView.subviews.compactMap({ $0 as? UIScrollView }).first else {
+            return XCTFail("Missing keyboard glass accessory")
+        }
+        XCTAssertFalse(accessory.isOpaque)
+        XCTAssertEqual(accessory.backgroundColor, .clear)
+        XCTAssertFalse(glass.isOpaque)
+        XCTAssertFalse(scroll.isOpaque)
+        XCTAssertEqual(scroll.backgroundColor, .clear)
+        if #available(iOS 26.0, *), !UIAccessibility.isReduceTransparencyEnabled {
+            XCTAssertTrue(glass.effect is UIGlassEffect)
+        }
+    }
+
     func testTripleTapRecognizerExistsWithoutDelayingOrdinaryTouches() {
         withEditor("one\ntwo") { container in
             let taps = (container.textView.gestureRecognizers ?? []).compactMap { $0 as? UITapGestureRecognizer }

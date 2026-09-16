@@ -418,10 +418,12 @@ final class EditorInputTextView: UITextView {
 
     private func makeKeyboardAccessoryView() -> UIView {
         let host = UIView()
+        host.isOpaque = false
         host.backgroundColor = .clear
         host.translatesAutoresizingMaskIntoConstraints = false
 
         let glass = UIVisualEffectView()
+        glass.isOpaque = false
         if UIAccessibility.isReduceTransparencyEnabled {
             glass.backgroundColor = .secondarySystemBackground
             glass.layer.cornerRadius = 21
@@ -444,6 +446,8 @@ final class EditorInputTextView: UITextView {
         glass.translatesAutoresizingMaskIntoConstraints = false
 
         let scroll = UIScrollView()
+        scroll.isOpaque = false
+        scroll.backgroundColor = .clear
         scroll.showsHorizontalScrollIndicator = false
         scroll.translatesAutoresizingMaskIntoConstraints = false
 

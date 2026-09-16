@@ -18,14 +18,31 @@ enum PreviewPaneResizeGeometry {
 
 // MARK: - Preview Split Coordination
 
-extension ContentView {
-    func previewPaneHeader<Actions: View>(
+struct PreviewPaneHeader<Actions: View>: View {
+    let title: String
+    let iconName: String
+    let metadata: String?
+    let backgroundStyle: AnyShapeStyle
+    let onClose: (() -> Void)?
+    let actions: Actions
+
+    init(
         title: String,
         iconName: String,
         metadata: String?,
-        onClose: @escaping () -> Void,
+        backgroundStyle: AnyShapeStyle,
+        onClose: (() -> Void)? = nil,
         @ViewBuilder actions: () -> Actions
-    ) -> some View {
+    ) {
+        self.title = title
+        self.iconName = iconName
+        self.metadata = metadata
+        self.backgroundStyle = backgroundStyle
+        self.onClose = onClose
+        self.actions = actions()
+    }
+
+    var body: some View {
         HStack(spacing: 8) {
             Image(systemName: iconName)
                 .imageScale(.small)
@@ -41,17 +58,39 @@ extension ContentView {
                     .monospacedDigit()
                     .lineLimit(1)
             }
-            actions()
-            Button(action: onClose) {
-                Image(systemName: "xmark")
+            actions
+            if let onClose {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close \(title)")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Close \(title)")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
-        .background(editorSurfaceBackgroundStyle)
+        .background(backgroundStyle)
+    }
+}
+
+extension ContentView {
+    func previewPaneHeader<Actions: View>(
+        title: String,
+        iconName: String,
+        metadata: String?,
+        onClose: @escaping () -> Void,
+        @ViewBuilder actions: () -> Actions
+    ) -> some View {
+        PreviewPaneHeader(
+            title: title,
+            iconName: iconName,
+            metadata: metadata,
+            backgroundStyle: editorSurfaceBackgroundStyle,
+            onClose: onClose
+        ) {
+            actions()
+        }
     }
 
     /// Opens previews for binary documents regardless of whether the tab was

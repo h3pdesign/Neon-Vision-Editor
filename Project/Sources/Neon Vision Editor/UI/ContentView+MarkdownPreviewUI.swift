@@ -80,7 +80,12 @@ extension ContentView {
             metadata: previewFileSizeText(for: viewModel.selectedTab?.fileURL),
             onClose: closeMarkdownPreview
         ) {
-            if projectRootFolderURL != nil {
+#if os(macOS)
+            markdownPreviewPaneActionsMenu
+#elseif canImport(UIKit)
+            if usesRegularIOSLayout {
+                markdownPreviewPaneActionsMenu
+            } else if projectRootFolderURL != nil {
                 Button {
                     toggleMarkdownProjectPreviewFromToolbar()
                 } label: {
@@ -90,30 +95,40 @@ extension ContentView {
                 .help(isMarkdownProjectPreviewPresented ? "Hide project Markdown cards" : "Show project Markdown cards")
                 .accessibilityLabel(isMarkdownProjectPreviewPresented ? "Hide project Markdown cards" : "Show project Markdown cards")
             }
-#if canImport(UIKit)
-            if usesRegularIOSLayout {
-                Toggle(isOn: $markdownPreviewSynchronousScroll) {
-                    Image(systemName: "arrow.up.and.down")
-                }
-                .toggleStyle(.button)
-                .help(markdownPreviewSynchronousScroll ? "Stop syncing preview scrolling" : "Sync preview with editor scrolling")
-                .accessibilityLabel("Sync preview with editor scrolling")
-                .accessibilityValue(markdownPreviewSynchronousScroll ? "On" : "Off")
-            }
-#else
-            Toggle(isOn: $markdownPreviewSynchronousScroll) {
-                Image(systemName: "arrow.up.and.down")
-            }
-            .toggleStyle(.button)
-            .help(markdownPreviewSynchronousScroll ? "Stop syncing preview scrolling" : "Sync preview with editor scrolling")
-            .accessibilityLabel("Sync preview with editor scrolling")
-            .accessibilityValue(markdownPreviewSynchronousScroll ? "On" : "Off")
 #endif
+        }
+    }
+
+    private var markdownPreviewPaneActionsMenu: some View {
+        Menu {
+            if projectRootFolderURL != nil {
+                Button {
+                    toggleMarkdownProjectPreviewFromToolbar()
+                } label: {
+                    Label(
+                        isMarkdownProjectPreviewPresented ? "Hide Project Cards" : "Show Project Cards",
+                        systemImage: "square.grid.2x2"
+                    )
+                }
+            }
+            Button {
+                markdownPreviewSynchronousScroll.toggle()
+            } label: {
+                Label("Sync Scrolling", systemImage: "arrow.up.and.down")
+                if markdownPreviewSynchronousScroll {
+                    Image(systemName: "checkmark")
+                }
+            }
 #if os(macOS)
+            Divider()
             markdownPreviewPaneExportMenu
             markdownPreviewPaneStyleMenu
 #endif
+        } label: {
+            Image(systemName: "ellipsis.circle")
         }
+        .help("Markdown Preview Actions")
+        .accessibilityLabel("Markdown Preview Actions")
     }
 
 #if os(macOS)
@@ -155,7 +170,7 @@ extension ContentView {
                 Label(NSLocalizedString("Copy Markdown", comment: ""), systemImage: "doc.on.clipboard")
             }
         } label: {
-            Image(systemName: "square.and.arrow.down")
+            Label(NSLocalizedString("Export", comment: ""), systemImage: "square.and.arrow.down")
         }
         .menuStyle(.borderlessButton)
         .help(NSLocalizedString("Markdown Preview Export Options", comment: ""))
@@ -181,7 +196,7 @@ extension ContentView {
                 }
             }
         } label: {
-            Image(systemName: "paintbrush")
+            Label(NSLocalizedString("Template", comment: ""), systemImage: "paintbrush")
         }
         .menuStyle(.borderlessButton)
         .help(NSLocalizedString("Markdown Preview Template", comment: ""))

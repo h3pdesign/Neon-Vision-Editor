@@ -522,6 +522,10 @@ struct MarkdownProjectPreviewPanel: View {
     let onReveal: (URL) -> Void
     let onRefresh: () -> Void
 
+    private var headerBackgroundStyle: AnyShapeStyle {
+        translucentBackgroundEnabled ? AnyShapeStyle(Color.clear) : AnyShapeStyle(.thinMaterial)
+    }
+
     init(
         cards: [MarkdownProjectPreviewCardData],
         currentPreviewURL: URL?,
@@ -561,15 +565,12 @@ struct MarkdownProjectPreviewPanel: View {
     var body: some View {
         VStack(spacing: 0) {
 #if os(macOS)
-            HStack(spacing: 8) {
-                Image(systemName: "square.grid.2x2")
-                    .foregroundStyle(.secondary)
-                Text("Project Previews")
-                    .font(.headline)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .layoutPriority(1)
-                Spacer(minLength: 0)
+            PreviewPaneHeader(
+                title: "Project Previews",
+                iconName: "square.grid.2x2",
+                metadata: nil,
+                backgroundStyle: headerBackgroundStyle
+            ) {
                 Button(action: onRefresh) {
                     Image(systemName: "arrow.clockwise")
                 }
@@ -611,23 +612,15 @@ struct MarkdownProjectPreviewPanel: View {
                 .frame(width: 126)
                 .accessibilityLabel("Project preview files")
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .background {
-                if !translucentBackgroundEnabled {
-                    Color.clear.background(.thinMaterial)
-                }
-            }
             .frame(minWidth: 480)
 #else
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    Image(systemName: "square.grid.2x2")
-                        .foregroundStyle(.secondary)
-                    Text("Project Previews")
-                        .font(.headline)
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
+                PreviewPaneHeader(
+                    title: "Project Previews",
+                    iconName: "square.grid.2x2",
+                    metadata: nil,
+                    backgroundStyle: AnyShapeStyle(Color.clear)
+                ) {
                     Button(action: onRefresh) {
                         Image(systemName: "arrow.clockwise")
                     }
@@ -695,6 +688,7 @@ struct MarkdownProjectPreviewPanel: View {
                         .accessibilityLabel("Project preview files")
                     }
                     .buttonStyle(.bordered)
+                    .padding(.horizontal, 12)
                 } else {
                     HStack(spacing: 8) {
                         Picker("Layout", selection: $mode) {
@@ -714,16 +708,11 @@ struct MarkdownProjectPreviewPanel: View {
                         .frame(maxWidth: .infinity)
                         .accessibilityLabel("Project preview files")
                     }
+                    .padding(.horizontal, 12)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 15)
             .padding(.bottom, 9)
-            .background {
-                if !translucentBackgroundEnabled {
-                    Color.clear.background(.thinMaterial)
-                }
-            }
+            .background(headerBackgroundStyle)
 #endif
 
             let isPreparing = !isIndexReady || isIndexing || isPreparingPreviews

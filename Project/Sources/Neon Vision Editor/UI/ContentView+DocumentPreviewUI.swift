@@ -73,8 +73,14 @@ extension ContentView {
     }
 
     func previewFileSizeText(for url: URL?) -> String? {
-        let byteCount = viewModel.selectedTab?.fileByteCount ?? url.flatMap {
-            try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize
+        let byteCount: Int?
+        if let url, url != viewModel.selectedTab?.fileURL {
+            // PDF notes keep the PDF visible while selecting a different tab.
+            byteCount = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize
+        } else {
+            byteCount = viewModel.selectedTab?.fileByteCount ?? url.flatMap {
+                try? $0.resourceValues(forKeys: [.fileSizeKey]).fileSize
+            }
         }
         guard let byteCount else { return nil }
         return ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file)

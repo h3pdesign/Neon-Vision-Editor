@@ -118,6 +118,18 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
+    func testKeyboardAccessoryUsesEditorBackgroundAcrossRebuilds() {
+        let view = EditorInputTextView()
+        let editorBackground = UIColor(red: 0.92, green: 0.84, blue: 0.96, alpha: 1)
+
+        view.setKeyboardAccessoryBackgroundColor(editorBackground)
+        XCTAssertEqual(view.inputAccessoryView?.backgroundColor, editorBackground)
+
+        view.setBracketAccessoryVisible(false)
+        view.setBracketAccessoryVisible(true)
+        XCTAssertEqual(view.inputAccessoryView?.backgroundColor, editorBackground)
+    }
+
     func testTripleTapRecognizerExistsWithoutDelayingOrdinaryTouches() {
         withEditor("one\ntwo") { container in
             let taps = (container.textView.gestureRecognizers ?? []).compactMap { $0 as? UITapGestureRecognizer }

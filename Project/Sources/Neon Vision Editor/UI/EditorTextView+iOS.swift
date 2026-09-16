@@ -419,7 +419,7 @@ final class EditorInputTextView: UITextView {
     private func makeKeyboardAccessoryView() -> UIView {
         let host = UIView()
         host.isOpaque = false
-        host.backgroundColor = .clear
+        host.backgroundColor = keyboardAccessoryBackgroundColor
         host.translatesAutoresizingMaskIntoConstraints = false
 
         let glass = UIVisualEffectView()
@@ -527,6 +527,7 @@ final class EditorInputTextView: UITextView {
     }
     private var isBracketAccessoryVisible: Bool = true
     private var keyboardAccessoryActionsStorageValue: String?
+    private var keyboardAccessoryBackgroundColor: UIColor = .clear
 
     override init(frame: CGRect, textContainer: NSTextContainer?) {
         super.init(frame: frame, textContainer: textContainer)
@@ -650,6 +651,13 @@ final class EditorInputTextView: UITextView {
         if isFirstResponder {
             reloadInputViews()
         }
+    }
+
+    func setKeyboardAccessoryBackgroundColor(_ color: UIColor) {
+        keyboardAccessoryBackgroundColor = color
+        #if !os(visionOS)
+        inputAccessoryView?.backgroundColor = color
+        #endif
     }
 
     @objc private func performKeyboardAccessoryAction(_ sender: UIButton) {
@@ -2139,6 +2147,7 @@ struct CustomTextEditor: UIViewRepresentable {
             translucentBackgroundEnabled: translucentBackgroundEnabled
         )
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
+        textView.setKeyboardAccessoryBackgroundColor(UIColor(theme.background))
         configurePointerSelectionBehavior(textView)
 #if os(iOS)
         textView.installPencilInputIfNeeded()
@@ -2309,6 +2318,7 @@ struct CustomTextEditor: UIViewRepresentable {
             translucentBackgroundEnabled: translucentBackgroundEnabled
         )
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
+        textView.setKeyboardAccessoryBackgroundColor(UIColor(theme.background))
         let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
         if !isInteractivePhoneEditing {
             applyWrapMode(

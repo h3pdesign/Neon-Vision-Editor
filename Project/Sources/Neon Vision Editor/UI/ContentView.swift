@@ -5678,7 +5678,7 @@ struct ContentView: View {
                         Spacer(minLength: 0)
                         if usesIPhoneBottomToolbar {
                             iPhoneScrollableBottomToolbar
-                                .frame(width: max(0, proxy.size.width - 24))
+                                .frame(width: max(0, proxy.size.width - (isPhoneBottomToolbarMinimized ? 24 : 74)))
                                 .frame(maxWidth: .infinity)
                                 .padding(.bottom, 8)
                         } else {

@@ -1097,6 +1097,7 @@ struct ProjectStructureSidebarView: View {
             IntegratedTerminalContent(
                 rootFolderURL: rootFolderURL,
                 session: terminalSession,
+                translucentBackgroundEnabled: translucentBackgroundEnabled,
                 selectedFileURL: selectedFileURL
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)

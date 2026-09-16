@@ -74,20 +74,12 @@ extension ContentView {
 #endif
 
     private var markdownPreviewPaneHeader: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "doc.richtext")
-                .imageScale(.small)
-                .foregroundStyle(.secondary)
-            Text("Markdown Preview")
-                .font(.headline)
-            Spacer(minLength: 0)
-            if let metadata = previewFileSizeText(for: viewModel.selectedTab?.fileURL) {
-                Text(metadata)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                    .lineLimit(1)
-            }
+        previewPaneHeader(
+            title: "Markdown Preview",
+            iconName: "doc.richtext",
+            metadata: previewFileSizeText(for: viewModel.selectedTab?.fileURL),
+            onClose: closeMarkdownPreview
+        ) {
             if projectRootFolderURL != nil {
                 Button {
                     toggleMarkdownProjectPreviewFromToolbar()
@@ -121,15 +113,7 @@ extension ContentView {
             markdownPreviewPaneExportMenu
             markdownPreviewPaneStyleMenu
 #endif
-            Button(action: closeMarkdownPreview) {
-                Image(systemName: "xmark")
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Close Markdown Preview")
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .background(editorSurfaceBackgroundStyle)
     }
 
 #if os(macOS)

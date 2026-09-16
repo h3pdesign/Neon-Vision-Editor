@@ -19,6 +19,41 @@ enum PreviewPaneResizeGeometry {
 // MARK: - Preview Split Coordination
 
 extension ContentView {
+    func previewPaneHeader<Actions: View>(
+        title: String,
+        iconName: String,
+        metadata: String?,
+        onClose: @escaping () -> Void,
+        @ViewBuilder actions: () -> Actions
+    ) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: iconName)
+                .imageScale(.small)
+                .foregroundStyle(.secondary)
+            Text(title)
+                .font(.headline)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            if let metadata {
+                Text(metadata)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+            }
+            actions()
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close \(title)")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(editorSurfaceBackgroundStyle)
+    }
+
     /// Opens previews for binary documents regardless of whether the tab was
     /// created by the toolbar, Launch Services, paste/drop, or session restore.
     /// This only changes the mode when the current document has a native binary

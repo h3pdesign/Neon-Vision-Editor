@@ -38,32 +38,14 @@ extension ContentView {
     }
 
     private var webPreviewHeader: some View {
-        HStack(spacing: 8) {
-            Image(systemName: webPreviewIconName)
-                .imageScale(.small)
-                .foregroundStyle(.secondary)
-            Text(webPreviewTitle)
-                .font(.headline)
-            Spacer(minLength: 0)
-            Text(webPreviewStatusText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Button(action: closeCurrentPreview) {
-                Image(systemName: "xmark")
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Close \(webPreviewTitle)")
+        previewPaneHeader(
+            title: webPreviewTitle,
+            iconName: webPreviewIconName,
+            metadata: webPreviewStatusText,
+            onClose: closeCurrentPreview
+        ) {
+            EmptyView()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .background {
-            Rectangle()
-                .fill(webPreviewHeaderBackgroundColor)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(webPreviewTitle)
-        .accessibilityValue(webPreviewStatusText)
     }
 
     private var webPreviewTitle: String {
@@ -75,22 +57,8 @@ extension ContentView {
     }
 
     private var webPreviewStatusText: String {
-        let byteCount = viewModel.selectedTab?.fileByteCount ?? currentContent.utf8.count
-        if byteCount >= 1_000_000 {
-            return String(format: "%.1f MB", Double(byteCount) / 1_000_000.0)
-        }
-        if byteCount >= 1_000 {
-            return "\(byteCount / 1_000) KB"
-        }
-        return "\(byteCount) bytes"
-    }
-
-    private var webPreviewHeaderBackgroundColor: Color {
-#if os(macOS)
-        currentEditorTheme(colorScheme: colorScheme).background
-#else
-        Color(.systemBackground)
-#endif
+        previewFileSizeText(for: viewModel.selectedTab?.fileURL)
+            ?? ByteCountFormatter.string(fromByteCount: Int64(currentContent.utf8.count), countStyle: .file)
     }
 
     func webPreviewHTML(from source: String) -> String {

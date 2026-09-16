@@ -47,34 +47,14 @@ extension ContentView {
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: iconName)
-                    .imageScale(.small)
-                    .foregroundStyle(.secondary)
-                Text(title)
-                    .font(.headline)
-                Spacer(minLength: 0)
-                if let metadata {
-                    Text(metadata)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                }
-                Button(action: closeCurrentPreview) {
-                    Image(systemName: "xmark")
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close \(title)")
+            previewPaneHeader(
+                title: title,
+                iconName: iconName,
+                metadata: metadata,
+                onClose: closeCurrentPreview
+            ) {
+                EmptyView()
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .background {
-                Rectangle()
-                    .fill(documentPreviewHeaderBackgroundColor)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(title)
 
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -90,14 +70,6 @@ extension ContentView {
             .font(.footnote)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var documentPreviewHeaderBackgroundColor: Color {
-#if os(macOS)
-        currentEditorTheme(colorScheme: colorScheme).background
-#else
-        Color(.systemBackground)
-#endif
     }
 
     func previewFileSizeText(for url: URL?) -> String? {

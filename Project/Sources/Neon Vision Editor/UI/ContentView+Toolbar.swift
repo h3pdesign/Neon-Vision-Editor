@@ -2087,7 +2087,7 @@ extension ContentView {
 #endif
 
         } label: {
-            Image(systemName: "ellipsis.circle")
+            Image(systemName: isPhoneBottomToolbarMinimized ? "slider.horizontal.3" : "ellipsis.circle")
         }
         .help("More Actions")
         .accessibilityLabel("More Actions")

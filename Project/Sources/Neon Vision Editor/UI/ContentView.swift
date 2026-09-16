@@ -219,6 +219,7 @@ enum IOSFloatingStatusPolicy {
 private struct MobileFloatingStatusOverlayModifier: ViewModifier {
     let showsStatus: Bool
     let centered: Bool
+    let bottomInset: CGFloat
     let status: AnyView
 
     func body(content: Content) -> some View {
@@ -226,7 +227,7 @@ private struct MobileFloatingStatusOverlayModifier: ViewModifier {
             if showsStatus {
                 status
                     .padding(.trailing, centered ? 0 : 12)
-                    .padding(.bottom, 12)
+                    .padding(.bottom, 12 + bottomInset)
             }
         }
     }
@@ -4898,6 +4899,7 @@ struct ContentView: View {
                 true
 #endif
             }(),
+            softwareKeyboardVisible: isPhoneSoftwareKeyboardVisible,
             showLineNumbers: showLineNumbers,
             formattingPreferences: EditorFormattingPreferences(
                 boldKeywords: settingsThemeBoldKeywords,
@@ -5704,6 +5706,8 @@ struct ContentView: View {
                     pinnedPresentation: false
                 ),
                 centered: usesIPhoneBottomToolbar,
+                bottomInset: usesIPhoneBottomToolbar && isPhoneSoftwareKeyboardVisible
+                    ? EditorInputTextView.keyboardToolbarHeight : 0,
                 status: AnyView(floatingStatusPill)
             )
         )

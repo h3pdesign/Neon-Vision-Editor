@@ -116,6 +116,7 @@ enum EditorLargeTextFormatting {
 }
 
 final class EditorInputTextView: UITextView {
+    static let keyboardToolbarHeight: CGFloat = 46
     private struct NoWrapWidthCache {
         let revision: Int
         let visibleWidth: CGFloat
@@ -416,19 +417,21 @@ final class EditorInputTextView: UITextView {
         }
     }
 
-    private func makeKeyboardAccessoryView() -> UIView {
+    fileprivate func makeKeyboardAccessoryView(isEditorOverlay: Bool = false) -> UIView {
         let host = UIView()
         host.isOpaque = false
         host.backgroundColor = UIAccessibility.isReduceTransparencyEnabled ? keyboardAccessoryBackgroundColor : .clear
         host.translatesAutoresizingMaskIntoConstraints = false
 
-        let frostedBackground = UIVisualEffectView()
-        frostedBackground.isOpaque = false
-        if !UIAccessibility.isReduceTransparencyEnabled {
-            frostedBackground.effect = UIBlurEffect(style: .systemUltraThinMaterial)
-            frostedBackground.contentView.backgroundColor = keyboardAccessoryBackgroundColor.withAlphaComponent(0.2)
+        let frostedBackground = isEditorOverlay ? nil : UIVisualEffectView()
+        if let frostedBackground {
+            frostedBackground.isOpaque = false
+            if !UIAccessibility.isReduceTransparencyEnabled {
+                frostedBackground.effect = UIBlurEffect(style: .systemUltraThinMaterial)
+                frostedBackground.contentView.backgroundColor = keyboardAccessoryBackgroundColor.withAlphaComponent(0.2)
+            }
+            frostedBackground.translatesAutoresizingMaskIntoConstraints = false
         }
-        frostedBackground.translatesAutoresizingMaskIntoConstraints = false
 
         let glass = UIVisualEffectView()
         glass.isOpaque = false
@@ -507,18 +510,15 @@ final class EditorInputTextView: UITextView {
             stack.addArrangedSubview(button)
         }
 
-        host.addSubview(frostedBackground)
+        if let frostedBackground {
+            host.addSubview(frostedBackground)
+        }
         host.addSubview(glass)
         glass.contentView.addSubview(scroll)
         scroll.addSubview(stack)
 
         NSLayoutConstraint.activate([
-            host.heightAnchor.constraint(equalToConstant: 46),
-
-            frostedBackground.leadingAnchor.constraint(equalTo: host.leadingAnchor),
-            frostedBackground.trailingAnchor.constraint(equalTo: host.trailingAnchor),
-            frostedBackground.topAnchor.constraint(equalTo: host.topAnchor),
-            frostedBackground.bottomAnchor.constraint(equalTo: host.bottomAnchor),
+            host.heightAnchor.constraint(equalToConstant: Self.keyboardToolbarHeight),
 
             glass.leadingAnchor.constraint(equalTo: host.leadingAnchor, constant: 8),
             glass.trailingAnchor.constraint(equalTo: host.trailingAnchor, constant: -8),
@@ -536,6 +536,14 @@ final class EditorInputTextView: UITextView {
             stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor),
             stack.heightAnchor.constraint(equalTo: scroll.frameLayoutGuide.heightAnchor)
         ])
+        if let frostedBackground {
+            NSLayoutConstraint.activate([
+                frostedBackground.leadingAnchor.constraint(equalTo: host.leadingAnchor),
+                frostedBackground.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+                frostedBackground.topAnchor.constraint(equalTo: host.topAnchor),
+                frostedBackground.bottomAnchor.constraint(equalTo: host.bottomAnchor)
+            ])
+        }
 
         return host
     }
@@ -547,7 +555,9 @@ final class EditorInputTextView: UITextView {
         super.init(frame: frame, textContainer: textContainer)
         installLineSelectionGesture()
         #if !os(visionOS)
-        inputAccessoryView = makeKeyboardAccessoryView()
+        if UIDevice.current.userInterfaceIdiom != .phone {
+            inputAccessoryView = makeKeyboardAccessoryView()
+        }
         #endif
         syncVimModeFromDefaults()
         NotificationCenter.default.addObserver(
@@ -562,7 +572,9 @@ final class EditorInputTextView: UITextView {
         super.init(coder: coder)
         installLineSelectionGesture()
         #if !os(visionOS)
-        inputAccessoryView = makeKeyboardAccessoryView()
+        if UIDevice.current.userInterfaceIdiom != .phone {
+            inputAccessoryView = makeKeyboardAccessoryView()
+        }
         #endif
         syncVimModeFromDefaults()
         NotificationCenter.default.addObserver(
@@ -653,12 +665,17 @@ final class EditorInputTextView: UITextView {
 
     func setBracketAccessoryVisible(_ visible: Bool) {
         let actionsStorageValue = UserDefaults.standard.string(forKey: KeyboardAccessoryAction.storageKey)
-        guard isBracketAccessoryVisible != visible ||
-                keyboardAccessoryActionsStorageValue != actionsStorageValue else {
-            return
-        }
+        let needsUpdate = isBracketAccessoryVisible != visible ||
+            keyboardAccessoryActionsStorageValue != actionsStorageValue
         isBracketAccessoryVisible = visible
         keyboardAccessoryActionsStorageValue = actionsStorageValue
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            (superview as? LineNumberedTextViewContainer)?.setKeyboardAccessoryRequested(visible, rebuild: needsUpdate)
+            return
+        }
+        #endif
+        guard needsUpdate else { return }
         #if !os(visionOS)
         inputAccessoryView = visible ? makeKeyboardAccessoryView() : nil
         #endif
@@ -669,6 +686,12 @@ final class EditorInputTextView: UITextView {
 
     func setKeyboardAccessoryBackgroundColor(_ color: UIColor) {
         keyboardAccessoryBackgroundColor = color
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            (superview as? LineNumberedTextViewContainer)?.updateKeyboardAccessoryColor(color)
+            return
+        }
+        #endif
         #if !os(visionOS)
         inputAccessoryView?.backgroundColor = UIAccessibility.isReduceTransparencyEnabled ? color : .clear
         if let frostedBackground = inputAccessoryView?.subviews.first as? UIVisualEffectView {
@@ -676,6 +699,26 @@ final class EditorInputTextView: UITextView {
                 ? .clear : color.withAlphaComponent(0.2)
         }
         #endif
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let becameFirstResponder = super.becomeFirstResponder()
+        #if os(iOS)
+        if becameFirstResponder {
+            (superview as? LineNumberedTextViewContainer)?.refreshKeyboardAccessoryOverlay()
+        }
+        #endif
+        return becameFirstResponder
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        #if os(iOS)
+        if resigned {
+            (superview as? LineNumberedTextViewContainer)?.refreshKeyboardAccessoryOverlay()
+        }
+        #endif
+        return resigned
     }
 
     @objc private func performKeyboardAccessoryAction(_ sender: UIButton) {
@@ -1685,6 +1728,11 @@ final class LineNumberedTextViewContainer: UIView {
     private var cachedFontPointSize: CGFloat = 0
     private var cachedLineNumberWidth: CGFloat = 46
     private var cachedTextLength: Int = 0
+#if os(iOS)
+    private var keyboardAccessoryRequested = false
+    private var softwareKeyboardVisible = false
+    private(set) var keyboardAccessoryOverlay: UIView?
+#endif
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -1756,6 +1804,46 @@ final class LineNumberedTextViewContainer: UIView {
         widthConstraint.isActive = true
         lineNumberWidthConstraint = widthConstraint
     }
+
+#if os(iOS)
+    func setKeyboardAccessoryRequested(_ requested: Bool, rebuild: Bool) {
+        keyboardAccessoryRequested = requested
+        if rebuild {
+            keyboardAccessoryOverlay?.removeFromSuperview()
+            keyboardAccessoryOverlay = nil
+        }
+        refreshKeyboardAccessoryOverlay()
+    }
+
+    func setSoftwareKeyboardVisible(_ visible: Bool) {
+        softwareKeyboardVisible = visible
+        refreshKeyboardAccessoryOverlay()
+    }
+
+    func updateKeyboardAccessoryColor(_ color: UIColor) {
+        guard let overlay = keyboardAccessoryOverlay else { return }
+        overlay.backgroundColor = UIAccessibility.isReduceTransparencyEnabled ? color : .clear
+    }
+
+    func refreshKeyboardAccessoryOverlay() {
+        let shouldShow = keyboardAccessoryRequested && softwareKeyboardVisible && textView.isFirstResponder
+        guard shouldShow else {
+            keyboardAccessoryOverlay?.isHidden = true
+            return
+        }
+        if keyboardAccessoryOverlay == nil {
+            let overlay = textView.makeKeyboardAccessoryView(isEditorOverlay: true)
+            addSubview(overlay)
+            NSLayoutConstraint.activate([
+                overlay.leadingAnchor.constraint(equalTo: leadingAnchor),
+                overlay.trailingAnchor.constraint(equalTo: trailingAnchor),
+                overlay.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor)
+            ])
+            keyboardAccessoryOverlay = overlay
+        }
+        keyboardAccessoryOverlay?.isHidden = false
+    }
+#endif
 
     func applyLineNumberColors(editorBackground: UIColor, textColor: UIColor, translucentBackgroundEnabled: Bool) {
         backgroundColor = translucentBackgroundEnabled ? .clear : editorBackground
@@ -1882,6 +1970,7 @@ struct CustomTextEditor: UIViewRepresentable {
     let showsCodeMinimap: Bool
     let translucentBackgroundEnabled: Bool
     let showKeyboardAccessoryBar: Bool
+    let softwareKeyboardVisible: Bool
     let showLineNumbers: Bool
     let formattingPreferences: EditorFormattingPreferences
     let showInvisibleCharacters: Bool
@@ -2166,6 +2255,11 @@ struct CustomTextEditor: UIViewRepresentable {
         )
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         textView.setKeyboardAccessoryBackgroundColor(UIColor(theme.background))
+#if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            container.setSoftwareKeyboardVisible(softwareKeyboardVisible)
+        }
+#endif
         configurePointerSelectionBehavior(textView)
 #if os(iOS)
         textView.installPencilInputIfNeeded()
@@ -2337,6 +2431,11 @@ struct CustomTextEditor: UIViewRepresentable {
         )
         textView.setBracketAccessoryVisible(showKeyboardAccessoryBar)
         textView.setKeyboardAccessoryBackgroundColor(UIColor(theme.background))
+#if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            uiView.setSoftwareKeyboardVisible(softwareKeyboardVisible)
+        }
+#endif
         let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
         if !isInteractivePhoneEditing {
             applyWrapMode(
@@ -2722,7 +2821,9 @@ struct CustomTextEditor: UIViewRepresentable {
             if isVisible && !textView.isFirstResponder {
                 textView.becomeFirstResponder()
             }
-            textView.reloadInputViews()
+            if UIDevice.current.userInterfaceIdiom != .phone {
+                textView.reloadInputViews()
+            }
         }
 
         @objc private func moveSelectedLines(_ notification: Notification) {

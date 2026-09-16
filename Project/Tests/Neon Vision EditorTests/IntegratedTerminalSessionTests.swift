@@ -74,6 +74,41 @@ final class IntegratedTerminalSessionTests: XCTestCase {
         XCTAssertFalse(session.usesPTY)
     }
 
+    func testTerminalShellDisablesLineEditorRedrawAndPrefersLocalTools() {
+        XCTAssertEqual(
+            IntegratedTerminalSession.shellArguments,
+            ["zsh", "-d", "-l", "-o", "NO_MONITOR", "-o", "NO_ZLE"]
+        )
+        XCTAssertEqual(
+            IntegratedTerminalSession.commandSearchPath(inheritedPath: "/usr/bin:/bin:/opt/homebrew/bin"),
+            "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+        )
+    }
+
+    func testPTYResolvesInstalledHomebrewPythonBeforeAppleShim() throws {
+        let interpreter = "/opt/homebrew/bin/python3"
+        guard FileManager.default.isExecutableFile(atPath: interpreter) else {
+            throw XCTSkip("Homebrew Python is not installed on this host.")
+        }
+        let session = IntegratedTerminalSession()
+        let marker = "NVE_HOMEBREW_PYTHON_\(UUID().uuidString)"
+        let encodedMarker = marker.utf8.map(String.init).joined(separator: ",")
+
+        session.startIfNeeded(in: FileManager.default.temporaryDirectory)
+        session.send(
+            "python3 -c 'print(bytes([\(encodedMarker)]).decode())'",
+            in: FileManager.default.temporaryDirectory
+        )
+
+        let deadline = Date().addingTimeInterval(10)
+        while !session.output.contains(marker), Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+
+        XCTAssertTrue(session.output.contains(marker), session.output)
+        session.stop()
+    }
+
     func testStoppingSessionTerminatesForegroundProcessGroup() {
         let session = IntegratedTerminalSession()
         let marker = "NVE_PTY_CHILD_\(UUID().uuidString)"
@@ -122,7 +157,9 @@ final class IntegratedTerminalSessionTests: XCTestCase {
 
     func testHighVolumeOutputPublishesBoundedIncrementalChunks() {
         let session = IntegratedTerminalSession()
-        let marker = "NVE_PTY_VOLUME_\(UUID().uuidString)"
+        let markerPrefix = "NVE_PTY_VOLUME_"
+        let markerSuffix = UUID().uuidString
+        let marker = markerPrefix + markerSuffix
         var appendLengths: [Int] = []
         let observation = session.$renderUpdate.dropFirst().sink { update in
             if case .append(let chunk) = update.kind {
@@ -132,7 +169,7 @@ final class IntegratedTerminalSessionTests: XCTestCase {
 
         session.startIfNeeded(in: FileManager.default.temporaryDirectory)
         session.send(
-            "i=0; while [ $i -lt 16000 ]; do printf 'line-%05d-abcdefghijklmnopqrstuvwxyz\\n' $i; i=$((i+1)); done; printf '\(marker)\\n'",
+            "i=0; while [ $i -lt 16000 ]; do printf 'line-%05d-abcdefghijklmnopqrstuvwxyz\\n' $i; i=$((i+1)); done; printf '%s%s\\n' '\(markerPrefix)' '\(markerSuffix)'",
             in: FileManager.default.temporaryDirectory
         )
 

@@ -27,6 +27,7 @@ struct TerminalRenderUpdate {
 @MainActor
 final class IntegratedTerminalSession: ObservableObject {
     static let maxOutputUTF16Length = 240_000
+    nonisolated static let shellArguments = ["zsh", "-d", "-l", "-o", "NO_MONITOR", "-o", "NO_ZLE"]
     nonisolated private static let processGroupTerminationGracePeriod: TimeInterval = 0.5
 
     @Published var isRunning: Bool = false
@@ -89,6 +90,9 @@ final class IntegratedTerminalSession: ObservableObject {
 
         generation += 1
         let currentGeneration = generation
+        let commandSearchPath = Self.commandSearchPath(
+            inheritedPath: ProcessInfo.processInfo.environment["PATH"]
+        )
         var masterFileDescriptor: Int32 = -1
         let processID = forkpty(&masterFileDescriptor, nil, nil, nil)
         guard processID >= 0 else {
@@ -108,13 +112,9 @@ final class IntegratedTerminalSession: ObservableObject {
             setenv("CLICOLOR", "1", 1)
             setenv("FORCE_COLOR", "1", 1)
             setenv("TERM_PROGRAM", "Neon Vision Editor", 1)
-            var arguments: [UnsafeMutablePointer<CChar>?] = [
-                strdup("zsh"),
-                strdup("-l"),
-                strdup("-o"),
-                strdup("NO_MONITOR"),
-                nil
-            ]
+            setenv("PATH", commandSearchPath, 1)
+            var arguments = Self.shellArguments.map { strdup($0) as UnsafeMutablePointer<CChar>? }
+            arguments.append(nil)
             arguments.withUnsafeMutableBufferPointer {
                 _ = execv("/bin/zsh", $0.baseAddress)
             }
@@ -212,6 +212,17 @@ final class IntegratedTerminalSession: ObservableObject {
         masterTerminalHandle?.closeFile()
         masterTerminalHandle = nil
         masterTerminalFileDescriptor = -1
+    }
+
+    nonisolated static func commandSearchPath(inheritedPath: String?) -> String {
+        let preferredPaths = ["/opt/homebrew/bin", "/usr/local/bin"]
+        let inheritedPaths = (inheritedPath ?? "")
+            .split(separator: ":")
+            .map(String.init)
+        var seen = Set<String>()
+        return (preferredPaths + inheritedPaths)
+            .filter { !$0.isEmpty && seen.insert($0).inserted }
+            .joined(separator: ":")
     }
 
     nonisolated private static func terminateProcessGroup(_ processID: pid_t) {

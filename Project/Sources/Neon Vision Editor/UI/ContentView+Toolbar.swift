@@ -668,7 +668,7 @@ extension ContentView {
     enum IPadBottomToolbarWidthPolicy {
         nonisolated static func width(availableWidth: CGFloat, minimized: Bool) -> CGFloat {
             let usableWidth = max(0, availableWidth - 64)
-            return min(usableWidth, minimized ? 224 : min(max(availableWidth * 0.68, 400), 760))
+            return min(usableWidth, minimized ? 176 : min(max(availableWidth * 0.68, 400), 760))
         }
     }
 
@@ -1640,6 +1640,22 @@ extension ContentView {
     @ViewBuilder
     private func iPadOverflowMenuControl(actions: [IPadToolbarAction]) -> some View {
         Menu {
+                if usesIPadBottomToolbar && isPhoneBottomToolbarMinimized {
+                    Menu {
+                        ForEach(ToolbarPreset.allCases) { preset in
+                            Button {
+                                selectToolbarPreset(preset)
+                            } label: {
+                                Label(preset.title, systemImage: preset.icon)
+                                if currentToolbarPreset == preset {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("Toolbar Preset", systemImage: currentToolbarPreset.icon)
+                    }
+                }
                 ForEach(actions, id: \.self) { action in
                     switch action {
                     case .openFile:
@@ -2192,11 +2208,11 @@ extension ContentView {
         Group {
             if isPhoneBottomToolbarMinimized {
                 HStack(spacing: 4) {
-                    toggleSidebarControl
+                    settingsControl
                         .frame(minWidth: 44, minHeight: 44)
-                    toolbarPresetMenuControl
                     languagePickerControl
-                    iPadOverflowMenuControl(actions: enabledIPadActionPriority.filter { $0 != .toggleSidebar })
+                        .frame(minWidth: 44, minHeight: 44)
+                    iPadOverflowMenuControl(actions: enabledIPadActionPriority.filter { $0 != .settings })
                 }
                 .padding(.horizontal, 8)
                 .frame(minHeight: 52)

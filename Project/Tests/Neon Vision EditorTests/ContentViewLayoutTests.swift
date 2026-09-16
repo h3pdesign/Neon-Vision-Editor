@@ -132,6 +132,40 @@ final class ContentViewLayoutTests: XCTestCase {
         )
     }
 
+    func testPhoneStatusStartsCompactAndStaysAtBottomWithKeyboard() {
+        XCTAssertEqual(
+            IOSFloatingStatusPolicy.itemLimit(
+                isPhoneBottomToolbar: true,
+                compactEditing: false,
+                expanded: false,
+                regularLimit: 3
+            ),
+            1
+        )
+        XCTAssertNil(
+            IOSFloatingStatusPolicy.itemLimit(
+                isPhoneBottomToolbar: true,
+                compactEditing: false,
+                expanded: true,
+                regularLimit: 3
+            )
+        )
+        XCTAssertFalse(
+            IOSFloatingStatusPolicy.shouldPinToTop(
+                isPhoneBottomToolbar: true,
+                compactLayout: true,
+                keyboardVisible: true
+            )
+        )
+        XCTAssertTrue(
+            IOSFloatingStatusPolicy.shouldPinToTop(
+                isPhoneBottomToolbar: false,
+                compactLayout: true,
+                keyboardVisible: true
+            )
+        )
+    }
+
     func testMobileFindChromeSuppressesMarkdownFormattingChrome() {
         XCTAssertFalse(
             MarkdownFormattingChromePolicy.shouldShow(

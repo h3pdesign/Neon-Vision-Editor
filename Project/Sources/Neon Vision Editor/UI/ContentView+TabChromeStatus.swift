@@ -127,7 +127,11 @@ extension ContentView {
     }
 
     var shouldPinFloatingStatusToTop: Bool {
-        usesCompactIOSLayout && isPhoneSoftwareKeyboardVisible
+        IOSFloatingStatusPolicy.shouldPinToTop(
+            isPhoneBottomToolbar: usesIPhoneBottomToolbar,
+            compactLayout: usesCompactIOSLayout,
+            keyboardVisible: isPhoneSoftwareKeyboardVisible
+        )
     }
 
     private var floatingStatusPillText: String {
@@ -142,14 +146,17 @@ extension ContentView {
             let maxItemCount = isPhoneStatusBarExpanded ? items.count : 1
             return statusBarText(for: items, maxItemCount: maxItemCount)
         }
-        let maxItemCount: Int? = {
-            if isPhoneCompactStatusMode {
-                return isPhoneStatusBarExpanded ? mobileStatusBarMaxItemCount : 1
-            }
-            return mobileStatusBarMaxItemCount
-        }()
-        let base = statusBarText(maxItemCount: maxItemCount)
+        let maxItemCount = IOSFloatingStatusPolicy.itemLimit(
+            isPhoneBottomToolbar: usesIPhoneBottomToolbar,
+            compactEditing: isPhoneCompactStatusMode,
+            expanded: isPhoneStatusBarExpanded,
+            regularLimit: mobileStatusBarMaxItemCount
+        )
         let suffixes = [largeFileStatusBadgeText, remoteSessionStatusBadgeText].filter { !$0.isEmpty }
+        if usesIPhoneBottomToolbar {
+            return statusBarText(for: statusBarItems() + suffixes, maxItemCount: maxItemCount)
+        }
+        let base = statusBarText(maxItemCount: maxItemCount)
         if suffixes.isEmpty {
             return base
         }
@@ -174,7 +181,7 @@ extension ContentView {
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            guard isPhoneCompactStatusMode else { return }
+            guard usesIPhoneBottomToolbar || isPhoneCompactStatusMode else { return }
             isPhoneStatusBarExpanded.toggle()
             if isPhoneStatusBarExpanded {
                 schedulePhoneStatusAutoCollapse()
@@ -184,7 +191,7 @@ extension ContentView {
         }
         .accessibilityLabel("Editor status")
         .accessibilityValue(floatingStatusPillText)
-        .accessibilityHint(isPhoneCompactStatusMode ? "Double tap to expand or collapse editor status details" : "")
+        .accessibilityHint(usesIPhoneBottomToolbar || isPhoneCompactStatusMode ? "Double tap to expand or collapse editor status details" : "")
     }
 
     var iOSToolbarForegroundColor: Color {
@@ -244,7 +251,8 @@ extension ContentView {
     @MainActor
     func schedulePhoneStatusAutoCollapse() {
         cancelPhoneStatusAutoCollapse()
-        guard usesCompactIOSLayout, isPhoneCompactStatusMode else { return }
+        guard usesCompactIOSLayout,
+              usesIPhoneBottomToolbar || isPhoneCompactStatusMode else { return }
         phoneStatusAutoCollapseTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 4_000_000_000)
             guard !Task.isCancelled else { return }

@@ -194,18 +194,38 @@ enum IOSFloatingStatusPolicy {
         guard !brainDumpLayoutEnabled, !findPresented else { return false }
         return shouldPinToTop == pinnedPresentation
     }
+
+    nonisolated static func shouldPinToTop(
+        isPhoneBottomToolbar: Bool,
+        compactLayout: Bool,
+        keyboardVisible: Bool
+    ) -> Bool {
+        !isPhoneBottomToolbar && compactLayout && keyboardVisible
+    }
+
+    nonisolated static func itemLimit(
+        isPhoneBottomToolbar: Bool,
+        compactEditing: Bool,
+        expanded: Bool,
+        regularLimit: Int
+    ) -> Int? {
+        if isPhoneBottomToolbar { return expanded ? nil : 1 }
+        if compactEditing { return expanded ? regularLimit : 1 }
+        return regularLimit
+    }
 }
 
 #if os(iOS) || os(visionOS)
 private struct MobileFloatingStatusOverlayModifier: ViewModifier {
     let showsStatus: Bool
+    let centered: Bool
     let status: AnyView
 
     func body(content: Content) -> some View {
-        content.overlay(alignment: .bottomTrailing) {
+        content.overlay(alignment: centered ? .bottom : .bottomTrailing) {
             if showsStatus {
                 status
-                    .padding(.trailing, 12)
+                    .padding(.trailing, centered ? 0 : 12)
                     .padding(.bottom, 12)
             }
         }
@@ -5683,6 +5703,7 @@ struct ContentView: View {
                     findPresented: showFindReplace,
                     pinnedPresentation: false
                 ),
+                centered: usesIPhoneBottomToolbar,
                 status: AnyView(floatingStatusPill)
             )
         )

@@ -102,12 +102,16 @@ final class MobileEditorInteractionTests: XCTestCase {
     func testKeyboardAccessoryLeavesItsGlassSurroundTransparent() {
         let view = EditorInputTextView()
         guard let accessory = view.inputAccessoryView,
-              let glass = accessory.subviews.compactMap({ $0 as? UIVisualEffectView }).first,
+              let frostedBackground = accessory.subviews.first as? UIVisualEffectView,
+              let glass = accessory.subviews.last as? UIVisualEffectView,
               let scroll = glass.contentView.subviews.compactMap({ $0 as? UIScrollView }).first else {
             return XCTFail("Missing keyboard glass accessory")
         }
         XCTAssertFalse(accessory.isOpaque)
         XCTAssertEqual(accessory.backgroundColor, .clear)
+        if !UIAccessibility.isReduceTransparencyEnabled {
+            XCTAssertTrue(frostedBackground.effect is UIBlurEffect)
+        }
         XCTAssertFalse(glass.isOpaque)
         XCTAssertEqual(glass.layer.cornerRadius, 21)
         XCTAssertTrue(glass.clipsToBounds)
@@ -118,16 +122,31 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
-    func testKeyboardAccessoryUsesEditorBackgroundAcrossRebuilds() {
+    func testKeyboardAccessoryKeepsEditorTintAcrossRebuilds() {
         let view = EditorInputTextView()
         let editorBackground = UIColor(red: 0.92, green: 0.84, blue: 0.96, alpha: 1)
 
         view.setKeyboardAccessoryBackgroundColor(editorBackground)
-        XCTAssertEqual(view.inputAccessoryView?.backgroundColor, editorBackground)
+        assertAccessoryBackground(view, matches: editorBackground)
 
         view.setBracketAccessoryVisible(false)
         view.setBracketAccessoryVisible(true)
-        XCTAssertEqual(view.inputAccessoryView?.backgroundColor, editorBackground)
+        assertAccessoryBackground(view, matches: editorBackground)
+    }
+
+    private func assertAccessoryBackground(_ view: EditorInputTextView, matches editorBackground: UIColor) {
+        guard let accessory = view.inputAccessoryView,
+              let frostedBackground = accessory.subviews.first as? UIVisualEffectView else {
+            return XCTFail("Missing frosted keyboard accessory")
+        }
+        if UIAccessibility.isReduceTransparencyEnabled {
+            XCTAssertEqual(accessory.backgroundColor, editorBackground)
+            XCTAssertNil(frostedBackground.effect)
+        } else {
+            XCTAssertEqual(accessory.backgroundColor, .clear)
+            XCTAssertTrue(frostedBackground.effect is UIBlurEffect)
+            XCTAssertEqual(frostedBackground.contentView.backgroundColor, editorBackground.withAlphaComponent(0.2))
+        }
     }
 
     func testTripleTapRecognizerExistsWithoutDelayingOrdinaryTouches() {

@@ -419,8 +419,16 @@ final class EditorInputTextView: UITextView {
     private func makeKeyboardAccessoryView() -> UIView {
         let host = UIView()
         host.isOpaque = false
-        host.backgroundColor = keyboardAccessoryBackgroundColor
+        host.backgroundColor = UIAccessibility.isReduceTransparencyEnabled ? keyboardAccessoryBackgroundColor : .clear
         host.translatesAutoresizingMaskIntoConstraints = false
+
+        let frostedBackground = UIVisualEffectView()
+        frostedBackground.isOpaque = false
+        if !UIAccessibility.isReduceTransparencyEnabled {
+            frostedBackground.effect = UIBlurEffect(style: .systemUltraThinMaterial)
+            frostedBackground.contentView.backgroundColor = keyboardAccessoryBackgroundColor.withAlphaComponent(0.2)
+        }
+        frostedBackground.translatesAutoresizingMaskIntoConstraints = false
 
         let glass = UIVisualEffectView()
         glass.isOpaque = false
@@ -499,12 +507,18 @@ final class EditorInputTextView: UITextView {
             stack.addArrangedSubview(button)
         }
 
+        host.addSubview(frostedBackground)
         host.addSubview(glass)
         glass.contentView.addSubview(scroll)
         scroll.addSubview(stack)
 
         NSLayoutConstraint.activate([
             host.heightAnchor.constraint(equalToConstant: 46),
+
+            frostedBackground.leadingAnchor.constraint(equalTo: host.leadingAnchor),
+            frostedBackground.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+            frostedBackground.topAnchor.constraint(equalTo: host.topAnchor),
+            frostedBackground.bottomAnchor.constraint(equalTo: host.bottomAnchor),
 
             glass.leadingAnchor.constraint(equalTo: host.leadingAnchor, constant: 8),
             glass.trailingAnchor.constraint(equalTo: host.trailingAnchor, constant: -8),
@@ -656,7 +670,11 @@ final class EditorInputTextView: UITextView {
     func setKeyboardAccessoryBackgroundColor(_ color: UIColor) {
         keyboardAccessoryBackgroundColor = color
         #if !os(visionOS)
-        inputAccessoryView?.backgroundColor = color
+        inputAccessoryView?.backgroundColor = UIAccessibility.isReduceTransparencyEnabled ? color : .clear
+        if let frostedBackground = inputAccessoryView?.subviews.first as? UIVisualEffectView {
+            frostedBackground.contentView.backgroundColor = UIAccessibility.isReduceTransparencyEnabled
+                ? .clear : color.withAlphaComponent(0.2)
+        }
         #endif
     }
 

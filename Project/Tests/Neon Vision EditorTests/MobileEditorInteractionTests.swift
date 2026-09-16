@@ -109,6 +109,8 @@ final class MobileEditorInteractionTests: XCTestCase {
         XCTAssertFalse(accessory.isOpaque)
         XCTAssertEqual(accessory.backgroundColor, .clear)
         XCTAssertFalse(glass.isOpaque)
+        XCTAssertEqual(glass.layer.cornerRadius, 21)
+        XCTAssertTrue(glass.clipsToBounds)
         XCTAssertFalse(scroll.isOpaque)
         XCTAssertEqual(scroll.backgroundColor, .clear)
         if #available(iOS 26.0, *), !UIAccessibility.isReduceTransparencyEnabled {

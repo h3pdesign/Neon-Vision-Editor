@@ -424,23 +424,19 @@ final class EditorInputTextView: UITextView {
 
         let glass = UIVisualEffectView()
         glass.isOpaque = false
+        glass.layer.cornerRadius = 21
+        glass.clipsToBounds = true
         if UIAccessibility.isReduceTransparencyEnabled {
             glass.backgroundColor = .secondarySystemBackground
-            glass.layer.cornerRadius = 21
-            glass.clipsToBounds = true
         } else {
 #if os(iOS)
             if #available(iOS 26.0, *) {
-                glass.effect = UIGlassEffect()
+                glass.effect = UIGlassEffect(style: .clear)
             } else {
                 glass.effect = UIBlurEffect(style: .systemChromeMaterial)
-                glass.layer.cornerRadius = 21
-                glass.clipsToBounds = true
             }
 #else
             glass.effect = UIBlurEffect(style: .systemChromeMaterial)
-            glass.layer.cornerRadius = 21
-            glass.clipsToBounds = true
 #endif
         }
         glass.translatesAutoresizingMaskIntoConstraints = false

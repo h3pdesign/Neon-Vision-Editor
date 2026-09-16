@@ -153,6 +153,17 @@ final class ContentViewLayoutTests: XCTestCase {
         )
     }
 
+    func testIPadBottomToolbarWidthAdaptsToWindowSize() {
+#if os(iOS)
+        let width = ContentView.IPadBottomToolbarWidthPolicy.width
+        XCTAssertEqual(width(768, false), 522.24, accuracy: 0.01)
+        XCTAssertEqual(width(1_024, false), 696.32, accuracy: 0.01)
+        XCTAssertEqual(width(1_366, false), 760)
+        XCTAssertEqual(width(400, false), 336)
+        XCTAssertEqual(width(768, true), 224)
+#endif
+    }
+
     func testPhoneStatusStartsCompactAndStaysAtBottomWithKeyboard() {
         XCTAssertEqual(
             IOSFloatingStatusPolicy.itemLimit(

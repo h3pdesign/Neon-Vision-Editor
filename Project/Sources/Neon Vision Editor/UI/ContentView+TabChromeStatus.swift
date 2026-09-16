@@ -28,6 +28,18 @@ extension ContentView {
 #endif
     }
 
+    var usesIPadBottomToolbar: Bool {
+#if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad
+#else
+        false
+#endif
+    }
+
+    var usesIOSBottomToolbar: Bool {
+        usesIPhoneBottomToolbar || usesIPadBottomToolbar
+    }
+
     struct IPhoneFullWidthModifier: ViewModifier {
         @ViewBuilder
         func body(content: Content) -> some View {
@@ -38,7 +50,7 @@ extension ContentView {
     @ViewBuilder
     var iOSUnifiedToolbarHost: some View {
         if isIPadToolbarLayout {
-            iPadUnifiedToolbarRow
+            iPadUnifiedToolbarRow(availableWidth: liveContainerWidth)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
         } else {
@@ -83,7 +95,7 @@ extension ContentView {
 
     var iOSUnifiedTopChromeHost: some View {
         VStack(spacing: 0) {
-            if !usesIPhoneBottomToolbar {
+            if !usesIOSBottomToolbar {
                 iOSUnifiedToolbarHost
             }
             iOSUnifiedDocumentChromeHost
@@ -128,7 +140,7 @@ extension ContentView {
 
     var shouldPinFloatingStatusToTop: Bool {
         IOSFloatingStatusPolicy.shouldPinToTop(
-            isPhoneBottomToolbar: usesIPhoneBottomToolbar,
+            isPhoneBottomToolbar: usesIOSBottomToolbar,
             compactLayout: usesCompactIOSLayout,
             keyboardVisible: isPhoneSoftwareKeyboardVisible
         )
@@ -147,13 +159,13 @@ extension ContentView {
             return statusBarText(for: items, maxItemCount: maxItemCount)
         }
         let maxItemCount = IOSFloatingStatusPolicy.itemLimit(
-            isPhoneBottomToolbar: usesIPhoneBottomToolbar,
+            isPhoneBottomToolbar: usesIOSBottomToolbar,
             compactEditing: isPhoneCompactStatusMode,
             expanded: isPhoneStatusBarExpanded,
             regularLimit: mobileStatusBarMaxItemCount
         )
         let suffixes = [largeFileStatusBadgeText, remoteSessionStatusBadgeText].filter { !$0.isEmpty }
-        if usesIPhoneBottomToolbar {
+        if usesIOSBottomToolbar {
             return statusBarText(for: statusBarItems() + suffixes, maxItemCount: maxItemCount)
         }
         let base = statusBarText(maxItemCount: maxItemCount)
@@ -167,7 +179,7 @@ extension ContentView {
         floatingStatusPillSurface
             .contentShape(Rectangle())
             .onTapGesture {
-                guard usesIPhoneBottomToolbar || isPhoneCompactStatusMode else { return }
+                guard usesIOSBottomToolbar || isPhoneCompactStatusMode else { return }
                 isPhoneStatusBarExpanded.toggle()
                 if isPhoneStatusBarExpanded {
                     schedulePhoneStatusAutoCollapse()
@@ -177,13 +189,13 @@ extension ContentView {
             }
             .accessibilityLabel("Editor status")
             .accessibilityValue(floatingStatusPillText)
-            .accessibilityHint(usesIPhoneBottomToolbar || isPhoneCompactStatusMode ? "Double tap to expand or collapse editor status details" : "")
+            .accessibilityHint(usesIOSBottomToolbar || isPhoneCompactStatusMode ? "Double tap to expand or collapse editor status details" : "")
     }
 
     @ViewBuilder
     private var floatingStatusPillSurface: some View {
 #if os(iOS)
-        if usesIPhoneBottomToolbar {
+        if usesIOSBottomToolbar {
             floatingStatusPillLabel
                 .background {
                     IOSClearGlassBackground()
@@ -276,8 +288,7 @@ extension ContentView {
     @MainActor
     func schedulePhoneStatusAutoCollapse() {
         cancelPhoneStatusAutoCollapse()
-        guard usesCompactIOSLayout,
-              usesIPhoneBottomToolbar || isPhoneCompactStatusMode else { return }
+        guard usesIOSBottomToolbar || isPhoneCompactStatusMode else { return }
         phoneStatusAutoCollapseTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 4_000_000_000)
             guard !Task.isCancelled else { return }

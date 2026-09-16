@@ -2728,7 +2728,7 @@ struct ContentView: View {
                 if shouldUseSplitView {
                     VStack(spacing: 0) {
                         if usesAppOwnedIOSSplitChromeLayout {
-                            if !usesIPhoneBottomToolbar {
+                            if !usesIOSBottomToolbar {
                                 iOSUnifiedToolbarHost
                             }
                             iOSUnifiedDocumentChromeHost
@@ -5499,7 +5499,7 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
 #if os(iOS) || os(visionOS)
-        let bottomUnderlayContent = usesIPhoneBottomToolbar
+        let bottomUnderlayContent = usesIOSBottomToolbar
             ? AnyView(content.ignoresSafeArea(.container, edges: .bottom))
             : AnyView(content)
         let contentWithTopChrome = useIOSUnifiedTopHost && !usesAppOwnedIOSSplitChromeLayout
@@ -5625,7 +5625,7 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .editorUserDidScroll)) { notif in
-            guard usesIPhoneBottomToolbar,
+            guard usesIOSBottomToolbar,
                   let documentID = (notif.userInfo?[EditorCommandUserInfo.documentID] as? String).flatMap(UUID.init(uuidString:)),
                   documentID == viewModel.selectedTab?.id,
                   let scrollingDown = notif.userInfo?[EditorCommandUserInfo.scrollingDown] as? Bool else { return }
@@ -5671,6 +5671,18 @@ struct ContentView: View {
             editorToolbarContent
         }
 #if os(iOS)
+        .overlay(alignment: .bottom) {
+            if usesIPadBottomToolbar && !showFindReplace && !isPhoneSoftwareKeyboardVisible {
+                GeometryReader { proxy in
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        iPadUnifiedToolbarRow(availableWidth: proxy.size.width)
+                            .frame(maxWidth: .infinity)
+                            .padding(.bottom, 8)
+                    }
+                }
+            }
+        }
         .toolbarBackground(.hidden, for: .bottomBar)
         .sheet(
             isPresented: Binding(
@@ -5708,11 +5720,12 @@ struct ContentView: View {
                     shouldPinToTop: shouldPinFloatingStatusToTop,
                     findPresented: showFindReplace,
                     pinnedPresentation: false,
-                    phoneToolbarMinimized: usesIPhoneBottomToolbar && isPhoneBottomToolbarMinimized
+                    phoneToolbarMinimized: usesIOSBottomToolbar && isPhoneBottomToolbarMinimized
                 ),
-                centered: usesIPhoneBottomToolbar,
-                bottomInset: usesIPhoneBottomToolbar && isPhoneSoftwareKeyboardVisible
-                    ? EditorInputTextView.keyboardToolbarHeight : 0,
+                centered: usesIOSBottomToolbar,
+                bottomInset: usesIOSBottomToolbar && isPhoneSoftwareKeyboardVisible
+                    ? EditorInputTextView.keyboardToolbarHeight
+                    : (usesIPadBottomToolbar ? 64 : 0),
                 status: AnyView(floatingStatusPill)
             )
         )

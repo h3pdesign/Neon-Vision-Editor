@@ -582,7 +582,7 @@ extension ContentView {
             .frame(minWidth: 64, alignment: .center)
 #else
             Image(systemName: currentToolbarPreset.icon)
-                .foregroundStyle(currentToolbarPreset.tint)
+                .foregroundStyle(iOSToolbarTintColor)
 #endif
         }
         .help("Choose Toolbar Preset")
@@ -664,6 +664,13 @@ extension ContentView {
 
 #if os(iOS) || os(visionOS)
     // MARK: - iOS Toolbar Layout Metrics
+
+    enum IPadBottomToolbarWidthPolicy {
+        nonisolated static func width(availableWidth: CGFloat, minimized: Bool) -> CGFloat {
+            let usableWidth = max(0, availableWidth - 64)
+            return min(usableWidth, minimized ? 224 : min(max(availableWidth * 0.68, 400), 760))
+        }
+    }
 
     private var iOSToolbarChromeStyle: GlassChromeStyle { .single }
     private var iOSToolbarTintColor: Color {
@@ -2180,7 +2187,36 @@ extension ContentView {
     }
 
     @ViewBuilder
-    var iPadUnifiedToolbarRow: some View {
+    func iPadUnifiedToolbarRow(availableWidth: CGFloat) -> some View {
+#if os(iOS)
+        Group {
+            if isPhoneBottomToolbarMinimized {
+                HStack(spacing: 4) {
+                    toggleSidebarControl
+                        .frame(minWidth: 44, minHeight: 44)
+                    toolbarPresetMenuControl
+                    languagePickerControl
+                    iPadOverflowMenuControl(actions: enabledIPadActionPriority.filter { $0 != .toggleSidebar })
+                }
+                .padding(.horizontal, 8)
+                .frame(minHeight: 52)
+            } else {
+                iPadScrollableToolbarControls
+            }
+        }
+        .frame(width: IPadBottomToolbarWidthPolicy.width(
+            availableWidth: availableWidth,
+            minimized: isPhoneBottomToolbarMinimized
+        ))
+        .background {
+            IOSClearGlassBackground()
+                .clipShape(Capsule())
+        }
+        .tint(iOSToolbarTintColor)
+        .foregroundStyle(iOSToolbarTintColor)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Editor toolbar")
+#else
         GlassSurface(
             enabled: enableTranslucentWindow || visionOSSystemGlassEnabled,
             material: primaryGlassMaterial,
@@ -2196,6 +2232,7 @@ extension ContentView {
         .animation(.easeOut(duration: 0.18), value: toolbarDensityScale)
         .animation(.easeOut(duration: 0.18), value: toolbarDensityOpacity)
         .tint(iOSToolbarTintColor)
+#endif
     }
 
 #if os(visionOS)
@@ -2405,7 +2442,7 @@ extension ContentView {
                 .foregroundStyle(iOSToolbarTintColor)
             }
         }
-        if isIPadToolbarLayout && !useIOSUnifiedTopHost {
+        if isIPadToolbarLayout && !usesIPadBottomToolbar && !useIOSUnifiedTopHost {
             if #available(iOS 26.0, *) {
                 ToolbarItem(placement: .topBarTrailing) {
                     GlassSurface(

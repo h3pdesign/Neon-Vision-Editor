@@ -1,0 +1,35 @@
+name: CodeQL Actions
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - ".github/workflows/**"
+  push:
+    branches: [main, develop]
+    paths:
+      - ".github/workflows/**"
+
+concurrency:
+  group: codeql-actions-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    # Keep default setup active until this workflow is merged and validated.
+    if: ${{ vars.NVE_ADVANCED_CODEQL == 'enabled' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: actions
+      - uses: github/codeql-action/analyze@v4

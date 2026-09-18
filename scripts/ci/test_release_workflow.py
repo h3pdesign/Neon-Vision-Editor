@@ -49,6 +49,22 @@ def fixture(root):
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_privacy_log_audit_checks_sources_and_rejects_search_errors(self):
+        audit = ROOT / "scripts/ci/privacy_log_audit.sh"
+        with tempfile.TemporaryDirectory() as directory:
+            fake_rg = Path(directory) / "rg"
+            for status in (0, 1, 2):
+                fake_rg.write_text(
+                    "#!/bin/sh\n"
+                    "[ \"$3\" = \"Project/Sources/Neon Vision Editor\" ] || exit 3\n"
+                    f"exit {status}\n"
+                )
+                fake_rg.chmod(0o755)
+                env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}"}
+                result = subprocess.run(["bash", str(audit)], cwd=ROOT, env=env,
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0 if status == 1 else 1 if status == 0 else 2)
+
     def test_release_github_has_local_developer_id_signing_defaults(self):
         project = (ROOT / prep.PROJECT).read_text()
         self.assertIn(

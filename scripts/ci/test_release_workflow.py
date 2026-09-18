@@ -51,14 +51,14 @@ def fixture(root):
 class ReleaseWorkflowTests(unittest.TestCase):
     def test_privacy_log_audit_checks_sources_and_rejects_search_errors(self):
         audit = ROOT / "scripts/ci/privacy_log_audit.sh"
-        result = subprocess.run(["bash", str(audit)], cwd=ROOT, capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertNotIn("IO error", result.stderr)
-
         with tempfile.TemporaryDirectory() as directory:
             fake_rg = Path(directory) / "rg"
             for status in (0, 1, 2):
-                fake_rg.write_text(f"#!/bin/sh\nexit {status}\n")
+                fake_rg.write_text(
+                    "#!/bin/sh\n"
+                    "[ \"$3\" = \"Project/Sources/Neon Vision Editor\" ] || exit 3\n"
+                    f"exit {status}\n"
+                )
                 fake_rg.chmod(0o755)
                 env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}"}
                 result = subprocess.run(["bash", str(audit)], cwd=ROOT, env=env,

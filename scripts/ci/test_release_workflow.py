@@ -49,6 +49,13 @@ def fixture(root):
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_swift_ci_cancels_stale_pr_runs_and_skips_audit_only_changes(self):
+        workflow = (ROOT / ".github/workflows/swift.yml").read_text()
+        self.assertIn("group: swift-${{ github.event.pull_request.number || github.ref }}", workflow)
+        self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", workflow)
+        self.assertIn("- scripts/ci/privacy_log_audit.sh", workflow)
+        self.assertIn("- scripts/ci/test_release_workflow.py", workflow)
+
     def test_privacy_log_audit_checks_sources_and_rejects_search_errors(self):
         audit = ROOT / "scripts/ci/privacy_log_audit.sh"
         with tempfile.TemporaryDirectory() as directory:

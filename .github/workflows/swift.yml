@@ -13,6 +13,12 @@ on:
       - appcast.xml
       - docs/**
       - release/**
+      - scripts/ci/privacy_log_audit.sh
+      - scripts/ci/test_release_workflow.py
+
+concurrency:
+  group: swift-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

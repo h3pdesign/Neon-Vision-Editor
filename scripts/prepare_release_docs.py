@@ -597,6 +597,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v1.8.2": ("Vollständige Vorschau großer Markdown-Dateien", "Zeigt große Markdown-Dateien vollständig formatiert statt als gekürzten Quelltext an. Öffnet Dateien aus dem Finder auch ohne offenes Editorfenster und beschränkt das Scrollen langer Dokumente auf sichtbare Zeilen.", ["Markdown", "Editor", "macOS"]),
         "v1.8.1": ("Mobile Symbolleisten und natives Glas", "Kompakte Symbolleisten für iPhone und iPad halten den Editor sichtbar. Tastaturaktionen, Status und Vorschauen passen sich dem Editor-Theme und den Systemeinstellungen für Glas an.", ["Editor", "Symbolleiste", "iPhone und iPad"]),
         "v1.8.0": ("Schnellere Dateien und anpassbares Fensterglas", "Öffnet Dateien per Drag-and-drop, beschleunigt Datei- und Projektarbeit mit Swift 6.4 und OS 27, hält lange Dokumente vollständig sichtbar und passt Layouts sowie natives Fensterglas flexibel an.", ["Editor", "Leistung", "macOS"]),
         "v1.7.6": ("Stabile Editorzeilen beim Scrollen", "Zeichnet beim Scrollen den sichtbaren Core-Text-Bereich neu und verhindert überlagerte oder abgeschnittene Zeilen in langen und umbrochenen Dokumenten.", ["Editor", "Scrollen", "macOS"]),
@@ -628,6 +629,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v1.8.2": ("Fuld visning af store Markdown-filer", "Viser store Markdown-filer som formateret indhold i stedet for afkortet kildetekst. Åbner filer fra Finder uden et åbent redigeringsvindue og begrænser rulning i lange dokumenter til synlige linjer.", ["Markdown", "Editor", "macOS"]),
         "v1.8.1": ("Mobile værktøjslinjer og indbygget glas", "Kompakte værktøjslinjer til iPhone og iPad holder editoren synlig. Tastaturhandlinger, status og forhåndsvisninger følger editorens tema og systemets glasindstillinger.", ["Editor", "Værktøjslinje", "iPhone og iPad"]),
         "v1.8.0": ("Hurtigere filer og justerbart vinduesglas", "Åbner filer med træk og slip, fremskynder fil- og projektarbejde med Swift 6.4 og OS 27, holder lange dokumenter komplette og tilpasser layout samt native vinduesglas fleksibelt.", ["Editor", "Ydeevne", "macOS"]),
         "v1.7.6": ("Stabile editorlinjer under rulning", "Gentegner det synlige Core Text-område under rulning og forhindrer overlappende eller afskårne linjer i lange dokumenter med linjeombrydning.", ["Editor", "Rulning", "macOS"]),
@@ -659,6 +661,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v1.8.2": ("Aperçu complet des grands fichiers Markdown", "Affiche les grands fichiers Markdown mis en forme plutôt qu’un extrait de code tronqué. Ouvre les fichiers depuis le Finder sans fenêtre d’édition et limite le défilement des longs documents aux lignes visibles.", ["Markdown", "Éditeur", "macOS"]),
         "v1.8.1": ("Barres d’outils mobiles et verre natif", "Des barres d’outils compactes sur iPhone et iPad laissent l’éditeur visible. Les commandes du clavier, l’état et les aperçus suivent le thème de l’éditeur et les réglages système du verre.", ["Éditeur", "Barre d’outils", "iPhone et iPad"]),
         "v1.8.0": ("Fichiers plus rapides et verre réglable", "Ouvre les fichiers par glisser-déposer, accélère les opérations de fichiers et de projets avec Swift 6.4 et OS 27, conserve les longs documents complets et adapte la disposition ainsi que le verre natif.", ["Éditeur", "Performances", "macOS"]),
         "v1.7.6": ("Lignes stables pendant le défilement", "Redessine la zone Core Text visible pendant le défilement et évite les lignes superposées ou tronquées dans les documents longs avec retour à la ligne.", ["Éditeur", "Défilement", "macOS"]),
@@ -690,6 +693,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v1.8.2": ("Vista previa completa de archivos Markdown grandes", "Muestra los archivos Markdown grandes con formato en lugar de texto de origen truncado. Abre archivos desde Finder sin una ventana de edición y limita el desplazamiento en documentos largos a las líneas visibles.", ["Markdown", "Editor", "macOS"]),
         "v1.8.1": ("Barras móviles y cristal nativo", "Las barras compactas de iPhone y iPad dejan visible el editor. Los controles del teclado, el estado y las vistas previas siguen el tema del editor y los ajustes de cristal del sistema.", ["Editor", "Barra de herramientas", "iPhone y iPad"]),
         "v1.8.0": ("Archivos más rápidos y cristal ajustable", "Abre archivos mediante arrastrar y soltar, acelera el trabajo con archivos y proyectos usando Swift 6.4 y OS 27, mantiene completos los documentos largos y adapta el diseño y el cristal nativo.", ["Editor", "Rendimiento", "macOS"]),
         "v1.7.6": ("Líneas estables al desplazarse", "Redibuja la región visible de Core Text durante el desplazamiento y evita líneas superpuestas o recortadas en documentos largos con ajuste de línea.", ["Editor", "Desplazamiento", "macOS"]),
@@ -721,6 +725,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v1.8.2": ("大きな Markdown ファイルを最後までプレビュー", "大きな Markdown ファイルを途中で切れたソース表示ではなく、書式付きで最後まで表示します。編集ウインドウがなくても Finder からファイルを開けます。長い文書のスクロールでは表示行のみを描画します。", ["Markdown", "エディタ", "macOS"]),
         "v1.8.1": ("モバイルツールバーとネイティブガラス", "iPhone と iPad のコンパクトなツールバーでエディタを広く表示。キーボード操作、ステータス、プレビューがエディタのテーマとシステムのガラス設定に合わせて変化します。", ["エディタ", "ツールバー", "iPhone と iPad"]),
         "v1.8.0": ("高速なファイル処理と調整可能なウインドウガラス", "ドラッグ＆ドロップでファイルを開き、Swift 6.4 と OS 27 でファイルとプロジェクトの処理を高速化。長い文書を最後まで表示し、レイアウトとネイティブガラスを柔軟に調整します。", ["エディタ", "パフォーマンス", "macOS"]),
         "v1.7.6": ("スクロール中も安定したエディタ行", "スクロール時に表示中の Core Text 領域だけを再描画し、長い折り返し文書で行が重なったり欠けたりする問題を防ぎます。", ["エディタ", "スクロール", "macOS"]),
@@ -752,6 +757,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v1.8.2": ("完整预览大型 Markdown 文件", "将大型 Markdown 文件完整呈现为格式化内容，而不是截断的源文本。即使没有打开编辑器窗口，也能从 Finder 打开文件；滚动长文档时只重绘可见行。", ["Markdown", "编辑器", "macOS"]),
         "v1.8.1": ("移动工具栏与原生玻璃效果", "iPhone 和 iPad 的紧凑工具栏让编辑器保留更多可见空间。键盘操作、状态信息和预览会适应编辑器主题及系统玻璃效果设置。", ["编辑器", "工具栏", "iPhone 和 iPad"]),
         "v1.8.0": ("更快的文件处理与可调窗口玻璃效果", "支持拖放打开文件，利用 Swift 6.4 和 OS 27 加速文件与项目操作，完整显示长文档，并让布局和原生窗口玻璃效果灵活适配可用空间。", ["编辑器", "性能", "macOS"]),
         "v1.7.6": ("滚动时保持编辑器行稳定", "滚动时仅重绘可见的 Core Text 区域，避免长文档和自动换行文档中的文本行重叠或被裁切。", ["编辑器", "滚动", "macOS"]),

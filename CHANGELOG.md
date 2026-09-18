@@ -6,6 +6,11 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixes
+
+- Opens an editor window when files or project folders are sent from Finder while no editor window is open.
+- Keeps the editor's scroll redraw focused on visible rows and avoids an unnecessary localization override during system-language startup.
+
 ## [v1.8.1] - 2026-09-16
 
 ### Why Upgrade

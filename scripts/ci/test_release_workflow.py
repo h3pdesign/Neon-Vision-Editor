@@ -49,6 +49,52 @@ def fixture(root):
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_release_gate_reuses_mac_build_and_fails_without_whole_matrix_retry(self):
+        gate = (ROOT / "scripts/ci/release_gate.sh").read_text()
+        preflight = (ROOT / "scripts/ci/release_preflight.sh").read_text()
+        self.assertIn("build_platform_matrix.sh --keep-derived-data", gate)
+        self.assertIn('NVE_RELEASE_DERIVED_DATA_PATH="$DERIVED_DATA_ROOT/macos"', gate)
+        self.assertIn("trap 'rm -rf \"$DERIVED_DATA_ROOT\"' EXIT", gate)
+        self.assertEqual(gate.count("scripts/ci/build_platform_matrix.sh"), 1)
+        self.assertIn('DERIVED_DATA_PATH="${NVE_RELEASE_DERIVED_DATA_PATH:-${WORK_DIR}/DerivedData}"', preflight)
+        self.assertEqual(preflight.count('-derivedDataPath "$DERIVED_DATA_PATH"'), 2)
+        self.assertEqual(preflight.count("run_critical_tests"), 2)
+
+    def test_release_gate_cleans_reused_build_and_does_not_retry_failed_matrix(self):
+        with tempfile.TemporaryDirectory(prefix="nve-release-gate-") as temp:
+            root = Path(temp)
+            ci = root / "scripts/ci"
+            ci.mkdir(parents=True)
+            shutil.copy2(ROOT / "scripts/ci/release_gate.sh", ci / "release_gate.sh")
+            (ci / "build_platform_matrix.sh").write_text(
+                '#!/bin/bash\n'
+                'echo matrix >> "$DERIVED_DATA_ROOT/calls"\n'
+                'mkdir -p "$DERIVED_DATA_ROOT/macos"\n'
+                '[[ "${FAIL_MATRIX:-0}" == 0 ]]\n'
+            )
+            (ci / "release_preflight.sh").write_text(
+                '#!/bin/bash\n'
+                '[[ -d "$NVE_RELEASE_DERIVED_DATA_PATH" ]]\n'
+            )
+            for script in ci.glob("*.sh"):
+                script.chmod(0o755)
+            derived = root / "derived"
+            derived.mkdir()
+            env = {**os.environ, "DERIVED_DATA_ROOT": str(derived)}
+            result = subprocess.run(["bash", str(ci / "release_gate.sh"), "v1.8.2"],
+                                    cwd=root, env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertFalse(derived.exists())
+
+            derived.mkdir()
+            env["FAIL_MATRIX"] = "1"
+            result = subprocess.run(["bash", str(ci / "release_gate.sh"), "v1.8.2"],
+                                    cwd=root, env=env, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout.count("Running platform build matrix gate"), 1)
+            self.assertNotIn("Running release preflight gate", result.stdout)
+            self.assertFalse(derived.exists())
+
     def test_swift_ci_cancels_stale_pr_runs_and_skips_audit_only_changes(self):
         workflow = (ROOT / ".github/workflows/swift.yml").read_text()
         self.assertIn("group: swift-${{ github.event.pull_request.number || github.ref }}", workflow)
@@ -374,6 +420,9 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     def test_hosted_preflight_does_not_pass_when_runtime_checks_are_skipped(self):
         preflight = (ROOT / ".github/workflows/pre-release-ci.yml").read_text()
+        self.assertIn("runs-on: ubuntu-latest", preflight)
+        self.assertIn("uses: actions/checkout@v5", preflight)
+        self.assertNotIn("xcodebuild", preflight)
         self.assertNotIn("project_probe", preflight)
         swift = (ROOT / ".github/workflows/swift.yml").read_text()
         self.assertNotIn("- name: Run critical runtime tests", preflight)

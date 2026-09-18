@@ -147,6 +147,7 @@ final class VirtualEditorPerformanceTests: XCTestCase {
     private func assertMedianLatency(_ samples: [TimeInterval], budget name: String) throws {
         let fileURL = URL(fileURLWithPath: #filePath)
         let repositoryURL = fileURL.deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
         let data = try Data(contentsOf: repositoryURL.appendingPathComponent("docs/performance-baselines.json"))
         let root = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         let interactions = try XCTUnwrap(root["interactionBenchmarks"] as? [String: Any])

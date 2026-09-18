@@ -126,17 +126,15 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         fileprivate let generation: UInt64
         fileprivate let editCount: Int
 
+        func previewText(maximumByteCount: Int) throws -> String? {
+            let sourceByteCount = needsSourceRead ? copy.lazyFileByteCount : copy.byteCount
+            guard maximumByteCount > 0, sourceByteCount <= maximumByteCount else { return nil }
+            try prepareSourceReadIfNeeded()
+            return try copy.text(inByteRange: NSRange(location: 0, length: copy.byteCount))
+        }
+
         func write(to destination: URL? = nil, allowExternalOverwrite: Bool = false) throws -> SaveReceipt {
-            if needsSourceRead, let source = copy.url {
-                try CoordinatedDocumentAccess.read(at: source) { coordinatedURL in
-                    let current = try coordinatedURL.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
-                    guard let expected = copy.savedFileMetadata,
-                          current.fileSize == expected.byteCount,
-                          current.contentModificationDate == expected.modificationDate else { throw Error.externalConflict }
-                    copy.lazyFileHandle = try FileHandle(forReadingFrom: coordinatedURL)
-                    try copy.materializeLazyStorageIfNeeded()
-                }
-            }
+            try prepareSourceReadIfNeeded()
             if let destination {
                 try copy.saveAtomically(to: destination)
                 let replacement = try CoordinatedDocumentAccess.read(at: destination) { url in
@@ -151,6 +149,19 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
             try copy.saveAtomically(allowExternalOverwrite: allowExternalOverwrite)
             guard let metadata = copy.savedFileMetadata else { throw Error.externalConflict }
             return SaveReceipt(metadata: metadata, generation: generation, editCount: editCount, replacement: nil)
+        }
+
+        private func prepareSourceReadIfNeeded() throws {
+            if needsSourceRead, let source = copy.url {
+                try CoordinatedDocumentAccess.read(at: source) { coordinatedURL in
+                    let current = try coordinatedURL.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+                    guard let expected = copy.savedFileMetadata,
+                          current.fileSize == expected.byteCount,
+                          current.contentModificationDate == expected.modificationDate else { throw Error.externalConflict }
+                    copy.lazyFileHandle = try FileHandle(forReadingFrom: coordinatedURL)
+                    try copy.materializeLazyStorageIfNeeded()
+                }
+            }
         }
 
     }

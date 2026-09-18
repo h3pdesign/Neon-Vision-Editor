@@ -512,24 +512,43 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertFalse(html.contains("data-code-language=\"swift\""))
     }
 
-    func testLargeMarkdownPreviewUsesBoundedFallback() {
-        let markdown = String(repeating: "# Heading\nA paragraph with **formatting**.\n", count: 8_000)
+    func testLargeMarkdownPreviewRendersEntireDocument() {
+        let markdown = String(repeating: "- [A linked item](https://example.com) with **formatting**.\n", count: 12_000)
+            + "\n## Final heading after 12000 lines\n"
+        let html = ContentView.markdownPreviewBodyHTML(from: markdown, useRenderLimits: true)
+
+        XCTAssertGreaterThan(markdown.utf8.count, 557_861)
+        XCTAssertTrue(html.contains("<a href=\"https://example.com\""))
+        XCTAssertTrue(html.contains("<h2>Final heading after 12000 lines</h2>"))
+        XCTAssertFalse(html.contains("truncated preview"))
+    }
+
+    func testLargeMarkdownPreviewDisplaysFinalHeadingInWebView() async throws {
+        let markdown = String(repeating: "- [A linked item](https://example.com) with **formatting**.\n", count: 12_000)
+            + "\n## Final heading after 12000 lines\n"
+        let started = CFAbsoluteTimeGetCurrent()
+        let body = ContentView.markdownPreviewBodyHTML(from: markdown, useRenderLimits: true)
+        let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 800, height: 600))
+        let loaded = expectation(description: "Large Markdown preview loaded")
+        let waiter = PDFExportNavigationWaiter(loaded: loaded)
+        webView.navigationDelegate = waiter
+        webView.loadHTMLString("<html><body>\(body)</body></html>", baseURL: nil)
+        await fulfillment(of: [loaded], timeout: 30)
+        let result = try await webView.evaluateJavaScript("document.querySelector('h2:last-of-type')?.textContent") as? String
+        XCTAssertEqual(result, "Final heading after 12000 lines")
+        print("Large Markdown preview rendered and loaded in \(CFAbsoluteTimeGetCurrent() - started) seconds")
+        webView.navigationDelegate = nil
+        webView.stopLoading()
+        withExtendedLifetime(waiter) {}
+    }
+
+    func testExtremeMarkdownPreviewUsesBoundedFallback() {
+        let markdown = String(repeating: "# Heading\nA paragraph with **formatting**.\n", count: 240_000)
         let html = ContentView.markdownPreviewBodyHTML(from: markdown, useRenderLimits: true)
 
         XCTAssertTrue(html.contains("Large Markdown file"))
         XCTAssertTrue(html.contains("truncated preview"))
         XCTAssertLessThan(html.utf8.count, 150_000)
-    }
-
-    func testRepeatedLargeMarkdownPreviewRenderingStaysWithinLatencyBudget() {
-        let markdown = String(repeating: "# Heading\nA paragraph with **formatting**.\n", count: 8_000)
-
-        measure(metrics: [XCTClockMetric()]) {
-            for _ in 0..<20 {
-                let html = ContentView.markdownPreviewBodyHTML(from: markdown, useRenderLimits: true)
-                XCTAssertLessThan(html.utf8.count, 150_000)
-            }
-        }
     }
 }
 

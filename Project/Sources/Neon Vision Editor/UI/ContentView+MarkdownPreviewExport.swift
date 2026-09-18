@@ -86,6 +86,7 @@ extension ContentView {
     nonisolated private static let markdownStrikethroughRegex = try! NSRegularExpression(pattern: "~~([^~]+)~~")
     nonisolated private static let markdownPreviewHTMLCache = NVELock(MarkdownPreviewHTMLCache())
     nonisolated private static let markdownPreviewLocalImageCache = NVELock(MarkdownPreviewLocalImageCache())
+    nonisolated static let markdownPreviewFullRenderByteLimit = 8_000_000
     nonisolated private static let markdownPDFExportSourceByteLimit = 25_000_000
 
     enum MarkdownPreviewDialect: String, CaseIterable, Identifiable {
@@ -445,21 +446,15 @@ extension ContentView {
         // is closed. Its render pipeline must therefore not depend on the
         // inline preview's visibility.
         guard showMarkdownPreviewPane || isPDFNoteMarkdownPreviewVisible || showDetachedPreviewWindow else { return }
-        // The virtual editor must not be promoted to a whole-document String by
-        // the preview pipeline. Preview rendering is intentionally unavailable
-        // for file-backed documents until it has a bounded source adapter.
-        guard viewModel.selectedTab?.usesFileBackedStorage != true else {
-            markdownPreviewRenderTask?.cancel()
-            markdownPreviewRenderTask = nil
-            isMarkdownPreviewRendering = false
-            markdownPreviewRenderedHTML = ""
-            return
-        }
         let signature = markdownPreviewCurrentRenderSignature
+        guard immediate || signature != markdownPreviewRenderSignature else { return }
+        let fileBackedDocument = viewModel.selectedTab?.fileBackedDocument
+        let fileBackedByteCount = fileBackedDocument?.byteCount ?? 0
+        let fileBackedSnapshot = fileBackedDocument?.makeSaveSnapshot()
+        let source = fileBackedSnapshot == nil ? currentContent : nil
         // Local images are embedded from disk. Do not reuse HTML that could have been
         // generated before the document URL or its sibling assets were available.
-        let containsLocalImageReference = Self.markdownMayReferenceLocalImage(currentContent)
-        guard immediate || signature != markdownPreviewRenderSignature else { return }
+        let containsLocalImageReference = fileBackedSnapshot != nil || Self.markdownMayReferenceLocalImage(source ?? "")
 
         markdownPreviewRenderTask?.cancel()
         isMarkdownPreviewRendering = true
@@ -492,9 +487,23 @@ extension ContentView {
                 scheduleMarkdownPreviewRender(immediate: true)
                 return
             }
-            let source = currentContent
             let bodyHTML = await Task.detached(priority: .utility) {
-                let bodyHTML = ContentView.markdownPreviewBodyHTML(from: source, dialect: dialect, useRenderLimits: true)
+                let bodyHTML: String
+                if let fileBackedSnapshot {
+                    do {
+                        if let text = try fileBackedSnapshot.previewText(maximumByteCount: ContentView.markdownPreviewFullRenderByteLimit) {
+                            bodyHTML = ContentView.markdownPreviewBodyHTML(from: text, dialect: dialect, useRenderLimits: true)
+                        } else {
+                            bodyHTML = ContentView.largeMarkdownFallbackHTML(
+                                from: "", byteCount: fileBackedByteCount, sourceWasTruncated: true
+                            )
+                        }
+                    } catch {
+                        bodyHTML = "<section class=\"preview-warning\"><p>Unable to load Markdown preview. The source file remains available in the editor.</p></section>"
+                    }
+                } else {
+                    bodyHTML = ContentView.markdownPreviewBodyHTML(from: source ?? "", dialect: dialect, useRenderLimits: true)
+                }
                 return ContentView.embeddingLocalImages(
                     in: bodyHTML,
                     relativeTo: documentURL,
@@ -1003,18 +1012,20 @@ extension ContentView {
         useRenderLimits: Bool
     ) -> String {
         let byteCount = markdownText.lengthOfBytes(using: .utf8)
-        if useRenderLimits && byteCount > 180_000 {
+        if useRenderLimits && byteCount > markdownPreviewFullRenderByteLimit {
             return largeMarkdownFallbackHTML(from: markdownText, byteCount: byteCount)
         }
-        if !useRenderLimits && byteCount > 180_000 {
+        if !useRenderLimits && byteCount > markdownPreviewFullRenderByteLimit {
             return "<pre>\(escapedHTML(markdownText))</pre>"
         }
         return renderedMarkdownBodyHTML(from: markdownText, dialect: dialect) ?? "<pre>\(escapedHTML(markdownText))</pre>"
     }
 
-    nonisolated static func largeMarkdownFallbackHTML(from markdownText: String, byteCount: Int) -> String {
+    nonisolated static func largeMarkdownFallbackHTML(
+        from markdownText: String, byteCount: Int, sourceWasTruncated: Bool = false
+    ) -> String {
         let previewText = String(markdownText.prefix(120_000))
-        let truncated = previewText.count < markdownText.count
+        let truncated = sourceWasTruncated || previewText.count < markdownText.count
         let statusSuffix = truncated ? " (truncated preview)" : ""
         return """
         <section class="preview-warning">

@@ -90,14 +90,14 @@ def main() -> None:
     if "assertMedianLatency" not in benchmark_source or "maximumMedianSeconds" not in benchmark_source:
         fail("interaction benchmarks must enforce the configured median latency budgets")
 
-    pre_release_workflow = (ROOT / ".github" / "workflows" / "pre-release-ci.yml").read_text(encoding="utf-8")
+    runtime_workflow = (ROOT / ".github" / "workflows" / "swift.yml").read_text(encoding="utf-8")
     for required_trend_export in (
         "VirtualEditorPerformanceTests",
         "VirtualEditorPerformance.xcresult",
         "actions/upload-artifact@v4",
     ):
-        if required_trend_export not in pre_release_workflow:
-            fail(f"pre-release CI does not export {required_trend_export}")
+        if required_trend_export not in runtime_workflow:
+            fail(f"Swift CI does not export {required_trend_export}")
 
     policy = baseline["capturePolicy"]
     if set(policy["platforms"]) != {"macos", "iphone", "ipad"}:

@@ -343,11 +343,15 @@ class ReleaseWorkflowTests(unittest.TestCase):
     def test_hosted_preflight_does_not_pass_when_runtime_checks_are_skipped(self):
         preflight = (ROOT / ".github/workflows/pre-release-ci.yml").read_text()
         self.assertNotIn("project_probe", preflight)
-        runtime = preflight.split("- name: Run critical runtime tests", 1)[1].split(
+        swift = (ROOT / ".github/workflows/swift.yml").read_text()
+        self.assertNotIn("- name: Run critical runtime tests", preflight)
+        runtime = swift.split("- name: Run critical runtime tests", 1)[1].split(
             "- name: Record virtual editor performance trends", 1
         )[0]
         self.assertNotIn("if:", runtime)
         self.assertIn('Neon Vision EditorTests/AppDelegateExternalOpenTests', runtime)
+        self.assertLess(swift.index("- name: Build platform matrix"), swift.index("- name: Run critical runtime tests"))
+        self.assertIn("- name: Verify icon payload in built app", swift)
 
     @unittest.skipUnless(shutil.which("ssh-keygen"), "SSH signing executable unavailable")
     def test_real_local_worktree_signing_resume_and_source_preservation(self):

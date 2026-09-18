@@ -1692,10 +1692,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         guard !lineStarts.isEmpty else { return }
         let dark = scheme == .dark
         let rows = visualRows()
+        let visibleRows = rows[visibleVisualRowRange(in: rows, dirtyRect: dirtyRect)]
         drawCurrentLineHighlight(rows: rows)
-        drawFindMatchBackgrounds(rows: rows)
-        drawSelectionBackground(rows: rows)
-        for row in rows where row.baseline + lineHeight >= dirtyRect.minY && row.baseline <= dirtyRect.maxY {
+        drawFindMatchBackgrounds(rows: visibleRows)
+        drawSelectionBackground(rows: visibleRows)
+        for row in visibleRows {
             context.saveGState()
             if showsLineNumbers, row.isFirstFragment {
                 let lineNumber = "\(row.logicalLine + 1)" as NSString
@@ -1720,10 +1721,26 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             context.restoreGState()
             drawWhitespaceAndIndentationDecorations(for: row, dark: dark)
         }
-        drawHexColorSwatches(rows: rows, dirtyRect: dirtyRect)
+        drawHexColorSwatches(rows: visibleRows, dirtyRect: dirtyRect)
         drawMarkedText(rows: rows, context: context)
         drawInlineSuggestion(rows: rows, context: context)
         drawCaret(rows: rows)
+    }
+
+    private func visibleVisualRowRange(in rows: [VisualRow], dirtyRect: NSRect) -> Range<Int> {
+        func firstIndex(atOrAfter baseline: CGFloat) -> Int {
+            var lower = 0
+            var upper = rows.count
+            while lower < upper {
+                let midpoint = (lower + upper) / 2
+                if rows[midpoint].baseline < baseline { lower = midpoint + 1 }
+                else { upper = midpoint }
+            }
+            return lower
+        }
+        let lower = firstIndex(atOrAfter: dirtyRect.minY - lineHeight)
+        let upper = firstIndex(atOrAfter: dirtyRect.maxY.nextUp)
+        return lower..<max(lower, upper)
     }
 
     private func drawInlineSuggestion(rows: [VisualRow], context: CGContext) {
@@ -1753,7 +1770,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         )
     }
 
-    private func drawHexColorSwatches(rows: [VisualRow], dirtyRect: NSRect) {
+    private func drawHexColorSwatches(rows: ArraySlice<VisualRow>, dirtyRect: NSRect) {
         guard VirtualEditorHexColorPreview.isSupported(language: language) else { return }
         for target in hexColorSwatchTargets(rows: rows) where target.rect.intersects(dirtyRect) {
             target.literal.color.setFill()
@@ -2048,7 +2065,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         NSRect(x: gutterWidth, y: row.baseline - lineHeight + 2, width: max(0, bounds.width - gutterWidth), height: lineHeight).fill()
     }
 
-    private func drawSelectionBackground(rows: [VisualRow]) {
+    private func drawSelectionBackground(rows: ArraySlice<VisualRow>) {
         guard selection.length > 0 else { return }
         let selectedStart = selection.location - viewportLineOriginStartUTF16
         let selectedEnd = NSMaxRange(selection) - viewportLineOriginStartUTF16
@@ -2075,7 +2092,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         }
     }
 
-    private func drawFindMatchBackgrounds(rows: [VisualRow]) {
+    private func drawFindMatchBackgrounds(rows: ArraySlice<VisualRow>) {
         guard !findMatchRanges.isEmpty else { return }
         let viewportStart = viewportLineOriginStartUTF16
         let visibleStart = rows.first?.fragment.absoluteStartUTF16 ?? 0
@@ -2173,7 +2190,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let rect: NSRect
     }
 
-    private func hexColorSwatchTargets(rows: [VisualRow]) -> [HexColorSwatchTarget] {
+    private func hexColorSwatchTargets(rows: some Collection<VisualRow>) -> [HexColorSwatchTarget] {
         guard VirtualEditorHexColorPreview.isSupported(language: language) else { return [] }
         var targets: [HexColorSwatchTarget] = []
         var linesWithSwatches: Set<Int> = []

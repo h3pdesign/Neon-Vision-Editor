@@ -44,6 +44,16 @@ private enum RuntimeLanguageOverride {
     nonisolated private static let didInstallBundleOverride = NVELock(false)
 
     static func apply(languageCode: String) {
+        if languageCode == "system" {
+            guard didInstallBundleOverride.withLock({ $0 }) else { return }
+            objc_setAssociatedObject(
+                Bundle.main,
+                &runtimeLanguageBundleAssociationKey,
+                nil,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            return
+        }
         installBundleOverrideIfNeeded()
         let bundle = languageBundle(for: languageCode)
         objc_setAssociatedObject(
@@ -86,6 +96,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     weak var appUpdateManager: AppUpdateManager?
     private var pendingOpenURLs: [URL] = []
     private var pendingProjectFolderURLs: [URL] = []
+    var openPrimaryWindow: (() -> Void)? {
+        didSet {
+            if oldValue == nil && needsPrimaryWindow {
+                openPrimaryWindow?()
+            }
+        }
+    }
+    private var needsPrimaryWindow = false
 
     func application(_ application: NSApplication, open urls: [URL]) {
         handleExternalOpenURLs(urls)
@@ -114,21 +132,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     projectFolderURL = projectFolderURL ?? fileURL
                     continue
                 }
-                if let existing = WindowViewModelRegistry.shared.viewModel(containing: fileURL) {
+                if let existing = WindowViewModelRegistry.shared.viewModel(containing: fileURL),
+                   let window = NSApp.window(withWindowNumber: existing.windowNumber) {
                     _ = existing.viewModel.focusTabIfOpen(for: fileURL)
-                    if let window = NSApp.window(withWindowNumber: existing.windowNumber) {
-                        window.makeKeyAndOrderFront(nil)
-                        NSApp.activate(ignoringOtherApps: true)
-                    }
+                    window.makeKeyAndOrderFront(nil)
+                    NSApp.activate(ignoringOtherApps: true)
                     continue
                 }
-                let target = WindowViewModelRegistry.shared.activeViewModel() ?? self.viewModel
+                let target = existingEditorViewModel()
                 if let target {
                     if target.openFileFromExternalRequest(url: fileURL) {
                         self.bringEditorWindowToFront(for: target)
                     }
                 } else {
                     self.pendingOpenURLs.append(fileURL)
+                    requestPrimaryWindowIfNeeded()
                 }
             }
             if let projectFolderURL {
@@ -168,6 +186,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func flushPendingURLs(into viewModel: EditorViewModel) {
+        needsPrimaryWindow = false
         let urls = pendingOpenURLs
         pendingOpenURLs.removeAll()
         let didOpenFile = urls.reduce(false) { didOpen, url in
@@ -190,8 +209,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func openProjectFolder(url: URL) {
-        guard let target = WindowViewModelRegistry.shared.activeViewModel() ?? viewModel else {
+        guard let target = existingEditorViewModel() else {
             pendingProjectFolderURLs.append(url)
+            requestPrimaryWindowIfNeeded()
             return
         }
         postProjectFolderOpen(url, targeting: target)
@@ -224,6 +244,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.makeKeyAndOrderFront(nil)
         }
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func requestPrimaryWindowIfNeeded() {
+        guard !needsPrimaryWindow else { return }
+        needsPrimaryWindow = true
+        openPrimaryWindow?()
+    }
+
+    private func existingEditorViewModel() -> EditorViewModel? {
+        if let active = WindowViewModelRegistry.shared.activeViewModel() {
+            return active
+        }
+        guard let viewModel,
+              let number = WindowViewModelRegistry.shared.windowNumber(for: viewModel),
+              NSApp.window(withWindowNumber: number) != nil else { return nil }
+        return viewModel
     }
 }
 
@@ -676,7 +712,8 @@ struct NeonVisionEditorApp: App {
 
     var body: some Scene {
 #if os(macOS)
-        WindowGroup {
+        let _ = configureExternalOpenWindowAction()
+        WindowGroup(id: "primary-editor") {
             PrimaryWindowContentView(
                 startupBehavior: mainStartupBehavior,
                 safeModeMessage: startupSafeModeMessage,
@@ -1050,6 +1087,12 @@ struct NeonVisionEditorApp: App {
 #endif
     }
 
+#if os(macOS)
+    private func configureExternalOpenWindowAction() {
+        let action = openWindow
+        appDelegate.openPrimaryWindow = { action(id: "primary-editor") }
+    }
+#endif
 }
 
 // MARK: - Environment Keys

@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-09-16 (v1.8.1 release-aligned architecture)
+Last updated: 2026-09-18 (v1.8.2 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -8,6 +8,13 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v1.8.2 (2026-09-18)
+
+- Renders complete Markdown previews for documents up to 8 MB, including file-backed editor documents.
+- Opens an editor window when files or project folders are sent from Finder while no editor window is open.
+- Keeps the editor's scroll redraw focused on visible rows and avoids an unnecessary localization override during system-language startup.
+- Removes the 180 KB Markdown preview cutoff that showed a truncated raw-text fallback for ordinary large documents.
 
 ### v1.8.1 (2026-09-16)
 
@@ -17,14 +24,6 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 - Adds Markdown theme selection to the iPad preview menu.
 - Keeps the mobile keyboard toolbar clear of the editor and on-screen keyboard, with a frosted surface in light and dark mode.
 - Centers and collapses the mobile editor status above the bottom toolbar, then hides it while scrolling.
-
-### v1.8.0 (2026-09-14)
-
-- Adds native macOS file drag and drop with modern DropSession handling and a compatible path for older supported macOS releases.
-- Adds a compact five-step macOS window-surface slider that moves from dense native frosted glass to a lighter frosted surface while preserving background blur.
-- Streams terminal output incrementally into a native text view and precomputes stable Git diff rows.
-- Reduces repeated URL normalization during project scans and uses the measured faster byte-iteration path for large files.
-- Keeps a newly selected long document's complete content visible instead of applying a stale scroll position from the previous tab.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

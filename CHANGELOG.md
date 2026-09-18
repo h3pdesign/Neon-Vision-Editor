@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.8.2] - 2026-09-18
+
 ### Why Upgrade
 
 - View large Markdown documents as rendered Markdown instead of a truncated source preview.

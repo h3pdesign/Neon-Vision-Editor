@@ -3,6 +3,25 @@
 When asked to make a new release, start from clean `develop` aligned with
 `origin/develop`. Choose and review the next release tag before running any
 commands below; set `TAG` to that approved version.
+
+## Fast release path
+
+Aim to start the hosted release promptly after the protected preparation PR
+merges. Do read-only status checks together, prepare once, review the generated
+diff, and run the release gate once for that exact source. Do not repeat the
+offline rehearsal, platform matrix, or runtime tests unless the release source
+changes or the failed check needs a targeted rerun. Reuse an existing prepared
+release with the documented resume path; do not create another preparation PR
+or dispatch a second hosted run while an equivalent run is active. The matrix
+reuses its macOS build products for the runtime gate and retries only its
+identified transient build-system errors.
+
+If a required check, protected merge, Apple service, or hosted runner prevents
+progress, report the specific blocker and elapsed time immediately. The goal is
+under two hours end-to-end, with a roughly ten-minute hosted workflow, but
+external queues, notarization, and protected-branch approval cannot be
+guaranteed by automation.
+
 OS 27 features are part of `develop`; App Store builds must use Xcode 27 or later so their
 SDK-qualified sources are included, while older SDK builds retain compatibility.
 

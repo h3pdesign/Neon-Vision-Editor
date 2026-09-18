@@ -347,6 +347,27 @@ enum VirtualEditorScrollAnchorPolicy {
         let rowHeight = max(1, lineHeight * max(1, estimatedRowsPerLogicalLine))
         return max(0, Int(scrollY / rowHeight) - max(0, prefetchLines))
     }
+
+    /// Reload before the visible viewport reaches the end of the currently
+    /// decoded window. The anchor already includes a prefetch margin, so the
+    /// boundary must also account for the number of logical lines visible on
+    /// screen; otherwise a bounded window can expose a blank tail while the
+    /// user is still scrolling toward the next window.
+    static func shouldReloadViewport(
+        targetLine: Int,
+        viewportLineOrigin: Int,
+        loadedLineCount: Int,
+        lineHeight: CGFloat,
+        estimatedRowsPerLogicalLine: CGFloat,
+        viewportHeight: CGFloat,
+        prefetchLines: Int
+    ) -> Bool {
+        guard loadedLineCount > 0 else { return true }
+        let rowHeight = max(1, lineHeight * max(1, estimatedRowsPerLogicalLine))
+        let visibleLineCount = max(1, Int(ceil(max(lineHeight, viewportHeight) / rowHeight)))
+        let reloadBoundary = viewportLineOrigin + loadedLineCount - visibleLineCount - max(0, prefetchLines)
+        return targetLine < viewportLineOrigin || targetLine >= reloadBoundary
+    }
 }
 
 struct VirtualEditorVisualRowsCacheKey: Equatable {
@@ -894,7 +915,11 @@ final class VirtualEditorScrollView: NSScrollView {
             didReloadViewport: didReloadViewport,
             didResize: didResize
         ) {
-            canvas.recalculateVisualMetrics()
+            if didReloadViewport && !didResize {
+                canvas.scheduleVisualMetricsRecalculation()
+            } else {
+                canvas.recalculateVisualMetrics()
+            }
             canvas.setFrameSize(NSSize(width: canvas.contentWidth, height: canvas.logicalHeight))
             canvas.lastReloadAnchorLine = canvas.viewportLineOrigin
             // Viewport replacement and geometry changes alter pixels. Ordinary
@@ -970,8 +995,23 @@ struct VirtualEditorAccessibilityContext: Equatable {
 
 @MainActor
 enum VirtualEditorSelectionPolicy {
-    static func shouldContinueDrag(at point: NSPoint, in bounds: NSRect) -> Bool {
-        bounds.contains(point)
+    static func anchor(for selection: NSRange, caret: Int, existingAnchor: Int?) -> Int {
+        if let existingAnchor { return existingAnchor }
+        guard selection.length > 0 else { return caret }
+        return caret == selection.location ? NSMaxRange(selection) : selection.location
+    }
+
+    static func autoScrollStep(at y: CGFloat, visibleRect: NSRect, lineHeight: CGFloat) -> CGFloat {
+        let edge: CGFloat = 20
+        let distance: CGFloat
+        if y < visibleRect.minY + edge {
+            distance = y - visibleRect.minY - edge
+        } else if y > visibleRect.maxY - edge {
+            distance = y - visibleRect.maxY + edge
+        } else {
+            return 0
+        }
+        return (distance < 0 ? -1 : 1) * min(max(lineHeight, abs(distance) * 0.5), lineHeight * 3)
     }
 
     static func lineRange(in text: String, at utf16Offset: Int) -> NSRange {
@@ -1052,13 +1092,21 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var markedTextSelectedRange = NSRange(location: 0, length: 0)
     private var selectionAnchor: Int?
     private var pendingDragPublication: DispatchWorkItem?
+    private var dragAutoScrollTimer: Timer?
     private let documentUndoManager = UndoManager()
     private var lastConfigurationKey = ""
     private var documentDisplayName = "Untitled"
     private var layoutCache: [Int: CTLine] = [:]
     private var attributedLineCache: [Int: NSAttributedString] = [:]
     private var visualFragmentCache = VirtualEditorVisualFragmentCache()
-    private var visualRowsSnapshot: (key: VirtualEditorVisualRowsCacheKey, coveredMaxY: CGFloat, rows: [VisualRow])?
+    private struct VisualRowsSnapshot {
+        let key: VirtualEditorVisualRowsCacheKey
+        let coveredMaxY: CGFloat
+        let nextLineIndex: Int
+        let nextBaseline: CGFloat
+        let rows: [VisualRow]
+    }
+    private var visualRowsSnapshot: VisualRowsSnapshot?
     private var syntaxSpansByLine: [Int: [VirtualEditorSyntaxSpan]] = [:]
     private(set) var syntaxHighlightTask: Task<Void, Never>?
     private var deferredViewportTask: Task<Void, Never>?
@@ -1103,7 +1151,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var deferredContentWidthGeneration = 0
     private let viewportMaximumByteCount = 256_000
     private let editRefreshMaximumByteCount = 128_000
-    private let visualMetricSampleLineLimit = 512
+    private let visualMetricSampleLineLimit = 128
     private var lineHeight: CGFloat { max(1, (editorFont.ascender - editorFont.descender + editorFont.leading + 4) * lineHeightMultiplier) }
     private var editorFont: NSFont { resolvedEditorFont }
     private var gutterWidth: CGFloat {
@@ -1161,7 +1209,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     /// Visual-row measurement can touch hundreds of Core Text lines. Defer it
     /// until after the representable update has returned so selecting a tab can
     /// publish its already-loaded viewport in the current run loop.
-    private func scheduleVisualMetricsRecalculation() {
+    fileprivate func scheduleVisualMetricsRecalculation() {
         visualMetricsGeneration &+= 1
         let generation = visualMetricsGeneration
         DispatchQueue.main.async { [weak self] in
@@ -1304,6 +1352,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         // editor's in-progress drag anchor before AppKit starts moving the
         // window, otherwise subsequent drag events can extend the text range.
         selectionAnchor = nil
+        stopDragAutoScroll()
         pendingDragPublication?.cancel()
         pendingDragPublication = nil
     }
@@ -1643,10 +1692,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         guard !lineStarts.isEmpty else { return }
         let dark = scheme == .dark
         let rows = visualRows()
+        let visibleRows = rows[visibleVisualRowRange(in: rows, dirtyRect: dirtyRect)]
         drawCurrentLineHighlight(rows: rows)
-        drawFindMatchBackgrounds(rows: rows)
-        drawSelectionBackground(rows: rows)
-        for row in rows where row.baseline + lineHeight >= dirtyRect.minY && row.baseline <= dirtyRect.maxY {
+        drawFindMatchBackgrounds(rows: visibleRows)
+        drawSelectionBackground(rows: visibleRows)
+        for row in visibleRows {
             context.saveGState()
             if showsLineNumbers, row.isFirstFragment {
                 let lineNumber = "\(row.logicalLine + 1)" as NSString
@@ -1671,10 +1721,26 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             context.restoreGState()
             drawWhitespaceAndIndentationDecorations(for: row, dark: dark)
         }
-        drawHexColorSwatches(rows: rows, dirtyRect: dirtyRect)
+        drawHexColorSwatches(rows: visibleRows, dirtyRect: dirtyRect)
         drawMarkedText(rows: rows, context: context)
         drawInlineSuggestion(rows: rows, context: context)
         drawCaret(rows: rows)
+    }
+
+    private func visibleVisualRowRange(in rows: [VisualRow], dirtyRect: NSRect) -> Range<Int> {
+        func firstIndex(atOrAfter baseline: CGFloat) -> Int {
+            var lower = 0
+            var upper = rows.count
+            while lower < upper {
+                let midpoint = (lower + upper) / 2
+                if rows[midpoint].baseline < baseline { lower = midpoint + 1 }
+                else { upper = midpoint }
+            }
+            return lower
+        }
+        let lower = firstIndex(atOrAfter: dirtyRect.minY - lineHeight)
+        let upper = firstIndex(atOrAfter: dirtyRect.maxY.nextUp)
+        return lower..<max(lower, upper)
     }
 
     private func drawInlineSuggestion(rows: [VisualRow], context: CGContext) {
@@ -1704,7 +1770,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         )
     }
 
-    private func drawHexColorSwatches(rows: [VisualRow], dirtyRect: NSRect) {
+    private func drawHexColorSwatches(rows: ArraySlice<VisualRow>, dirtyRect: NSRect) {
         guard VirtualEditorHexColorPreview.isSupported(language: language) else { return }
         for target in hexColorSwatchTargets(rows: rows) where target.rect.intersects(dirtyRect) {
             target.literal.color.setFill()
@@ -1832,22 +1898,19 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             viewportHeight: visibleBounds?.height ?? viewportSize.height,
             lineHeight: lineHeight
         )
-        if let visualRowsSnapshot,
-           visualRowsSnapshot.key == snapshotKey,
-           visualRowsSnapshot.coveredMaxY >= coveredMaxY {
-            return visualRowsSnapshot.rows
+        let reusableSnapshot = visualRowsSnapshot?.key == snapshotKey ? visualRowsSnapshot : nil
+        if let reusableSnapshot, reusableSnapshot.coveredMaxY >= coveredMaxY {
+            return reusableSnapshot.rows
         }
-        var rows: [VisualRow] = []
-        var baseline = VirtualEditorVisualLayout.baseline(
+        var rows = reusableSnapshot?.rows ?? []
+        var baseline = reusableSnapshot?.nextBaseline ?? VirtualEditorVisualLayout.baseline(
             rowOrigin: visualRowIndex.rowOrigin(forLogicalLine: viewportLineOrigin),
             lineHeight: lineHeight,
             fontAscender: editorFont.ascender
         )
-        for viewportLine in viewportLines {
-            let estimatedBaseline = baseline
-            if estimatedBaseline > coveredMaxY {
-                break
-            }
+        var lineIndex = reusableSnapshot?.nextLineIndex ?? 0
+        while lineIndex < viewportLines.count && baseline <= coveredMaxY {
+            let viewportLine = viewportLines[lineIndex]
             let fragments = cachedVisualFragments(
                 for: viewportLine.text,
                 localLine: viewportLine.localLine,
@@ -1864,8 +1927,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 ))
                 baseline += lineHeight
             }
+            lineIndex += 1
         }
-        visualRowsSnapshot = (snapshotKey, coveredMaxY, rows)
+        visualRowsSnapshot = VisualRowsSnapshot(
+            key: snapshotKey, coveredMaxY: coveredMaxY,
+            nextLineIndex: lineIndex, nextBaseline: baseline, rows: rows
+        )
         return rows
     }
 
@@ -1914,6 +1981,21 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     func visualRow(containing localLocation: Int, in rows: [VisualRow]) -> VisualRow? {
         guard let index = visualRowIndex(containing: localLocation, in: rows) else { return nil }
         return rows[index]
+    }
+
+    func visualRow(closestToBaseline y: CGFloat, in rows: [VisualRow]) -> VisualRow? {
+        guard !rows.isEmpty else { return nil }
+        var lower = 0
+        var upper = rows.count
+        while lower < upper {
+            let midpoint = (lower + upper) / 2
+            if rows[midpoint].baseline < y { lower = midpoint + 1 }
+            else { upper = midpoint }
+        }
+        if lower == 0 { return rows[0] }
+        if lower == rows.count { return rows[rows.count - 1] }
+        return y - rows[lower - 1].baseline <= rows[lower].baseline - y
+            ? rows[lower - 1] : rows[lower]
     }
 
     private func visualRowIndex(containing localLocation: Int, in rows: [VisualRow]) -> Int? {
@@ -1983,7 +2065,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         NSRect(x: gutterWidth, y: row.baseline - lineHeight + 2, width: max(0, bounds.width - gutterWidth), height: lineHeight).fill()
     }
 
-    private func drawSelectionBackground(rows: [VisualRow]) {
+    private func drawSelectionBackground(rows: ArraySlice<VisualRow>) {
         guard selection.length > 0 else { return }
         let selectedStart = selection.location - viewportLineOriginStartUTF16
         let selectedEnd = NSMaxRange(selection) - viewportLineOriginStartUTF16
@@ -2010,7 +2092,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         }
     }
 
-    private func drawFindMatchBackgrounds(rows: [VisualRow]) {
+    private func drawFindMatchBackgrounds(rows: ArraySlice<VisualRow>) {
         guard !findMatchRanges.isEmpty else { return }
         let viewportStart = viewportLineOriginStartUTF16
         let visibleStart = rows.first?.fragment.absoluteStartUTF16 ?? 0
@@ -2076,6 +2158,15 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         colorPickerPopover = nil
         let clickedOffset = documentOffset(at: point)
         let localOffset = clickedOffset - viewportLineOriginStartUTF16
+        if event.clickCount == 1, event.modifierFlags.contains(.shift) {
+            selectionAnchor = VirtualEditorSelectionPolicy.anchor(
+                for: selection, caret: absoluteCaret, existingAnchor: selectionAnchor
+            )
+            applyCaretLocation(clickedOffset, extending: true)
+            publishCaret()
+            needsDisplay = true
+            return
+        }
         switch event.clickCount {
         case 3...:
             selection = VirtualEditorSelectionPolicy.lineRange(in: viewportText, at: localOffset)
@@ -2099,7 +2190,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let rect: NSRect
     }
 
-    private func hexColorSwatchTargets(rows: [VisualRow]) -> [HexColorSwatchTarget] {
+    private func hexColorSwatchTargets(rows: some Collection<VisualRow>) -> [HexColorSwatchTarget] {
         guard VirtualEditorHexColorPreview.isSupported(language: language) else { return [] }
         var targets: [HexColorSwatchTarget] = []
         var linesWithSwatches: Set<Int> = []
@@ -2159,16 +2250,20 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard let selectionAnchor else { return }
+        guard selectionAnchor != nil else { return }
         let point = convert(event.locationInWindow, from: nil)
-        guard VirtualEditorSelectionPolicy.shouldContinueDrag(at: point, in: bounds) else {
-            absoluteCaret = selectionAnchor
-            selection = NSRange(location: selectionAnchor, length: 0)
-            self.selectionAnchor = nil
-            publishCaret()
-            needsDisplay = true
-            return
+        updateDragSelection(at: point)
+        if VirtualEditorSelectionPolicy.autoScrollStep(
+            at: point.y, visibleRect: visibleRect, lineHeight: lineHeight
+        ) != 0 {
+            startDragAutoScroll()
+        } else {
+            stopDragAutoScroll()
         }
+    }
+
+    private func updateDragSelection(at point: NSPoint) {
+        guard let selectionAnchor else { return }
         let caret = documentOffset(at: point)
         absoluteCaret = caret
         selection = NSRange(location: min(selectionAnchor, caret), length: abs(selectionAnchor - caret))
@@ -2176,7 +2271,52 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         needsDisplay = true
     }
 
+    private func startDragAutoScroll() {
+        guard dragAutoScrollTimer == nil else { return }
+        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] timer in
+            guard let self else {
+                timer.invalidate()
+                return
+            }
+            MainActor.assumeIsolated { self.advanceDragAutoScroll() }
+        }
+        dragAutoScrollTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+        RunLoop.main.add(timer, forMode: .eventTracking)
+    }
+
+    private func stopDragAutoScroll() {
+        dragAutoScrollTimer?.invalidate()
+        dragAutoScrollTimer = nil
+    }
+
+    private func advanceDragAutoScroll() {
+        guard selectionAnchor != nil,
+              NSEvent.pressedMouseButtons & 1 != 0,
+              let window,
+              let scrollView = enclosingScrollView as? VirtualEditorScrollView else {
+            stopDragAutoScroll()
+            return
+        }
+        let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        let step = VirtualEditorSelectionPolicy.autoScrollStep(
+            at: point.y, visibleRect: visibleRect, lineHeight: lineHeight
+        )
+        guard step != 0 else {
+            stopDragAutoScroll()
+            return
+        }
+        let clipView = scrollView.contentView
+        let maximumY = max(0, logicalHeight - clipView.bounds.height)
+        let nextY = min(max(0, clipView.bounds.minY + step), maximumY)
+        clipView.scroll(to: NSPoint(x: clipView.bounds.minX, y: nextY))
+        scrollView.reflectScrolledClipView(clipView)
+        scrollView.updateForVisibleBoundsChange()
+        updateDragSelection(at: point)
+    }
+
     override func mouseUp(with event: NSEvent) {
+        stopDragAutoScroll()
         pendingDragPublication?.cancel()
         pendingDragPublication = nil
         publishCaret()
@@ -3070,7 +3210,15 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             documentLineCount: document?.lineCount ?? 1,
             isAtBottom: isAtBottom
         )
-        guard target < viewportLineOrigin || target >= viewportLineOrigin + lineStarts.count - 20 else { return }
+        guard VirtualEditorScrollAnchorPolicy.shouldReloadViewport(
+            targetLine: target,
+            viewportLineOrigin: viewportLineOrigin,
+            loadedLineCount: lineStarts.count,
+            lineHeight: lineHeight,
+            estimatedRowsPerLogicalLine: estimatedRowsPerLogicalLine,
+            viewportHeight: visibleHeight,
+            prefetchLines: 20
+        ) else { return }
         reloadViewport(anchorLine: target)
     }
 
@@ -3328,7 +3476,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     private func documentOffset(at point: NSPoint) -> Int {
-        guard let row = visualRows().min(by: { abs($0.baseline - point.y) < abs($1.baseline - point.y) }) else {
+        guard let row = visualRow(closestToBaseline: point.y, in: visualRows()) else {
             return viewportLineOriginStartUTF16
         }
         let index = CTLineGetStringIndexForPosition(

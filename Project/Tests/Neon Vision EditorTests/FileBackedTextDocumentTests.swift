@@ -670,6 +670,43 @@ final class FileBackedTextDocumentTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
     }
 
+    func testLazyMarkdownPreviewSnapshotIncludesEntireFileAndPreservesLiveEdits() async throws {
+        let url = directory.appendingPathComponent("large-preview.md")
+        let source = String(repeating: "- [link](https://example.com) with **formatting**\n", count: 50_000)
+            + "## Last heading\n"
+        try source.write(to: url, atomically: true, encoding: .utf8)
+        let document = try FileBackedTextDocument(url: url, knownUTF8Encoding: .utf8)
+        let snapshot = document.makeSaveSnapshot()
+        try document.replace(utf16Range: NSRange(location: 0, length: 0), with: "New edit\n")
+
+        let preview = try await Task.detached {
+            try snapshot.previewText(maximumByteCount: 8_000_000)
+        }.value
+        XCTAssertEqual(preview, source)
+        let body = await Task.detached {
+            ContentView.markdownPreviewBodyHTML(from: preview ?? "", useRenderLimits: true)
+        }.value
+        XCTAssertTrue(body.contains("<h2>Last heading</h2>"))
+        XCTAssertFalse(body.contains("truncated preview"))
+        XCTAssertEqual(try document.text(inByteRange: NSRange(location: 0, length: 9)), "New edit\n")
+        XCTAssertNil(try document.makeSaveSnapshot().previewText(maximumByteCount: 1_000_000))
+    }
+
+    func testLazyMarkdownPreviewSnapshotRefusesChangedSource() async throws {
+        let url = directory.appendingPathComponent("changed-preview.md")
+        try "# Original\n".write(to: url, atomically: true, encoding: .utf8)
+        let document = try FileBackedTextDocument(url: url, knownUTF8Encoding: .utf8)
+        let snapshot = document.makeSaveSnapshot()
+        try "# Changed externally\n".write(to: url, atomically: true, encoding: .utf8)
+
+        do {
+            _ = try await Task.detached { try snapshot.previewText(maximumByteCount: 8_000_000) }.value
+            XCTFail("Must not preview a different source revision")
+        } catch {
+            XCTAssertEqual(error as? FileBackedTextDocument.Error, .externalConflict)
+        }
+    }
+
     func testAtomicSaveRefusesAnExternalChangeAfterOpening() throws {
         let url = directory.appendingPathComponent("save-conflict.txt")
         try "local\n".write(to: url, atomically: true, encoding: .utf8)

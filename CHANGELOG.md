@@ -6,6 +6,36 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.8.2] - 2026-09-18
+
+### Why Upgrade
+
+- View large Markdown documents as rendered Markdown instead of a truncated source preview.
+- Open files from Finder even when no editor window is currently open.
+- Keep long-document scrolling focused on visible editor rows.
+
+### Highlights
+
+- Renders complete Markdown previews for documents up to 8 MB, including file-backed editor documents.
+
+### Fixes
+
+- Opens an editor window when files or project folders are sent from Finder while no editor window is open.
+- Keeps the editor's scroll redraw focused on visible rows and avoids an unnecessary localization override during system-language startup.
+- Removes the 180 KB Markdown preview cutoff that showed a truncated raw-text fallback for ordinary large documents.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- None.
+
+### Maintenance
+
+- Requires hosted release runtime checks and reports unsuccessful post-release documentation merges as failures.
+
 ## [v1.8.1] - 2026-09-16
 
 ### Why Upgrade

@@ -116,6 +116,44 @@ final class VirtualEditorPerformanceTests: XCTestCase {
         try assertMedianLatency(samples, budget: "viewportReload")
     }
 
+    func testCanvasScrollDrawAndHitTestingBenchmark() throws {
+        let document = FileBackedTextDocument(content: largeDocumentText())
+        let scrollView = VirtualEditorScrollView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        scrollView.configure(
+            document: document, documentID: UUID(), resourceID: "renderer-benchmark",
+            displayName: "Benchmark.swift", contentRevision: 0, externalContentRevision: 0,
+            caret: 0, language: "swift", colorScheme: .light, fontSize: 14,
+            fontName: "", lineHeightMultiplier: 1, isReadOnly: false,
+            translucentBackgroundEnabled: false, showsLineNumbers: true,
+            highlightCurrentLine: false, lineWrapEnabled: true,
+            showsInvisibleCharacters: false, showsIndentationGuides: false,
+            showsScopeGuides: false, highlightsScopeBackground: false,
+            highlightsMatchingBrackets: false, autoIndentEnabled: true,
+            autoCloseBracketsEnabled: false, isSplitPaneResizeInProgress: false,
+            onFontSizeChange: nil, onTextMutation: nil
+        )
+        let canvas = try XCTUnwrap(scrollView.documentView as? VirtualEditorCanvas)
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: 800, pixelsHigh: 600,
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+            isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+        ))
+        let context = try XCTUnwrap(NSGraphicsContext(bitmapImageRep: bitmap))
+        var hitOffset = 0
+        measure(metrics: [XCTClockMetric(), XCTCPUMetric()], options: benchmarkOptions()) {
+            for y in stride(from: CGFloat(0), through: 12_000, by: 300) {
+                scrollView.contentView.scroll(to: NSPoint(x: 0, y: y))
+                scrollView.updateForVisibleBoundsChange()
+                NSGraphicsContext.saveGraphicsState()
+                NSGraphicsContext.current = context
+                canvas.draw(scrollView.contentView.bounds)
+                NSGraphicsContext.restoreGraphicsState()
+                hitOffset = canvas.characterIndex(for: NSPoint(x: 120, y: y + 300))
+            }
+        }
+        XCTAssertGreaterThan(hitOffset, 0)
+    }
+
     func testTabSwitchActivationBenchmarkRecordsAllActivationStages() throws {
         let document = FileBackedTextDocument(content: largeDocumentText())
         let monitor = EditorPerformanceMonitor(defaults: UserDefaults(suiteName: "NVE-TabSwitchBenchmark-\(UUID().uuidString)")!)

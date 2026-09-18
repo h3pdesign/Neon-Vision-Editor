@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.8.1",
-            subtitle: "Release highlights for v1.8.1.",
+            title: "What’s New in v1.8.2",
+            subtitle: "Release highlights for v1.8.2.",
             bullets: [
-                "Editor Improvements: Gives iPhone and iPad a compact bottom editor toolbar with easier access to tools while keeping more code visible.",
-                "Workflow Refinements: Makes editor controls, status, and keyboard shortcuts easier to read in light and dark appearances.",
-                "Performance Updates: Brings preview and terminal surfaces into line with the selected editor theme.",
-                "Usability Updates: Adds a horizontally scrollable iPhone toolbar and an adaptive-width iPad toolbar; compact controls appear while scrolling.",
-                "Editor Improvements: Keeps the mobile editor keyboard toolbar visible by default and adds a setting to control it.",
-                "Accessible Controls: Uses system Liquid Glass for supported controls and respects system glass and accessibility appearance settings."
+                "Editor Improvements: View large Markdown documents as rendered Markdown instead of a truncated source preview.",
+                "Workflow Refinements: Open files from Finder even when no editor window is currently open.",
+                "Performance Updates: Keep long-document scrolling focused on visible editor rows.",
+                "Usability Updates: Renders complete Markdown previews for documents up to 8 MB, including file-backed editor documents.",
+                "Editor Improvements: Opens an editor window when files or project folders are sent from Finder while no editor window is open.",
+                "Workflow Refinements: Keeps the editor's scroll redraw focused on visible rows and avoids an unnecessary localization override during…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

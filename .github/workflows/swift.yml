@@ -6,15 +6,15 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [ "main", "develop" ]
-    paths-ignore:
-      - README.md
-      - CHANGELOG.md
-      - site/**
-      - appcast.xml
-      - docs/**
-      - release/**
-      - scripts/ci/privacy_log_audit.sh
-      - scripts/ci/test_release_workflow.py
+    paths:
+      - ".github/workflows/swift.yml"
+      - "Project/**"
+      - "Neon Vision Editor.xcodeproj/**"
+      - "samples/**"
+      - "scripts/ci/build_platform_matrix.sh"
+      - "scripts/ci/select_xcode17.sh"
+      - "scripts/ci/run_syntax_highlighting_regressions.swift"
+      - "scripts/ci/verify_icon_payload.sh"
 
 concurrency:
   group: swift-${{ github.event.pull_request.number || github.ref }}

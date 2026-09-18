@@ -985,6 +985,25 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(row.viewportOffset(forCoreTextStringIndex: kCFNotFound, trailingFallback: true), 120)
     }
 
+    func testNearestVisualRowHitTestingHandlesEdgesAndMidpoints() {
+        let canvas = VirtualEditorCanvas(frame: .zero)
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: "x"))
+        let rows = [CGFloat(10), 30, 50].enumerated().map { index, baseline in
+            VirtualEditorCanvas.VisualRow(
+                logicalLine: index, localStart: index,
+                fragment: VirtualEditorVisualFragment(
+                    absoluteStartUTF16: index, lengthUTF16: 1, line: line
+                ),
+                baseline: baseline, isFirstFragment: true
+            )
+        }
+        XCTAssertNil(canvas.visualRow(closestToBaseline: 10, in: []))
+        XCTAssertEqual(canvas.visualRow(closestToBaseline: -10, in: rows)?.logicalLine, 0)
+        XCTAssertEqual(canvas.visualRow(closestToBaseline: 20, in: rows)?.logicalLine, 0)
+        XCTAssertEqual(canvas.visualRow(closestToBaseline: 21, in: rows)?.logicalLine, 1)
+        XCTAssertEqual(canvas.visualRow(closestToBaseline: 100, in: rows)?.logicalLine, 2)
+    }
+
     func testFirstVisualRowBaselineLeavesRoomForTheFontAscender() {
         XCTAssertEqual(
             VirtualEditorVisualLayout.baseline(

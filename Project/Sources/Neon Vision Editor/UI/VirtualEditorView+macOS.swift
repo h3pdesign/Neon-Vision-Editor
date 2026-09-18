@@ -915,7 +915,11 @@ final class VirtualEditorScrollView: NSScrollView {
             didReloadViewport: didReloadViewport,
             didResize: didResize
         ) {
-            canvas.recalculateVisualMetrics()
+            if didReloadViewport && !didResize {
+                canvas.scheduleVisualMetricsRecalculation()
+            } else {
+                canvas.recalculateVisualMetrics()
+            }
             canvas.setFrameSize(NSSize(width: canvas.contentWidth, height: canvas.logicalHeight))
             canvas.lastReloadAnchorLine = canvas.viewportLineOrigin
             // Viewport replacement and geometry changes alter pixels. Ordinary
@@ -1095,7 +1099,14 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var layoutCache: [Int: CTLine] = [:]
     private var attributedLineCache: [Int: NSAttributedString] = [:]
     private var visualFragmentCache = VirtualEditorVisualFragmentCache()
-    private var visualRowsSnapshot: (key: VirtualEditorVisualRowsCacheKey, coveredMaxY: CGFloat, rows: [VisualRow])?
+    private struct VisualRowsSnapshot {
+        let key: VirtualEditorVisualRowsCacheKey
+        let coveredMaxY: CGFloat
+        let nextLineIndex: Int
+        let nextBaseline: CGFloat
+        let rows: [VisualRow]
+    }
+    private var visualRowsSnapshot: VisualRowsSnapshot?
     private var syntaxSpansByLine: [Int: [VirtualEditorSyntaxSpan]] = [:]
     private(set) var syntaxHighlightTask: Task<Void, Never>?
     private var deferredViewportTask: Task<Void, Never>?
@@ -1140,7 +1151,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var deferredContentWidthGeneration = 0
     private let viewportMaximumByteCount = 256_000
     private let editRefreshMaximumByteCount = 128_000
-    private let visualMetricSampleLineLimit = 512
+    private let visualMetricSampleLineLimit = 128
     private var lineHeight: CGFloat { max(1, (editorFont.ascender - editorFont.descender + editorFont.leading + 4) * lineHeightMultiplier) }
     private var editorFont: NSFont { resolvedEditorFont }
     private var gutterWidth: CGFloat {
@@ -1198,7 +1209,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     /// Visual-row measurement can touch hundreds of Core Text lines. Defer it
     /// until after the representable update has returned so selecting a tab can
     /// publish its already-loaded viewport in the current run loop.
-    private func scheduleVisualMetricsRecalculation() {
+    fileprivate func scheduleVisualMetricsRecalculation() {
         visualMetricsGeneration &+= 1
         let generation = visualMetricsGeneration
         DispatchQueue.main.async { [weak self] in
@@ -1870,22 +1881,19 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             viewportHeight: visibleBounds?.height ?? viewportSize.height,
             lineHeight: lineHeight
         )
-        if let visualRowsSnapshot,
-           visualRowsSnapshot.key == snapshotKey,
-           visualRowsSnapshot.coveredMaxY >= coveredMaxY {
-            return visualRowsSnapshot.rows
+        let reusableSnapshot = visualRowsSnapshot?.key == snapshotKey ? visualRowsSnapshot : nil
+        if let reusableSnapshot, reusableSnapshot.coveredMaxY >= coveredMaxY {
+            return reusableSnapshot.rows
         }
-        var rows: [VisualRow] = []
-        var baseline = VirtualEditorVisualLayout.baseline(
+        var rows = reusableSnapshot?.rows ?? []
+        var baseline = reusableSnapshot?.nextBaseline ?? VirtualEditorVisualLayout.baseline(
             rowOrigin: visualRowIndex.rowOrigin(forLogicalLine: viewportLineOrigin),
             lineHeight: lineHeight,
             fontAscender: editorFont.ascender
         )
-        for viewportLine in viewportLines {
-            let estimatedBaseline = baseline
-            if estimatedBaseline > coveredMaxY {
-                break
-            }
+        var lineIndex = reusableSnapshot?.nextLineIndex ?? 0
+        while lineIndex < viewportLines.count && baseline <= coveredMaxY {
+            let viewportLine = viewportLines[lineIndex]
             let fragments = cachedVisualFragments(
                 for: viewportLine.text,
                 localLine: viewportLine.localLine,
@@ -1902,8 +1910,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 ))
                 baseline += lineHeight
             }
+            lineIndex += 1
         }
-        visualRowsSnapshot = (snapshotKey, coveredMaxY, rows)
+        visualRowsSnapshot = VisualRowsSnapshot(
+            key: snapshotKey, coveredMaxY: coveredMaxY,
+            nextLineIndex: lineIndex, nextBaseline: baseline, rows: rows
+        )
         return rows
     }
 
@@ -1952,6 +1964,21 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     func visualRow(containing localLocation: Int, in rows: [VisualRow]) -> VisualRow? {
         guard let index = visualRowIndex(containing: localLocation, in: rows) else { return nil }
         return rows[index]
+    }
+
+    func visualRow(closestToBaseline y: CGFloat, in rows: [VisualRow]) -> VisualRow? {
+        guard !rows.isEmpty else { return nil }
+        var lower = 0
+        var upper = rows.count
+        while lower < upper {
+            let midpoint = (lower + upper) / 2
+            if rows[midpoint].baseline < y { lower = midpoint + 1 }
+            else { upper = midpoint }
+        }
+        if lower == 0 { return rows[0] }
+        if lower == rows.count { return rows[rows.count - 1] }
+        return y - rows[lower - 1].baseline <= rows[lower].baseline - y
+            ? rows[lower - 1] : rows[lower]
     }
 
     private func visualRowIndex(containing localLocation: Int, in rows: [VisualRow]) -> Int? {
@@ -3432,7 +3459,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     private func documentOffset(at point: NSPoint) -> Int {
-        guard let row = visualRows().min(by: { abs($0.baseline - point.y) < abs($1.baseline - point.y) }) else {
+        guard let row = visualRow(closestToBaseline: point.y, in: visualRows()) else {
             return viewportLineOriginStartUTF16
         }
         let index = CTLineGetStringIndexForPosition(

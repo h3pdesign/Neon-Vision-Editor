@@ -190,9 +190,14 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 [[ "$DEVELOPER_DIR" == /Applications/Xcode_27_beta_6.app/Contents/Developer ]]
             '''
             env = dict(os.environ, PATH=temp + os.pathsep + os.environ["PATH"])
+            github_env = Path(temp) / "github_env"
+            env["GITHUB_ENV"] = str(github_env)
+            # The fake Xcode path must not be persisted into later CI steps.
+            env.pop("GITHUB_ENV", None)
             result = subprocess.run(["bash", "-c", script], cwd=ROOT, env=env,
                                     text=True, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertFalse(github_env.exists(), "The fake Xcode path leaked into GitHub Actions")
 
     def test_ref_inventory_accepts_no_named_refs(self):
         with tempfile.TemporaryDirectory(prefix="nve-empty-refs-") as temp:
@@ -332,6 +337,17 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("checks_ready=false", docs_sync)
         self.assertIn("--json name --jq 'length'", docs_sync)
         self.assertIn("Timed out waiting for checks to register", docs_sync)
+        self.assertIn('if ! gh pr merge "${docs_pr}"', docs_sync)
+        self.assertIn('if [[ -z "$merged_at" ]]', docs_sync)
+
+    def test_hosted_preflight_does_not_pass_when_runtime_checks_are_skipped(self):
+        preflight = (ROOT / ".github/workflows/pre-release-ci.yml").read_text()
+        self.assertNotIn("project_probe", preflight)
+        runtime = preflight.split("- name: Run critical runtime tests", 1)[1].split(
+            "- name: Record virtual editor performance trends", 1
+        )[0]
+        self.assertNotIn("if:", runtime)
+        self.assertIn('Neon Vision EditorTests/AppDelegateExternalOpenTests', runtime)
 
     @unittest.skipUnless(shutil.which("ssh-keygen"), "SSH signing executable unavailable")
     def test_real_local_worktree_signing_resume_and_source_preservation(self):

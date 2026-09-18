@@ -347,6 +347,27 @@ enum VirtualEditorScrollAnchorPolicy {
         let rowHeight = max(1, lineHeight * max(1, estimatedRowsPerLogicalLine))
         return max(0, Int(scrollY / rowHeight) - max(0, prefetchLines))
     }
+
+    /// Reload before the visible viewport reaches the end of the currently
+    /// decoded window. The anchor already includes a prefetch margin, so the
+    /// boundary must also account for the number of logical lines visible on
+    /// screen; otherwise a bounded window can expose a blank tail while the
+    /// user is still scrolling toward the next window.
+    static func shouldReloadViewport(
+        targetLine: Int,
+        viewportLineOrigin: Int,
+        loadedLineCount: Int,
+        lineHeight: CGFloat,
+        estimatedRowsPerLogicalLine: CGFloat,
+        viewportHeight: CGFloat,
+        prefetchLines: Int
+    ) -> Bool {
+        guard loadedLineCount > 0 else { return true }
+        let rowHeight = max(1, lineHeight * max(1, estimatedRowsPerLogicalLine))
+        let visibleLineCount = max(1, Int(ceil(max(lineHeight, viewportHeight) / rowHeight)))
+        let reloadBoundary = viewportLineOrigin + loadedLineCount - visibleLineCount - max(0, prefetchLines)
+        return targetLine < viewportLineOrigin || targetLine >= reloadBoundary
+    }
 }
 
 struct VirtualEditorVisualRowsCacheKey: Equatable {
@@ -970,8 +991,23 @@ struct VirtualEditorAccessibilityContext: Equatable {
 
 @MainActor
 enum VirtualEditorSelectionPolicy {
-    static func shouldContinueDrag(at point: NSPoint, in bounds: NSRect) -> Bool {
-        bounds.contains(point)
+    static func anchor(for selection: NSRange, caret: Int, existingAnchor: Int?) -> Int {
+        if let existingAnchor { return existingAnchor }
+        guard selection.length > 0 else { return caret }
+        return caret == selection.location ? NSMaxRange(selection) : selection.location
+    }
+
+    static func autoScrollStep(at y: CGFloat, visibleRect: NSRect, lineHeight: CGFloat) -> CGFloat {
+        let edge: CGFloat = 20
+        let distance: CGFloat
+        if y < visibleRect.minY + edge {
+            distance = y - visibleRect.minY - edge
+        } else if y > visibleRect.maxY - edge {
+            distance = y - visibleRect.maxY + edge
+        } else {
+            return 0
+        }
+        return (distance < 0 ? -1 : 1) * min(max(lineHeight, abs(distance) * 0.5), lineHeight * 3)
     }
 
     static func lineRange(in text: String, at utf16Offset: Int) -> NSRange {
@@ -1052,6 +1088,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var markedTextSelectedRange = NSRange(location: 0, length: 0)
     private var selectionAnchor: Int?
     private var pendingDragPublication: DispatchWorkItem?
+    private var dragAutoScrollTimer: Timer?
     private let documentUndoManager = UndoManager()
     private var lastConfigurationKey = ""
     private var documentDisplayName = "Untitled"
@@ -1304,6 +1341,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         // editor's in-progress drag anchor before AppKit starts moving the
         // window, otherwise subsequent drag events can extend the text range.
         selectionAnchor = nil
+        stopDragAutoScroll()
         pendingDragPublication?.cancel()
         pendingDragPublication = nil
     }
@@ -2076,6 +2114,15 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         colorPickerPopover = nil
         let clickedOffset = documentOffset(at: point)
         let localOffset = clickedOffset - viewportLineOriginStartUTF16
+        if event.clickCount == 1, event.modifierFlags.contains(.shift) {
+            selectionAnchor = VirtualEditorSelectionPolicy.anchor(
+                for: selection, caret: absoluteCaret, existingAnchor: selectionAnchor
+            )
+            applyCaretLocation(clickedOffset, extending: true)
+            publishCaret()
+            needsDisplay = true
+            return
+        }
         switch event.clickCount {
         case 3...:
             selection = VirtualEditorSelectionPolicy.lineRange(in: viewportText, at: localOffset)
@@ -2159,16 +2206,20 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard let selectionAnchor else { return }
+        guard selectionAnchor != nil else { return }
         let point = convert(event.locationInWindow, from: nil)
-        guard VirtualEditorSelectionPolicy.shouldContinueDrag(at: point, in: bounds) else {
-            absoluteCaret = selectionAnchor
-            selection = NSRange(location: selectionAnchor, length: 0)
-            self.selectionAnchor = nil
-            publishCaret()
-            needsDisplay = true
-            return
+        updateDragSelection(at: point)
+        if VirtualEditorSelectionPolicy.autoScrollStep(
+            at: point.y, visibleRect: visibleRect, lineHeight: lineHeight
+        ) != 0 {
+            startDragAutoScroll()
+        } else {
+            stopDragAutoScroll()
         }
+    }
+
+    private func updateDragSelection(at point: NSPoint) {
+        guard let selectionAnchor else { return }
         let caret = documentOffset(at: point)
         absoluteCaret = caret
         selection = NSRange(location: min(selectionAnchor, caret), length: abs(selectionAnchor - caret))
@@ -2176,7 +2227,52 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         needsDisplay = true
     }
 
+    private func startDragAutoScroll() {
+        guard dragAutoScrollTimer == nil else { return }
+        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] timer in
+            guard let self else {
+                timer.invalidate()
+                return
+            }
+            MainActor.assumeIsolated { self.advanceDragAutoScroll() }
+        }
+        dragAutoScrollTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+        RunLoop.main.add(timer, forMode: .eventTracking)
+    }
+
+    private func stopDragAutoScroll() {
+        dragAutoScrollTimer?.invalidate()
+        dragAutoScrollTimer = nil
+    }
+
+    private func advanceDragAutoScroll() {
+        guard selectionAnchor != nil,
+              NSEvent.pressedMouseButtons & 1 != 0,
+              let window,
+              let scrollView = enclosingScrollView as? VirtualEditorScrollView else {
+            stopDragAutoScroll()
+            return
+        }
+        let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        let step = VirtualEditorSelectionPolicy.autoScrollStep(
+            at: point.y, visibleRect: visibleRect, lineHeight: lineHeight
+        )
+        guard step != 0 else {
+            stopDragAutoScroll()
+            return
+        }
+        let clipView = scrollView.contentView
+        let maximumY = max(0, logicalHeight - clipView.bounds.height)
+        let nextY = min(max(0, clipView.bounds.minY + step), maximumY)
+        clipView.scroll(to: NSPoint(x: clipView.bounds.minX, y: nextY))
+        scrollView.reflectScrolledClipView(clipView)
+        scrollView.updateForVisibleBoundsChange()
+        updateDragSelection(at: point)
+    }
+
     override func mouseUp(with event: NSEvent) {
+        stopDragAutoScroll()
         pendingDragPublication?.cancel()
         pendingDragPublication = nil
         publishCaret()
@@ -3070,7 +3166,15 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             documentLineCount: document?.lineCount ?? 1,
             isAtBottom: isAtBottom
         )
-        guard target < viewportLineOrigin || target >= viewportLineOrigin + lineStarts.count - 20 else { return }
+        guard VirtualEditorScrollAnchorPolicy.shouldReloadViewport(
+            targetLine: target,
+            viewportLineOrigin: viewportLineOrigin,
+            loadedLineCount: lineStarts.count,
+            lineHeight: lineHeight,
+            estimatedRowsPerLogicalLine: estimatedRowsPerLogicalLine,
+            viewportHeight: visibleHeight,
+            prefetchLines: 20
+        ) else { return }
         reloadViewport(anchorLine: target)
     }
 

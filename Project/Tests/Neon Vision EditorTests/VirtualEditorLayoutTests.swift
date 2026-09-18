@@ -25,17 +25,32 @@ final class VirtualEditorLayoutTests: XCTestCase {
         )
     }
 
-    func testSelectionDragStopsWhenPointerLeavesEditorCanvas() {
-        let bounds = NSRect(x: 0, y: 0, width: 800, height: 600)
+    func testShiftClickPreservesSelectionAnchor() {
+        XCTAssertEqual(VirtualEditorSelectionPolicy.anchor(
+            for: NSRange(location: 10, length: 0), caret: 10, existingAnchor: nil
+        ), 10)
+        XCTAssertEqual(VirtualEditorSelectionPolicy.anchor(
+            for: NSRange(location: 10, length: 20), caret: 10, existingAnchor: nil
+        ), 30)
+        XCTAssertEqual(VirtualEditorSelectionPolicy.anchor(
+            for: NSRange(location: 10, length: 20), caret: 30, existingAnchor: 10
+        ), 10)
+    }
 
-        XCTAssertTrue(VirtualEditorSelectionPolicy.shouldContinueDrag(
-            at: NSPoint(x: 400, y: 300),
-            in: bounds
-        ))
-        XCTAssertFalse(VirtualEditorSelectionPolicy.shouldContinueDrag(
-            at: NSPoint(x: 400, y: -1),
-            in: bounds
-        ))
+    func testDragAutoScrollContinuesBeyondVisibleEdges() {
+        let visibleRect = NSRect(x: 0, y: 200, width: 800, height: 600)
+        XCTAssertEqual(VirtualEditorSelectionPolicy.autoScrollStep(
+            at: 500, visibleRect: visibleRect, lineHeight: 20
+        ), 0)
+        XCTAssertLessThan(VirtualEditorSelectionPolicy.autoScrollStep(
+            at: 195, visibleRect: visibleRect, lineHeight: 20
+        ), 0)
+        XCTAssertGreaterThan(VirtualEditorSelectionPolicy.autoScrollStep(
+            at: 805, visibleRect: visibleRect, lineHeight: 20
+        ), 0)
+        XCTAssertEqual(VirtualEditorSelectionPolicy.autoScrollStep(
+            at: 1_000, visibleRect: visibleRect, lineHeight: 20
+        ), 60)
     }
 
     func testFindReplaceEscapePolicyDismissesOnlyEscape() {
@@ -705,6 +720,31 @@ final class VirtualEditorLayoutTests: XCTestCase {
                 isAtBottom: false
             ),
             13
+        )
+    }
+
+    func testScrollAnchorPolicyReloadsBeforeBoundedWindowReachesVisibleTail() {
+        XCTAssertFalse(
+            VirtualEditorScrollAnchorPolicy.shouldReloadViewport(
+                targetLine: 450,
+                viewportLineOrigin: 0,
+                loadedLineCount: 512,
+                lineHeight: 20,
+                estimatedRowsPerLogicalLine: 1,
+                viewportHeight: 600,
+                prefetchLines: 20
+            )
+        )
+        XCTAssertTrue(
+            VirtualEditorScrollAnchorPolicy.shouldReloadViewport(
+                targetLine: 472,
+                viewportLineOrigin: 0,
+                loadedLineCount: 512,
+                lineHeight: 20,
+                estimatedRowsPerLogicalLine: 1,
+                viewportHeight: 600,
+                prefetchLines: 20
+            )
         )
     }
 

@@ -623,29 +623,11 @@
 		D20000000000000000000006 /* Prepare Apple Silicon Direct Bundle */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
-			inputPaths = (
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/Sparkle.framework/Versions/B/Sparkle",
-			);
 			name = "Prepare Apple Silicon Direct Bundle";
 			shellPath = /bin/sh;
 			shellScript = (
 				"if [ \"${APP_STORE_BUILD:-NO}\" = \"YES\" ]; then",
 				"  rm -f \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/nve\"",
-				"fi",
-				"",
-				"if [ \"${PLATFORM_NAME:-}\" = \"macosx\" ] && [ \"${CONFIGURATION:-}\" = \"Release-GitHub\" ]; then",
-				"  sparkle_dir=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Sparkle.framework\"",
-				"  if [ -d \"${sparkle_dir}\" ]; then",
-				"    find \"${sparkle_dir}\" -type f -print0 | while IFS= read -r -d '' binary; do",
-				"      if /usr/bin/file -b \"${binary}\" | /usr/bin/grep -q 'Mach-O' && /usr/bin/lipo -archs \"${binary}\" | /usr/bin/grep -qw x86_64; then",
-				"        /usr/bin/lipo -remove x86_64 \"${binary}\" -output \"${binary}\"",
-				"        if /usr/bin/lipo -archs \"${binary}\" | /usr/bin/grep -qw x86_64; then",
-				"          echo \"Failed to remove the unsupported Intel slice from ${binary}.\" >&2",
-				"          exit 1",
-				"        fi",
-				"      fi",
-				"    done || exit 1",
-				"  fi",
 				"fi",
 				"",
 			);

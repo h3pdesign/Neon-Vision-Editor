@@ -4500,7 +4500,7 @@ struct ContentView: View {
     }
 
     var largeFileStatusBadgeText: String {
-        guard effectiveLargeFileModeEnabled else { return "" }
+        guard viewModel.selectedTab?.isLargeFileCandidate == true else { return "" }
         if viewModel.selectedTab?.isPartialFilePreview == true {
             return "Partial Open • \(currentDocumentFileSizeText) • Read-Only"
         }
@@ -4877,14 +4877,17 @@ struct ContentView: View {
 #else
         let text = editorTextBinding(for: tabID)
         let editorTextBinding: Binding<String> = {
-            guard effectiveLargeFileModeEnabled,
-                  tab?.document.supportsBoundedWindows == true else {
+            guard Self.shouldUseInertMobileEditorBinding(
+                isLargeFileModeEnabled: effectiveLargeFileModeEnabled,
+                usesFileBackedStorage: tab?.usesFileBackedStorage == true
+            ) else {
                 return text
             }
-            // The macOS virtualized bridge obtains text exclusively from the
-            // bounded EditorDocument viewport.  Supplying an inert binding here
-            // prevents SwiftUI from materializing the complete document during
-            // representable updates or per-keystroke synchronization.
+            // URL-backed documents obtain text from bounded EditorDocument
+            // windows. Supplying an inert binding prevents SwiftUI from
+            // materializing the complete source during representable updates.
+            // Prepared in-memory documents must keep their normal binding so the
+            // iOS text editor can install and display their complete contents.
             return .constant("")
         }()
         return CustomTextEditor(
@@ -4954,6 +4957,13 @@ struct ContentView: View {
         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
 #endif
+    }
+
+    nonisolated static func shouldUseInertMobileEditorBinding(
+        isLargeFileModeEnabled: Bool,
+        usesFileBackedStorage: Bool
+    ) -> Bool {
+        isLargeFileModeEnabled && usesFileBackedStorage
     }
 
 #if os(iOS) || os(visionOS)

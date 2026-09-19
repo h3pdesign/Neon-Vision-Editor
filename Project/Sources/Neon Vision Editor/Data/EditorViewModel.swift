@@ -95,20 +95,25 @@ private enum EditorLoadHelper {
     // Sidebar-opened project files should reach the editor quickly; full scalar-by-scalar
     // sanitization is only worth the cost for smaller documents.
     nonisolated static let fastLoadSanitizeByteThreshold = 512_000
-    nonisolated static let largeFileCandidateByteThreshold = 2_000_000
+    // Normal text files stay fully editable through 99 MB on every platform.
+    // Preparing their piece table off the main actor is an implementation detail,
+    // not a reason to replace the editor with a bounded large-file projection.
+    nonisolated static let backgroundDocumentPreparationByteThreshold = 2_000_000
+    nonisolated static let excessiveFileByteThreshold = 100_000_000
+    nonisolated static let largeFileCandidateByteThreshold = excessiveFileByteThreshold
     // A partial read prevents multi-hundred-megabyte logs from being copied into the
     // text system. The result is intentionally read-only so it can never overwrite
     // the source with an incomplete buffer.
-    nonisolated static let partialOpenByteThreshold = 100_000_000
+    nonisolated static let partialOpenByteThreshold = excessiveFileByteThreshold
     nonisolated static let partialOpenPreviewByteLimit = 4_000_000
     // Structured documents can make TextKit, syntax highlighting, and WebKit
     // parse the entire source repeatedly. Keep these large opens responsive by
     // showing a bounded read-only source preview first.
-    nonisolated static let largeStructuredTextPreviewByteThreshold = 100_000_000
+    nonisolated static let largeStructuredTextPreviewByteThreshold = excessiveFileByteThreshold
     nonisolated static let largeStructuredTextPreviewByteLimit = 1_000_000
     // Every format uses the bounded path at this size. Materializing arbitrarily
     // large text in TextKit is what makes opening appear to hang.
-    nonisolated static let hugeTextPreviewByteThreshold = 100_000_000
+    nonisolated static let hugeTextPreviewByteThreshold = excessiveFileByteThreshold
     nonisolated static let hugeTextPreviewByteLimit = 1_000_000
     nonisolated static let structuredTextPreviewExtensions: Set<String> = [
         "css", "csv", "html", "htm", "ipynb", "json", "js", "jsx", "md",
@@ -3209,6 +3214,13 @@ class EditorViewModel {
             if max(totalByteCount, data.count) >= EditorLoadHelper.largeFileCandidateByteThreshold,
                Self.isFileBackedEligible(url: url, encoding: raw.encoding, isRemote: false, isPartialPreview: isPartialPreview) {
                 fileBackedDocument = try? Self.prepareFileBackedDocument(from: url, encoding: nil)
+            } else if !isPartialPreview,
+                      data.count >= EditorLoadHelper.backgroundDocumentPreparationByteThreshold {
+                // Build line indexes and piece-table storage on the loader task.
+                // This remains an ordinary in-memory editable document (`url == nil`),
+                // so iOS receives complete text instead of the inert binding used by
+                // the URL-backed virtual viewport.
+                fileBackedDocument = FileBackedTextDocument(content: sanitizedContent, encoding: raw.encoding)
             } else {
                 fileBackedDocument = nil
             }

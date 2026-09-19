@@ -6,6 +6,14 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixes
+
+- Opens CSV, HTML, JSON, Markdown, source code, and other supported text files below 100 MB as complete editable documents on every platform, while keeping the excessive-file preview boundary at 100 MB.
+
+### Maintenance
+
+- Advances the post-v1.8.2 development version to 1.8.3 (1053).
+
 ## [v1.8.2] - 2026-09-18
 
 ### Why Upgrade

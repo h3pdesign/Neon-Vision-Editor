@@ -419,13 +419,15 @@ final class EditorInputTextView: UITextView {
 
     fileprivate func makeKeyboardAccessoryView(isEditorOverlay: Bool = false) -> UIView {
 #if os(iOS)
+        let liquidGlassEnabled = IOSAdaptiveChromePreference.isEnabled()
         let usesNativeGlass: Bool
         if #available(iOS 26.0, *) {
-            usesNativeGlass = true
+            usesNativeGlass = liquidGlassEnabled
         } else {
             usesNativeGlass = false
         }
 #else
+        let liquidGlassEnabled = false
         let usesNativeGlass = false
 #endif
         let host = UIView()
@@ -434,7 +436,8 @@ final class EditorInputTextView: UITextView {
             ? keyboardAccessoryBackgroundColor : .clear
         host.translatesAutoresizingMaskIntoConstraints = false
 
-        let frostedBackground = isEditorOverlay || usesNativeGlass ? nil : UIVisualEffectView()
+        let frostedBackground = isEditorOverlay || usesNativeGlass || !liquidGlassEnabled
+            ? nil : UIVisualEffectView()
         if let frostedBackground {
             frostedBackground.isOpaque = false
             if !UIAccessibility.isReduceTransparencyEnabled {
@@ -449,7 +452,7 @@ final class EditorInputTextView: UITextView {
         glass.layer.cornerRadius = 21
         glass.clipsToBounds = true
 #if os(iOS)
-        IOSClearGlassAppearance.apply(to: glass)
+        IOSAdaptiveChromePreference.apply(to: glass, enabled: liquidGlassEnabled)
 #else
         if UIAccessibility.isReduceTransparencyEnabled {
             glass.backgroundColor = .secondarySystemBackground
@@ -558,6 +561,11 @@ final class EditorInputTextView: UITextView {
     private var isBracketAccessoryVisible: Bool = true
     private var keyboardAccessoryActionsStorageValue: String?
     private var keyboardShortcutAccessoryEnabled: Bool = true
+#if os(iOS)
+    private var keyboardAccessoryLiquidGlassEnabled = IOSAdaptiveChromePreference.isEnabled()
+#else
+    private var keyboardAccessoryLiquidGlassEnabled = false
+#endif
     private var keyboardAccessoryBackgroundColor: UIColor = .clear
 
     override init(frame: CGRect, textContainer: NSTextContainer?) {
@@ -675,12 +683,19 @@ final class EditorInputTextView: UITextView {
     func setBracketAccessoryVisible(_ visible: Bool) {
         let actionsStorageValue = UserDefaults.standard.string(forKey: KeyboardAccessoryAction.storageKey)
         let actionsEnabled = UserDefaults.standard.object(forKey: "SettingsKeyboardShortcutAccessoryBarIOS") as? Bool ?? true
+#if os(iOS)
+        let liquidGlassEnabled = IOSAdaptiveChromePreference.isEnabled()
+#else
+        let liquidGlassEnabled = false
+#endif
         let needsUpdate = isBracketAccessoryVisible != visible ||
             keyboardAccessoryActionsStorageValue != actionsStorageValue ||
-            keyboardShortcutAccessoryEnabled != actionsEnabled
+            keyboardShortcutAccessoryEnabled != actionsEnabled ||
+            keyboardAccessoryLiquidGlassEnabled != liquidGlassEnabled
         isBracketAccessoryVisible = visible
         keyboardAccessoryActionsStorageValue = actionsStorageValue
         keyboardShortcutAccessoryEnabled = actionsEnabled
+        keyboardAccessoryLiquidGlassEnabled = liquidGlassEnabled
         #if os(iOS)
         if UIDevice.current.userInterfaceIdiom == .phone {
             (superview as? LineNumberedTextViewContainer)?.setKeyboardAccessoryRequested(visible, rebuild: needsUpdate)

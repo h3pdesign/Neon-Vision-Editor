@@ -147,8 +147,24 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertTrue(Set(ToolbarPreset.mobileSelectableIDs).isSubset(of: labeledActionIDs))
     }
 
+    func testAllActionsPresetUsesDistinctOverflowSymbol() {
+        XCTAssertEqual(ToolbarPreset.all.icon, "ellipsis.circle")
+        XCTAssertNotEqual(ToolbarPreset.all.icon, "square.grid.3x3")
+    }
+
     func testMobileToolbarUsesCompactSingleLinePresentation() {
         XCTAssertEqual(MobileToolbarPresentationPolicy.standardHeight, 52)
+        XCTAssertEqual(MobileToolbarPresentationPolicy.labeledItemWidth, 52)
+        XCTAssertTrue(MobileToolbarPresentationPolicy.showsButtonLabels(
+            preferenceEnabled: true,
+            toolbarMinimized: false
+        ))
+        XCTAssertFalse(MobileToolbarPresentationPolicy.showsButtonLabels(
+            preferenceEnabled: true,
+            toolbarMinimized: true
+        ))
+        XCTAssertEqual(MobileToolbarPresentationPolicy.symbolSize(usesLargeSymbols: true), 25)
+        XCTAssertEqual(MobileToolbarPresentationPolicy.symbolSize(usesLargeSymbols: false), 20)
         XCTAssertEqual(MobileToolbarPresentationPolicy.compactTitle("Indentation Guides"), "Guides")
         XCTAssertEqual(MobileToolbarPresentationPolicy.compactTitle("Decrease Font Size"), "Font −")
         XCTAssertEqual(MobileToolbarPresentationPolicy.compactTitle("Export PDF"), "PDF")

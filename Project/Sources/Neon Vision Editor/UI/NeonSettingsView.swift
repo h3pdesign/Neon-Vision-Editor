@@ -150,6 +150,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsToolbarIconsBlueIOS") private var toolbarIconsBlueIOS: Bool = false
     @AppStorage("SettingsUseLiquidGlassToolbarIOS") private var shouldUseLiquidGlass: Bool = true
     @AppStorage("SettingsToolbarButtonLabelsIOS") private var toolbarButtonLabelsIOS: Bool = true
+    @AppStorage("SettingsToolbarLargeSymbolsIOS") private var toolbarLargeSymbolsIOS: Bool = false
     @AppStorage("SettingsMobileEditingStatusPresetEnabled") private var mobileEditingStatusPresetEnabled: Bool = false
 #endif
 
@@ -2088,10 +2089,14 @@ struct NeonSettingsView: View {
                 isOn: $toolbarButtonLabelsIOS
             )
             iOSToggleRow(
+                LocalizedStringKey(localized("Use Large Toolbar Symbols")),
+                isOn: $toolbarLargeSymbolsIOS
+            )
+            iOSToggleRow(
                 LocalizedStringKey(localized("Use System Liquid Glass")),
                 isOn: $shouldUseLiquidGlass
             )
-            Text(localized("Applies the system-adaptive Liquid Glass appearance to both the editor toolbar and status pill, including Clear or Tinted Glass and accessibility settings."))
+            Text(localized("Applies the system-adaptive Liquid Glass appearance to the editor toolbar, status pill, and keyboard bar, including Clear or Tinted Glass and accessibility settings."))
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
             if toolbarUseCustomFiveIOS {
@@ -2159,7 +2164,8 @@ struct NeonSettingsView: View {
                     HStack(spacing: UI.space10) {
                         Picker(localized("Toolbar Preset"), selection: macToolbarPresetBinding) {
                             ForEach(ToolbarPreset.allCases) { preset in
-                                Label(preset.title, systemImage: preset.icon).tag(preset.rawValue)
+                                ToolbarPresetLabel(preset: preset, title: preset.title)
+                                    .tag(preset.rawValue)
                             }
                         }
                         .pickerStyle(.menu)
@@ -2709,7 +2715,10 @@ struct NeonSettingsView: View {
     private func toolbarPresetPicker(useCompactTitle: Bool) -> some View {
         Picker("", selection: toolbarPresetBinding) {
             ForEach(ToolbarPreset.allCases) { preset in
-                Label(useCompactTitle ? preset.compactTitle : preset.title, systemImage: preset.icon)
+                ToolbarPresetLabel(
+                    preset: preset,
+                    title: useCompactTitle ? preset.compactTitle : preset.title
+                )
                     .tag(preset.rawValue)
             }
         }
@@ -2961,7 +2970,7 @@ struct NeonSettingsView: View {
             }
         } label: {
             VStack(alignment: .leading, spacing: UI.space6) {
-                Label(preset.title, systemImage: preset.icon)
+                ToolbarPresetLabel(preset: preset, title: preset.title)
                     .font(.headline)
                     .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
                 Text(macToolbarPresetDescription(preset))

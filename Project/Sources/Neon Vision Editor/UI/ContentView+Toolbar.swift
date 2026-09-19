@@ -205,7 +205,7 @@ enum ToolbarPreset: String, CaseIterable, Identifiable {
         case .developer: return "hammer"
         case .review: return "arrow.triangle.branch"
         case .focus: return "moon"
-        case .all: return "square.grid.3x3"
+        case .all: return "ellipsis.circle"
         case .custom: return "slider.horizontal.3"
         }
     }
@@ -350,11 +350,34 @@ enum ToolbarIconOption: String, CaseIterable, Identifiable {
     }
 }
 
-enum MobileToolbarPresentationPolicy {
-    static let standardHeight: CGFloat = 52
-    static let labeledItemWidth: CGFloat = 64
+struct ToolbarPresetLabel: View {
+    let preset: ToolbarPreset
+    let title: String
 
-    static func compactTitle(_ title: String) -> String {
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: preset.icon)
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(preset.tint)
+        }
+    }
+}
+
+enum MobileToolbarPresentationPolicy {
+    nonisolated static let standardHeight: CGFloat = 52
+    nonisolated static let labeledItemWidth: CGFloat = 52
+
+    nonisolated static func showsButtonLabels(preferenceEnabled: Bool, toolbarMinimized: Bool) -> Bool {
+        preferenceEnabled && !toolbarMinimized
+    }
+
+    nonisolated static func symbolSize(usesLargeSymbols: Bool) -> CGFloat {
+        usesLargeSymbols ? 25 : 20
+    }
+
+    nonisolated static func compactTitle(_ title: String) -> String {
         switch title {
         case "Open File": return "Open"
         case "Clear Editor": return "Clear"
@@ -394,7 +417,7 @@ enum MobileToolbarPresentationPolicy {
         }
     }
 
-    static func isContextualActionAvailable(
+    nonisolated static func isContextualActionAvailable(
         actionID: String,
         supportsMinimap: Bool,
         showsMarkdownPreview: Bool,
@@ -623,8 +646,7 @@ extension ContentView {
                 Button {
                     selectToolbarPreset(preset)
                 } label: {
-                    Label(preset.title, systemImage: preset.icon)
-                        .labelStyle(.titleAndIcon)
+                    ToolbarPresetLabel(preset: preset, title: preset.title)
                     if currentToolbarPreset == preset {
                         Image(systemName: "checkmark")
                     }
@@ -642,7 +664,7 @@ extension ContentView {
             .frame(minWidth: 64, alignment: .center)
 #else
             Image(systemName: currentToolbarPreset.icon)
-                .foregroundStyle(iOSToolbarTintColor)
+                .foregroundStyle(currentToolbarPreset.tint)
 #endif
         }
         .help("Choose Toolbar Preset")
@@ -724,6 +746,12 @@ extension ContentView {
 
 #if os(iOS) || os(visionOS)
     // MARK: - iOS Toolbar Layout Metrics
+
+    enum IPhoneBottomToolbarWidthPolicy {
+        nonisolated static func width(availableWidth: CGFloat) -> CGFloat {
+            min(max(0, availableWidth - 24), 300)
+        }
+    }
 
     enum IPadBottomToolbarWidthPolicy {
         nonisolated static func width(availableWidth: CGFloat, minimized: Bool) -> CGFloat {
@@ -1194,7 +1222,17 @@ extension ContentView {
             Image(systemName: name)
         case .initial(let initial):
             Text(initial)
+#if os(iOS)
+                .font(.system(
+                    size: MobileToolbarPresentationPolicy.symbolSize(
+                        usesLargeSymbols: toolbarLargeSymbolsIOS
+                    ),
+                    weight: .bold,
+                    design: .rounded
+                ))
+#else
                 .font(.system(size: 16, weight: .bold, design: .rounded))
+#endif
         }
     }
 
@@ -1677,7 +1715,7 @@ extension ContentView {
                             Button {
                                 selectToolbarPreset(preset)
                             } label: {
-                                Label(preset.title, systemImage: preset.icon)
+                                ToolbarPresetLabel(preset: preset, title: preset.title)
                                 if currentToolbarPreset == preset {
                                     Image(systemName: "checkmark")
                                 }
@@ -1893,7 +1931,7 @@ extension ContentView {
                         Button {
                             selectToolbarPreset(preset)
                         } label: {
-                            Label(preset.title, systemImage: preset.icon)
+                            ToolbarPresetLabel(preset: preset, title: preset.title)
                             if currentToolbarPreset == preset {
                                 Image(systemName: "checkmark")
                             }
@@ -2197,25 +2235,36 @@ extension ContentView {
     @ViewBuilder
     private func mobileBottomToolbarItem<Content: View>(
         _ title: String,
+        toolbarMinimized: Bool = false,
         @ViewBuilder content: () -> Content
     ) -> some View {
+        let showsLabel = MobileToolbarPresentationPolicy.showsButtonLabels(
+            preferenceEnabled: toolbarButtonLabelsIOS,
+            toolbarMinimized: toolbarMinimized
+        )
         ZStack(alignment: .bottom) {
             content()
+                .font(.system(
+                    size: MobileToolbarPresentationPolicy.symbolSize(
+                        usesLargeSymbols: toolbarLargeSymbolsIOS
+                    ),
+                    weight: .medium
+                ))
                 .frame(width: 44, height: 44)
-                .offset(y: toolbarButtonLabelsIOS ? -4 : 0)
-            if toolbarButtonLabelsIOS {
+                .offset(y: showsLabel ? -4 : 0)
+            if showsLabel {
                 Text(MobileToolbarPresentationPolicy.compactTitle(title))
                     .font(.system(size: 9, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
                     .allowsTightening(true)
-                    .frame(width: 60, height: 13, alignment: .center)
+                    .frame(width: 50, height: 13, alignment: .center)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
         }
         .frame(
-            width: toolbarButtonLabelsIOS ? MobileToolbarPresentationPolicy.labeledItemWidth : 44,
+            width: showsLabel ? MobileToolbarPresentationPolicy.labeledItemWidth : 44,
             height: MobileToolbarPresentationPolicy.standardHeight
         )
     }
@@ -2233,13 +2282,16 @@ extension ContentView {
         Group {
             if isPhoneBottomToolbarMinimized {
                 HStack(spacing: 4) {
-                    mobileBottomToolbarItem("Settings") {
+                    mobileBottomToolbarItem("Settings", toolbarMinimized: true) {
                         settingsControl
                     }
-                    mobileBottomToolbarItem(languageLabel(for: currentLanguagePickerBinding.wrappedValue)) {
+                    mobileBottomToolbarItem(
+                        languageLabel(for: currentLanguagePickerBinding.wrappedValue),
+                        toolbarMinimized: true
+                    ) {
                         languagePickerControl
                     }
-                    mobileBottomToolbarItem("More") {
+                    mobileBottomToolbarItem("More", toolbarMinimized: true) {
                         Button {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 isPhoneBottomToolbarMinimized = false
@@ -2379,13 +2431,16 @@ extension ContentView {
         Group {
             if isPhoneBottomToolbarMinimized {
                 HStack(spacing: 4) {
-                    mobileBottomToolbarItem("Settings") {
+                    mobileBottomToolbarItem("Settings", toolbarMinimized: true) {
                         settingsControl
                     }
-                    mobileBottomToolbarItem(languageLabel(for: currentLanguagePickerBinding.wrappedValue)) {
+                    mobileBottomToolbarItem(
+                        languageLabel(for: currentLanguagePickerBinding.wrappedValue),
+                        toolbarMinimized: true
+                    ) {
                         languagePickerControl
                     }
-                    mobileBottomToolbarItem("More") {
+                    mobileBottomToolbarItem("More", toolbarMinimized: true) {
                         iPadOverflowMenuControl(actions: enabledIPadActionPriority.filter { $0 != .settings })
                     }
                 }

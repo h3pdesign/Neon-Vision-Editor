@@ -164,6 +164,18 @@ final class ContentViewLayoutTests: XCTestCase {
 #endif
     }
 
+    func testIPhoneBottomToolbarUsesStandardEdgeMargins() {
+#if os(iOS)
+        let standardWidth = ContentView.IPhoneBottomToolbarWidthPolicy.width(availableWidth: 390)
+        XCTAssertEqual(standardWidth, 300)
+        XCTAssertEqual(ContentView.IPhoneBottomToolbarWidthPolicy.width(availableWidth: 402), 300)
+        XCTAssertEqual(ContentView.IPhoneBottomToolbarWidthPolicy.width(availableWidth: 320), 296)
+        let fiveInitialItemsEnd = 12 + (MobileToolbarPresentationPolicy.labeledItemWidth * 5) + (6 * 4)
+        XCTAssertLessThanOrEqual(fiveInitialItemsEnd, standardWidth)
+        XCTAssertGreaterThan(fiveInitialItemsEnd + 6, standardWidth)
+#endif
+    }
+
     func testPhoneStatusStartsCompactAndStaysAtBottomWithKeyboard() {
         XCTAssertEqual(
             IOSFloatingStatusPolicy.itemLimit(

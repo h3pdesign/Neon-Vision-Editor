@@ -984,6 +984,7 @@ struct ContentView: View {
     @AppStorage("SettingsUseLiquidGlassToolbarIOS") var shouldUseLiquidGlass: Bool = true
     @AppStorage("SettingsToolbarIconsBlueIOS") var toolbarIconsBlueIOS: Bool = false
     @AppStorage("SettingsToolbarButtonLabelsIOS") var toolbarButtonLabelsIOS: Bool = true
+    @AppStorage("SettingsToolbarLargeSymbolsIOS") var toolbarLargeSymbolsIOS: Bool = false
     @AppStorage("SettingsToolbarShowSearchIOS") var toolbarShowSearchIOS: Bool = true
     @AppStorage("SettingsToolbarShowCompareIOS") var toolbarShowCompareIOS: Bool = true
     @AppStorage("SettingsToolbarShowEditorUtilityIOS") var toolbarShowEditorUtilityIOS: Bool = true
@@ -5744,7 +5745,9 @@ struct ContentView: View {
                         Spacer(minLength: 0)
                         if usesIPhoneBottomToolbar {
                             iPhoneScrollableBottomToolbar
-                                .frame(width: max(0, proxy.size.width - (isPhoneBottomToolbarMinimized ? 24 : 74)))
+                                .frame(width: IPhoneBottomToolbarWidthPolicy.width(
+                                    availableWidth: proxy.size.width
+                                ))
                                 .frame(maxWidth: .infinity)
                                 .padding(.bottom, 8)
                         } else {

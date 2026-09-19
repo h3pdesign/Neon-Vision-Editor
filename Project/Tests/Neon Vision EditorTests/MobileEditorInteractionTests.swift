@@ -48,6 +48,21 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
+    func testKeyboardAccessoryUsesSharedLiquidGlassPreference() {
+        let enabledView = UIVisualEffectView()
+        IOSAdaptiveChromePreference.apply(to: enabledView, enabled: true)
+        if #available(iOS 26.0, *) {
+            XCTAssertTrue(enabledView.effect is UIGlassEffect)
+        } else {
+            XCTAssertNotNil(enabledView.effect)
+        }
+
+        let disabledView = UIVisualEffectView()
+        IOSAdaptiveChromePreference.apply(to: disabledView, enabled: false)
+        XCTAssertNil(disabledView.effect)
+        XCTAssertEqual(disabledView.backgroundColor, .secondarySystemBackground)
+    }
+
     private func editor(
         _ text: String,
         wrap: Bool = false,
@@ -197,7 +212,17 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
-    func testPhoneKeyboardToolbarUsesClearEditorOverlay() {
+    func testPhoneKeyboardToolbarUsesAdaptiveEditorOverlay() {
+        let defaults = UserDefaults.standard
+        let previousValue = defaults.object(forKey: IOSAdaptiveChromePreference.storageKey)
+        defaults.set(true, forKey: IOSAdaptiveChromePreference.storageKey)
+        defer {
+            if let previousValue {
+                defaults.set(previousValue, forKey: IOSAdaptiveChromePreference.storageKey)
+            } else {
+                defaults.removeObject(forKey: IOSAdaptiveChromePreference.storageKey)
+            }
+        }
         withEditor("Code behind toolbar", showKeyboardAccessoryBar: true, softwareKeyboardVisible: true) { container in
             let view = container.textView
             XCTAssertTrue(view.becomeFirstResponder())
@@ -219,6 +244,36 @@ final class MobileEditorInteractionTests: XCTestCase {
             if #available(iOS 26.0, *) {
                 XCTAssertTrue(glass.effect is UIGlassEffect)
             }
+        }
+    }
+
+    func testPhoneKeyboardToolbarRebuildsWhenLiquidGlassSettingChanges() {
+        let defaults = UserDefaults.standard
+        let previousValue = defaults.object(forKey: IOSAdaptiveChromePreference.storageKey)
+        defaults.set(true, forKey: IOSAdaptiveChromePreference.storageKey)
+        defer {
+            if let previousValue {
+                defaults.set(previousValue, forKey: IOSAdaptiveChromePreference.storageKey)
+            } else {
+                defaults.removeObject(forKey: IOSAdaptiveChromePreference.storageKey)
+            }
+        }
+
+        withEditor("Code behind toolbar", showKeyboardAccessoryBar: true, softwareKeyboardVisible: true) { container in
+            let view = container.textView
+            XCTAssertTrue(view.becomeFirstResponder())
+            guard let initialGlass = container.keyboardAccessoryOverlay?.subviews.first as? UIVisualEffectView else {
+                return XCTFail("Missing initial keyboard glass overlay")
+            }
+            XCTAssertNotNil(initialGlass.effect)
+
+            defaults.set(false, forKey: IOSAdaptiveChromePreference.storageKey)
+            view.setBracketAccessoryVisible(true)
+            guard let updatedGlass = container.keyboardAccessoryOverlay?.subviews.first as? UIVisualEffectView else {
+                return XCTFail("Missing rebuilt keyboard overlay")
+            }
+            XCTAssertNil(updatedGlass.effect)
+            XCTAssertEqual(updatedGlass.backgroundColor, .secondarySystemBackground)
         }
     }
 

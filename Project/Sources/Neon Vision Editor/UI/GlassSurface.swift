@@ -49,6 +49,23 @@ enum IOSReadableGlassAppearance {
     }
 }
 
+enum IOSAdaptiveChromePreference {
+    static let storageKey = "SettingsUseLiquidGlassToolbarIOS"
+
+    static func isEnabled(in defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: storageKey) as? Bool ?? true
+    }
+
+    static func apply(to view: UIVisualEffectView, enabled: Bool) {
+        if enabled {
+            IOSReadableGlassAppearance.apply(to: view)
+        } else {
+            view.effect = nil
+            view.backgroundColor = .secondarySystemBackground
+        }
+    }
+}
+
 struct IOSReadableGlassBackground: UIViewRepresentable {
     func makeUIView(context: Context) -> UIVisualEffectView {
         let view = UIVisualEffectView()

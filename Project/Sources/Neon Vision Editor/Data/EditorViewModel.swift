@@ -746,6 +746,7 @@ class EditorViewModel {
     private static let deferredLanguageDetectionUTF16Length = 180_000
     private static let deferredLanguageDetectionDelayNanos: UInt64 = 220_000_000
     private static let deferredLanguageDetectionSampleUTF16Length = 180_000
+    private static let largeContentLanguageDetectionSampleUTF16Length = 120_000
     private static let networkVolumePollingIntervalNanos: UInt64 = 3_000_000_000
 
     // MARK: - Observable State and Indexes
@@ -3368,6 +3369,11 @@ class EditorViewModel {
                 fileBackedDocument: result.fileBackedDocument
             )
         )
+        if let index = tabIndex(for: tabID),
+           !tabs[index].languageLocked,
+           tabs[index].document.utf16Length >= Self.largeContentLanguageBypassUTF16Length {
+            applyLargeContentLanguageHintIfNeeded(at: index)
+        }
         EditorPerformanceMonitor.shared.markLoadedTabStateApplied(tabID: tabID)
         if !isExternalRefresh {
             if let fileURL = tabs.first(where: { $0.id == tabID })?.fileURL {
@@ -3460,12 +3466,75 @@ class EditorViewModel {
 
     private func applyLargeContentLanguageHintIfNeeded(at index: Int) {
         let tabID = tabs[index].id
+        guard !tabs[index].languageLocked else { return }
         let nameExt = URL(fileURLWithPath: tabs[index].name).pathExtension.lowercased()
-        if !tabs[index].languageLocked,
-           let mapped = LanguageDetector.shared.preferredLanguage(for: tabs[index].fileURL) ??
-                        languageMap[nameExt] {
+        if let mapped = LanguageDetector.shared.preferredLanguage(for: tabs[index].fileURL) ??
+            languageMap[nameExt] {
             _ = applyTabCommand(.setLanguage(tabID: tabID, language: mapped, lock: false))
+            return
         }
+
+        let sampleLength = min(
+            tabs[index].document.utf16Length,
+            Self.largeContentLanguageDetectionSampleUTF16Length
+        )
+        guard sampleLength > 0,
+              let sample = try? tabs[index].document.text(
+                inUTF16Range: NSRange(location: 0, length: sampleLength)
+              ) else { return }
+        let expectedContentRevision = tabs[index].contentRevision
+
+        cancelPendingLanguageDetection(for: tabID)
+        let task = Task { [weak self] in
+            let detectedLanguage = await Task.detached(priority: .utility) {
+                Self.largeUntypedContentLanguageHint(sample)
+            }.value
+            guard !Task.isCancelled,
+                  let detectedLanguage,
+                  let self,
+                  let currentIndex = self.tabIndex(for: tabID),
+                  self.tabs[currentIndex].contentRevision == expectedContentRevision,
+                  !self.tabs[currentIndex].languageLocked else { return }
+            _ = self.applyTabCommand(
+                .setLanguage(tabID: tabID, language: detectedLanguage, lock: false)
+            )
+        }
+        pendingLanguageDetectionTasks[tabID] = task
+    }
+
+    private nonisolated static func largeUntypedContentLanguageHint(_ sample: String) -> String? {
+        let lower = sample.lowercased()
+        let trimmed = lower.trimmingCharacters(in: .whitespacesAndNewlines)
+        if lower.contains("<!doctype netscape-bookmark-file") ||
+            lower.contains("<!doctype html") || lower.contains("<html") ||
+            lower.contains("<body") || lower.contains("<dl") ||
+            lower.contains("<dt") || lower.contains("<a href") {
+            return "html"
+        }
+        if lower.contains("<?xml") || lower.contains("<svg") || lower.contains("<plist") {
+            return "xml"
+        }
+        if trimmed.hasPrefix("{") || trimmed.hasPrefix("[") {
+            return "json"
+        }
+        if lower.contains("import swiftui") || lower.contains("import foundation") ||
+            lower.contains("@main") || lower.contains(": view") {
+            return "swift"
+        }
+        if lower.hasPrefix("#!") {
+            if lower.contains("python") { return "python" }
+            if lower.contains("zsh") { return "zsh" }
+            if lower.contains("bash") || lower.contains("/bin/sh") { return "bash" }
+            if lower.contains("node") { return "javascript" }
+            if lower.contains("ruby") { return "ruby" }
+        }
+        if lower.contains("<?php") || lower.contains("$this->") { return "php" }
+        if lower.contains("function ") && (lower.contains("const ") || lower.contains("let ")) {
+            return "javascript"
+        }
+        if lower.contains("def ") && lower.contains(":") { return "python" }
+        if lower.contains("select ") && lower.contains(" from ") { return "sql" }
+        return nil
     }
 
     private func applyLanguageDetectionHeuristics(at index: Int, content: String) {

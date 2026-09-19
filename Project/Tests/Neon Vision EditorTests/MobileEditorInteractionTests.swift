@@ -10,6 +10,7 @@ final class MobileEditorInteractionTests: XCTestCase {
         wrap: Bool = false,
         documentID: UUID? = nil,
         language: String = "plain text",
+        isLargeFileMode: Bool = false,
         showKeyboardAccessoryBar: Bool = false,
         softwareKeyboardVisible: Bool = false,
         onTextMutation: ((EditorTextMutation) -> Void)? = nil
@@ -18,7 +19,7 @@ final class MobileEditorInteractionTests: XCTestCase {
             documentResourceID: "mobile-regression", storedCaretLocation: nil,
             externalEditRevision: 0, language: language, colorScheme: .light,
             ignoreBackgroundOverrides: false,
-            fontSize: 16, isLineWrapEnabled: .constant(wrap), isLargeFileMode: false,
+            fontSize: 16, isLineWrapEnabled: .constant(wrap), isLargeFileMode: isLargeFileMode,
             showsCodeMinimap: false, translucentBackgroundEnabled: false,
             showKeyboardAccessoryBar: showKeyboardAccessoryBar,
             softwareKeyboardVisible: softwareKeyboardVisible, showLineNumbers: true,
@@ -71,6 +72,44 @@ final class MobileEditorInteractionTests: XCTestCase {
             XCTAssertLessThanOrEqual(rect.maxX, view.textContainer.size.width)
             XCTAssertGreaterThan(view.textContainer.size.width, 40_000)
         }
+    }
+
+    func testHTMLSyntaxHighlightingRendersOnIPhoneAndSupportsLargeViewports() async throws {
+        XCTAssertTrue(supportsViewportSyntaxHighlighting(language: "html", textLength: 2_500_000))
+        let source = "<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<DL><p><DT><A HREF=\"https://example.com\">Example</A></DL>"
+        let host = UIHostingController(
+            rootView: editor(source, language: "html", isLargeFileMode: true)
+        )
+        let scene = try XCTUnwrap(
+            UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        )
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        host.view.layoutIfNeeded()
+
+        func findEditor(in view: UIView) -> EditorInputTextView? {
+            if let editor = view as? EditorInputTextView { return editor }
+            return view.subviews.lazy.compactMap { findEditor(in: $0) }.first
+        }
+        let textView = try XCTUnwrap(findEditor(in: host.view))
+        let deadline = Date().addingTimeInterval(2)
+        var colors: Set<UIColor> = []
+        while colors.count < 2, Date() < deadline {
+            colors.removeAll()
+            textView.textStorage.enumerateAttribute(
+                .foregroundColor,
+                in: NSRange(location: 0, length: textView.textStorage.length)
+            ) { value, _, _ in
+                if let color = value as? UIColor { colors.insert(color) }
+            }
+            if colors.count < 2 {
+                try await Task.sleep(nanoseconds: 20_000_000)
+            }
+        }
+        XCTAssertGreaterThanOrEqual(colors.count, 2)
+        window.isHidden = true
     }
 
     func testUnwrappedUnicodeLineFitsItsActualTypographicWidth() {

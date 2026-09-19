@@ -9,6 +9,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Fixes
 
 - Opens CSV, HTML, JSON, Markdown, source code, and other supported text files below 100 MB as complete editable documents on every platform, while keeping the excessive-file preview boundary at 100 MB.
+- Restores syntax highlighting for large untitled or extensionless documents on iPhone, iPad, and macOS by detecting their language from a bounded content sample.
 
 ### Maintenance
 

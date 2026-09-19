@@ -118,7 +118,25 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.8.2</h2><span class="date">18 September 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.8.3</h2><span class="date">19 September 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Refines mobile toolbars with system-adaptive glass, complete action slots, and an optional larger-symbol setting.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fixes clipped unwrapped text on iPhone and iPad by keeping the drawing canvas and horizontal scrolling geometry aligned, including cursor reveal, keyboard transitions, and large-document installs.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Restores native macOS Settings pane sizing and titlebar material, removes repeated window repositioning, and keeps Settings navigation separate from editor-wide preference refreshes.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Makes the custom mobile toolbar action-count setting include persistent controls and keeps Settings and Help available.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Coalesces startup session observations and caches ordinary in-memory document text to avoid repeated materialization during view updates.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps macOS Settings controls responsive by eliminating the duplicate editor recoloring and layout pass that followed every theme, formatting, or palette change.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Refreshes the visible macOS editor immediately when themes change, preserves the loaded viewport during recoloring, applies bold keywords and Markdown headings plus italic comments and underlined links in the virtual renderer, and restores framework-type and function-call highlighting across supported programming languages without splitting existing comments, strings, attributes, or declarations or expanding work beyond the existing visible range.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps the iPhone and iPad editor toolbar at the standard compact height, adds optional larger symbols, restores colored preset icons with a distinct All Actions symbol, uses one-line abbreviated captions without sacrificing full accessibility labels, removes empty context-action slots, presents five complete iPhone actions before horizontal scrolling, switches the auto-minimized scrolling toolbar to icons only, and applies the same system-adaptive Liquid Glass setting to the toolbar, status pill, and keyboard bar.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps syntax highlighting synchronized with the visible viewport while scrolling large programming files on iPhone and iPad, consistently honors the Large File Syntax setting, and applies responsive editor optimizations from existing document metadata without rescanning or copying text. Files below 100 MB remain normal complete editable documents.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Opens CSV, HTML, JSON, Markdown, source code, and other supported text files below 100 MB as complete editable documents on every platform, while keeping the excessive-file preview boundary at 100 MB.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Restores syntax highlighting for large untitled or extensionless documents on iPhone, iPad, and macOS by detecting their language from a bounded content sample.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Replaces the hard-coded clear iPhone and iPad bottom toolbar glass that distorted underlying editor text with readable system-adaptive Liquid Glass and adds enabled-by-default button captions with a Settings toggle.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>macOS builds now target Apple Silicon only; Intel Macs are no longer supported.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.8.2</h2><span class="date">18 September 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Renders complete Markdown previews for documents up to 8 MB, including file-backed editor documents.</p></div>
           <div class="item"><span class="badge fixed">Fixed</span><p>Opens an editor window when files or project folders are sent from Finder while no editor window is open.</p></div>

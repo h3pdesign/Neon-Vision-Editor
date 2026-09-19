@@ -3466,13 +3466,30 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                         continue
                     }
                     var lineSpans: [VirtualEditorSyntaxSpan] = []
+                    var fallbackSpans: [(priority: Int, span: VirtualEditorSyntaxSpan)] = []
                     for (pattern, color) in patterns {
                         guard !Task.isCancelled else { return result }
                         guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
-                        lineSpans.append(contentsOf: regex.matches(in: line.text, range: range).map {
+                        let matches = regex.matches(in: line.text, range: range).map {
                             VirtualEditorSyntaxSpan(range: $0.range, color: color)
-                        })
+                        }
+                        if let priority = syntaxFallbackPriority(for: pattern) {
+                            fallbackSpans.append(contentsOf: matches.map { (priority, $0) })
+                        } else {
+                            lineSpans.append(contentsOf: matches)
+                        }
                     }
+                    var occupiedRanges = mergedSyntaxRanges(lineSpans.map(\.range))
+                    let acceptedTypes = fallbackSpans.lazy
+                        .filter { $0.priority == 0 }
+                        .map(\.span)
+                        .filter { syntaxRangeIsUnoccupied($0.range, occupiedRanges: occupiedRanges) }
+                    lineSpans.append(contentsOf: acceptedTypes)
+                    occupiedRanges = mergedSyntaxRanges(lineSpans.map(\.range))
+                    lineSpans.append(contentsOf: fallbackSpans.lazy
+                        .filter { $0.priority == 1 }
+                        .map(\.span)
+                        .filter { syntaxRangeIsUnoccupied($0.range, occupiedRanges: occupiedRanges) })
                     VirtualEditorSyntaxLineCache.store(lineSpans, for: cacheKey)
                     if !lineSpans.isEmpty { result[line.localLine] = lineSpans }
                 }

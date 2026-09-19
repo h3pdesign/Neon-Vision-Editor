@@ -3522,6 +3522,7 @@ struct CustomTextEditor: UIViewRepresentable {
             }
 
             var coloredRanges: [(NSRange, UIColor)] = []
+            var fallbackColoredRanges: [(priority: Int, range: NSRange, color: UIColor)] = []
             var emphasizedRanges: [(NSRange, SyntaxFontEmphasis)] = []
             let markdownFonts = isMarkdownSyntaxLanguage(language) ? markdownSourceFontRanges(text) : []
 
@@ -3544,10 +3545,25 @@ struct CustomTextEditor: UIViewRepresentable {
                     let uiColor = UIColor(color)
                     for match in matches {
                         guard isValidHighlightRange(match.range, utf16Length: fullRange.length) else { continue }
-                        coloredRanges.append((match.range, uiColor))
+                        if let priority = syntaxFallbackPriority(for: pattern) {
+                            fallbackColoredRanges.append((priority, match.range, uiColor))
+                        } else {
+                            coloredRanges.append((match.range, uiColor))
+                        }
                         }
                     }
                 }
+                var occupiedRanges = mergedSyntaxRanges(coloredRanges.map(\.0))
+                let acceptedTypes = fallbackColoredRanges.lazy
+                    .filter { $0.priority == 0 }
+                    .filter { syntaxRangeIsUnoccupied($0.range, occupiedRanges: occupiedRanges) }
+                    .map { ($0.range, $0.color) }
+                coloredRanges.append(contentsOf: acceptedTypes)
+                occupiedRanges = mergedSyntaxRanges(coloredRanges.map(\.0))
+                coloredRanges.append(contentsOf: fallbackColoredRanges.lazy
+                    .filter { $0.priority == 1 }
+                    .filter { syntaxRangeIsUnoccupied($0.range, occupiedRanges: occupiedRanges) }
+                    .map { ($0.range, $0.color) })
                 // Apply broad tokens first so attributes and quoted values remain distinct.
                 coloredRanges.sort { lhs, rhs in
                     lhs.0.length == rhs.0.length ? lhs.0.location < rhs.0.location : lhs.0.length > rhs.0.length

@@ -164,7 +164,26 @@ struct VirtualEditorViewportLine: Sendable {
 
 nonisolated private struct VirtualEditorSyntaxSpan: Sendable {
     let range: NSRange
-    let color: Color
+    let color: Color?
+    let bold: Bool
+    let italic: Bool
+    let underline: Bool
+
+    private init(range: NSRange, color: Color?, bold: Bool, italic: Bool, underline: Bool) {
+        self.range = range
+        self.color = color
+        self.bold = bold
+        self.italic = italic
+        self.underline = underline
+    }
+
+    init(range: NSRange, color: Color) {
+        self.init(range: range, color: color, bold: false, italic: false, underline: false)
+    }
+
+    init(range: NSRange, bold: Bool = false, italic: Bool = false, underline: Bool = false) {
+        self.init(range: range, color: nil, bold: bold, italic: italic, underline: underline)
+    }
 }
 
 nonisolated private struct VirtualEditorSyntaxLineCacheKey: Hashable, Sendable {
@@ -1975,7 +1994,26 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         ])
         let utf16Length = (line as NSString).length
         for span in syntaxSpansByLine[localLine] ?? [] where isSyntaxHighlightRangeValid(span.range, utf16Length: utf16Length) {
-            base.addAttribute(.foregroundColor, value: NSColor(span.color), range: span.range)
+            if let color = span.color {
+                base.addAttribute(.foregroundColor, value: NSColor(color), range: span.range)
+            }
+            if span.bold || span.italic {
+                var updates: [(NSRange, NSFont)] = []
+                base.enumerateAttribute(.font, in: span.range) { value, range, _ in
+                    let currentFont = value as? NSFont ?? editorFont
+                    var traits = currentFont.fontDescriptor.symbolicTraits
+                    if span.bold { traits.insert(.bold) }
+                    if span.italic { traits.insert(.italic) }
+                    let descriptor = currentFont.fontDescriptor.withSymbolicTraits(traits)
+                    updates.append((range, NSFont(descriptor: descriptor, size: currentFont.pointSize) ?? currentFont))
+                }
+                for (range, font) in updates {
+                    base.addAttribute(.font, value: font, range: range)
+                }
+            }
+            if span.underline {
+                base.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: span.range)
+            }
         }
         return base
     }
@@ -2078,7 +2116,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             syntax.keyword, syntax.string, syntax.number, syntax.comment, syntax.attribute,
             syntax.variable, syntax.def, syntax.property, syntax.meta, syntax.tag,
             syntax.atom, syntax.builtin, syntax.type
-        ].map { NSColor($0).description }.joined(separator: "|")
+        ].map { NSColor($0).description }.joined(separator: "|") +
+            "|bold-keywords:\(theme.boldKeywords)|italic-comments:\(theme.italicComments)" +
+            "|underline-links:\(theme.underlineLinks)|bold-markdown-headings:\(theme.boldMarkdownHeadings)"
     }
 
     private func editorBaseThemeKey(for theme: EditorTheme) -> String {
@@ -3411,6 +3451,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let syntaxTheme = syntaxThemeKey(for: resolvedEditorTheme)
         let colors = resolvedSyntaxColors
         let patterns = getSyntaxPatterns(for: syntaxLanguage, colors: colors)
+        let emphasisPatterns = syntaxEmphasisPatterns(for: syntaxLanguage)
+        let formattingTheme = resolvedEditorTheme
+        let usesMarkdownSourceFonts = isMarkdownSyntaxLanguage(syntaxLanguage)
         let htmlText = viewportText
         let htmlViewport = isHTMLLikeSyntaxLanguage(syntaxLanguage) ? viewport : nil
         syntaxHighlightSignposter.emitEvent("queued_macos")
@@ -3490,6 +3533,47 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                         .filter { $0.priority == 1 }
                         .map(\.span)
                         .filter { syntaxRangeIsUnoccupied($0.range, occupiedRanges: occupiedRanges) })
+                    if formattingTheme.boldKeywords {
+                        for pattern in emphasisPatterns.keyword {
+                            guard !Task.isCancelled else { return result }
+                            guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                            lineSpans.append(contentsOf: regex.matches(in: line.text, range: range).map {
+                                VirtualEditorSyntaxSpan(range: $0.range, bold: true)
+                            })
+                        }
+                    }
+                    if formattingTheme.italicComments {
+                        for pattern in emphasisPatterns.comment {
+                            guard !Task.isCancelled else { return result }
+                            guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                            lineSpans.append(contentsOf: regex.matches(in: line.text, range: range).map {
+                                VirtualEditorSyntaxSpan(range: $0.range, italic: true)
+                            })
+                        }
+                    }
+                    if formattingTheme.underlineLinks {
+                        for pattern in emphasisPatterns.link {
+                            guard !Task.isCancelled else { return result }
+                            guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                            lineSpans.append(contentsOf: regex.matches(in: line.text, range: range).map {
+                                VirtualEditorSyntaxSpan(range: $0.range, underline: true)
+                            })
+                        }
+                    }
+                    if formattingTheme.boldMarkdownHeadings {
+                        for pattern in emphasisPatterns.markdownHeading {
+                            guard !Task.isCancelled else { return result }
+                            guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                            lineSpans.append(contentsOf: regex.matches(in: line.text, range: range).map {
+                                VirtualEditorSyntaxSpan(range: $0.range, bold: true)
+                            })
+                        }
+                    }
+                    if usesMarkdownSourceFonts && (line.text.contains("*") || line.text.contains("_")) {
+                        lineSpans.append(contentsOf: markdownSourceFontRanges(line.text).map {
+                            VirtualEditorSyntaxSpan(range: $0.range, bold: $0.bold, italic: $0.italic)
+                        })
+                    }
                     VirtualEditorSyntaxLineCache.store(lineSpans, for: cacheKey)
                     if !lineSpans.isEmpty { result[line.localLine] = lineSpans }
                 }

@@ -172,6 +172,39 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(canvas.accessibilityValue() as? String, source)
     }
 
+    func testVirtualEditorAppliesAndRemovesThemeBoldEmphasis() async {
+        let defaults = UserDefaults.standard
+        let boldKeywordsKey = SettingsPreferenceKey.themeBoldKeywords
+        let boldHeadingsKey = SettingsPreferenceKey.themeBoldMarkdownHeadings
+        let previousKeywords = defaults.object(forKey: boldKeywordsKey)
+        let previousHeadings = defaults.object(forKey: boldHeadingsKey)
+        defer {
+            if let previousKeywords { defaults.set(previousKeywords, forKey: boldKeywordsKey) }
+            else { defaults.removeObject(forKey: boldKeywordsKey) }
+            if let previousHeadings { defaults.set(previousHeadings, forKey: boldHeadingsKey) }
+            else { defaults.removeObject(forKey: boldHeadingsKey) }
+        }
+
+        defaults.set(true, forKey: boldKeywordsKey)
+        defaults.set(true, forKey: boldHeadingsKey)
+        let swiftCanvas = configuredSyntaxCanvas(source: "return value", language: "swift", resourceID: "bold-swift")
+        let markdownCanvas = configuredSyntaxCanvas(source: "### Heading", language: "markdown", resourceID: "bold-markdown")
+
+        let keywordBecameBold = await waitForBoldFont(in: swiftCanvas, line: "return value", at: 1)
+        let headingBecameBold = await waitForBoldFont(in: markdownCanvas, line: "### Heading", at: 5)
+        XCTAssertTrue(keywordBecameBold)
+        XCTAssertTrue(headingBecameBold)
+
+        defaults.set(false, forKey: boldKeywordsKey)
+        defaults.set(false, forKey: boldHeadingsKey)
+        let regularSwiftCanvas = configuredSyntaxCanvas(source: "return value", language: "swift", resourceID: "regular-swift")
+        let regularMarkdownCanvas = configuredSyntaxCanvas(source: "### Heading", language: "markdown", resourceID: "regular-markdown")
+        try? await Task.sleep(for: .milliseconds(100))
+
+        XCTAssertFalse(fontIsBold(in: regularSwiftCanvas.attributedLine("return value", localLine: 0), at: 1))
+        XCTAssertFalse(fontIsBold(in: regularMarkdownCanvas.attributedLine("### Heading", localLine: 0), at: 5))
+    }
+
     func testOfficialEmmetEngineExpandsComplexMarkupAndStylesheets() throws {
         let markup = try XCTUnwrap(EmmetExpander.expansionIfPossible(
             in: "ul#nav>li.item$*2>a{Item $}",
@@ -1433,6 +1466,65 @@ final class VirtualEditorLayoutTests: XCTestCase {
             byteThreshold: 8_000_000,
             lineThreshold: 25_000
         ))
+    }
+
+    private func configuredSyntaxCanvas(source: String, language: String, resourceID: String) -> VirtualEditorCanvas {
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        reconfigureSyntaxCanvas(canvas, source: source, language: language, resourceID: resourceID, themeRefreshToken: 0)
+        return canvas
+    }
+
+    private func reconfigureSyntaxCanvas(
+        _ canvas: VirtualEditorCanvas,
+        source: String,
+        language: String,
+        resourceID: String,
+        themeRefreshToken: Int
+    ) {
+        canvas.configure(
+            document: FileBackedTextDocument(content: source),
+            documentID: UUID(),
+            resourceID: resourceID,
+            displayName: "Theme.\(language)",
+            contentRevision: 0,
+            externalContentRevision: 0,
+            caret: 0,
+            language: language,
+            colorScheme: .light,
+            themeRefreshToken: themeRefreshToken,
+            fontSize: 14,
+            fontName: "",
+            lineHeightMultiplier: 1,
+            isReadOnly: false,
+            translucentBackgroundEnabled: false,
+            showsLineNumbers: true,
+            highlightCurrentLine: false,
+            lineWrapEnabled: true,
+            showsInvisibleCharacters: false,
+            showsIndentationGuides: false,
+            showsScopeGuides: false,
+            highlightsScopeBackground: false,
+            highlightsMatchingBrackets: false,
+            autoIndentEnabled: true,
+            autoCloseBracketsEnabled: false,
+            onFontSizeChange: nil,
+            onTextMutation: nil
+        )
+    }
+
+    private func waitForBoldFont(in canvas: VirtualEditorCanvas, line: String, at index: Int) async -> Bool {
+        for _ in 0..<100 {
+            if fontIsBold(in: canvas.attributedLine(line, localLine: 0), at: index) { return true }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return false
+    }
+
+    private func fontIsBold(in attributed: NSAttributedString, at index: Int) -> Bool {
+        guard index >= 0, index < attributed.length,
+              let font = attributed.attribute(.font, at: index, effectiveRange: nil) as? NSFont else { return false }
+        return font.fontDescriptor.symbolicTraits.contains(.bold)
     }
 }
 

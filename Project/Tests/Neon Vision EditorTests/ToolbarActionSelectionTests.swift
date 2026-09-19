@@ -81,6 +81,64 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertEqual(visible.map(\.rawValue), ["openFile", "undo", "settings", "help"])
     }
 
+    func testCustomVisibleActionsReservePersistentIPhoneControls() {
+        let visible = ToolbarActionSelection.visibleActions(
+            enabledActions: TestAction.allCases,
+            requestedCount: 6,
+            preset: .custom,
+            reservedControlCount: ToolbarActionSelection.persistentMobileControlCount,
+            requiredActions: [.settings, .help]
+        )
+
+        XCTAssertEqual(visible.map(\.rawValue), ["openFile", "undo", "settings", "help"])
+        XCTAssertEqual(visible.count + ToolbarActionSelection.persistentMobileControlCount, 6)
+    }
+
+    func testRequiredActionsRemainVisibleAtMinimumCustomCount() {
+        let visible = ToolbarActionSelection.visibleActions(
+            enabledActions: TestAction.allCases,
+            requestedCount: 4,
+            preset: .custom,
+            reservedControlCount: ToolbarActionSelection.persistentMobileControlCount,
+            requiredActions: [.settings, .help]
+        )
+
+        XCTAssertEqual(visible, [.settings, .help])
+        XCTAssertEqual(visible.count + ToolbarActionSelection.persistentMobileControlCount, 4)
+    }
+
+    func testCustomSelectableLimitIncludesPersistentAndUniversalControls() {
+        XCTAssertEqual(
+            ToolbarActionSelection.customSelectableActionLimit(
+                requestedCount: 6,
+                fallback: TestAction.allCases.count
+            ),
+            2
+        )
+    }
+
+    func testAllCustomActionsAreNotReducedByPersistentControls() {
+        let visible = ToolbarActionSelection.visibleActions(
+            enabledActions: TestAction.allCases,
+            requestedCount: 99,
+            preset: .custom,
+            reservedControlCount: ToolbarActionSelection.persistentMobileControlCount
+        )
+
+        XCTAssertEqual(visible.map(\.rawValue), TestAction.allCases.map(\.rawValue))
+    }
+
+    func testLimitedSelectedIDsDropsStaleSelectionBeyondCurrentLimit() {
+        let selected = ToolbarActionSelection.limitedSelectedIDs(
+            from: "openFile,undo,settings,help,clearEditor,insertTemplate,newTab",
+            orderedIDs: TestAction.allCases.map(\.rawValue),
+            excluding: ToolbarActionSelection.universallyAvailableMobileActionIDs,
+            limit: 2
+        )
+
+        XCTAssertEqual(selected, Set(["openFile", "undo"]))
+    }
+
     func testAllActionsPresetBypassesThePinnedActionLimit() {
         let visible = ToolbarActionSelection.visibleActions(
             enabledActions: TestAction.allCases,

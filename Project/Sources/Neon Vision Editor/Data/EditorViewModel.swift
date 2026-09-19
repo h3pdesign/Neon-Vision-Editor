@@ -786,7 +786,8 @@ class EditorViewModel {
     private var tabContentVersion: Int = 0
     private var tabMetadataVersion: Int = 0
     private var tabPersistenceVersion: Int = 0
-	    
+    @ObservationIgnored private var tabPersistenceRevisionGeneration = 0
+
     var selectedTab: TabData? {
         get {
             guard let selectedTabID, let index = tabIndexByID[selectedTabID], tabs.indices.contains(index) else {
@@ -871,7 +872,21 @@ class EditorViewModel {
         } else {
             tabMetadataVersion &+= 1
         }
-        tabPersistenceVersion &+= 1
+        scheduleTabPersistenceRevision()
+    }
+
+    private func scheduleTabPersistenceRevision() {
+        // Startup restoration and file loading can mutate tab structure,
+        // metadata, and content across several adjacent run-loop turns. A
+        // throttle still emits repeatedly when drawing is blocked. Debounce the
+        // aggregate signal from the last mutation so restoration publishes one
+        // stable snapshot instead of several updates in one eventual frame.
+        tabPersistenceRevisionGeneration &+= 1
+        let generation = tabPersistenceRevisionGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.075) { [weak self] in
+            guard let self, self.tabPersistenceRevisionGeneration == generation else { return }
+            self.tabPersistenceVersion &+= 1
+        }
     }
 
     // Command pipeline for tab-state mutations.

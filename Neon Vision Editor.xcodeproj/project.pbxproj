@@ -421,7 +421,7 @@
 				D20000000000000000000004 /* Sources */,
 				D20000000000000000000002 /* Frameworks */,
 				D20000000000000000000005 /* Resources */,
-				D20000000000000000000006 /* Strip GitHub-only Command Line Helper */,
+				D20000000000000000000006 /* Prepare Apple Silicon Direct Bundle */,
 				D20000000000000000000007 /* Embed Foundation Extensions */,
 				F10000000000000000000005 /* Embed Quick Look */,
 			);
@@ -620,14 +620,32 @@
 				"",
 			);
 		};
-		D20000000000000000000006 /* Strip GitHub-only Command Line Helper */ = {
+		D20000000000000000000006 /* Prepare Apple Silicon Direct Bundle */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
-			name = "Strip GitHub-only Command Line Helper";
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/Sparkle.framework/Versions/B/Sparkle",
+			);
+			name = "Prepare Apple Silicon Direct Bundle";
 			shellPath = /bin/sh;
 			shellScript = (
 				"if [ \"${APP_STORE_BUILD:-NO}\" = \"YES\" ]; then",
 				"  rm -f \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/nve\"",
+				"fi",
+				"",
+				"if [ \"${PLATFORM_NAME:-}\" = \"macosx\" ] && [ \"${CONFIGURATION:-}\" = \"Release-GitHub\" ]; then",
+				"  sparkle_dir=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Sparkle.framework\"",
+				"  if [ -d \"${sparkle_dir}\" ]; then",
+				"    find \"${sparkle_dir}\" -type f -print0 | while IFS= read -r -d '' binary; do",
+				"      if /usr/bin/file -b \"${binary}\" | /usr/bin/grep -q 'Mach-O' && /usr/bin/lipo -archs \"${binary}\" | /usr/bin/grep -qw x86_64; then",
+				"        /usr/bin/lipo -remove x86_64 \"${binary}\" -output \"${binary}\"",
+				"        if /usr/bin/lipo -archs \"${binary}\" | /usr/bin/grep -qw x86_64; then",
+				"          echo \"Failed to remove the unsupported Intel slice from ${binary}.\" >&2",
+				"          exit 1",
+				"        fi",
+				"      fi",
+				"    done || exit 1",
+				"  fi",
 				"fi",
 				"",
 			);
@@ -988,6 +1006,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				"ARCHS[sdk=macosx*]" = arm64;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -1059,6 +1078,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				"ARCHS[sdk=macosx*]" = arm64;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -1224,6 +1244,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				"ARCHS[sdk=macosx*]" = arm64;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;

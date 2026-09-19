@@ -625,7 +625,7 @@ extension ContentView {
                     .help("Copy current editor reference")
                     .accessibilityLabel("Copy current editor reference")
                 }
-                if effectiveLargeFileModeEnabled {
+                if shouldPresentLargeFileSessionUI {
                     largeFileSessionBadge
                 }
 #if os(macOS)

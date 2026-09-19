@@ -67,22 +67,28 @@ final class MobileEditorInteractionTests: XCTestCase {
         _ text: String,
         wrap: Bool = false,
         documentID: UUID? = nil,
+        storedCaretLocation: Int? = nil,
         language: String = "plain text",
         isLargeFileMode: Bool = false,
         showKeyboardAccessoryBar: Bool = false,
         softwareKeyboardVisible: Bool = false,
+        formattingPreferences: EditorFormattingPreferences = .init(
+            boldKeywords: false,
+            italicComments: false,
+            underlineLinks: false,
+            boldMarkdownHeadings: false
+        ),
         onTextMutation: ((EditorTextMutation) -> Void)? = nil
     ) -> CustomTextEditor {
         CustomTextEditor(text: .constant(text), document: nil, documentID: documentID,
-            documentResourceID: "mobile-regression", storedCaretLocation: nil,
+            documentResourceID: "mobile-regression", storedCaretLocation: storedCaretLocation,
             externalEditRevision: 0, language: language, colorScheme: .light,
             ignoreBackgroundOverrides: false,
             fontSize: 16, isLineWrapEnabled: .constant(wrap), isLargeFileMode: isLargeFileMode,
             showsCodeMinimap: false, translucentBackgroundEnabled: false,
             showKeyboardAccessoryBar: showKeyboardAccessoryBar,
             softwareKeyboardVisible: softwareKeyboardVisible, showLineNumbers: true,
-            formattingPreferences: .init(boldKeywords: false, italicComments: false,
-                underlineLinks: false, boldMarkdownHeadings: false),
+            formattingPreferences: formattingPreferences,
             showInvisibleCharacters: false, highlightCurrentLine: false,
             highlightMatchingBrackets: false, showIndentationGuides: false,
             showScopeGuides: false, highlightScopeBackground: false,
@@ -94,12 +100,16 @@ final class MobileEditorInteractionTests: XCTestCase {
 
     private func withEditor(
         _ text: String,
+        initiallyWrapped: Bool = false,
+        language: String = "plain text",
         showKeyboardAccessoryBar: Bool = false,
         softwareKeyboardVisible: Bool = false,
         body: (LineNumberedTextViewContainer) -> Void
     ) {
         let host = UIHostingController(rootView: editor(
             text,
+            wrap: initiallyWrapped,
+            language: language,
             showKeyboardAccessoryBar: showKeyboardAccessoryBar,
             softwareKeyboardVisible: softwareKeyboardVisible
         ))
@@ -111,6 +121,11 @@ final class MobileEditorInteractionTests: XCTestCase {
         window.rootViewController = host
         window.makeKeyAndVisible()
         host.view.layoutIfNeeded()
+        if initiallyWrapped {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+            host.rootView = editor(text, wrap: false, language: language)
+            host.view.layoutIfNeeded()
+        }
         func find(_ view: UIView) -> LineNumberedTextViewContainer? {
             if let container = view as? LineNumberedTextViewContainer { return container }
             return view.subviews.lazy.compactMap(find).first
@@ -130,6 +145,332 @@ final class MobileEditorInteractionTests: XCTestCase {
             XCTAssertLessThanOrEqual(rect.maxX, view.textContainer.size.width)
             XCTAssertGreaterThan(view.textContainer.size.width, 40_000)
         }
+    }
+
+    func testUnwrappedTextRendersAcrossViewportAfterHorizontalScroll() {
+        assertUnwrappedViewportRenders(language: "markdown", initiallyWrapped: true)
+    }
+
+    func testUnwrappedHTMLRendersAcrossViewportWithoutKeyboard() {
+        assertUnwrappedViewportRenders(language: "html", initiallyWrapped: false)
+    }
+
+    private func assertUnwrappedViewportRenders(language: String, initiallyWrapped: Bool) {
+        let row = language == "html"
+            ? "<a href=\"https://example.com/" + String(repeating: "long-path/", count: 100) + "\">Link</a>\n"
+            : "### " + String(repeating: "**Wissenschaftliche Prüfung** und öffentliche Darstellung ", count: 20) + "\n"
+        withEditor(String(repeating: row, count: 200), initiallyWrapped: initiallyWrapped, language: language) { container in
+            let view = container.textView
+            RunLoop.main.run(until: Date().addingTimeInterval(1.0))
+            view.textColor = .black
+            view.backgroundColor = .white
+            view.textStorage.addAttribute(.foregroundColor, value: UIColor.black,
+                                          range: NSRange(location: 0, length: view.textStorage.length))
+            XCTAssertFalse(view.isFirstResponder)
+            for offset: CGFloat in [0, 100, 220] {
+                view.setEditorContentOffset(CGPoint(x: offset, y: 300), animated: false)
+                view.setNeedsLayout()
+                container.layoutIfNeeded()
+                RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+                XCTAssertEqual(view.editorContentOffset.x, offset, accuracy: 0.5, "Horizontal scrolling must retain its offset")
+                XCTAssertEqual(view.contentOffset.x, 0, accuracy: 0.5, "Only the outer viewport owns horizontal scrolling")
+                XCTAssertGreaterThanOrEqual(view.bounds.width, view.textContainer.size.width)
+                let renderer = UIGraphicsImageRenderer(bounds: container.bounds)
+                let snapshot = renderer.image { _ in
+                    container.drawHierarchy(in: container.bounds, afterScreenUpdates: true)
+                }
+                let attachment = XCTAttachment(image: snapshot)
+                attachment.name = "No wrap horizontal offset \(offset)"
+                attachment.lifetime = .keepAlways
+                self.add(attachment)
+                guard let image = snapshot.cgImage else {
+                    return XCTFail("Missing rendered pixels")
+                }
+                var pixels = [UInt8](repeating: 255, count: image.width * image.height * 4)
+                let context = CGContext(data: &pixels, width: image.width, height: image.height,
+                    bitsPerComponent: 8, bytesPerRow: image.width * 4,
+                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+                context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+                let scale = snapshot.scale
+                let region = CGRect(x: container.bounds.width - 70, y: 15, width: 40, height: 150)
+                var inkPixels = 0
+                for y in Int(region.minY * scale)..<Int(region.maxY * scale) {
+                    for x in Int(region.minX * scale)..<Int(region.maxX * scale) {
+                        let index = y * image.width * 4 + x * 4
+                        if pixels[index] < 100 && pixels[index + 1] < 100 && pixels[index + 2] < 100 {
+                            inkPixels += 1
+                        }
+                    }
+                }
+                XCTAssertGreaterThan(inkPixels, 100, "Text must reach the right viewport edge at offset \(offset)")
+            }
+        }
+    }
+
+    func testLargeDocumentModeRespectsEnabledLineWrap() throws {
+        let host = UIHostingController(rootView: editor(
+            String(repeating: "wrapped text ", count: 2_000),
+            wrap: true,
+            isLargeFileMode: true
+        ))
+        let scene = try XCTUnwrap(
+            UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        )
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        host.view.layoutIfNeeded()
+
+        func findEditor(in view: UIView) -> EditorInputTextView? {
+            if let editor = view as? EditorInputTextView { return editor }
+            return view.subviews.lazy.compactMap { findEditor(in: $0) }.first
+        }
+        let textView = try XCTUnwrap(findEditor(in: host.view))
+
+        XCTAssertEqual(textView.textContainer.lineBreakMode, .byWordWrapping)
+        XCTAssertTrue(textView.textContainer.widthTracksTextView)
+        XCTAssertLessThan(textView.textContainer.size.width, 1_000)
+        window.isHidden = true
+    }
+
+    func testLargeWrappedHTMLResponsiveInstallStaysWithinBudget() async throws {
+        let defaults = UserDefaults.standard
+        let key = "SettingsLargeFileOpenMode"
+        let previousMode = defaults.object(forKey: key)
+        defaults.set("deferred", forKey: key)
+        defer {
+            if let previousMode { defaults.set(previousMode, forKey: key) }
+            else { defaults.removeObject(forKey: key) }
+        }
+        let row = "<article class=\"item\"><a href=\"https://example.com/path\">Large HTML row</a></article>\n"
+        // Match the 10–20 MB documents reported on iPhone rather than testing
+        // only a small file that happens to cross the responsive-mode cutoff.
+        let source = String(repeating: row, count: 180_000)
+        let expectedLength = (source as NSString).length
+        let started = ProcessInfo.processInfo.systemUptime
+        let host = UIHostingController(rootView: editor(
+            source,
+            wrap: true,
+            language: "html",
+            isLargeFileMode: true
+        ))
+        let scene = try XCTUnwrap(
+            UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        )
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        host.view.layoutIfNeeded()
+
+        func findEditor(in view: UIView) -> EditorInputTextView? {
+            if let editor = view as? EditorInputTextView { return editor }
+            return view.subviews.lazy.compactMap { findEditor(in: $0) }.first
+        }
+        let textView = try XCTUnwrap(findEditor(in: host.view))
+        let deadline = Date().addingTimeInterval(8)
+        while textView.textStorage.length < expectedLength, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        let elapsed = ProcessInfo.processInfo.systemUptime - started
+
+        XCTAssertEqual(textView.textStorage.length, expectedLength)
+        XCTAssertLessThan(elapsed, 3.0, "Responsive installation took \(elapsed)s")
+        XCTAssertEqual(textView.textContainer.lineBreakMode, .byWordWrapping)
+        window.isHidden = true
+    }
+
+    func testChunkedNoWrapInstallKeepsLongLinesHorizontallyReachable() async throws {
+        let defaults = UserDefaults.standard
+        let key = "SettingsLargeFileOpenMode"
+        let previousMode = defaults.object(forKey: key)
+        defaults.set("deferred", forKey: key)
+        defer {
+            if let previousMode { defaults.set(previousMode, forKey: key) }
+            else { defaults.removeObject(forKey: key) }
+        }
+
+        let longLine = String(repeating: "W", count: 5_000)
+        let source = longLine + "\n" + String(repeating: "short line\n", count: 110_000)
+        let expectedLength = (source as NSString).length
+        let host = UIHostingController(rootView: editor(
+            source,
+            wrap: false,
+            language: "markdown",
+            isLargeFileMode: true
+        ))
+        let scene = try XCTUnwrap(
+            UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        )
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        host.view.layoutIfNeeded()
+
+        func findEditor(in view: UIView) -> EditorInputTextView? {
+            if let editor = view as? EditorInputTextView { return editor }
+            return view.subviews.lazy.compactMap { findEditor(in: $0) }.first
+        }
+        let textView = try XCTUnwrap(findEditor(in: host.view))
+        let deadline = Date().addingTimeInterval(5)
+        while textView.textStorage.length < expectedLength, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        textView.layoutIfNeeded()
+
+        XCTAssertEqual(textView.textStorage.length, expectedLength)
+        XCTAssertEqual(textView.textContainer.lineBreakMode, .byClipping)
+        XCTAssertFalse(textView.textContainer.widthTracksTextView)
+        XCTAssertGreaterThan(textView.textContainer.size.width, 40_000)
+        let horizontalScrollView = try XCTUnwrap(textView.editorContainer?.horizontalScrollView)
+        textView.editorContainer?.layoutIfNeeded()
+        XCTAssertGreaterThan(horizontalScrollView.contentSize.width, horizontalScrollView.bounds.width)
+        XCTAssertTrue(horizontalScrollView.isScrollEnabled)
+        XCTAssertTrue(horizontalScrollView.showsHorizontalScrollIndicator)
+        XCTAssertEqual(textView.bounds.width, horizontalScrollView.contentSize.width, accuracy: 1)
+        window.isHidden = true
+    }
+
+    func testChunkedNoWrapCaretRestoreStartsAtLeadingEdge() async throws {
+        let defaults = UserDefaults.standard
+        let key = "SettingsLargeFileOpenMode"
+        let previousMode = defaults.object(forKey: key)
+        defaults.set("deferred", forKey: key)
+        defer {
+            if let previousMode { defaults.set(previousMode, forKey: key) }
+            else { defaults.removeObject(forKey: key) }
+        }
+
+        let longLine = String(repeating: "W", count: 5_000)
+        let source = longLine + "\n" + String(repeating: "short line\n", count: 110_000)
+        let expectedLength = (source as NSString).length
+        let host = UIHostingController(rootView: editor(
+            source,
+            wrap: false,
+            storedCaretLocation: 4_500,
+            language: "markdown",
+            isLargeFileMode: true
+        ))
+        let scene = try XCTUnwrap(
+            UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        )
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        host.view.layoutIfNeeded()
+
+        func findEditor(in view: UIView) -> EditorInputTextView? {
+            if let editor = view as? EditorInputTextView { return editor }
+            return view.subviews.lazy.compactMap { findEditor(in: $0) }.first
+        }
+        let textView = try XCTUnwrap(findEditor(in: host.view))
+        let deadline = Date().addingTimeInterval(5)
+        while textView.textStorage.length < expectedLength, Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        // Allow the immediate syntax pass to apply and restore its viewport.
+        try await Task.sleep(for: .milliseconds(100))
+        textView.layoutIfNeeded()
+
+        XCTAssertEqual(textView.textStorage.length, expectedLength)
+        XCTAssertEqual(textView.selectedRange.location, 4_500)
+        XCTAssertEqual(textView.contentOffset.x, 0, accuracy: 0.5)
+        XCTAssertGreaterThan(textView.textContainer.size.width, 40_000)
+        window.isHidden = true
+    }
+
+    func testLineWrapChangeAppliesWhilePhoneKeyboardIsActiveAndPersistsAfterDismissal() throws {
+        final class WrapState {
+            var enabled = false
+        }
+        let state = WrapState()
+        let wrapBinding = Binding(
+            get: { state.enabled },
+            set: { state.enabled = $0 }
+        )
+        func root(keyboardVisible: Bool) -> CustomTextEditor {
+            CustomTextEditor(
+                text: .constant(String(repeating: "keyboard wrap transition ", count: 500)),
+                document: nil,
+                documentID: nil,
+                documentResourceID: "keyboard-wrap-transition",
+                storedCaretLocation: nil,
+                externalEditRevision: 0,
+                language: "html",
+                colorScheme: .light,
+                ignoreBackgroundOverrides: false,
+                fontSize: 16,
+                isLineWrapEnabled: wrapBinding,
+                isLargeFileMode: false,
+                showsCodeMinimap: false,
+                translucentBackgroundEnabled: false,
+                showKeyboardAccessoryBar: true,
+                softwareKeyboardVisible: keyboardVisible,
+                showLineNumbers: true,
+                formattingPreferences: .init(
+                    boldKeywords: false,
+                    italicComments: false,
+                    underlineLinks: false,
+                    boldMarkdownHeadings: false
+                ),
+                showInvisibleCharacters: false,
+                highlightCurrentLine: false,
+                highlightMatchingBrackets: false,
+                showIndentationGuides: false,
+                showScopeGuides: false,
+                highlightScopeBackground: false,
+                indentStyle: "spaces",
+                indentWidth: 4,
+                autoIndentEnabled: false,
+                autoCloseBracketsEnabled: false,
+                highlightRefreshToken: 0,
+                isTabLoadingContent: false,
+                isReadOnly: false,
+                onFontSizeChange: nil,
+                onTextMutation: nil
+            )
+        }
+
+        let host = UIHostingController(rootView: root(keyboardVisible: true))
+        let scene = try XCTUnwrap(
+            UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        )
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        host.view.layoutIfNeeded()
+
+        func findEditor(in view: UIView) -> EditorInputTextView? {
+            if let editor = view as? EditorInputTextView { return editor }
+            return view.subviews.lazy.compactMap { findEditor(in: $0) }.first
+        }
+        let textView = try XCTUnwrap(findEditor(in: host.view))
+        XCTAssertTrue(textView.becomeFirstResponder())
+        XCTAssertEqual(textView.textContainer.lineBreakMode, .byClipping)
+
+        textView.setEditorContentOffset(CGPoint(x: 220, y: 0), animated: false)
+        XCTAssertEqual(textView.editorContentOffset.x, 220, accuracy: 0.5)
+        state.enabled = true
+        host.rootView = root(keyboardVisible: true)
+        host.view.layoutIfNeeded()
+
+        XCTAssertEqual(textView.textContainer.lineBreakMode, .byWordWrapping)
+        XCTAssertTrue(textView.textContainer.widthTracksTextView)
+        XCTAssertEqual(textView.editorContentOffset.x, 0, accuracy: 0.5)
+        XCTAssertEqual(textView.bounds.width, textView.editorViewport.width, accuracy: 1)
+        XCTAssertFalse(textView.editorContainer?.horizontalScrollView.isScrollEnabled ?? true)
+
+        textView.resignFirstResponder()
+        host.rootView = root(keyboardVisible: false)
+        host.view.layoutIfNeeded()
+
+        XCTAssertEqual(textView.textContainer.lineBreakMode, .byWordWrapping)
+        XCTAssertTrue(textView.textContainer.widthTracksTextView)
+        window.isHidden = true
     }
 
     func testHTMLSyntaxHighlightingRendersOnIPhoneAndSupportsLargeViewports() async throws {
@@ -170,6 +511,50 @@ final class MobileEditorInteractionTests: XCTestCase {
         window.isHidden = true
     }
 
+    func testLinkUnderlineFormattingAppliesOnIPhoneAndIPad() async throws {
+        let source = "[Documentation](https://example.com)"
+        let host = UIHostingController(rootView: editor(
+            source,
+            language: "markdown",
+            formattingPreferences: .init(
+                boldKeywords: false,
+                italicComments: false,
+                underlineLinks: true,
+                boldMarkdownHeadings: false
+            )
+        ))
+        let scene = try XCTUnwrap(
+            UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        )
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        host.view.layoutIfNeeded()
+
+        func findEditor(in view: UIView) -> EditorInputTextView? {
+            if let editor = view as? EditorInputTextView { return editor }
+            return view.subviews.lazy.compactMap { findEditor(in: $0) }.first
+        }
+        let textView = try XCTUnwrap(findEditor(in: host.view))
+        let linkRange = (source as NSString).range(of: "Documentation")
+        let deadline = Date().addingTimeInterval(2)
+        var underlineStyle = 0
+        while underlineStyle == 0, Date() < deadline {
+            underlineStyle = textView.textStorage.attribute(
+                .underlineStyle,
+                at: linkRange.location,
+                effectiveRange: nil
+            ) as? Int ?? 0
+            if underlineStyle == 0 {
+                try await Task.sleep(nanoseconds: 20_000_000)
+            }
+        }
+
+        XCTAssertEqual(underlineStyle, NSUnderlineStyle.single.rawValue)
+        window.isHidden = true
+    }
+
     func testUnwrappedUnicodeLineFitsItsActualTypographicWidth() {
         let source = String(repeating: "漢", count: 5_000)
         withEditor(source) { container in
@@ -185,14 +570,30 @@ final class MobileEditorInteractionTests: XCTestCase {
             XCTAssertTrue(view.becomeFirstResponder())
             view.selectedRange = NSRange(location: 0, length: 0)
             view.layoutIfNeeded()
-            let initialOffset = view.contentOffset
+            let initialOffset = view.editorContentOffset
 
             for _ in 0..<20 {
                 view.insertText("x")
                 view.layoutIfNeeded()
-                XCTAssertEqual(view.contentOffset.x, initialOffset.x, accuracy: 0.5)
-                XCTAssertEqual(view.contentOffset.y, initialOffset.y, accuracy: 0.5)
+                XCTAssertEqual(view.editorContentOffset.x, initialOffset.x, accuracy: 0.5)
+                XCTAssertEqual(view.editorContentOffset.y, initialOffset.y, accuracy: 0.5)
             }
+        }
+    }
+
+    func testNoWrapCaretRevealScrollsTheDrawingCanvas() {
+        withEditor(String(repeating: "W", count: 500)) { container in
+            let view = container.textView
+            XCTAssertTrue(view.becomeFirstResponder())
+            view.selectedRange = NSRange(location: view.textStorage.length, length: 0)
+            view.insertText("x")
+            container.layoutIfNeeded()
+            view.revealCaretWithContext()
+            let caret = view.caretRect(for: view.endOfDocument)
+            XCTAssertGreaterThan(view.editorContentOffset.x, 0)
+            XCTAssertGreaterThanOrEqual(caret.minX, view.editorViewport.minX - 1)
+            XCTAssertLessThanOrEqual(caret.maxX, view.editorViewport.maxX + 1)
+            XCTAssertEqual(view.contentOffset.x, 0, accuracy: 0.5)
         }
     }
 
@@ -202,6 +603,7 @@ final class MobileEditorInteractionTests: XCTestCase {
             XCTAssertLessThanOrEqual(view.contentSize.width, view.bounds.width + 1)
             XCTAssertFalse(view.alwaysBounceHorizontal)
             XCTAssertFalse(view.showsHorizontalScrollIndicator)
+            XCTAssertLessThanOrEqual(container.horizontalScrollView.contentSize.width, container.horizontalScrollView.bounds.width + 1)
         }
     }
 
@@ -461,7 +863,7 @@ final class MobileEditorInteractionTests: XCTestCase {
     func testEmptyGutterAndHorizontalScrollRenderNumbers() {
         for text in ["", "short\n" + String(repeating: "W", count: 5_000)] {
             withEditor(text) { container in
-                container.textView.contentOffset.x = text.isEmpty ? 0 : 2_000
+                container.textView.setEditorContentOffset(CGPoint(x: text.isEmpty ? 0 : 2_000, y: 0), animated: false)
                 container.layoutIfNeeded()
                 let image = UIGraphicsImageRenderer(bounds: container.lineNumberView.bounds).image { _ in
                     container.lineNumberView.draw(container.lineNumberView.bounds)

@@ -566,6 +566,13 @@ struct ContentView: View {
                 lineCount >= lineThreshold
             )
         }
+
+        static func shouldPresentLargeFileSessionUI(
+            isExcessiveFileCandidate: Bool,
+            responsiveOptimizationsEnabled: Bool
+        ) -> Bool {
+            isExcessiveFileCandidate && responsiveOptimizationsEnabled
+        }
         static let largeFileLineBreaks = 40_000
         static let largeFileLineBreaksHTMLCSV = 15_000
         static let largeFileLineBreaksMobile = 25_000
@@ -689,7 +696,9 @@ struct ContentView: View {
     @AppStorage("SettingsShowRecentFilesOnEmptyDocuments") var showRecentFilesOnEmptyDocuments: Bool = true
     @AppStorage("SettingsConfirmCloseDirtyTab") var confirmCloseDirtyTab: Bool = true
     @AppStorage("SettingsConfirmClearEditor") var confirmClearEditor: Bool = true
-    @AppStorage("SettingsActiveTab") var settingsActiveTab: String = "general"
+#if !os(macOS)
+    @AppStorage(SettingsPreferenceKey.activeTab) var settingsActiveTab: String = "general"
+#endif
     @AppStorage("ToolbarCollapsed") var startsWithToolbarCollapsed: Bool = false
     @State var isToolbarCollapsed: Bool = false
     @AppStorage("SettingsAppearance") var appearance: String = "system"
@@ -719,8 +728,7 @@ struct ContentView: View {
     @State var lastCompletionTriggerSignature: String = ""
     @State var isApplyingCompletion: Bool = false
     @State var completionCache: [String: CompletionCacheEntry] = [:]
-    @State var pendingSessionPersistenceWorkItem: DispatchWorkItem?
-    @State var pendingDraftSnapshotPersistenceWorkItem: DispatchWorkItem?
+    @State var sessionPersistenceScheduler = SessionPersistenceScheduler()
     @State var pdfNoteAutoSaveTask: Task<Void, Never>?
     @State var pdfNoteAutoSaveRevision: Int?
     @State var lastPersistedSessionSignature: String = ""
@@ -3075,13 +3083,22 @@ struct ContentView: View {
                     settingsLineWrapEnabled = enabled
                 }
             }
-#if !os(macOS)
             .onChange(of: settingsThemeName) { _, _ in
                 scheduleHighlightRefresh()
             }
-            .onChange(of: themeFormattingRefreshSignature) { _, _ in
+            .onChange(of: settingsThemeBoldKeywords) { _, _ in
                 scheduleHighlightRefresh()
             }
+            .onChange(of: settingsThemeItalicComments) { _, _ in
+                scheduleHighlightRefresh()
+            }
+            .onChange(of: settingsThemeUnderlineLinks) { _, _ in
+                scheduleHighlightRefresh()
+            }
+            .onChange(of: settingsThemeBoldMarkdownHeadings) { _, _ in
+                scheduleHighlightRefresh()
+            }
+#if !os(macOS)
             .onChange(of: highlightMatchingBrackets) { _, _ in
                 scheduleHighlightRefresh()
             }
@@ -3100,9 +3117,7 @@ struct ContentView: View {
     private func applySessionStateObservers<Content: View>(to view: Content) -> some View {
         view
             .onChange(of: windowSessionObservationSnapshot) { _, _ in
-                scheduleSessionPersistence()
-                scheduleUnsavedDraftSnapshotPersistence()
-                synchronizePDFNoteAttachment()
+                scheduleWindowSessionObservationHandling()
             }
             .onChange(of: viewModel.selectedTabID) { previousTabID, selectedTabID in
                 guard previousTabID != selectedTabID else { return }
@@ -4311,15 +4326,6 @@ struct ContentView: View {
 #endif
     }
 
-    private var themeFormattingRefreshSignature: Int {
-        var signature = 0
-        if settingsThemeBoldKeywords { signature |= 1 << 0 }
-        if settingsThemeItalicComments { signature |= 1 << 1 }
-        if settingsThemeUnderlineLinks { signature |= 1 << 2 }
-        if settingsThemeBoldMarkdownHeadings { signature |= 1 << 3 }
-        return signature
-    }
-
     private var effectiveIndentWidth: Int {
         projectOverrideIndentWidth ?? indentWidth
     }
@@ -4478,6 +4484,13 @@ struct ContentView: View {
         if largeFileModeEnabled { return true }
         if droppedFileLoadInProgress { return true }
         return viewModel.selectedTab?.isLargeFileCandidate == true
+    }
+
+    var shouldPresentLargeFileSessionUI: Bool {
+        EditorPerformanceThresholds.shouldPresentLargeFileSessionUI(
+            isExcessiveFileCandidate: viewModel.selectedTab?.isLargeFileCandidate == true,
+            responsiveOptimizationsEnabled: effectiveLargeFileModeEnabled
+        )
     }
 
     private var isSelectedTabReadOnlyPreview: Bool {
@@ -4744,29 +4757,7 @@ struct ContentView: View {
         effectiveScopeGuides: Bool,
         effectiveScopeBackground: Bool
     ) -> some View {
-        let useOuterNoWrapScroll = shouldUseOuterNoWrapEditorScroll(lineWrapEnabled: lineWrapEnabled.wrappedValue)
         HStack(spacing: 0) {
-            if useOuterNoWrapScroll {
-                GeometryReader { proxy in
-                    let scrollableEditorWidth = max(proxy.size.width * 3, proxy.size.width)
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        editorTextView(
-                            tabID: tabID,
-                            language: language,
-                            isLoading: isLoading,
-                            isReadOnly: isReadOnly,
-                            lineWrapEnabled: lineWrapEnabled,
-                            effectiveHighlightCurrentLine: effectiveHighlightCurrentLine,
-                            effectiveBracketHighlight: effectiveBracketHighlight,
-                            effectiveScopeGuides: effectiveScopeGuides,
-                            effectiveScopeBackground: effectiveScopeBackground
-                        )
-                        .frame(width: scrollableEditorWidth, height: proxy.size.height)
-                    }
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-                }
-                .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
-            } else {
                 editorTextView(
                     tabID: tabID,
                     language: language,
@@ -4778,7 +4769,6 @@ struct ContentView: View {
                     effectiveScopeGuides: effectiveScopeGuides,
                     effectiveScopeBackground: effectiveScopeBackground
                 )
-            }
 
             // A file-backed document must stay bounded on the normal render path.
             // CodeMinimapView consumes the binding's complete String to build its
@@ -4811,16 +4801,6 @@ struct ContentView: View {
         }
         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
-    }
-
-    private func shouldUseOuterNoWrapEditorScroll(lineWrapEnabled: Bool) -> Bool {
-#if os(iOS) || os(visionOS)
-        usesRegularIOSLayout &&
-        !lineWrapEnabled &&
-        !effectiveLargeFileModeEnabled
-#else
-        false
-#endif
     }
 
     private func minimapSnapshotCacheKey(tabID: UUID?, language: String) -> String {
@@ -5345,7 +5325,7 @@ struct ContentView: View {
                 )
 #if !os(macOS)
                 .overlay(alignment: .topTrailing) {
-                    if effectiveLargeFileModeEnabled && !brainDumpLayoutEnabled {
+                    if shouldPresentLargeFileSessionUI && !brainDumpLayoutEnabled {
                         largeFileSessionBadge
                             .padding(.top, 10)
                             .padding(.trailing, 12)

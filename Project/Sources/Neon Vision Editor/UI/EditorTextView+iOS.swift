@@ -133,6 +133,7 @@ final class EditorInputTextView: UITextView {
     private var isVimInsertMode: Bool = true
     private var pendingDeleteCurrentLineCommand = false
     private var preferredShouldWrapText: Bool = true
+    weak var editorContainer: LineNumberedTextViewContainer?
     private var preferredTextContainerWidth: CGFloat = 0
     private var textMetricsRevision = 0
     private var noWrapWidthCache: NoWrapWidthCache?
@@ -649,20 +650,21 @@ final class EditorInputTextView: UITextView {
         // Commit the viewport before syntax styling captures/restores its anchor.
         // UITextView's deferred scroll-to-rect can otherwise be lost to that restore.
         let inset = adjustedContentInset
-        var target = contentOffset
-        if rect.maxY > bounds.maxY - inset.bottom {
-            target.y = rect.maxY - bounds.height + inset.bottom
-        } else if rect.minY < bounds.minY + inset.top {
+        let viewport = editorViewport
+        var target = editorContentOffset
+        if rect.maxY > viewport.maxY - inset.bottom {
+            target.y = rect.maxY - viewport.height + inset.bottom
+        } else if rect.minY < viewport.minY + inset.top {
             target.y = rect.minY - inset.top
         }
-        if rect.maxX > bounds.maxX - inset.right {
-            target.x = rect.maxX - bounds.width + inset.right
-        } else if rect.minX < bounds.minX + inset.left {
+        if rect.maxX > viewport.maxX - inset.right {
+            target.x = rect.maxX - viewport.width + inset.right
+        } else if rect.minX < viewport.minX + inset.left {
             target.x = rect.minX - inset.left
         }
         target.y = min(max(-inset.top, target.y), max(-inset.top, contentSize.height - bounds.height + inset.bottom))
-        target.x = min(max(-inset.left, target.x), max(-inset.left, contentSize.width - bounds.width + inset.right))
-        if target != contentOffset { setContentOffset(target, animated: false) }
+        target.x = min(max(-inset.left, target.x), max(-inset.left, contentSize.width - viewport.width + inset.right))
+        if target != editorContentOffset { setEditorContentOffset(target, animated: false) }
     }
 
     func expandUnwrappedEditingLineIfNeeded() {
@@ -698,7 +700,7 @@ final class EditorInputTextView: UITextView {
         keyboardAccessoryLiquidGlassEnabled = liquidGlassEnabled
         #if os(iOS)
         if UIDevice.current.userInterfaceIdiom == .phone {
-            (superview as? LineNumberedTextViewContainer)?.setKeyboardAccessoryRequested(visible, rebuild: needsUpdate)
+            editorContainer?.setKeyboardAccessoryRequested(visible, rebuild: needsUpdate)
             return
         }
         #endif
@@ -715,7 +717,7 @@ final class EditorInputTextView: UITextView {
         keyboardAccessoryBackgroundColor = color
         #if os(iOS)
         if UIDevice.current.userInterfaceIdiom == .phone {
-            (superview as? LineNumberedTextViewContainer)?.updateKeyboardAccessoryColor(color)
+            editorContainer?.updateKeyboardAccessoryColor(color)
             return
         }
         #endif
@@ -738,7 +740,7 @@ final class EditorInputTextView: UITextView {
         let becameFirstResponder = super.becomeFirstResponder()
         #if os(iOS)
         if becameFirstResponder {
-            (superview as? LineNumberedTextViewContainer)?.refreshKeyboardAccessoryOverlay()
+            editorContainer?.refreshKeyboardAccessoryOverlay()
         }
         #endif
         return becameFirstResponder
@@ -748,7 +750,7 @@ final class EditorInputTextView: UITextView {
         let resigned = super.resignFirstResponder()
         #if os(iOS)
         if resigned {
-            (superview as? LineNumberedTextViewContainer)?.refreshKeyboardAccessoryOverlay()
+            editorContainer?.refreshKeyboardAccessoryOverlay()
         }
         #endif
         return resigned
@@ -942,7 +944,7 @@ final class EditorInputTextView: UITextView {
     override func layoutSubviews() {
         super.layoutSubviews()
         enforcePreferredWrapLayout(preservingContentOffset: true)
-        (superview as? LineNumberedTextViewContainer)?.lineNumberView.setNeedsDisplay()
+        editorContainer?.lineNumberView.setNeedsDisplay()
         if rendersInvisibleCharacters || rendersIndentationGuides {
             invisibleCharactersOverlayView?.requestRedraw()
         }
@@ -956,7 +958,7 @@ final class EditorInputTextView: UITextView {
 
     private func enforcePreferredWrapLayout(preservingContentOffset: Bool = false) {
         let desiredLineBreakMode: NSLineBreakMode = preferredShouldWrapText ? .byWordWrapping : .byClipping
-        let visibleWidth = max(1, bounds.width - textContainerInset.left - textContainerInset.right)
+        let visibleWidth = max(1, editorViewport.width - textContainerInset.left - textContainerInset.right)
         let targetWidth = preferredShouldWrapText ? visibleWidth : max(preferredTextContainerWidth, visibleWidth)
         let priorOffset = preservingContentOffset ? contentOffset : nil
         var didChangeContainerSize = false
@@ -970,15 +972,46 @@ final class EditorInputTextView: UITextView {
             textContainer.size = CGSize(width: targetWidth, height: .greatestFiniteMagnitude)
             didChangeContainerSize = true
         }
-        guard !preferredShouldWrapText else { return }
         let horizontalInsets = textContainerInset.left + textContainerInset.right
-        let requiredWidth = max(bounds.width, targetWidth + horizontalInsets)
-        if requiredWidth.isFinite, requiredWidth > contentSize.width + 1 {
-            contentSize = CGSize(width: requiredWidth, height: contentSize.height)
-        }
+        editorContainer?.updateHorizontalCanvas(wrapped: preferredShouldWrapText, width: targetWidth + horizontalInsets)
         if didChangeContainerSize, let priorOffset, priorOffset != contentOffset {
             setContentOffset(priorOffset, animated: false)
         }
+    }
+
+    override func scrollRangeToVisible(_ range: NSRange) {
+        super.scrollRangeToVisible(range)
+        guard let position = position(from: beginningOfDocument, offset: range.location) else { return }
+        let caret = caretRect(for: position)
+        let viewport = editorViewport
+        var offset = editorContentOffset
+        if caret.minX < viewport.minX { offset.x = caret.minX }
+        else if caret.maxX > viewport.maxX { offset.x = caret.maxX - viewport.width }
+        setEditorContentOffset(offset, animated: false)
+    }
+}
+
+extension UITextView {
+    var editorViewport: CGRect {
+        guard let container = (self as? EditorInputTextView)?.editorContainer else { return bounds }
+        return CGRect(origin: editorContentOffset, size: container.horizontalScrollView.bounds.size)
+    }
+
+    var editorContentOffset: CGPoint {
+        CGPoint(x: (self as? EditorInputTextView)?.editorContainer?.horizontalScrollView.contentOffset.x ?? contentOffset.x,
+                y: contentOffset.y)
+    }
+
+    func setEditorContentOffset(_ offset: CGPoint, animated: Bool) {
+        guard let container = (self as? EditorInputTextView)?.editorContainer else {
+            setContentOffset(offset, animated: animated)
+            return
+        }
+        container.layoutIfNeeded()
+        let scrollView = container.horizontalScrollView
+        let maximumX = max(0, scrollView.contentSize.width - scrollView.bounds.width)
+        scrollView.setContentOffset(CGPoint(x: min(max(0, offset.x), maximumX), y: 0), animated: animated)
+        setContentOffset(CGPoint(x: 0, y: offset.y), animated: animated)
     }
 }
 
@@ -1106,7 +1139,7 @@ final class InvisibleCharacterOverlayView: UIView {
 
         let layoutManager = textView.layoutManager
         let textContainer = textView.textContainer
-        let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size)
+        let visibleRect = textView.editorViewport
             .insetBy(dx: 0, dy: -RenderLimits.verticalPadding)
         let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
         guard glyphRange.length > 0 else { return }
@@ -1148,9 +1181,9 @@ final class InvisibleCharacterOverlayView: UIView {
             }
             guard column >= guideWidth else { return }
             for guideColumn in stride(from: guideWidth, through: column, by: guideWidth) {
-                let x = textView.textContainerInset.left + (CGFloat(guideColumn) * columnWidth) - textView.contentOffset.x
-                let y1 = textView.textContainerInset.top + usedRect.minY - textView.contentOffset.y
-                let y2 = textView.textContainerInset.top + usedRect.maxY - textView.contentOffset.y
+                let x = textView.textContainerInset.left + (CGFloat(guideColumn) * columnWidth) - textView.editorContentOffset.x
+                let y1 = textView.textContainerInset.top + usedRect.minY - textView.editorContentOffset.y
+                let y2 = textView.textContainerInset.top + usedRect.maxY - textView.editorContentOffset.y
                 context.move(to: CGPoint(x: x, y: y1))
                 context.addLine(to: CGPoint(x: x, y: y2))
             }
@@ -1165,7 +1198,7 @@ final class InvisibleCharacterOverlayView: UIView {
 
         let layoutManager = textView.layoutManager
         let textContainer = textView.textContainer
-        let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size)
+        let visibleRect = textView.editorViewport
             .insetBy(dx: 0, dy: -RenderLimits.verticalPadding)
         let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
         guard glyphRange.length > 0 else { return }
@@ -1226,8 +1259,8 @@ final class InvisibleCharacterOverlayView: UIView {
         let lineRect = layoutManager.lineFragmentUsedRect(forGlyphAt: glyphIndex, effectiveRange: nil)
         let glyphLocation = layoutManager.location(forGlyphAt: glyphIndex)
         let drawPoint = CGPoint(
-            x: textView.textContainerInset.left + glyphLocation.x - textView.contentOffset.x,
-            y: textView.textContainerInset.top + lineRect.minY + ((lineRect.height - markerSize.height) / 2) - textView.contentOffset.y
+            x: textView.textContainerInset.left + glyphLocation.x - textView.editorContentOffset.x,
+            y: textView.textContainerInset.top + lineRect.minY + ((lineRect.height - markerSize.height) / 2) - textView.editorContentOffset.y
         )
         marker.draw(at: drawPoint, withAttributes: attributes)
     }
@@ -1251,8 +1284,8 @@ final class InvisibleCharacterOverlayView: UIView {
         let glyphIndex = glyphRange.location
         let lineRect = layoutManager.lineFragmentUsedRect(forGlyphAt: glyphIndex, effectiveRange: nil)
         let drawPoint = CGPoint(
-            x: textView.textContainerInset.left + lineRect.maxX + 2 - textView.contentOffset.x,
-            y: textView.textContainerInset.top + lineRect.minY + ((lineRect.height - markerSize.height) / 2) - textView.contentOffset.y
+            x: textView.textContainerInset.left + lineRect.maxX + 2 - textView.editorContentOffset.x,
+            y: textView.textContainerInset.top + lineRect.minY + ((lineRect.height - markerSize.height) / 2) - textView.editorContentOffset.y
         )
         marker.draw(at: drawPoint, withAttributes: attributes)
     }
@@ -1615,14 +1648,14 @@ final class CurrentLineHighlightOverlayView: UIView {
               textView.textStorage.length <= 250_000 else { return }
 
         let inset = textView.textContainerInset
-        let visibleWidth = max(0, bounds.width - inset.left - inset.right)
-        let highlightX = inset.left - textView.contentOffset.x
+        let highlightX = max(0, inset.left - textView.editorContentOffset.x)
+        let visibleWidth = max(0, bounds.width - highlightX - inset.right)
         let textLength = textView.textStorage.length
 
         if textLength == 0 {
             let height = textView.font?.lineHeight ?? UIFont.monospacedSystemFont(ofSize: 14, weight: .regular).lineHeight
             currentLineHighlightColor.setFill()
-            UIRectFill(CGRect(x: highlightX, y: inset.top - textView.contentOffset.y, width: visibleWidth, height: height))
+            UIRectFill(CGRect(x: highlightX, y: inset.top - textView.editorContentOffset.y, width: visibleWidth, height: height))
             return
         }
 
@@ -1635,7 +1668,7 @@ final class CurrentLineHighlightOverlayView: UIView {
                 currentLineHighlightColor.setFill()
                 UIRectFill(CGRect(
                     x: highlightX,
-                    y: extraLineRect.minY + inset.top - textView.contentOffset.y,
+                    y: extraLineRect.minY + inset.top - textView.editorContentOffset.y,
                     width: visibleWidth,
                     height: max(extraLineRect.height, textView.font?.lineHeight ?? 0)
                 ))
@@ -1650,7 +1683,7 @@ final class CurrentLineHighlightOverlayView: UIView {
         currentLineHighlightColor.setFill()
         UIRectFill(CGRect(
             x: highlightX,
-            y: lineRect.minY + inset.top - textView.contentOffset.y,
+            y: lineRect.minY + inset.top - textView.editorContentOffset.y,
             width: visibleWidth,
             height: lineRect.height
         ))
@@ -1672,7 +1705,7 @@ final class LineNumberGutterView: UIView {
 
         // TextKit rectangles are in text-container coordinates, not scroll-view coordinates.
         let visibleRect = CGRect(
-            x: 0, y: textView.contentOffset.y - textView.textContainerInset.top - 80,
+            x: 0, y: textView.editorContentOffset.y - textView.textContainerInset.top - 80,
             width: textView.textContainer.size.width, height: textView.bounds.height + 160)
         let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)
 
@@ -1685,7 +1718,7 @@ final class LineNumberGutterView: UIView {
         ]
         let rightPadding: CGFloat = 6
         let textContainerTop = textView.textContainerInset.top
-        let contentOffsetY = textView.contentOffset.y
+        let contentOffsetY = textView.editorContentOffset.y
         if glyphRange.length == 0 {
             // Empty documents and the final empty paragraph have no glyphs.
             let extra = layoutManager.extraLineFragmentRect
@@ -1750,9 +1783,13 @@ final class LineNumberGutterView: UIView {
 
 // MARK: - iOS Editor Container
 
-final class LineNumberedTextViewContainer: UIView {
+final class LineNumberedTextViewContainer: UIView, UIScrollViewDelegate {
     let lineNumberView = LineNumberGutterView()
     let textView = EditorInputTextView()
+    let horizontalScrollView = UIScrollView()
+    private var textCanvasWidthConstraint: NSLayoutConstraint?
+    private var wrapsText = true
+    private var textCanvasWidth: CGFloat = 0
     let currentLineHighlightOverlayView = CurrentLineHighlightOverlayView()
     let invisibleCharactersOverlayView = InvisibleCharacterOverlayView()
     private let divider = UIView()
@@ -1780,6 +1817,17 @@ final class LineNumberedTextViewContainer: UIView {
     private func configureViews() {
         lineNumberView.translatesAutoresizingMaskIntoConstraints = false
         textView.translatesAutoresizingMaskIntoConstraints = false
+        textView.editorContainer = self
+        horizontalScrollView.translatesAutoresizingMaskIntoConstraints = false
+        horizontalScrollView.contentInsetAdjustmentBehavior = .never
+        horizontalScrollView.alwaysBounceVertical = false
+        horizontalScrollView.isDirectionalLockEnabled = true
+        horizontalScrollView.showsVerticalScrollIndicator = false
+        horizontalScrollView.delegate = self
+#if os(iOS)
+        horizontalScrollView.keyboardDismissMode = UIDevice.current.userInterfaceIdiom == .phone ? .onDrag : .none
+#endif
+        textView.isDirectionalLockEnabled = true
         currentLineHighlightOverlayView.translatesAutoresizingMaskIntoConstraints = false
         invisibleCharactersOverlayView.translatesAutoresizingMaskIntoConstraints = false
         lineNumberView.textView = textView
@@ -1801,7 +1849,8 @@ final class LineNumberedTextViewContainer: UIView {
         addSubview(lineNumberView)
         addSubview(divider)
         addSubview(currentLineHighlightOverlayView)
-        addSubview(textView)
+        addSubview(horizontalScrollView)
+        horizontalScrollView.addSubview(textView)
         addSubview(invisibleCharactersOverlayView)
 
         let dividerWidthConstraint = divider.widthAnchor.constraint(equalToConstant: 1)
@@ -1822,16 +1871,25 @@ final class LineNumberedTextViewContainer: UIView {
             currentLineHighlightOverlayView.topAnchor.constraint(equalTo: topAnchor),
             currentLineHighlightOverlayView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            textView.leadingAnchor.constraint(equalTo: divider.trailingAnchor),
-            textView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            textView.topAnchor.constraint(equalTo: topAnchor),
-            textView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            horizontalScrollView.leadingAnchor.constraint(equalTo: divider.trailingAnchor),
+            horizontalScrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            horizontalScrollView.topAnchor.constraint(equalTo: topAnchor),
+            horizontalScrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            textView.leadingAnchor.constraint(equalTo: horizontalScrollView.contentLayoutGuide.leadingAnchor),
+            textView.trailingAnchor.constraint(equalTo: horizontalScrollView.contentLayoutGuide.trailingAnchor),
+            textView.topAnchor.constraint(equalTo: horizontalScrollView.contentLayoutGuide.topAnchor),
+            textView.bottomAnchor.constraint(equalTo: horizontalScrollView.contentLayoutGuide.bottomAnchor),
+            textView.heightAnchor.constraint(equalTo: horizontalScrollView.frameLayoutGuide.heightAnchor),
 
-            invisibleCharactersOverlayView.leadingAnchor.constraint(equalTo: textView.leadingAnchor),
-            invisibleCharactersOverlayView.trailingAnchor.constraint(equalTo: textView.trailingAnchor),
-            invisibleCharactersOverlayView.topAnchor.constraint(equalTo: textView.topAnchor),
-            invisibleCharactersOverlayView.bottomAnchor.constraint(equalTo: textView.bottomAnchor)
+            invisibleCharactersOverlayView.leadingAnchor.constraint(equalTo: horizontalScrollView.leadingAnchor),
+            invisibleCharactersOverlayView.trailingAnchor.constraint(equalTo: horizontalScrollView.trailingAnchor),
+            invisibleCharactersOverlayView.topAnchor.constraint(equalTo: horizontalScrollView.topAnchor),
+            invisibleCharactersOverlayView.bottomAnchor.constraint(equalTo: horizontalScrollView.bottomAnchor)
         ])
+
+        let canvasWidth = textView.widthAnchor.constraint(equalToConstant: 1)
+        canvasWidth.isActive = true
+        textCanvasWidthConstraint = canvasWidth
 
         let widthConstraint = lineNumberView.widthAnchor.constraint(equalToConstant: 46)
         widthConstraint.isActive = true
@@ -1896,10 +1954,31 @@ final class LineNumberedTextViewContainer: UIView {
     }
 
     override func layoutSubviews() {
+        updateHorizontalCanvas(wrapped: wrapsText, width: textCanvasWidth)
         super.layoutSubviews()
         syncEditorInsets()
         lineNumberView.setNeedsDisplay()
         currentLineHighlightOverlayView.setNeedsDisplay()
+    }
+
+    func updateHorizontalCanvas(wrapped: Bool, width: CGFloat) {
+        wrapsText = wrapped
+        textCanvasWidth = width
+        let viewportWidth = max(1, bounds.width - (lineNumberWidthConstraint?.constant ?? 46) - 1)
+        let canvasWidth = wrapped ? viewportWidth : max(viewportWidth, width)
+        if textCanvasWidthConstraint?.constant != canvasWidth {
+            textCanvasWidthConstraint?.constant = canvasWidth
+        }
+        horizontalScrollView.isScrollEnabled = !wrapped
+        horizontalScrollView.showsHorizontalScrollIndicator = !wrapped
+        if wrapped, horizontalScrollView.contentOffset.x != 0 {
+            horizontalScrollView.setContentOffset(.zero, animated: false)
+        }
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        syncEditorInsets()
+        textView.delegate?.scrollViewDidScroll?(textView)
     }
 
     private func syncEditorInsets() {
@@ -1910,8 +1989,10 @@ final class LineNumberedTextViewContainer: UIView {
         if textView.contentInset != .zero {
             textView.contentInset = .zero
         }
-        if textView.verticalScrollIndicatorInsets != .zero {
-            textView.verticalScrollIndicatorInsets = .zero
+        let indicatorInsets = UIEdgeInsets(top: 0, left: 0, bottom: 0,
+            right: max(0, textView.bounds.width - textView.editorViewport.maxX))
+        if textView.verticalScrollIndicatorInsets != indicatorInsets {
+            textView.verticalScrollIndicatorInsets = indicatorInsets
         }
         if textView.horizontalScrollIndicatorInsets != .zero {
             textView.horizontalScrollIndicatorInsets = .zero
@@ -2130,13 +2211,20 @@ struct CustomTextEditor: UIViewRepresentable {
         _ shouldWrapText: Bool,
         textView: UITextView,
         preserveOffset: Bool = true,
-        recomputeNoWrapWidth: Bool = false
+        recomputeNoWrapWidth: Bool = false,
+        knownNoWrapVisualColumns: Int? = nil
     ) {
         let desiredLineBreakMode: NSLineBreakMode = shouldWrapText ? .byWordWrapping : .byClipping
-        let visibleWidth = max(1, textView.bounds.width - textView.textContainerInset.left - textView.textContainerInset.right)
+        let visibleWidth = max(1, textView.editorViewport.width - textView.textContainerInset.left - textView.textContainerInset.right)
         let targetContainerWidth: CGFloat
         if shouldWrapText {
             targetContainerWidth = visibleWidth
+        } else if let knownNoWrapVisualColumns {
+            targetContainerWidth = noWrapContainerWidth(
+                forVisualColumnCount: knownNoWrapVisualColumns,
+                textView: textView,
+                visibleWidth: visibleWidth
+            )
         } else if !recomputeNoWrapWidth,
                   textView.textContainer.lineBreakMode == .byClipping,
                   !textView.textContainer.widthTracksTextView,
@@ -2151,9 +2239,8 @@ struct CustomTextEditor: UIViewRepresentable {
                 containerWidth: existingWidth
             )
             textView.isScrollEnabled = true
-            let hasHorizontalContent = existingWidth > visibleWidth + 1
-            textView.alwaysBounceHorizontal = hasHorizontalContent
-            textView.showsHorizontalScrollIndicator = hasHorizontalContent
+            textView.alwaysBounceHorizontal = false
+            textView.showsHorizontalScrollIndicator = false
             enforceNoWrapContentWidth(textView, containerWidth: existingWidth)
             return
         } else {
@@ -2165,9 +2252,8 @@ struct CustomTextEditor: UIViewRepresentable {
             textView.textContainer.widthTracksTextView != shouldWrapText ||
             abs(textView.textContainer.size.width - targetContainerSize.width) > 1
         textView.isScrollEnabled = true
-        let hasHorizontalContent = !shouldWrapText && targetContainerWidth > visibleWidth + 1
-        textView.alwaysBounceHorizontal = hasHorizontalContent
-        textView.showsHorizontalScrollIndicator = hasHorizontalContent
+        textView.alwaysBounceHorizontal = false
+        textView.showsHorizontalScrollIndicator = false
         if !shouldWrapText {
             enforceNoWrapContentWidth(textView, containerWidth: targetContainerWidth)
         }
@@ -2179,7 +2265,7 @@ struct CustomTextEditor: UIViewRepresentable {
             return
         }
 
-        let priorOffset = textView.contentOffset
+        let priorOffset = textView.editorContentOffset
         textView.textContainer.lineBreakMode = desiredLineBreakMode
         textView.textContainer.widthTracksTextView = shouldWrapText
         textView.textContainer.size = targetContainerSize
@@ -2198,16 +2284,18 @@ struct CustomTextEditor: UIViewRepresentable {
         let minY = -inset.top
         let maxY = max(minY, textView.contentSize.height - textView.bounds.height + inset.bottom)
         let clampedY = min(max(priorOffset.y, minY), maxY)
-        let maxX = max(0, textView.contentSize.width - textView.bounds.width + inset.right)
+        let maxX = max(0, targetContainerWidth + textView.textContainerInset.left + textView.textContainerInset.right - textView.editorViewport.width)
         let clampedX = shouldWrapText ? 0 : min(max(priorOffset.x, 0), maxX)
-        textView.setContentOffset(CGPoint(x: clampedX, y: clampedY), animated: false)
+        textView.setEditorContentOffset(CGPoint(x: clampedX, y: clampedY), animated: false)
     }
 
     private func enforceNoWrapContentWidth(_ textView: UITextView, containerWidth: CGFloat) {
         let horizontalInsets = textView.textContainerInset.left + textView.textContainerInset.right
-        let requiredWidth = max(textView.bounds.width, containerWidth + horizontalInsets)
-        guard requiredWidth.isFinite, requiredWidth > textView.contentSize.width + 1 else { return }
-        textView.contentSize = CGSize(width: requiredWidth, height: textView.contentSize.height)
+        // Expanding UIScrollView.contentSize alone does not expand UITextView's
+        // drawing canvas. Its frame must cover the laid-out line, with the
+        // viewport owned by the horizontal scroll view.
+        (textView as? EditorInputTextView)?.editorContainer?.updateHorizontalCanvas(
+            wrapped: false, width: containerWidth + horizontalInsets)
     }
 
     private func noWrapContainerWidth(for textView: UITextView, visibleWidth: CGFloat) -> CGFloat {
@@ -2226,6 +2314,29 @@ struct CustomTextEditor: UIViewRepresentable {
             let measuredWidth = ceil((text as NSString).size(withAttributes: attributes).width) + 32
             return max(minimumScrollableWidth, measuredWidth)
         }
+    }
+
+    private func noWrapContainerWidth(
+        forVisualColumnCount visualColumnCount: Int,
+        textView: UITextView,
+        visibleWidth: CGFloat
+    ) -> CGFloat {
+        let minimumScrollableWidth = noWrapMinimumScrollableWidth(visibleWidth: visibleWidth)
+        guard visualColumnCount > 0 else { return minimumScrollableWidth }
+        let font = textView.font ?? resolvedUIFont()
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .kern: letterSpacing
+        ]
+        // Count UTF-16 columns conservatively, then use the widest common
+        // advance across the active font and its CJK/emoji fallbacks. This is
+        // intentionally bounded work after a chunked install: the document was
+        // already scanned while appending and is not measured a second time.
+        let widestAdvance = ["W", "漢", "😀"]
+            .map { ceil(($0 as NSString).size(withAttributes: attributes).width) }
+            .max() ?? ceil(font.pointSize)
+        let measuredWidth = (CGFloat(visualColumnCount) * max(1, widestAdvance)) + 32
+        return max(minimumScrollableWidth, measuredWidth)
     }
 
     private func noWrapMinimumScrollableWidth(visibleWidth: CGFloat) -> CGFloat {
@@ -2302,8 +2413,12 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.installPencilInputIfNeeded()
 #endif
         context.coordinator.installFontSizePinchRecognizer(on: textView)
-        let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
+        // Performance mode may defer expensive secondary features, but it must
+        // not override the user's explicit editor layout preference. TextKit's
+        // noncontiguous layout keeps wrapping viewport-bounded for large text.
+        let shouldWrapText = isLineWrapEnabled
         applyWrapMode(shouldWrapText, textView: textView, preserveOffset: false, recomputeNoWrapWidth: true)
+        context.coordinator.lastShouldWrapText = shouldWrapText
 
         if !showLineNumbers {
             container.lineNumberView.isHidden = true
@@ -2315,7 +2430,13 @@ struct CustomTextEditor: UIViewRepresentable {
         context.coordinator.textView = textView
         if shouldUseChunkedLargeFileInstall(isLargeFileMode: isLargeFileMode, textLength: initialLength) {
             DispatchQueue.main.async {
-                _ = context.coordinator.installLargeTextIfNeeded(on: textView, target: text)
+                _ = context.coordinator.installLargeTextIfNeeded(
+                    on: textView,
+                    target: text,
+                    preserveSelection: false,
+                    preserveViewport: false,
+                    restoredCaretLocation: storedCaretLocation
+                )
             }
         } else {
             context.coordinator.scheduleHighlightIfNeeded(currentText: text, immediate: true)
@@ -2378,7 +2499,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 } else {
                     context.coordinator.cancelPendingBindingSync()
                     let priorSelection = textView.selectedRange
-                    let priorOffset = textView.contentOffset
+                    let priorOffset = textView.editorContentOffset
                     let didInstallLargeText = context.coordinator.installLargeTextIfNeeded(
                         on: textView,
                         target: text,
@@ -2392,12 +2513,12 @@ struct CustomTextEditor: UIViewRepresentable {
                         let length = (textView.text as NSString).length
                         if didSwitchDocumentResource {
                             textView.selectedRange = NSRange(location: 0, length: 0)
-                            textView.setContentOffset(.zero, animated: false)
+                            textView.setEditorContentOffset(.zero, animated: false)
                         } else {
                             let clampedLocation = min(priorSelection.location, length)
                             let clampedLength = min(priorSelection.length, max(0, length - clampedLocation))
                             textView.selectedRange = NSRange(location: clampedLocation, length: clampedLength)
-                            textView.setContentOffset(priorOffset, animated: false)
+                            textView.setEditorContentOffset(priorOffset, animated: false)
                         }
                     }
                 }
@@ -2422,7 +2543,7 @@ struct CustomTextEditor: UIViewRepresentable {
                     formattingRange = NSRange(location: 0, length: len)
                 } else {
                     let visibleGlyphs = textView.layoutManager.glyphRange(
-                        forBoundingRect: textView.bounds.insetBy(dx: 0, dy: -textView.bounds.height),
+                        forBoundingRect: textView.editorViewport.insetBy(dx: 0, dy: -textView.bounds.height),
                         in: textView.textContainer
                     )
                     let visibleCharacters = textView.layoutManager.characterRange(
@@ -2473,14 +2594,16 @@ struct CustomTextEditor: UIViewRepresentable {
             uiView.setSoftwareKeyboardVisible(softwareKeyboardVisible)
         }
 #endif
-        let shouldWrapText = isLineWrapEnabled && !isLargeFileMode
-        if !isInteractivePhoneEditing {
+        let shouldWrapText = isLineWrapEnabled
+        let didChangeWrapMode = context.coordinator.lastShouldWrapText != shouldWrapText
+        if !isInteractivePhoneEditing || didChangeWrapMode {
             applyWrapMode(
                 shouldWrapText,
                 textView: textView,
                 recomputeNoWrapWidth: didTransitionDocumentState
             )
         }
+        context.coordinator.lastShouldWrapText = shouldWrapText
         textView.layoutManager.allowsNonContiguousLayout = true
         configurePointerSelectionBehavior(textView)
         if #available(iOS 18.0, *) {
@@ -2590,6 +2713,7 @@ struct CustomTextEditor: UIViewRepresentable {
         var lastTabLoadingContent: Bool?
         var lastExternalEditRevision: Int?
         var lastShowsCodeMinimap: Bool?
+        var lastShouldWrapText: Bool?
         var hasPendingBindingSync: Bool { pendingBindingSync != nil }
 
         private var isPhoneActivelyEditing: Bool {
@@ -2687,7 +2811,7 @@ struct CustomTextEditor: UIViewRepresentable {
                     language: language,
                     textLength: textLength
                   ) else { return -1 }
-            let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size).insetBy(dx: 0, dy: -80)
+            let visibleRect = textView.editorViewport.insetBy(dx: 0, dy: -80)
             let glyphRange = textView.layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)
             let charRange = textView.layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
             guard charRange.length > 0 else { return -1 }
@@ -2749,10 +2873,13 @@ struct CustomTextEditor: UIViewRepresentable {
             cancelPendingHighlight()
 
             let previousSelection = textView.selectedRange
-            let priorOffset = textView.contentOffset
+            let priorOffset = textView.editorContentOffset
             let wasFirstResponder = textView.isFirstResponder
             let installDocumentID = parent.documentID
             let installDocumentResourceID = parent.documentResourceID
+            let tabWidth = max(1, parent.indentWidth)
+            var currentVisualColumn = 0
+            var maximumVisualColumns = 0
             textView.isEditable = false
             textView.text = ""
             textView.invalidateTextMetrics()
@@ -2773,14 +2900,18 @@ struct CustomTextEditor: UIViewRepresentable {
                 guard remaining > 0 else {
                     self.isInstallingLargeText = false
                     textView.invalidateTextMetrics()
+                    maximumVisualColumns = max(maximumVisualColumns, currentVisualColumn)
+                    if !parent.isLineWrapEnabled {
+                        parent.applyWrapMode(
+                            false,
+                            textView: textView,
+                            preserveOffset: false,
+                            knownNoWrapVisualColumns: maximumVisualColumns
+                        )
+                    }
                     textView.isEditable = !parent.isReadOnly
                     if let restoredCaretLocation {
-                        let range = NSRange(
-                            location: min(max(0, restoredCaretLocation), targetLength),
-                            length: 0
-                        )
-                        textView.selectedRange = range
-                        textView.scrollRangeToVisible(range)
+                        self.restoreCaret(restoredCaretLocation, in: textView)
                     } else if preserveSelection {
                         let safeLocation = min(max(0, previousSelection.location), targetLength)
                         let safeLength = min(max(0, previousSelection.length), max(0, targetLength - safeLocation))
@@ -2789,7 +2920,7 @@ struct CustomTextEditor: UIViewRepresentable {
                         textView.selectedRange = NSRange(location: 0, length: 0)
                     }
                     if preserveViewport {
-                        textView.setContentOffset(priorOffset, animated: false)
+                        textView.setEditorContentOffset(priorOffset, animated: false)
                     }
                     if wasFirstResponder && preserveSelection {
                         _ = textView.becomeFirstResponder()
@@ -2801,6 +2932,17 @@ struct CustomTextEditor: UIViewRepresentable {
 
                 let chunkLength = min(LargeFileInstallRuntime.chunkUTF16, remaining)
                 let chunk = nsTarget.substring(with: NSRange(location: location, length: chunkLength))
+                for codeUnit in chunk.utf16 {
+                    switch codeUnit {
+                    case 10, 13:
+                        maximumVisualColumns = max(maximumVisualColumns, currentVisualColumn)
+                        currentVisualColumn = 0
+                    case 9:
+                        currentVisualColumn += tabWidth - (currentVisualColumn % tabWidth)
+                    default:
+                        currentVisualColumn += 1
+                    }
+                }
                 let storage = textView.textStorage
                 storage.beginEditing()
                 storage.append(NSAttributedString(string: chunk))
@@ -2819,6 +2961,15 @@ struct CustomTextEditor: UIViewRepresentable {
             let range = NSRange(location: min(max(0, location), length), length: 0)
             textView.selectedRange = range
             textView.scrollRangeToVisible(range)
+            // Caret persistence stores a document position, not a horizontal
+            // viewport. UIKit's scrollRangeToVisible otherwise opens an
+            // unwrapped document in the middle of a long line, making its
+            // beginning look clipped. Preserve the vertical reveal only.
+            let inset = textView.adjustedContentInset
+            let minY = -inset.top
+            let maxY = max(minY, textView.contentSize.height - textView.bounds.height + inset.bottom)
+            let clampedY = min(max(textView.editorContentOffset.y, minY), maxY)
+            textView.setEditorContentOffset(CGPoint(x: 0, y: clampedY), animated: false)
             updateCaretStatus()
         }
 
@@ -3056,7 +3207,7 @@ struct CustomTextEditor: UIViewRepresentable {
             cancelPendingBindingSync()
             cancelPendingHighlight()
             let priorSelection = textView.selectedRange
-            let priorOffset = textView.contentOffset
+            let priorOffset = textView.editorContentOffset
             textView.textStorage.beginEditing()
             for snapshot in findHighlightBackgrounds {
                 guard NSMaxRange(snapshot.range) <= textView.textStorage.length else { continue }
@@ -3097,7 +3248,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 location: selectedLocation,
                 length: min(priorSelection.length, max(0, resultingLength - selectedLocation))
             )
-            textView.setContentOffset(priorOffset, animated: false)
+            textView.setEditorContentOffset(priorOffset, animated: false)
             textView.invalidateTextMetrics()
             container?.updateLineNumbers(for: textView.text, fontSize: parent.fontSize)
             pendingEditedRange = (textView.text as NSString).lineRange(
@@ -3161,8 +3312,8 @@ struct CustomTextEditor: UIViewRepresentable {
                 minimumY,
                 textView.contentSize.height - textView.bounds.height + textView.adjustedContentInset.bottom
             )
-            textView.setContentOffset(
-                CGPoint(x: textView.contentOffset.x, y: min(max(targetY, minimumY), maximumY)),
+            textView.setEditorContentOffset(
+                CGPoint(x: textView.editorContentOffset.x, y: min(max(targetY, minimumY), maximumY)),
                 animated: false
             )
         }
@@ -3198,15 +3349,15 @@ struct CustomTextEditor: UIViewRepresentable {
             let inset = textView.adjustedContentInset
             guard let reconciledY = codeMinimapReconciledContentOffset(
                 requestedTopFraction: requestedTopFraction,
-                currentOffsetY: Double(textView.contentOffset.y),
+                currentOffsetY: Double(textView.editorContentOffset.y),
                 boundsHeight: Double(textView.bounds.height),
                 contentHeight: Double(textView.contentSize.height),
                 adjustedTopInset: Double(inset.top),
                 adjustedBottomInset: Double(inset.bottom)
             ) else { return }
             isReconcilingMinimapViewport = true
-            textView.setContentOffset(
-                CGPoint(x: textView.contentOffset.x, y: CGFloat(reconciledY)),
+            textView.setEditorContentOffset(
+                CGPoint(x: textView.editorContentOffset.x, y: CGFloat(reconciledY)),
                 animated: false
             )
             isReconcilingMinimapViewport = false
@@ -3458,7 +3609,7 @@ struct CustomTextEditor: UIViewRepresentable {
             if immediate,
                lastHighlightedText.isEmpty,
                text.length >= EditorRuntimeLimits.initialProgrammingHighlightThresholdUTF16 {
-                let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size)
+                let visibleRect = textView.editorViewport
                     .insetBy(dx: 0, dy: -80)
                 let glyphRange = textView.layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)
                 let charRange = textView.layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
@@ -3479,7 +3630,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 textLength: text.length
             )
             guard supportsResponsiveRange, text.length >= 100_000 else { return fullRange }
-            let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size).insetBy(dx: 0, dy: -80)
+            let visibleRect = textView.editorViewport.insetBy(dx: 0, dy: -80)
             let glyphRange = textView.layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)
             let charRange = textView.layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
             guard charRange.length > 0 else { return fullRange }
@@ -3524,6 +3675,7 @@ struct CustomTextEditor: UIViewRepresentable {
             var coloredRanges: [(NSRange, UIColor)] = []
             var fallbackColoredRanges: [(priority: Int, range: NSRange, color: UIColor)] = []
             var emphasizedRanges: [(NSRange, SyntaxFontEmphasis)] = []
+            var underlinedRanges: [NSRange] = []
             let markdownFonts = isMarkdownSyntaxLanguage(language) ? markdownSourceFontRanges(text) : []
 
             if let fastRanges = fastSyntaxColorRanges(
@@ -3605,6 +3757,18 @@ struct CustomTextEditor: UIViewRepresentable {
                 }
             }
 
+            if theme.underlineLinks {
+                for pattern in emphasisPatterns.link {
+                    guard !cancellation.isCancelled else { return }
+                    guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+                    let matches = regex.matches(in: text, range: applyRange)
+                    for match in matches {
+                        guard isValidHighlightRange(match.range, utf16Length: fullRange.length) else { continue }
+                        underlinedRanges.append(match.range)
+                    }
+                }
+            }
+
             DispatchQueue.main.async { [weak coordinator] in
                 guard !cancellation.isCancelled else { return }
                 guard let self = coordinator, let textView = self.textView else { return }
@@ -3615,7 +3779,7 @@ struct CustomTextEditor: UIViewRepresentable {
                     textLength: (text as NSString).length,
                     language: language
                 )
-                let priorOffset = textView.contentOffset
+                let priorOffset = textView.editorContentOffset
                 let wasFirstResponder = textView.isFirstResponder
                 self.isApplyingHighlight = true
                 let undoWasEnabled = textView.undoManager?.isUndoRegistrationEnabled ?? false
@@ -3647,6 +3811,13 @@ struct CustomTextEditor: UIViewRepresentable {
                         font = italicCommentFont
                     }
                     textView.textStorage.addAttribute(.font, value: font, range: range)
+                }
+                for range in underlinedRanges {
+                    textView.textStorage.addAttribute(
+                        .underlineStyle,
+                        value: NSUnderlineStyle.single.rawValue,
+                        range: range
+                    )
                 }
                 for span in markdownFonts {
                     let range = NSIntersectionRange(span.range, applyRange)
@@ -3713,7 +3884,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 syntaxHighlightSignposter.emitEvent("applied_ios")
                 textView.selectedRange = selectedRange
                 if wasFirstResponder {
-                    textView.setContentOffset(priorOffset, animated: false)
+                    textView.setEditorContentOffset(priorOffset, animated: false)
                 }
                 textView.typingAttributes = [
                     .foregroundColor: baseColor,
@@ -4036,7 +4207,7 @@ struct CustomTextEditor: UIViewRepresentable {
             selectedRange: NSRange,
             shouldPreserveViewport: Bool = true
         ) {
-            let priorOffset = textView.contentOffset
+            let priorOffset = textView.editorContentOffset
             textView.textStorage.replaceCharacters(in: range, with: replacement)
             textView.selectedRange = selectedRange
             if shouldPreserveViewport,
@@ -4049,7 +4220,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 let minY = -inset.top
                 let maxY = max(minY, textView.contentSize.height - textView.bounds.height + inset.bottom)
                 let clampedY = min(max(priorOffset.y, minY), maxY)
-                textView.setContentOffset(CGPoint(x: priorOffset.x, y: clampedY), animated: false)
+                textView.setEditorContentOffset(CGPoint(x: priorOffset.x, y: clampedY), animated: false)
             }
             textViewDidChange(textView)
         }
@@ -4178,7 +4349,7 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func syncLineNumberScroll() {
             guard shouldRenderLineNumbers(), let textView else { return }
-            let offsetY = textView.contentOffset.y
+            let offsetY = textView.editorContentOffset.y
             if abs(lastLineNumberContentOffsetY - offsetY) <= 0.5 {
                 return
             }

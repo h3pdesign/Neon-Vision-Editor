@@ -185,6 +185,68 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertTrue(keywordBecameBold, "A same-token formatting change must invalidate the visible-line cache")
     }
 
+    func testMarkdownHeadingFormattingRefreshesOnTheExistingCanvasWithoutDocumentReload() async {
+        let defaults = UserDefaults.standard
+        let key = SettingsPreferenceKey.themeBoldMarkdownHeadings
+        let previous = defaults.object(forKey: key)
+        defer {
+            if let previous { defaults.set(previous, forKey: key) }
+            else { defaults.removeObject(forKey: key) }
+        }
+        defaults.set(false, forKey: key)
+
+        let sourceLine = "### Heading"
+        let document = CountingEditorDocument(backing: FileBackedTextDocument(content: sourceLine + "\n"))
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        let documentID = UUID()
+
+        func configure(themeRefreshToken: Int) {
+            canvas.configure(
+                document: document,
+                documentID: documentID,
+                resourceID: "heading-theme-refresh",
+                displayName: "Theme.md",
+                contentRevision: 0,
+                externalContentRevision: 0,
+                caret: 0,
+                language: "markdown",
+                colorScheme: .light,
+                themeRefreshToken: themeRefreshToken,
+                fontSize: 14,
+                fontName: "",
+                lineHeightMultiplier: 1,
+                isReadOnly: false,
+                translucentBackgroundEnabled: false,
+                showsLineNumbers: true,
+                highlightCurrentLine: false,
+                lineWrapEnabled: true,
+                showsInvisibleCharacters: false,
+                showsIndentationGuides: false,
+                showsScopeGuides: false,
+                highlightsScopeBackground: false,
+                highlightsMatchingBrackets: false,
+                autoIndentEnabled: true,
+                autoCloseBracketsEnabled: false,
+                onFontSizeChange: nil,
+                onTextMutation: nil
+            )
+        }
+
+        configure(themeRefreshToken: 0)
+        let viewportReads = document.viewportCallCount
+        defaults.set(true, forKey: key)
+
+        let start = ContinuousClock.now
+        configure(themeRefreshToken: 1)
+        let synchronousDuration = start.duration(to: .now)
+
+        XCTAssertLessThan(synchronousDuration, .milliseconds(100))
+        XCTAssertEqual(document.viewportCallCount, viewportReads)
+        let headingBecameBold = await waitForBoldFont(in: canvas, line: sourceLine, at: 5)
+        XCTAssertTrue(headingBecameBold)
+    }
+
     func testVirtualEditorAppliesAndRemovesThemeBoldEmphasis() async {
         let defaults = UserDefaults.standard
         let boldKeywordsKey = SettingsPreferenceKey.themeBoldKeywords
@@ -1478,6 +1540,21 @@ final class VirtualEditorLayoutTests: XCTestCase {
             lineCount: 100_000,
             byteThreshold: 8_000_000,
             lineThreshold: 25_000
+        ))
+    }
+
+    func testLargeFileSessionUIRequiresExcessiveFileCandidate() {
+        XCTAssertFalse(ContentView.EditorPerformanceThresholds.shouldPresentLargeFileSessionUI(
+            isExcessiveFileCandidate: false,
+            responsiveOptimizationsEnabled: true
+        ))
+        XCTAssertFalse(ContentView.EditorPerformanceThresholds.shouldPresentLargeFileSessionUI(
+            isExcessiveFileCandidate: true,
+            responsiveOptimizationsEnabled: false
+        ))
+        XCTAssertTrue(ContentView.EditorPerformanceThresholds.shouldPresentLargeFileSessionUI(
+            isExcessiveFileCandidate: true,
+            responsiveOptimizationsEnabled: true
         ))
     }
 

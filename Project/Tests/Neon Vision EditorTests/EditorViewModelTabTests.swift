@@ -4,6 +4,36 @@ import XCTest
 
 @MainActor
 final class EditorViewModelTabTests: XCTestCase {
+    func testTabPersistenceRevisionCoalescesMutationsAcrossOneDisplayFrame() async throws {
+        let viewModel = EditorViewModel()
+        try await Task.sleep(for: .milliseconds(50))
+        let initialRevision = viewModel.tabPersistenceObservationToken
+
+        viewModel.addNewTab()
+        try await Task.sleep(for: .milliseconds(5))
+        viewModel.addNewTab()
+        try await Task.sleep(for: .milliseconds(5))
+        viewModel.addNewTab()
+
+        XCTAssertEqual(viewModel.tabPersistenceObservationToken, initialRevision)
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(viewModel.tabPersistenceObservationToken, initialRevision + 1)
+    }
+
+    func testSessionPersistenceSchedulerCoalescesStartupObservationBursts() async throws {
+        let scheduler = SessionPersistenceScheduler()
+        var handledRevisions: [Int] = []
+
+        for revision in 1...8 {
+            scheduler.scheduleObservation {
+                handledRevisions.append(revision)
+            }
+        }
+        try await Task.sleep(for: .milliseconds(50))
+
+        XCTAssertEqual(handledRevisions, [8])
+    }
+
     func testManualLanguageSelectionLocksCurrentTab() throws {
         let viewModel = EditorViewModel()
         let tab = try XCTUnwrap(viewModel.selectedTab)

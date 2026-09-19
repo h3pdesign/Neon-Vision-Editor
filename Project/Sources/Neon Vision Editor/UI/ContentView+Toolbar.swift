@@ -8,6 +8,7 @@ import UIKit
 struct ToolbarActionSelection {
     static let supportedVisibleCounts: Set<Int> = [4, 5, 6, 7, 8, 10]
     static let universallyAvailableMobileActionIDs: Set<String> = ["settings", "help"]
+    static let persistentMobileControlCount = 2
 
     static func visibleLimit(requestedCount: Int, fallback: Int) -> Int {
         supportedVisibleCounts.contains(requestedCount) ? requestedCount : fallback
@@ -52,18 +53,54 @@ struct ToolbarActionSelection {
         return result
     }
 
-    static func visibleActions<Action>(
+    static func visibleActions<Action: Hashable>(
         enabledActions: [Action],
         requestedCount: Int,
-        preset: ToolbarPreset? = nil
+        preset: ToolbarPreset? = nil,
+        reservedControlCount: Int = 0,
+        requiredActions: Set<Action> = []
     ) -> [Action] {
         // Named presets define the toolbar's complete direct action set. The
         // count preference applies only while composing a Custom toolbar.
         if let preset, preset != .custom {
             return enabledActions
         }
-        let limit = visibleLimit(requestedCount: requestedCount, fallback: enabledActions.count)
-        return Array(enabledActions.prefix(limit))
+        let limit = supportedVisibleCounts.contains(requestedCount)
+            ? max(0, requestedCount - reservedControlCount)
+            : enabledActions.count
+        guard !requiredActions.isEmpty else {
+            return Array(enabledActions.prefix(limit))
+        }
+
+        let enabledRequiredActions = enabledActions.filter(requiredActions.contains)
+        let optionalLimit = max(0, limit - enabledRequiredActions.count)
+        let optionalActions = enabledActions
+            .filter { !requiredActions.contains($0) }
+            .prefix(optionalLimit)
+        let visibleActions = Set(enabledRequiredActions).union(optionalActions)
+        return enabledActions.filter(visibleActions.contains)
+    }
+
+    static func customSelectableActionLimit(requestedCount: Int, fallback: Int) -> Int {
+        guard supportedVisibleCounts.contains(requestedCount) else {
+            return max(0, fallback - universallyAvailableMobileActionIDs.count)
+        }
+        return max(
+            0,
+            requestedCount
+                - persistentMobileControlCount
+                - universallyAvailableMobileActionIDs.count
+        )
+    }
+
+    static func limitedSelectedIDs(
+        from rawValue: String,
+        orderedIDs: [String],
+        excluding excludedIDs: Set<String>,
+        limit: Int
+    ) -> Set<String> {
+        let selected = selectedIDs(from: rawValue).subtracting(excludedIDs)
+        return Set(orderedIDs.filter { selected.contains($0) }.prefix(max(0, limit)))
     }
 
     static func overflowActions<Action: Hashable>(
@@ -861,10 +898,16 @@ extension ContentView {
     }
 
     private var visibleIOSPrimaryToolbarActions: [IOSPrimaryToolbarAction] {
-        ToolbarActionSelection.visibleActions(
-            enabledActions: enabledIOSPrimaryToolbarActions,
+        let enabledActions = enabledIOSPrimaryToolbarActions
+        let requiredActions = Set(enabledActions.filter {
+            ToolbarActionSelection.universallyAvailableMobileActionIDs.contains($0.rawValue)
+        })
+        return ToolbarActionSelection.visibleActions(
+            enabledActions: enabledActions,
             requestedCount: toolbarFavoriteCountIOS,
-            preset: effectiveIOSToolbarPreset
+            preset: effectiveIOSToolbarPreset,
+            reservedControlCount: ToolbarActionSelection.persistentMobileControlCount,
+            requiredActions: requiredActions
         )
     }
 
@@ -902,7 +945,7 @@ extension ContentView {
 
     private var iPhoneScrollableToolbarActions: [IOSPrimaryToolbarAction] {
         let compactActions = iPhoneCompactToolbarActions
-        return compactActions + enabledIOSPrimaryToolbarActions.filter {
+        return compactActions + visibleIOSPrimaryToolbarActions.filter {
             !compactActions.contains($0)
         }
     }
@@ -1109,10 +1152,16 @@ extension ContentView {
     }
 
     private var visibleIPadToolbarActions: [IPadToolbarAction] {
-        ToolbarActionSelection.visibleActions(
-            enabledActions: enabledIPadActionPriority,
+        let enabledActions = enabledIPadActionPriority
+        let requiredActions = Set(enabledActions.filter {
+            ToolbarActionSelection.universallyAvailableMobileActionIDs.contains($0.rawValue)
+        })
+        return ToolbarActionSelection.visibleActions(
+            enabledActions: enabledActions,
             requestedCount: toolbarFavoriteCountIOS,
-            preset: effectiveIOSToolbarPreset
+            preset: effectiveIOSToolbarPreset,
+            reservedControlCount: ToolbarActionSelection.persistentMobileControlCount,
+            requiredActions: requiredActions
         )
         .filter { $0 != .toggleSidebar }
     }

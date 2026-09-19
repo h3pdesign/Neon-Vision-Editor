@@ -828,4 +828,39 @@ final class FileBackedTextDocumentTests: XCTestCase {
         XCTAssertEqual(document.encodingDescriptor.identifier, .utf16LittleEndianWithBOM)
         XCTAssertEqual(try document.text(inByteRange: NSRange(location: 0, length: document.byteCount)), "a")
     }
+
+    func testRepeatedLargeInMemoryDocumentProjectionStaysWithinRenderBudget() {
+        let row = "<article data-id=\"42\"><a href=\"https://example.com/path\">Large HTML row</a></article>\n"
+        let source = String(repeating: row, count: 180_000)
+        let document = FileBackedTextDocument(content: source)
+        let started = ContinuousClock.now
+        var projectedUTF16Length = 0
+
+        for _ in 0..<20 {
+            projectedUTF16Length = document.string().utf16.count
+        }
+
+        let elapsed = started.duration(to: .now)
+        XCTAssertEqual(projectedUTF16Length, source.utf16.count)
+        XCTAssertLessThan(
+            elapsed,
+            .milliseconds(80),
+            "Repeated SwiftUI binding reads must reuse the materialized document instead of decoding the complete file every time (elapsed: \(elapsed))."
+        )
+    }
+
+    func testMaterializedInMemoryProjectionTracksUTF16EditsAndReplaceAll() throws {
+        let document = FileBackedTextDocument(content: "alpha 😀\r\nbeta\r\n")
+        XCTAssertEqual(document.string(), "alpha 😀\r\nbeta\r\n")
+        XCTAssertEqual(document.string(), "alpha 😀\r\nbeta\r\n")
+
+        try document.replace(
+            utf16Range: NSRange(location: 6, length: 2),
+            with: "value"
+        )
+        XCTAssertEqual(document.string(), "alpha value\r\nbeta\r\n")
+
+        try document.replaceAll(with: "first\nsecond\n")
+        XCTAssertEqual(document.string(), "first\r\nsecond\r\n")
+    }
 }

@@ -6,7 +6,22 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- Edit complete text documents below 100 MB without entering the excessive-file preview mode.
+- Read long lines on iPhone and iPad without losing text when line wrap is disabled.
+- Apply themes and formatting consistently, with less repeated work when using Settings.
+
+### Highlights
+
+- Refines mobile toolbars with system-adaptive glass, complete action slots, and an optional larger-symbol setting.
+
 ### Fixes
+
+- Fixes clipped unwrapped text on iPhone and iPad by keeping the drawing canvas and horizontal scrolling geometry aligned, including cursor reveal, keyboard transitions, and large-document installs.
+- Restores native macOS Settings pane sizing and titlebar material, removes repeated window repositioning, and keeps Settings navigation separate from editor-wide preference refreshes.
+- Makes the custom mobile toolbar action-count setting include persistent controls and keeps Settings and Help available.
+- Coalesces startup session observations and caches ordinary in-memory document text to avoid repeated materialization during view updates.
 
 - Keeps macOS Settings controls responsive by eliminating the duplicate editor recoloring and layout pass that followed every theme, formatting, or palette change.
 
@@ -19,6 +34,14 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Opens CSV, HTML, JSON, Markdown, source code, and other supported text files below 100 MB as complete editable documents on every platform, while keeping the excessive-file preview boundary at 100 MB.
 - Restores syntax highlighting for large untitled or extensionless documents on iPhone, iPad, and macOS by detecting their language from a bounded content sample.
 - Replaces the hard-coded clear iPhone and iPad bottom toolbar glass that distorted underlying editor text with readable system-adaptive Liquid Glass and adds enabled-by-default button captions with a Settings toggle.
+
+### Breaking changes
+
+- macOS builds now target Apple Silicon only; Intel Macs are no longer supported.
+
+### Migration
+
+- Intel Mac users must remain on an earlier compatible release. No document migration is required.
 
 ### Maintenance
 

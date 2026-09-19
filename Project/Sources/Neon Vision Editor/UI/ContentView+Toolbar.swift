@@ -2121,35 +2121,71 @@ extension ContentView {
 
 #if os(iOS)
     @ViewBuilder
+    private func mobileBottomToolbarItem<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(spacing: 1) {
+            content()
+                .frame(width: 44, height: 44)
+            if toolbarButtonLabelsIOS {
+                Text(title)
+                    .font(.system(size: 9, weight: .semibold))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .frame(width: 68, height: 22, alignment: .top)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
+        .frame(width: toolbarButtonLabelsIOS ? 72 : 44)
+        .frame(minHeight: toolbarButtonLabelsIOS ? 68 : 44)
+    }
+
+    private func iPhoneBottomToolbarTitle(for action: IOSPrimaryToolbarAction) -> String {
+        ToolbarIconOption(rawValue: action.rawValue)?.title ?? action.rawValue
+    }
+
+    private func iPadBottomToolbarTitle(for action: IPadToolbarAction) -> String {
+        ToolbarIconOption(rawValue: action.rawValue)?.title ?? action.rawValue
+    }
+
+    @ViewBuilder
     var iPhoneScrollableBottomToolbar: some View {
         Group {
             if isPhoneBottomToolbarMinimized {
                 HStack(spacing: 4) {
-                    settingsControl
-                        .frame(minWidth: 44, minHeight: 44)
-                    languagePickerControl
-                        .frame(minWidth: 44, minHeight: 44)
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            isPhoneBottomToolbarMinimized = false
-                        }
-                    } label: {
-                        Image(systemName: "slider.horizontal.3")
+                    mobileBottomToolbarItem("Settings") {
+                        settingsControl
                     }
-                    .frame(minWidth: 44, minHeight: 44)
-                    .accessibilityLabel("Expand editor actions")
+                    mobileBottomToolbarItem(languageLabel(for: currentLanguagePickerBinding.wrappedValue)) {
+                        languagePickerControl
+                    }
+                    mobileBottomToolbarItem("More") {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isPhoneBottomToolbarMinimized = false
+                            }
+                        } label: {
+                            Image(systemName: "slider.horizontal.3")
+                        }
+                        .accessibilityLabel("Expand editor actions")
+                    }
                 }
                 .padding(.horizontal, 8)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
-                        languagePickerControl
-                            .frame(minWidth: 44, minHeight: 44)
-                        toolbarPresetMenuControl
-                            .frame(minWidth: 44, minHeight: 44)
+                        mobileBottomToolbarItem(languageLabel(for: currentLanguagePickerBinding.wrappedValue)) {
+                            languagePickerControl
+                        }
+                        mobileBottomToolbarItem("Preset") {
+                            toolbarPresetMenuControl
+                        }
                         ForEach(iPhoneScrollableToolbarActions, id: \.self) { action in
-                            iOSPrimaryToolbarActionControl(action)
-                                .frame(minWidth: 44, minHeight: 44)
+                            mobileBottomToolbarItem(iPhoneBottomToolbarTitle(for: action)) {
+                                iOSPrimaryToolbarActionControl(action)
+                            }
                         }
                     }
                     .padding(.horizontal, 12)
@@ -2159,9 +2195,9 @@ extension ContentView {
             }
         }
         .frame(maxWidth: isPhoneBottomToolbarMinimized ? nil : .infinity)
-        .frame(minHeight: 52)
+        .frame(minHeight: toolbarButtonLabelsIOS ? 68 : 52)
         .background {
-            IOSClearGlassBackground()
+            IOSReadableGlassBackground()
                 .clipShape(Capsule())
         }
         .clipShape(Capsule())
@@ -2173,26 +2209,65 @@ extension ContentView {
     }
 #endif
 
+#if os(visionOS)
+    @ViewBuilder
+    private func mobileBottomToolbarItem<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+    }
+
+    private func iPadBottomToolbarTitle(for action: IPadToolbarAction) -> String {
+        ToolbarIconOption(rawValue: action.rawValue)?.title ?? action.rawValue
+    }
+#endif
+
     @ViewBuilder
     private var iPadDistributedToolbarControls: some View {
-        languagePickerControl
+        if usesIPadBottomToolbar {
+            mobileBottomToolbarItem(languageLabel(for: currentLanguagePickerBinding.wrappedValue)) {
+                languagePickerControl
+            }
+        } else {
+            languagePickerControl
+        }
         ForEach(visibleIPadToolbarActions, id: \.self) { action in
-            iPadToolbarActionControl(action)
-                .frame(minWidth: 44, minHeight: 44)
-                .contentShape(Rectangle())
+            if usesIPadBottomToolbar {
+                mobileBottomToolbarItem(iPadBottomToolbarTitle(for: action)) {
+                    iPadToolbarActionControl(action)
+                }
+            } else {
+                iPadToolbarActionControl(action)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
         }
     }
 
     @ViewBuilder
     private var iPadScrollableToolbarControls: some View {
         HStack(spacing: 8) {
-            toggleSidebarControl
-                .frame(minWidth: 44, minHeight: 44)
-                .contentShape(Rectangle())
+            if usesIPadBottomToolbar {
+                mobileBottomToolbarItem("Table of Contents") {
+                    toggleSidebarControl
+                }
                 .padding(.leading, 8)
+            } else {
+                toggleSidebarControl
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+                    .padding(.leading, 8)
+            }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
-                    toolbarPresetMenuControl
+                    if usesIPadBottomToolbar {
+                        mobileBottomToolbarItem("Preset") {
+                            toolbarPresetMenuControl
+                        }
+                    } else {
+                        toolbarPresetMenuControl
+                    }
                     iPadDistributedToolbarControls
                 }
                 .padding(.leading, 24)
@@ -2203,12 +2278,19 @@ extension ContentView {
             .defaultScrollAnchor(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
             if !iPadOverflowActions.isEmpty {
-                iPadOverflowMenuControl
+                if usesIPadBottomToolbar {
+                    mobileBottomToolbarItem("More") {
+                        iPadOverflowMenuControl
+                    }
                     .padding(.trailing, 8)
+                } else {
+                    iPadOverflowMenuControl
+                        .padding(.trailing, 8)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(minHeight: 52)
+        .frame(minHeight: usesIPadBottomToolbar && toolbarButtonLabelsIOS ? 68 : 52)
         .accessibilityLabel("Editor toolbar")
         .accessibilityHint("Swipe horizontally to reveal more editor actions")
     }
@@ -2219,14 +2301,18 @@ extension ContentView {
         Group {
             if isPhoneBottomToolbarMinimized {
                 HStack(spacing: 4) {
-                    settingsControl
-                        .frame(minWidth: 44, minHeight: 44)
-                    languagePickerControl
-                        .frame(minWidth: 44, minHeight: 44)
-                    iPadOverflowMenuControl(actions: enabledIPadActionPriority.filter { $0 != .settings })
+                    mobileBottomToolbarItem("Settings") {
+                        settingsControl
+                    }
+                    mobileBottomToolbarItem(languageLabel(for: currentLanguagePickerBinding.wrappedValue)) {
+                        languagePickerControl
+                    }
+                    mobileBottomToolbarItem("More") {
+                        iPadOverflowMenuControl(actions: enabledIPadActionPriority.filter { $0 != .settings })
+                    }
                 }
                 .padding(.horizontal, 8)
-                .frame(minHeight: 52)
+                .frame(minHeight: toolbarButtonLabelsIOS ? 68 : 52)
             } else {
                 iPadScrollableToolbarControls
             }
@@ -2236,7 +2322,7 @@ extension ContentView {
             minimized: isPhoneBottomToolbarMinimized
         ))
         .background {
-            IOSClearGlassBackground()
+            IOSReadableGlassBackground()
                 .clipShape(Capsule())
         }
         .tint(iOSToolbarTintColor)

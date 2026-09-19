@@ -5,6 +5,18 @@ import SwiftUI
 
 @MainActor
 final class MobileEditorInteractionTests: XCTestCase {
+    func testReadableToolbarGlassUsesSystemAdaptiveNativeGlass() throws {
+        let view = UIVisualEffectView()
+        IOSReadableGlassAppearance.apply(to: view)
+
+        if #available(iOS 26.0, *) {
+            let glass = try XCTUnwrap(view.effect as? UIGlassEffect)
+            XCTAssertNil(glass.tintColor)
+        } else {
+            XCTAssertNotNil(view.effect)
+        }
+    }
+
     private func editor(
         _ text: String,
         wrap: Bool = false,

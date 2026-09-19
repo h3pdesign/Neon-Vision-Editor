@@ -142,6 +142,11 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertEqual(ToolbarPreset.mobileSelectableIDs.count, Set(ToolbarPreset.mobileSelectableIDs).count)
     }
 
+    func testEveryMobileToolbarActionHasAReadableButtonLabel() {
+        let labeledActionIDs = Set(ToolbarIconOption.allCases.map(\.rawValue))
+        XCTAssertTrue(Set(ToolbarPreset.mobileSelectableIDs).isSubset(of: labeledActionIDs))
+    }
+
     func testNamedPresetsIgnoreCustomActionIDs() {
         XCTAssertFalse(
             ToolbarActionSelection.isAllowedByPreset(

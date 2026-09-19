@@ -148,6 +148,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsToolbarCustomFiveIDsIOS") private var toolbarCustomFiveIDsIOS: String = ""
     @AppStorage("SettingsToolbarPresetIOS") private var toolbarPresetIOSRaw: String = ToolbarPreset.standard.rawValue
     @AppStorage("SettingsToolbarIconsBlueIOS") private var toolbarIconsBlueIOS: Bool = false
+    @AppStorage("SettingsToolbarButtonLabelsIOS") private var toolbarButtonLabelsIOS: Bool = true
     @AppStorage("SettingsMobileEditingStatusPresetEnabled") private var mobileEditingStatusPresetEnabled: Bool = false
 #endif
 
@@ -2081,6 +2082,10 @@ struct NeonSettingsView: View {
             Text(localized("Each preset shows its own fixed set of toolbar symbols. Settings and preset help remain available in every preset."))
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
+            iOSToggleRow(
+                LocalizedStringKey(localized("Show Mobile Button Labels")),
+                isOn: $toolbarButtonLabelsIOS
+            )
             if toolbarUseCustomFiveIOS {
                 iOSLabeledRow(LocalizedStringKey(localized("Visible Toolbar Actions"))) {
                     Picker("", selection: $toolbarFavoriteCountIOS) {

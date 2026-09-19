@@ -554,6 +554,25 @@ struct ContentView: View {
                   documentUTF16Length < tocMaterializationUTF16Length else { return false }
             return !usesFileBackedStorage || fileByteCount <= tocMaterializationUTF16Length
         }
+
+        static func shouldUseLargeDocumentOptimizations(
+            byteCount: Int,
+            lineCount: Int,
+            byteThreshold: Int,
+            lineThreshold: Int
+        ) -> Bool {
+            byteCount >= byteThreshold || (
+                byteCount >= minimumBytesForLargeFileLineThreshold &&
+                lineCount >= lineThreshold
+            )
+        }
+
+        static func shouldPresentLargeFileSessionUI(
+            isExcessiveFileCandidate: Bool,
+            responsiveOptimizationsEnabled: Bool
+        ) -> Bool {
+            isExcessiveFileCandidate && responsiveOptimizationsEnabled
+        }
         static let largeFileLineBreaks = 40_000
         static let largeFileLineBreaksHTMLCSV = 15_000
         static let largeFileLineBreaksMobile = 25_000
@@ -677,7 +696,9 @@ struct ContentView: View {
     @AppStorage("SettingsShowRecentFilesOnEmptyDocuments") var showRecentFilesOnEmptyDocuments: Bool = true
     @AppStorage("SettingsConfirmCloseDirtyTab") var confirmCloseDirtyTab: Bool = true
     @AppStorage("SettingsConfirmClearEditor") var confirmClearEditor: Bool = true
-    @AppStorage("SettingsActiveTab") var settingsActiveTab: String = "general"
+#if !os(macOS)
+    @AppStorage(SettingsPreferenceKey.activeTab) var settingsActiveTab: String = "general"
+#endif
     @AppStorage("ToolbarCollapsed") var startsWithToolbarCollapsed: Bool = false
     @State var isToolbarCollapsed: Bool = false
     @AppStorage("SettingsAppearance") var appearance: String = "system"
@@ -707,8 +728,7 @@ struct ContentView: View {
     @State var lastCompletionTriggerSignature: String = ""
     @State var isApplyingCompletion: Bool = false
     @State var completionCache: [String: CompletionCacheEntry] = [:]
-    @State var pendingSessionPersistenceWorkItem: DispatchWorkItem?
-    @State var pendingDraftSnapshotPersistenceWorkItem: DispatchWorkItem?
+    @State var sessionPersistenceScheduler = SessionPersistenceScheduler()
     @State var pdfNoteAutoSaveTask: Task<Void, Never>?
     @State var pdfNoteAutoSaveRevision: Int?
     @State var lastPersistedSessionSignature: String = ""
@@ -971,6 +991,8 @@ struct ContentView: View {
     @AppStorage("SettingsShowBottomActionBarIOS") var showBottomActionBarIOS: Bool = true
     @AppStorage("SettingsUseLiquidGlassToolbarIOS") var shouldUseLiquidGlass: Bool = true
     @AppStorage("SettingsToolbarIconsBlueIOS") var toolbarIconsBlueIOS: Bool = false
+    @AppStorage("SettingsToolbarButtonLabelsIOS") var toolbarButtonLabelsIOS: Bool = true
+    @AppStorage("SettingsToolbarLargeSymbolsIOS") var toolbarLargeSymbolsIOS: Bool = false
     @AppStorage("SettingsToolbarShowSearchIOS") var toolbarShowSearchIOS: Bool = true
     @AppStorage("SettingsToolbarShowCompareIOS") var toolbarShowCompareIOS: Bool = true
     @AppStorage("SettingsToolbarShowEditorUtilityIOS") var toolbarShowEditorUtilityIOS: Bool = true
@@ -2110,37 +2132,14 @@ struct ContentView: View {
         let lowerLanguage = currentLanguage.lowercased()
         let isHTMLLike = ["html", "htm", "xml", "svg", "xhtml"].contains(lowerLanguage)
         let isCSVLike = ["csv", "tsv"].contains(lowerLanguage)
-        let useAggressiveThresholds = isHTMLLike || isCSVLike
-        #if os(iOS) || os(visionOS)
-        var byteThreshold = useAggressiveThresholds
-            ? EditorPerformanceThresholds.largeFileBytesHTMLCSVMobile
-            : EditorPerformanceThresholds.largeFileBytesMobile
-        var lineThreshold = useAggressiveThresholds
-            ? EditorPerformanceThresholds.largeFileLineBreaksHTMLCSVMobile
-            : EditorPerformanceThresholds.largeFileLineBreaksMobile
-        #else
-        var byteThreshold = useAggressiveThresholds
-            ? EditorPerformanceThresholds.largeFileBytesHTMLCSV
-            : EditorPerformanceThresholds.largeFileBytes
-        var lineThreshold = useAggressiveThresholds
-            ? EditorPerformanceThresholds.largeFileLineBreaksHTMLCSV
-            : EditorPerformanceThresholds.largeFileLineBreaks
-        #endif
-        switch performancePreset {
-        case .balanced:
-            break
-        case .largeFiles:
-            byteThreshold = max(1_000_000, Int(Double(byteThreshold) * 0.75))
-            lineThreshold = max(5_000, Int(Double(lineThreshold) * 0.75))
-        case .battery:
-            byteThreshold = max(750_000, Int(Double(byteThreshold) * 0.55))
-            lineThreshold = max(3_000, Int(Double(lineThreshold) * 0.55))
-        }
+        let thresholds = largeFilePerformanceThresholds(
+            useAggressiveThresholds: isHTMLLike || isCSVLike
+        )
         let estimate = largeFileEstimate(
             for: text,
             language: lowerLanguage,
-            byteThreshold: byteThreshold,
-            lineThreshold: lineThreshold,
+            byteThreshold: thresholds.bytes,
+            lineThreshold: thresholds.lines,
             isCSVLike: isCSVLike
         )
         let exceedsByteThreshold = estimate.exceedsByteThreshold
@@ -2157,6 +2156,37 @@ struct ContentView: View {
             largeFileModeEnabled = isLarge
             scheduleHighlightRefresh()
         }
+    }
+
+    private func largeFilePerformanceThresholds(
+        useAggressiveThresholds: Bool
+    ) -> (bytes: Int, lines: Int) {
+#if os(iOS) || os(visionOS)
+        var byteThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileBytesHTMLCSVMobile
+            : EditorPerformanceThresholds.largeFileBytesMobile
+        var lineThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileLineBreaksHTMLCSVMobile
+            : EditorPerformanceThresholds.largeFileLineBreaksMobile
+#else
+        var byteThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileBytesHTMLCSV
+            : EditorPerformanceThresholds.largeFileBytes
+        var lineThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileLineBreaksHTMLCSV
+            : EditorPerformanceThresholds.largeFileLineBreaks
+#endif
+        switch performancePreset {
+        case .balanced:
+            break
+        case .largeFiles:
+            byteThreshold = max(1_000_000, Int(Double(byteThreshold) * 0.75))
+            lineThreshold = max(5_000, Int(Double(lineThreshold) * 0.75))
+        case .battery:
+            byteThreshold = max(750_000, Int(Double(byteThreshold) * 0.55))
+            lineThreshold = max(3_000, Int(Double(lineThreshold) * 0.55))
+        }
+        return (byteThreshold, lineThreshold)
     }
 
     private func largeFileEstimate(
@@ -2250,6 +2280,31 @@ struct ContentView: View {
         if viewModel.selectedTab?.isLargeFileCandidate == true {
             if !largeFileModeEnabled {
                 largeFileModeEnabled = true
+                scheduleHighlightRefresh()
+            }
+            return
+        }
+        if let tab = viewModel.selectedTab {
+            let lowerLanguage = tab.language.lowercased()
+            let isHTMLLike = ["html", "htm", "xml", "svg", "xhtml"].contains(lowerLanguage)
+            let isCSVLike = ["csv", "tsv"].contains(lowerLanguage)
+            let thresholds = largeFilePerformanceThresholds(
+                useAggressiveThresholds: isHTMLLike || isCSVLike
+            )
+            let estimatedByteCount = max(tab.fileByteCount, tab.document.utf16Length)
+            let shouldUseResponsiveOptimizations = EditorPerformanceThresholds.shouldUseLargeDocumentOptimizations(
+                byteCount: estimatedByteCount,
+                lineCount: tab.document.lineCount,
+                byteThreshold: thresholds.bytes,
+                lineThreshold: thresholds.lines
+            )
+#if os(iOS) || os(visionOS)
+            let isLarge = forceLargeFileMode || shouldUseResponsiveOptimizations
+#else
+            let isLarge = shouldUseResponsiveOptimizations
+#endif
+            if largeFileModeEnabled != isLarge {
+                largeFileModeEnabled = isLarge
                 scheduleHighlightRefresh()
             }
             return
@@ -3029,43 +3084,40 @@ struct ContentView: View {
                 }
             }
             .onChange(of: settingsThemeName) { _, _ in
-#if !os(macOS)
                 scheduleHighlightRefresh()
-#endif
             }
-            .onChange(of: themeFormattingRefreshSignature) { _, _ in
-#if !os(macOS)
+            .onChange(of: settingsThemeBoldKeywords) { _, _ in
                 scheduleHighlightRefresh()
-#endif
             }
+            .onChange(of: settingsThemeItalicComments) { _, _ in
+                scheduleHighlightRefresh()
+            }
+            .onChange(of: settingsThemeUnderlineLinks) { _, _ in
+                scheduleHighlightRefresh()
+            }
+            .onChange(of: settingsThemeBoldMarkdownHeadings) { _, _ in
+                scheduleHighlightRefresh()
+            }
+#if !os(macOS)
             .onChange(of: highlightMatchingBrackets) { _, _ in
-#if !os(macOS)
                 scheduleHighlightRefresh()
-#endif
             }
             .onChange(of: showScopeGuides) { _, _ in
-#if !os(macOS)
                 scheduleHighlightRefresh()
-#endif
             }
             .onChange(of: highlightScopeBackground) { _, _ in
-#if !os(macOS)
                 scheduleHighlightRefresh()
-#endif
             }
             .onChange(of: viewModel.isLineWrapEnabled) { _, _ in
-#if !os(macOS)
                 scheduleHighlightRefresh()
-#endif
             }
+#endif
     }
 
     private func applySessionStateObservers<Content: View>(to view: Content) -> some View {
         view
             .onChange(of: windowSessionObservationSnapshot) { _, _ in
-                scheduleSessionPersistence()
-                scheduleUnsavedDraftSnapshotPersistence()
-                synchronizePDFNoteAttachment()
+                scheduleWindowSessionObservationHandling()
             }
             .onChange(of: viewModel.selectedTabID) { previousTabID, selectedTabID in
                 guard previousTabID != selectedTabID else { return }
@@ -4274,15 +4326,6 @@ struct ContentView: View {
 #endif
     }
 
-    private var themeFormattingRefreshSignature: Int {
-        var signature = 0
-        if settingsThemeBoldKeywords { signature |= 1 << 0 }
-        if settingsThemeItalicComments { signature |= 1 << 1 }
-        if settingsThemeUnderlineLinks { signature |= 1 << 2 }
-        if settingsThemeBoldMarkdownHeadings { signature |= 1 << 3 }
-        return signature
-    }
-
     private var effectiveIndentWidth: Int {
         projectOverrideIndentWidth ?? indentWidth
     }
@@ -4443,6 +4486,13 @@ struct ContentView: View {
         return viewModel.selectedTab?.isLargeFileCandidate == true
     }
 
+    var shouldPresentLargeFileSessionUI: Bool {
+        EditorPerformanceThresholds.shouldPresentLargeFileSessionUI(
+            isExcessiveFileCandidate: viewModel.selectedTab?.isLargeFileCandidate == true,
+            responsiveOptimizationsEnabled: effectiveLargeFileModeEnabled
+        )
+    }
+
     private var isSelectedTabReadOnlyPreview: Bool {
         if isPDFNoteEditorActive { return false }
         return viewModel.selectedTab?.isReadOnlyPreview == true
@@ -4500,7 +4550,7 @@ struct ContentView: View {
     }
 
     var largeFileStatusBadgeText: String {
-        guard effectiveLargeFileModeEnabled else { return "" }
+        guard viewModel.selectedTab?.isLargeFileCandidate == true else { return "" }
         if viewModel.selectedTab?.isPartialFilePreview == true {
             return "Partial Open • \(currentDocumentFileSizeText) • Read-Only"
         }
@@ -4707,29 +4757,7 @@ struct ContentView: View {
         effectiveScopeGuides: Bool,
         effectiveScopeBackground: Bool
     ) -> some View {
-        let useOuterNoWrapScroll = shouldUseOuterNoWrapEditorScroll(lineWrapEnabled: lineWrapEnabled.wrappedValue)
         HStack(spacing: 0) {
-            if useOuterNoWrapScroll {
-                GeometryReader { proxy in
-                    let scrollableEditorWidth = max(proxy.size.width * 3, proxy.size.width)
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        editorTextView(
-                            tabID: tabID,
-                            language: language,
-                            isLoading: isLoading,
-                            isReadOnly: isReadOnly,
-                            lineWrapEnabled: lineWrapEnabled,
-                            effectiveHighlightCurrentLine: effectiveHighlightCurrentLine,
-                            effectiveBracketHighlight: effectiveBracketHighlight,
-                            effectiveScopeGuides: effectiveScopeGuides,
-                            effectiveScopeBackground: effectiveScopeBackground
-                        )
-                        .frame(width: scrollableEditorWidth, height: proxy.size.height)
-                    }
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-                }
-                .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
-            } else {
                 editorTextView(
                     tabID: tabID,
                     language: language,
@@ -4741,7 +4769,6 @@ struct ContentView: View {
                     effectiveScopeGuides: effectiveScopeGuides,
                     effectiveScopeBackground: effectiveScopeBackground
                 )
-            }
 
             // A file-backed document must stay bounded on the normal render path.
             // CodeMinimapView consumes the binding's complete String to build its
@@ -4774,16 +4801,6 @@ struct ContentView: View {
         }
         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
-    }
-
-    private func shouldUseOuterNoWrapEditorScroll(lineWrapEnabled: Bool) -> Bool {
-#if os(iOS) || os(visionOS)
-        usesRegularIOSLayout &&
-        !lineWrapEnabled &&
-        !effectiveLargeFileModeEnabled
-#else
-        false
-#endif
     }
 
     private func minimapSnapshotCacheKey(tabID: UUID?, language: String) -> String {
@@ -4834,6 +4851,7 @@ struct ContentView: View {
             storedCaretLocation: storedCaretLocation(for: tabID),
             language: language,
             colorScheme: effectiveEditorColorScheme,
+            themeRefreshToken: highlightRefreshToken,
             fontSize: editorFontSize,
             fontName: editorFontName,
             lineHeightMultiplier: editorLineHeight,
@@ -4877,14 +4895,17 @@ struct ContentView: View {
 #else
         let text = editorTextBinding(for: tabID)
         let editorTextBinding: Binding<String> = {
-            guard effectiveLargeFileModeEnabled,
-                  tab?.document.supportsBoundedWindows == true else {
+            guard Self.shouldUseInertMobileEditorBinding(
+                isLargeFileModeEnabled: effectiveLargeFileModeEnabled,
+                usesFileBackedStorage: tab?.usesFileBackedStorage == true
+            ) else {
                 return text
             }
-            // The macOS virtualized bridge obtains text exclusively from the
-            // bounded EditorDocument viewport.  Supplying an inert binding here
-            // prevents SwiftUI from materializing the complete document during
-            // representable updates or per-keystroke synchronization.
+            // URL-backed documents obtain text from bounded EditorDocument
+            // windows. Supplying an inert binding prevents SwiftUI from
+            // materializing the complete source during representable updates.
+            // Prepared in-memory documents must keep their normal binding so the
+            // iOS text editor can install and display their complete contents.
             return .constant("")
         }()
         return CustomTextEditor(
@@ -4954,6 +4975,13 @@ struct ContentView: View {
         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
 #endif
+    }
+
+    nonisolated static func shouldUseInertMobileEditorBinding(
+        isLargeFileModeEnabled: Bool,
+        usesFileBackedStorage: Bool
+    ) -> Bool {
+        isLargeFileModeEnabled && usesFileBackedStorage
     }
 
 #if os(iOS) || os(visionOS)
@@ -5297,7 +5325,7 @@ struct ContentView: View {
                 )
 #if !os(macOS)
                 .overlay(alignment: .topTrailing) {
-                    if effectiveLargeFileModeEnabled && !brainDumpLayoutEnabled {
+                    if shouldPresentLargeFileSessionUI && !brainDumpLayoutEnabled {
                         largeFileSessionBadge
                             .padding(.top, 10)
                             .padding(.trailing, 12)
@@ -5593,16 +5621,12 @@ struct ContentView: View {
             highlightRefreshToken &+= 1
 #endif
         }
+#if !os(macOS)
         .onChange(of: settingsThemeHexOverridesData) { _, _ in
-#if os(macOS)
-            // The virtual editor reads the encoded override data while updating
-            // its native configuration. Reapplying every NSWindow surface here
-            // forces an unrelated full-window composition pass.
-#else
             applyWindowTranslucency(enableTranslucentWindow)
             highlightRefreshToken &+= 1
-#endif
         }
+#endif
         )
 #if os(iOS) || os(visionOS)
         let eventAwareContent = AnyView(
@@ -5688,7 +5712,9 @@ struct ContentView: View {
                         Spacer(minLength: 0)
                         if usesIPhoneBottomToolbar {
                             iPhoneScrollableBottomToolbar
-                                .frame(width: max(0, proxy.size.width - (isPhoneBottomToolbarMinimized ? 24 : 74)))
+                                .frame(width: IPhoneBottomToolbarWidthPolicy.width(
+                                    availableWidth: proxy.size.width
+                                ))
                                 .frame(maxWidth: .infinity)
                                 .padding(.bottom, 8)
                         } else {

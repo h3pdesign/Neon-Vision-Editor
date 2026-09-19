@@ -94,6 +94,11 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
     private var pieces: [Piece]
     private var lineStarts: [Int]
     private var cachedUTF16Length: Int
+    // SwiftUI may read the active text binding several times in one render pass.
+    // Keep ordinary in-memory documents materialized so those reads do not
+    // repeatedly rebuild and decode the complete piece table. URL-backed
+    // excessive files intentionally remain uncached and viewport-bounded.
+    private var cachedWholeText: String? = nil
     private var lazyFileHandle: FileHandle?
     private var lazyFileByteCount: Int = 0
     private var lazyIndexedByteOffset: Int = 0
@@ -181,6 +186,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         pieces = source.pieces
         lineStarts = source.lineStarts
         cachedUTF16Length = source.cachedUTF16Length
+        cachedWholeText = source.cachedWholeText
         encodingDescriptor = source.encodingDescriptor
         savedFileMetadata = source.savedFileMetadata
         dirty = source.dirty
@@ -306,6 +312,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         self.pieces = [.source(data, offset: 0, encoding: encoding)]
         self.lineStarts = Self.lineStarts(in: data, encoding: encoding)
         self.cachedUTF16Length = content.utf16.count
+        self.cachedWholeText = content
         self.lazyFileHandle = nil
 
         self.savedFileMetadata = nil
@@ -408,8 +415,15 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
 
 
     func string() -> String {
+        if url == nil, let cachedWholeText {
+            return cachedWholeText
+        }
         try? materializeLazyStorageIfNeeded()
-        return (try? text(inByteRange: NSRange(location: 0, length: byteCount))) ?? ""
+        let materialized = (try? text(inByteRange: NSRange(location: 0, length: byteCount))) ?? ""
+        if url == nil {
+            cachedWholeText = materialized
+        }
+        return materialized
     }
 
     func text(inUTF16Range range: NSRange) throws -> String {
@@ -454,19 +468,34 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
 
     func replace(utf16Range range: NSRange, with replacement: String) throws {
         try materializeLazyStorageIfNeeded()
+        let cachedSource = cachedWholeText
+        let normalizedReplacement = Self.normalizedLineEndings(in: replacement, to: lineEnding)
         guard let start = byteOffset(forUTF16Offset: range.location),
               let end = byteOffset(forUTF16Offset: range.location + range.length),
               end >= start else { throw Error.invalidRange }
         try replace(byteRange: NSRange(location: start, length: end - start), with: replacement)
+        if let cachedSource,
+           range.location >= 0,
+           range.length >= 0,
+           NSMaxRange(range) <= (cachedSource as NSString).length {
+            cachedWholeText = (cachedSource as NSString).replacingCharacters(
+                in: range,
+                with: normalizedReplacement
+            )
+        }
     }
 
     func replaceAll(with text: String) throws {
         try materializeLazyStorageIfNeeded()
+        let normalizedText = Self.normalizedLineEndings(in: text, to: lineEnding)
         let bomLength = Self.byteOrderMarkLength(for: encodingDescriptor)
         try replace(
             byteRange: NSRange(location: bomLength, length: max(0, byteCount - bomLength)),
             with: text
         )
+        if url == nil {
+            cachedWholeText = normalizedText
+        }
     }
 
     func markClean() { dirty = false }
@@ -755,6 +784,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         edits.append(.init(location: rawRange.location, length: rawRange.length, replacement: replacement))
         dirty = true
         viewportGeneration &+= 1
+        cachedWholeText = nil
     }
 
     func saveAtomically(allowExternalOverwrite: Bool = false) throws {

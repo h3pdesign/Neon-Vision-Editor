@@ -30,6 +30,66 @@ struct IOSClearGlassBackground: UIViewRepresentable {
         IOSClearGlassAppearance.apply(to: view)
     }
 }
+
+enum IOSReadableGlassAppearance {
+    static func apply(to view: UIVisualEffectView) {
+        view.isOpaque = false
+        if #available(iOS 26.0, *) {
+            view.backgroundColor = .clear
+            // Regular glass follows the user's system Clear/Tinted Liquid Glass
+            // choice and accessibility contrast settings. Do not override tintColor.
+            view.effect = UIGlassEffect(style: .regular)
+        } else if UIAccessibility.isReduceTransparencyEnabled {
+            view.effect = nil
+            view.backgroundColor = .secondarySystemBackground
+        } else {
+            view.backgroundColor = .clear
+            view.effect = UIBlurEffect(style: .systemChromeMaterial)
+        }
+    }
+}
+
+enum IOSAdaptiveChromePreference {
+    static let storageKey = "SettingsUseLiquidGlassToolbarIOS"
+
+    static func isEnabled(in defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: storageKey) as? Bool ?? true
+    }
+
+    static func apply(to view: UIVisualEffectView, enabled: Bool) {
+        if enabled {
+            IOSReadableGlassAppearance.apply(to: view)
+        } else {
+            view.effect = nil
+            view.backgroundColor = .secondarySystemBackground
+        }
+    }
+}
+
+struct IOSReadableGlassBackground: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        let view = UIVisualEffectView()
+        IOSReadableGlassAppearance.apply(to: view)
+        return view
+    }
+
+    func updateUIView(_ view: UIVisualEffectView, context: Context) {
+        IOSReadableGlassAppearance.apply(to: view)
+    }
+}
+
+struct IOSAdaptiveChromeBackground: View {
+    let enabled: Bool
+
+    @ViewBuilder
+    var body: some View {
+        if enabled {
+            IOSReadableGlassBackground()
+        } else {
+            Color(uiColor: .secondarySystemBackground)
+        }
+    }
+}
 #endif
 
 

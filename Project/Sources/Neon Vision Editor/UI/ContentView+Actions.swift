@@ -325,15 +325,13 @@ extension ContentView {
     }
 
     func openSettings(tab: String? = nil) {
-        if let tab, !tab.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            settingsActiveTab = ReleaseRuntimePolicy.settingsTab(from: tab)
-        } else {
-            settingsActiveTab = "general"
-        }
+        let targetTab = ReleaseRuntimePolicy.settingsTab(from: tab)
 #if os(macOS)
+        MacSettingsTabRoute.request(targetTab)
         dismissTransientSheetsForCommand()
         openSettingsAction()
 #else
+        settingsActiveTab = targetTab
         prepareForSettingsSheetPresentation()
         DispatchQueue.main.async {
             showSettingsSheet = true

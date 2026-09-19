@@ -15,17 +15,13 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 echo "Running platform build matrix gate for ${TAG}..."
-run_build_matrix() {
-  scripts/ci/build_platform_matrix.sh
-}
-
-if ! run_build_matrix; then
-  echo "Platform build matrix failed once; retrying..."
-  sleep 6
-  run_build_matrix
-fi
+DERIVED_DATA_ROOT="${DERIVED_DATA_ROOT:-$ROOT/.DerivedDataMatrix}"
+export DERIVED_DATA_ROOT
+trap 'rm -rf "$DERIVED_DATA_ROOT"' EXIT
+scripts/ci/build_platform_matrix.sh --keep-derived-data
 
 echo "Running release preflight gate for ${TAG}..."
+export NVE_RELEASE_DERIVED_DATA_PATH="$DERIVED_DATA_ROOT/macos"
 scripts/ci/release_preflight.sh "$TAG"
 
 echo "Release gate passed for ${TAG}."

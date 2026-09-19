@@ -1,5 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
+> Prepared release: **v1.8.3** — not published. See [candidate notes](CHANGELOG.md).
+
 <p align="center">
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.8.2-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
@@ -55,7 +57,7 @@
 > Latest release: **v1.8.2**
 > Next release target: **v1.8.3**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
-> Apple Silicon: tested / Intel: not tested
+> Apple Silicon: supported
 > Direct GitHub release: **v1.8.2** / App Store and TestFlight availability varies by platform and review status
 > Last updated (README): **2026-09-19** for latest release **v1.8.2**
 
@@ -100,7 +102,7 @@
 | For | Not For |
 |---|---|
 | Fast native editing across macOS, iOS, iPadOS | Full IDE workflows with deep refactoring/debugger stacks |
-| Markdown writing and script/config edits with highlighting | Teams that require complete Intel Mac validation today |
+| Markdown writing and script/config edits with highlighting | Teams that require Windows or Linux support |
 | Users who want low overhead and quick file access | Users expecting full desktop-IDE parity on iPhone |
 
 ## Table of Contents
@@ -694,8 +696,6 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 ## FAQ
 
-- **Does Neon Vision Editor support Intel Macs?**  
-  Intel is currently not fully validated. If you can help test, see [Help wanted: Intel Mac test coverage](https://github.com/h3pdesign/Neon-Vision-Editor/issues/41).
 - **Can I use it offline?**  
   Yes for core editing. Network is only used for explicit actions such as selected AI providers, update checks, GitHub release downloads, or opt-in Remote Sessions.
 - **Do I need AI enabled to use the editor?**  
@@ -790,7 +790,6 @@ The recent release arc is about continuity: files that change outside the app, w
 
 ## Known Limitations
 
-- Intel Mac support is not fully validated yet.
 - Vim mode is intentionally lightweight, not full Vim emulation.
 - iPhone and iPad workflows still offer a smaller feature set than macOS.
 

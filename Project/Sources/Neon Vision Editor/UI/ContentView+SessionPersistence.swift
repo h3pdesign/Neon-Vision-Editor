@@ -1,6 +1,44 @@
 import CryptoKit
 import SwiftUI
 
+@MainActor
+final class SessionPersistenceScheduler {
+    private var observationGeneration = 0
+    private var sessionGeneration = 0
+    private var draftGeneration = 0
+
+    func scheduleObservation(_ action: @escaping @MainActor () -> Void) {
+        observationGeneration &+= 1
+        let generation = observationGeneration
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.observationGeneration == generation else { return }
+            action()
+        }
+    }
+
+    func scheduleSession(after delay: TimeInterval, _ action: @escaping @MainActor () -> Void) {
+        sessionGeneration &+= 1
+        let generation = sessionGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, self.sessionGeneration == generation else { return }
+            action()
+        }
+    }
+
+    func scheduleDraft(after delay: TimeInterval, _ action: @escaping @MainActor () -> Void) {
+        draftGeneration &+= 1
+        let generation = draftGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, self.draftGeneration == generation else { return }
+            action()
+        }
+    }
+
+    func cancelDraft() {
+        draftGeneration &+= 1
+    }
+}
+
 struct DraftSnapshotTabIdentity: Hashable {
     let name: String
     let contentDigest: Data
@@ -192,27 +230,28 @@ extension ContentView {
     }
 
     func scheduleSessionPersistence(delay: TimeInterval = 0.5) {
-        pendingSessionPersistenceWorkItem?.cancel()
-        let work = DispatchWorkItem {
-            pendingSessionPersistenceWorkItem = nil
+        sessionPersistenceScheduler.scheduleSession(after: delay) {
             persistSessionIfReady()
         }
-        pendingSessionPersistenceWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
     func scheduleUnsavedDraftSnapshotPersistence(delay: TimeInterval = 0.7) {
         guard recoverUnsavedDrafts else {
+            sessionPersistenceScheduler.cancelDraft()
             clearUnsavedDraftSnapshots()
             return
         }
-        pendingDraftSnapshotPersistenceWorkItem?.cancel()
-        let work = DispatchWorkItem {
-            pendingDraftSnapshotPersistenceWorkItem = nil
+        sessionPersistenceScheduler.scheduleDraft(after: delay) {
             persistUnsavedDraftSnapshotIfNeeded()
         }
-        pendingDraftSnapshotPersistenceWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    func scheduleWindowSessionObservationHandling() {
+        sessionPersistenceScheduler.scheduleObservation {
+            scheduleSessionPersistence()
+            scheduleUnsavedDraftSnapshotPersistence()
+            synchronizePDFNoteAttachment()
+        }
     }
 
     func persistSessionIfReady() {

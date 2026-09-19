@@ -67,6 +67,68 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         }
     }
 
+    func testEverySelectableSyntaxLanguageHighlightsItsDefaultTemplate() throws {
+        for language in CodeTemplateCatalog.supportedLanguages where language != "plain" {
+            let template = try XCTUnwrap(CodeTemplateCatalog.defaultTemplate(for: language), language)
+            XCTAssertTrue(
+                anySyntaxPatternMatches(template, from: getSyntaxPatterns(for: language, colors: colors)),
+                "\(language) does not color any token in its default template."
+            )
+        }
+    }
+
+    func testProgrammingSyntaxAddsFrameworkTypeAndCallCoverage() {
+        let patterns = getSyntaxPatterns(for: "swift", colors: colors)
+        let sample = "let view: NSVisualEffectView = configure(context)"
+
+        XCTAssertTrue(matchesAnyPattern(
+            in: sample,
+            from: patterns,
+            expected: syntaxFallbackTypePattern
+        ))
+        XCTAssertTrue(matchesAnyPattern(
+            in: sample,
+            from: patterns,
+            expected: syntaxFallbackCallPattern
+        ))
+    }
+
+    func testFallbackIdentifiersDoNotSplitExistingSwiftTokens() throws {
+        let sample = """
+        @AppStorage("SettingsAppearance") var appearance: String = "system" // Single document
+        let view = NSVisualEffectView()
+        configure(view)
+        """
+        let patterns = getSyntaxPatterns(for: "swift", colors: colors)
+        var baseRanges: [NSRange] = []
+        var fallbackRanges: [(Int, NSRange)] = []
+        let fullRange = NSRange(location: 0, length: (sample as NSString).length)
+
+        for (pattern, _) in patterns {
+            guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
+            let ranges = regex.matches(in: sample, range: fullRange).map(\.range)
+            if let priority = syntaxFallbackPriority(for: pattern) {
+                fallbackRanges.append(contentsOf: ranges.map { (priority, $0) })
+            } else {
+                baseRanges.append(contentsOf: ranges)
+            }
+        }
+
+        var occupied = mergedSyntaxRanges(baseRanges)
+        let acceptedFallbacks = fallbackRanges.sorted { $0.0 < $1.0 }.compactMap { _, range -> NSRange? in
+            guard syntaxRangeIsUnoccupied(range, occupiedRanges: occupied) else { return nil }
+            occupied = mergedSyntaxRanges(occupied + [range])
+            return range
+        }
+
+        let nsSample = sample as NSString
+        XCTAssertFalse(acceptedFallbacks.contains { nsSample.substring(with: $0) == "AppStorage" })
+        XCTAssertFalse(acceptedFallbacks.contains { nsSample.substring(with: $0) == "SettingsAppearance" })
+        XCTAssertFalse(acceptedFallbacks.contains { nsSample.substring(with: $0) == "Single" })
+        XCTAssertTrue(acceptedFallbacks.contains { nsSample.substring(with: $0) == "NSVisualEffectView" })
+        XCTAssertTrue(acceptedFallbacks.contains { nsSample.substring(with: $0) == "configure" })
+    }
+
     func testHTMLAndCSSPatternsMatchTagsAndProperties() {
         let htmlPatterns = getSyntaxPatterns(for: "html", colors: colors)
         let cssPatterns = getSyntaxPatterns(for: "css", colors: colors)

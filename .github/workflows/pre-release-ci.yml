@@ -1,7 +1,7 @@
 name: Pre-release CI
 
-# CodeQL default setup supplies the required scan for PRs targeting either
-# protected branch alongside these repository-specific release checks.
+# Fast, platform-independent PR checks. Swift builds and runtime tests are
+# covered by Swift CI when source changes; release gates cover the final tag.
 on:
   pull_request:
     branches: ["main", "develop"]
@@ -22,31 +22,10 @@ jobs:
     concurrency:
       group: pre-release-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
-    runs-on: xcode-27
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        env:
-          REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REF: ${{ github.sha }}
-          SERVER_URL: ${{ github.server_url }}
-        run: |
-          set -euo pipefail
-          SERVER_HOST="${SERVER_URL#https://}"
-          git init
-          git remote add origin "https://x-access-token:${GH_TOKEN}@${SERVER_HOST}/${REPO}.git"
-          git fetch --depth=1 origin "$REF"
-          git checkout FETCH_HEAD
-
-      - name: Verify Xcode 27 SDK family
-        env:
-          NVE_ALLOW_BETA_XCODE: 1
-        run: |
-          set -euo pipefail
-          source scripts/ci/select_xcode17.sh
-          require_xcode_major 27
-          require_sdk_major 27 macosx iphoneos iphonesimulator xros
-          xcodebuild -version
+        uses: actions/checkout@v5
 
       - name: Validate basic release docs format
         run: |

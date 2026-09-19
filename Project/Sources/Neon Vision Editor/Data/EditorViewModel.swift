@@ -92,23 +92,41 @@ struct DecodedFileText: Sendable {
 }
 
 private enum EditorLoadHelper {
+    nonisolated static let supportedTextFilenames: Set<String> = [
+        "package.resolved", "dockerfile", "makefile", "gnumakefile"
+    ]
+    nonisolated static let supportedTextExtensions: Set<String> = [
+        "swift", "py", "pyi", "js", "mjs", "cjs", "ts", "tsx", "php", "phtml",
+        "bak", "csv", "tsv", "cif", "mcif", "txt", "toml", "nix", "eml", "ini", "yaml", "yml", "xml", "svg", "plist", "sql",
+        "log", "vim", "ipynb", "java", "kt", "kts", "go", "rb", "rs", "ps1", "psm1",
+        "html", "htm", "xhtml", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
+        "m", "mm", "cs", "json", "jsonc", "json5", "ndjson", "md", "markdown", "env", "proto",
+        "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh", "fish", "pl", "pm", "lua", "r",
+        "tf", "tfvars", "hcl", "xcconfig", "strings", "stringsdict", "jsx",
+        "typ", "tex", "latex", "bib", "sty", "cls", "vasp", "isoviz", "upf", "xyz", "xsf"
+    ]
     // Sidebar-opened project files should reach the editor quickly; full scalar-by-scalar
     // sanitization is only worth the cost for smaller documents.
     nonisolated static let fastLoadSanitizeByteThreshold = 512_000
-    nonisolated static let largeFileCandidateByteThreshold = 2_000_000
+    // Normal text files stay fully editable through 99 MB on every platform.
+    // Preparing their piece table off the main actor is an implementation detail,
+    // not a reason to replace the editor with a bounded large-file projection.
+    nonisolated static let backgroundDocumentPreparationByteThreshold = 2_000_000
+    nonisolated static let excessiveFileByteThreshold = 100_000_000
+    nonisolated static let largeFileCandidateByteThreshold = excessiveFileByteThreshold
     // A partial read prevents multi-hundred-megabyte logs from being copied into the
     // text system. The result is intentionally read-only so it can never overwrite
     // the source with an incomplete buffer.
-    nonisolated static let partialOpenByteThreshold = 100_000_000
+    nonisolated static let partialOpenByteThreshold = excessiveFileByteThreshold
     nonisolated static let partialOpenPreviewByteLimit = 4_000_000
     // Structured documents can make TextKit, syntax highlighting, and WebKit
     // parse the entire source repeatedly. Keep these large opens responsive by
     // showing a bounded read-only source preview first.
-    nonisolated static let largeStructuredTextPreviewByteThreshold = 100_000_000
+    nonisolated static let largeStructuredTextPreviewByteThreshold = excessiveFileByteThreshold
     nonisolated static let largeStructuredTextPreviewByteLimit = 1_000_000
     // Every format uses the bounded path at this size. Materializing arbitrarily
     // large text in TextKit is what makes opening appear to hang.
-    nonisolated static let hugeTextPreviewByteThreshold = 100_000_000
+    nonisolated static let hugeTextPreviewByteThreshold = excessiveFileByteThreshold
     nonisolated static let hugeTextPreviewByteLimit = 1_000_000
     nonisolated static let structuredTextPreviewExtensions: Set<String> = [
         "css", "csv", "html", "htm", "ipynb", "json", "js", "jsx", "md",
@@ -728,6 +746,7 @@ class EditorViewModel {
     private static let deferredLanguageDetectionUTF16Length = 180_000
     private static let deferredLanguageDetectionDelayNanos: UInt64 = 220_000_000
     private static let deferredLanguageDetectionSampleUTF16Length = 180_000
+    private static let largeContentLanguageDetectionSampleUTF16Length = 120_000
     private static let networkVolumePollingIntervalNanos: UInt64 = 3_000_000_000
 
     // MARK: - Observable State and Indexes
@@ -767,7 +786,8 @@ class EditorViewModel {
     private var tabContentVersion: Int = 0
     private var tabMetadataVersion: Int = 0
     private var tabPersistenceVersion: Int = 0
-	    
+    @ObservationIgnored private var tabPersistenceRevisionGeneration = 0
+
     var selectedTab: TabData? {
         get {
             guard let selectedTabID, let index = tabIndexByID[selectedTabID], tabs.indices.contains(index) else {
@@ -852,7 +872,21 @@ class EditorViewModel {
         } else {
             tabMetadataVersion &+= 1
         }
-        tabPersistenceVersion &+= 1
+        scheduleTabPersistenceRevision()
+    }
+
+    private func scheduleTabPersistenceRevision() {
+        // Startup restoration and file loading can mutate tab structure,
+        // metadata, and content across several adjacent run-loop turns. A
+        // throttle still emits repeatedly when drawing is blocked. Debounce the
+        // aggregate signal from the last mutation so restoration publishes one
+        // stable snapshot instead of several updates in one eventual frame.
+        tabPersistenceRevisionGeneration &+= 1
+        let generation = tabPersistenceRevisionGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.075) { [weak self] in
+            guard let self, self.tabPersistenceRevisionGeneration == generation else { return }
+            self.tabPersistenceVersion &+= 1
+        }
     }
 
     // Command pipeline for tab-state mutations.
@@ -2961,8 +2995,7 @@ class EditorViewModel {
             }
         }
 
-        let supportedFilenames: Set<String> = ["package.resolved", "dockerfile", "makefile", "gnumakefile"]
-        if supportedFilenames.contains(fileName) {
+        if EditorLoadHelper.supportedTextFilenames.contains(fileName) {
             return true
         }
 
@@ -2970,17 +3003,7 @@ class EditorViewModel {
             return true // Unknown dotfiles and extensionless text are valid documents.
         }
 
-        let knownSupportedExtensions: Set<String> = [
-            "swift", "py", "pyi", "js", "mjs", "cjs", "ts", "tsx", "php", "phtml",
-            "bak", "csv", "tsv", "cif", "mcif", "txt", "toml", "nix", "eml", "ini", "yaml", "yml", "xml", "svg", "plist", "sql",
-            "log", "vim", "ipynb", "java", "kt", "kts", "go", "rb", "rs", "ps1", "psm1",
-            "html", "htm", "xhtml", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
-            "m", "mm", "cs", "json", "jsonc", "json5", "ndjson", "md", "markdown", "env", "proto",
-            "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh", "fish", "pl", "pm", "lua", "r",
-            "tf", "tfvars", "hcl", "xcconfig", "strings", "stringsdict", "jsx",
-            "typ", "tex", "latex", "bib", "sty", "cls", "vasp", "isoviz", "upf", "xyz", "xsf", "png", "pdf"
-        ]
-        if knownSupportedExtensions.contains(ext) {
+        if EditorLoadHelper.supportedTextExtensions.contains(ext) || isPreviewOnlyFileURL(url) {
             return true
         }
 
@@ -3025,6 +3048,14 @@ class EditorViewModel {
         byteCount: Int
     ) -> Int? {
         EditorLoadHelper.boundedPreviewLimit(forExtension: fileExtension, byteCount: byteCount)
+    }
+
+    nonisolated static var supportedTextExtensionsForTesting: Set<String> {
+        EditorLoadHelper.supportedTextExtensions
+    }
+
+    nonisolated static var supportedTextFilenamesForTesting: Set<String> {
+        EditorLoadHelper.supportedTextFilenames
     }
 
     nonisolated static func isFileBackedEligible(
@@ -3209,6 +3240,13 @@ class EditorViewModel {
             if max(totalByteCount, data.count) >= EditorLoadHelper.largeFileCandidateByteThreshold,
                Self.isFileBackedEligible(url: url, encoding: raw.encoding, isRemote: false, isPartialPreview: isPartialPreview) {
                 fileBackedDocument = try? Self.prepareFileBackedDocument(from: url, encoding: nil)
+            } else if !isPartialPreview,
+                      data.count >= EditorLoadHelper.backgroundDocumentPreparationByteThreshold {
+                // Build line indexes and piece-table storage on the loader task.
+                // This remains an ordinary in-memory editable document (`url == nil`),
+                // so iOS receives complete text instead of the inert binding used by
+                // the URL-backed virtual viewport.
+                fileBackedDocument = FileBackedTextDocument(content: sanitizedContent, encoding: raw.encoding)
             } else {
                 fileBackedDocument = nil
             }
@@ -3346,6 +3384,11 @@ class EditorViewModel {
                 fileBackedDocument: result.fileBackedDocument
             )
         )
+        if let index = tabIndex(for: tabID),
+           !tabs[index].languageLocked,
+           tabs[index].document.utf16Length >= Self.largeContentLanguageBypassUTF16Length {
+            applyLargeContentLanguageHintIfNeeded(at: index)
+        }
         EditorPerformanceMonitor.shared.markLoadedTabStateApplied(tabID: tabID)
         if !isExternalRefresh {
             if let fileURL = tabs.first(where: { $0.id == tabID })?.fileURL {
@@ -3438,12 +3481,75 @@ class EditorViewModel {
 
     private func applyLargeContentLanguageHintIfNeeded(at index: Int) {
         let tabID = tabs[index].id
+        guard !tabs[index].languageLocked else { return }
         let nameExt = URL(fileURLWithPath: tabs[index].name).pathExtension.lowercased()
-        if !tabs[index].languageLocked,
-           let mapped = LanguageDetector.shared.preferredLanguage(for: tabs[index].fileURL) ??
-                        languageMap[nameExt] {
+        if let mapped = LanguageDetector.shared.preferredLanguage(for: tabs[index].fileURL) ??
+            languageMap[nameExt] {
             _ = applyTabCommand(.setLanguage(tabID: tabID, language: mapped, lock: false))
+            return
         }
+
+        let sampleLength = min(
+            tabs[index].document.utf16Length,
+            Self.largeContentLanguageDetectionSampleUTF16Length
+        )
+        guard sampleLength > 0,
+              let sample = try? tabs[index].document.text(
+                inUTF16Range: NSRange(location: 0, length: sampleLength)
+              ) else { return }
+        let expectedContentRevision = tabs[index].contentRevision
+
+        cancelPendingLanguageDetection(for: tabID)
+        let task = Task { [weak self] in
+            let detectedLanguage = await Task.detached(priority: .utility) {
+                Self.largeUntypedContentLanguageHint(sample)
+            }.value
+            guard !Task.isCancelled,
+                  let detectedLanguage,
+                  let self,
+                  let currentIndex = self.tabIndex(for: tabID),
+                  self.tabs[currentIndex].contentRevision == expectedContentRevision,
+                  !self.tabs[currentIndex].languageLocked else { return }
+            _ = self.applyTabCommand(
+                .setLanguage(tabID: tabID, language: detectedLanguage, lock: false)
+            )
+        }
+        pendingLanguageDetectionTasks[tabID] = task
+    }
+
+    private nonisolated static func largeUntypedContentLanguageHint(_ sample: String) -> String? {
+        let lower = sample.lowercased()
+        let trimmed = lower.trimmingCharacters(in: .whitespacesAndNewlines)
+        if lower.contains("<!doctype netscape-bookmark-file") ||
+            lower.contains("<!doctype html") || lower.contains("<html") ||
+            lower.contains("<body") || lower.contains("<dl") ||
+            lower.contains("<dt") || lower.contains("<a href") {
+            return "html"
+        }
+        if lower.contains("<?xml") || lower.contains("<svg") || lower.contains("<plist") {
+            return "xml"
+        }
+        if trimmed.hasPrefix("{") || trimmed.hasPrefix("[") {
+            return "json"
+        }
+        if lower.contains("import swiftui") || lower.contains("import foundation") ||
+            lower.contains("@main") || lower.contains(": view") {
+            return "swift"
+        }
+        if lower.hasPrefix("#!") {
+            if lower.contains("python") { return "python" }
+            if lower.contains("zsh") { return "zsh" }
+            if lower.contains("bash") || lower.contains("/bin/sh") { return "bash" }
+            if lower.contains("node") { return "javascript" }
+            if lower.contains("ruby") { return "ruby" }
+        }
+        if lower.contains("<?php") || lower.contains("$this->") { return "php" }
+        if lower.contains("function ") && (lower.contains("const ") || lower.contains("let ")) {
+            return "javascript"
+        }
+        if lower.contains("def ") && lower.contains(":") { return "python" }
+        if lower.contains("select ") && lower.contains(" from ") { return "sql" }
+        return nil
     }
 
     private func applyLanguageDetectionHeuristics(at index: Int, content: String) {

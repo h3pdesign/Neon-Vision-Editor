@@ -9,6 +9,57 @@ private enum SyntaxRegexCache {
     nonisolated static let storage = NVELock<[String: NSRegularExpression]>([:])
 }
 
+private enum SyntaxIdentifierCoverage {
+    nonisolated static let languages: Set<String> = [
+        "swift", "ada", "python", "javascript", "php", "java", "kotlin", "go", "ruby", "rust",
+        "fish", "perl", "lua", "r", "c", "cpp", "csharp", "objective-c"
+    ]
+}
+
+nonisolated let syntaxFallbackTypePattern = #"\b[A-Z][A-Za-z0-9_$]*\b"#
+nonisolated let syntaxFallbackCallPattern = #"\b(?!if\b|for\b|while\b|switch\b|catch\b|func\b|function\b|return\b)[A-Za-z_$][A-Za-z0-9_$]*(?=\s*\()"#
+
+/// Generic identifier coverage is a fallback only. Existing language tokens
+/// (including comments, strings, attributes, and declarations) always win.
+nonisolated func syntaxFallbackPriority(for pattern: String) -> Int? {
+    switch pattern {
+    case syntaxFallbackTypePattern: 0
+    case syntaxFallbackCallPattern: 1
+    default: nil
+    }
+}
+
+nonisolated func mergedSyntaxRanges(_ ranges: [NSRange]) -> [NSRange] {
+    let sorted = ranges
+        .filter { $0.location != NSNotFound && $0.length > 0 }
+        .sorted { $0.location == $1.location ? $0.length > $1.length : $0.location < $1.location }
+    guard var current = sorted.first else { return [] }
+    var result: [NSRange] = []
+    result.reserveCapacity(sorted.count)
+    for range in sorted.dropFirst() {
+        if range.location <= NSMaxRange(current) {
+            current.length = max(NSMaxRange(current), NSMaxRange(range)) - current.location
+        } else {
+            result.append(current)
+            current = range
+        }
+    }
+    result.append(current)
+    return result
+}
+
+nonisolated func syntaxRangeIsUnoccupied(_ range: NSRange, occupiedRanges: [NSRange]) -> Bool {
+    guard range.location != NSNotFound, range.length > 0 else { return false }
+    var low = 0
+    var high = occupiedRanges.count
+    while low < high {
+        let middle = (low + high) / 2
+        if NSMaxRange(occupiedRanges[middle]) <= range.location { low = middle + 1 }
+        else { high = middle }
+    }
+    return low == occupiedRanges.count || occupiedRanges[low].location >= NSMaxRange(range)
+}
+
 /// Lets queued syntax work stop between regex passes after a newer edit wins.
 /// NSRegularExpression cannot interrupt an individual match, so callers check
 /// this boundary before starting the next potentially expensive pattern.
@@ -486,7 +537,7 @@ func syntaxEmphasisPatterns(
 // MARK: - Syntax Pattern Lookup
 
 // Regex patterns per language mapped to colors. Keep light-weight for performance.
-func getSyntaxPatterns(
+private func baseSyntaxPatterns(
     for language: String,
     colors: SyntaxColors,
     profile: SyntaxPatternProfile = .full
@@ -1024,6 +1075,25 @@ func getSyntaxPatterns(
     default:
         return [:]
     }
+}
+
+/// Adds two cached, viewport-safe identifier passes to programming languages
+/// whose base grammars otherwise leave framework types and call sites plain.
+/// Keeping this centralized prevents platform-specific gaps without increasing
+/// whole-document work: every editor still applies the patterns only to its
+/// existing bounded highlight range.
+func getSyntaxPatterns(
+    for language: String,
+    colors: SyntaxColors,
+    profile: SyntaxPatternProfile = .full
+) -> [String: Color] {
+    let canonical = canonicalSyntaxLanguage(language)
+    var patterns = baseSyntaxPatterns(for: canonical, colors: colors, profile: profile)
+    guard SyntaxIdentifierCoverage.languages.contains(canonical) else { return patterns }
+
+    patterns[syntaxFallbackTypePattern] = colors.type
+    patterns[syntaxFallbackCallPattern] = colors.def
+    return patterns
 }
 
 // Simple sheet to edit and persist API tokens for external AI providers.

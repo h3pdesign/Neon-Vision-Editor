@@ -1,8 +1,219 @@
 import XCTest
+#if os(macOS)
+import AppKit
+import SwiftUI
+#endif
 @testable import Neon_Vision_Editor
 
 @MainActor
 final class EditorSettingsDefaultsTests: XCTestCase {
+#if os(macOS)
+    func testMacSettingsTabRoutePersistsAndPublishesRequestedTab() async throws {
+        final class Capture: @unchecked Sendable {
+            var tab: String?
+        }
+
+        let suiteName = "MacSettingsTabRouteTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let notificationCenter = NotificationCenter()
+        let capture = Capture()
+        let observer = notificationCenter.addObserver(
+            forName: MacSettingsTabRoute.didRequestTab,
+            object: nil,
+            queue: nil
+        ) { notification in
+            capture.tab = notification.object as? String
+        }
+        defer {
+            notificationCenter.removeObserver(observer)
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        MacSettingsTabRoute.request(
+            "themes",
+            defaults: defaults,
+            notificationCenter: notificationCenter
+        )
+
+        XCTAssertEqual(
+            EditorPreferenceWriter.shared.object(
+                forKey: SettingsPreferenceKey.activeTab,
+                defaults: defaults
+            ) as? String,
+            "themes"
+        )
+        await EditorPreferenceWriter.shared.flush()
+        XCTAssertEqual(defaults.string(forKey: SettingsPreferenceKey.activeTab), "themes")
+        XCTAssertEqual(capture.tab, "themes")
+    }
+
+    func testMacSettingsOpeningAndTabSwitchingStayResponsive() async throws {
+        let defaults = UserDefaults.standard
+        let previousTab = defaults.object(forKey: SettingsPreferenceKey.activeTab)
+        defer {
+            if let previousTab {
+                defaults.set(previousTab, forKey: SettingsPreferenceKey.activeTab)
+            } else {
+                defaults.removeObject(forKey: SettingsPreferenceKey.activeTab)
+            }
+        }
+        defaults.set("general", forKey: SettingsPreferenceKey.activeTab)
+
+        let startedOpening = ProcessInfo.processInfo.systemUptime
+        let root = NeonSettingsView()
+            .environment(EditorViewModel())
+            .environmentObject(SupportPurchaseManager(loadProducts: { [] }, canMakePayments: { false }))
+            .environmentObject(AppUpdateManager())
+        let rootConstructionElapsed = ProcessInfo.processInfo.systemUptime - startedOpening
+        let hosting = NSHostingView(rootView: root)
+        let hostingConstructionElapsed = ProcessInfo.processInfo.systemUptime - startedOpening - rootConstructionElapsed
+        hosting.frame = NSRect(x: 0, y: 0, width: 900, height: 700)
+        let window = NSWindow(
+            contentRect: hosting.frame,
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.contentView = hosting
+        if let visibleFrame = NSScreen.main?.visibleFrame {
+            window.setFrameOrigin(
+                NSPoint(
+                    x: visibleFrame.midX - window.frame.width / 2,
+                    y: visibleFrame.midY - window.frame.height / 2
+                )
+            )
+        }
+        let initialOrigin = window.frame.origin
+        let windowConstructionElapsed = ProcessInfo.processInfo.systemUptime
+            - startedOpening
+            - rootConstructionElapsed
+            - hostingConstructionElapsed
+        window.makeKeyAndOrderFront(nil)
+        try await Task.sleep(for: .milliseconds(100))
+        let openingElapsed = ProcessInfo.processInfo.systemUptime - startedOpening
+        XCTAssertEqual(window.frame.origin.x, initialOrigin.x, accuracy: 1)
+        XCTAssertEqual(window.frame.origin.y, initialOrigin.y, accuracy: 1)
+        defer {
+            window.orderOut(nil)
+            window.close()
+        }
+
+        let startedSwitching = ProcessInfo.processInfo.systemUptime
+        var requestDurations: [TimeInterval] = []
+        var layoutDurations: [String: TimeInterval] = [:]
+        var paneHeights: [String: CGFloat] = [:]
+        let tabs = [
+            "general", "editor", "toolbar", "python", "templates", "themes",
+            "support", "ai", "remote", "shortcuts", "updates"
+        ]
+        for tab in tabs {
+            let tabStarted = ProcessInfo.processInfo.systemUptime
+            MacSettingsTabRoute.request(tab)
+            requestDurations.append(ProcessInfo.processInfo.systemUptime - tabStarted)
+            try await Task.sleep(for: .milliseconds(50))
+            let layoutStarted = ProcessInfo.processInfo.systemUptime
+            hosting.layoutSubtreeIfNeeded()
+            paneHeights[tab] = hosting.fittingSize.height
+            layoutDurations[tab] = ProcessInfo.processInfo.systemUptime - layoutStarted
+        }
+        let switchingElapsed = ProcessInfo.processInfo.systemUptime - startedSwitching
+
+        XCTAssertLessThan(
+            openingElapsed,
+            1.5,
+            "Constructing and opening Settings must not synchronously initialize every pane "
+                + "(root: \(rootConstructionElapsed)s, hosting: \(hostingConstructionElapsed)s, "
+                + "window: \(windowConstructionElapsed)s)"
+        )
+        XCTAssertTrue(
+            requestDurations.allSatisfy { $0 < 0.1 },
+            "Selecting a Settings tab must return within one interaction frame"
+        )
+        XCTAssertEqual(paneHeights.count, tabs.count)
+        XCTAssertTrue(
+            paneHeights.values.allSatisfy { $0 > 0 },
+            "Every Settings pane must expose a complete intrinsic height: \(paneHeights)"
+        )
+        XCTAssertGreaterThan(
+            Set(paneHeights.values.map { Int($0.rounded()) }).count,
+            3,
+            "Settings panes must retain their individual intrinsic heights: \(paneHeights)"
+        )
+        XCTAssertLessThan(
+            switchingElapsed,
+            2.0,
+            "Switching through every Settings pane must remain interactive; layout durations: \(layoutDurations)"
+        )
+    }
+
+    func testMacSettingsUsesNativeContentSizingBounds() {
+        XCTAssertEqual(NeonSettingsView.macSettingsContentWidth, 900)
+    }
+
+    func testMacSettingsRestoresNativeTitlebarMaterial() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.toolbar = NSToolbar(identifier: "settings-header-regression")
+        window.toolbarStyle = .unified
+        window.titleVisibility = .visible
+        window.title = "General"
+        window.titlebarAppearsTransparent = true
+        window.backgroundColor = .systemRed
+        if #available(macOS 13.0, *) {
+            window.titlebarSeparatorStyle = .none
+        }
+
+        SettingsWindowConfigurator.restoreNativeTitlebarMaterial(on: window)
+
+        XCTAssertEqual(window.toolbarStyle, .preference)
+        XCTAssertEqual(window.titleVisibility, .hidden)
+        XCTAssertEqual(window.title, "")
+        XCTAssertFalse(window.titlebarAppearsTransparent)
+        XCTAssertEqual(window.backgroundColor, NSColor.systemRed)
+        if #available(macOS 13.0, *) {
+            XCTAssertEqual(window.titlebarSeparatorStyle, .automatic)
+        }
+    }
+
+    func testMacSettingsConfiguresWindowWhenBridgeIsAttached() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        let attachmentView = SettingsWindowAttachmentView(frame: .zero)
+        var attachedWindow: NSWindow?
+        attachmentView.onWindowAttached = { attachedWindow = $0 }
+
+        window.contentView?.addSubview(attachmentView)
+
+        XCTAssertTrue(attachedWindow === window)
+    }
+
+    func testMacSettingsTabKeepsIntrinsicContentWhenInactive() {
+        let page = NeonSettingsView.SettingsTabPage(
+            title: "General",
+            systemImage: "gearshape",
+            tag: "general",
+            selectedTag: "themes",
+            content: { AnyView(Color.clear.frame(width: 640, height: 480)) }
+        )
+        let hosting = NSHostingView(rootView: page)
+
+        XCTAssertGreaterThanOrEqual(
+            hosting.fittingSize.height,
+            480,
+            "An inactive macOS Settings pane must keep its intrinsic size available to the native TabView"
+        )
+    }
+#endif
+
     func testSupportAlertQueuesReplacementUntilFrameworkDismissal() {
         var state = SupportStatusAlertPresentation()
         state.receive("First")

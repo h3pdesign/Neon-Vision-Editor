@@ -163,15 +163,8 @@ final class WindowTranslucencyTests: XCTestCase {
         )
     }
 
-    func testMacSettingsWindowPolicyRemainsResizableAndScrollableAtMinimumSize() {
-        let sizePolicy = NeonSettingsView.macSettingsWindowSizePolicy()
-
-        XCTAssertGreaterThanOrEqual(sizePolicy.min.width, 600)
-        XCTAssertLessThanOrEqual(sizePolicy.min.height, 360)
-        XCTAssertEqual(sizePolicy.ideal.width, 900)
-        XCTAssertGreaterThanOrEqual(sizePolicy.ideal.height, 900)
-        XCTAssertGreaterThan(sizePolicy.ideal.width, sizePolicy.min.width)
-        XCTAssertGreaterThan(sizePolicy.ideal.height, sizePolicy.min.height)
+    func testMacSettingsNativeContentSizingKeepsStandardWidth() {
+        XCTAssertEqual(NeonSettingsView.macSettingsContentWidth, 900)
     }
 
     func testMacSettingsWindowTranslucencyLeavesNativeBackdropVisible() {
@@ -204,6 +197,23 @@ final class WindowTranslucencyTests: XCTestCase {
         XCTAssertEqual(balanced.alphaComponent, 0, accuracy: 0.001)
         XCTAssertEqual(vibrant.alphaComponent, 0, accuracy: 0.001)
         XCTAssertEqual(disabled, NSColor.windowBackgroundColor)
+    }
+
+    func testMacSettingsTitlebarUsesNativeMaterialWhileContentRemainsTranslucent() {
+        let contentBackground = SettingsWindowConfigurator.settingsWindowBackgroundColor(
+            translucentEnabled: true,
+            translucencyModeRaw: "balanced",
+            appearanceRaw: "system",
+            effectiveColorScheme: .light
+        )
+        let titlebarBackground = SettingsWindowConfigurator.settingsTitlebarBackgroundColor(
+            contentBackgroundColor: contentBackground,
+            translucentEnabled: true
+        )
+
+        XCTAssertEqual(contentBackground.alphaComponent, 0, accuracy: 0.001)
+        XCTAssertEqual(titlebarBackground, contentBackground)
+        XCTAssertEqual(titlebarBackground.alphaComponent, 0, accuracy: 0.001)
     }
 
     func testNativeBackdropMovesFromFrostedToTransparentInBothAppearances() {

@@ -6,6 +6,47 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- Edit complete text documents below 100 MB without entering the excessive-file preview mode.
+- Read long lines on iPhone and iPad without losing text when line wrap is disabled.
+- Apply themes and formatting consistently, with less repeated work when using Settings.
+
+### Highlights
+
+- Refines mobile toolbars with system-adaptive glass, complete action slots, and an optional larger-symbol setting.
+
+### Fixes
+
+- Fixes clipped unwrapped text on iPhone and iPad by keeping the drawing canvas and horizontal scrolling geometry aligned, including cursor reveal, keyboard transitions, and large-document installs.
+- Restores native macOS Settings pane sizing and titlebar material, removes repeated window repositioning, and keeps Settings navigation separate from editor-wide preference refreshes.
+- Makes the custom mobile toolbar action-count setting include persistent controls and keeps Settings and Help available.
+- Coalesces startup session observations and caches ordinary in-memory document text to avoid repeated materialization during view updates.
+
+- Keeps macOS Settings controls responsive by eliminating the duplicate editor recoloring and layout pass that followed every theme, formatting, or palette change.
+
+- Refreshes the visible macOS editor immediately when themes change, preserves the loaded viewport during recoloring, applies bold keywords and Markdown headings plus italic comments and underlined links in the virtual renderer, and restores framework-type and function-call highlighting across supported programming languages without splitting existing comments, strings, attributes, or declarations or expanding work beyond the existing visible range.
+
+- Keeps the iPhone and iPad editor toolbar at the standard compact height, adds optional larger symbols, restores colored preset icons with a distinct All Actions symbol, uses one-line abbreviated captions without sacrificing full accessibility labels, removes empty context-action slots, presents five complete iPhone actions before horizontal scrolling, switches the auto-minimized scrolling toolbar to icons only, and applies the same system-adaptive Liquid Glass setting to the toolbar, status pill, and keyboard bar.
+
+- Keeps syntax highlighting synchronized with the visible viewport while scrolling large programming files on iPhone and iPad, consistently honors the Large File Syntax setting, and applies responsive editor optimizations from existing document metadata without rescanning or copying text. Files below 100 MB remain normal complete editable documents.
+
+- Opens CSV, HTML, JSON, Markdown, source code, and other supported text files below 100 MB as complete editable documents on every platform, while keeping the excessive-file preview boundary at 100 MB.
+- Restores syntax highlighting for large untitled or extensionless documents on iPhone, iPad, and macOS by detecting their language from a bounded content sample.
+- Replaces the hard-coded clear iPhone and iPad bottom toolbar glass that distorted underlying editor text with readable system-adaptive Liquid Glass and adds enabled-by-default button captions with a Settings toggle.
+
+### Breaking changes
+
+- macOS builds now target Apple Silicon only; Intel Macs are no longer supported.
+
+### Migration
+
+- Intel Mac users must remain on an earlier compatible release. No document migration is required.
+
+### Maintenance
+
+- Advances the post-v1.8.2 development version to 1.8.3 (1053).
+
 ## [v1.8.2] - 2026-09-18
 
 ### Why Upgrade

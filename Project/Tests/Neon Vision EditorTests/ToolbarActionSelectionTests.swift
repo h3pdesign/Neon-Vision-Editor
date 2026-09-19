@@ -81,6 +81,64 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertEqual(visible.map(\.rawValue), ["openFile", "undo", "settings", "help"])
     }
 
+    func testCustomVisibleActionsReservePersistentIPhoneControls() {
+        let visible = ToolbarActionSelection.visibleActions(
+            enabledActions: TestAction.allCases,
+            requestedCount: 6,
+            preset: .custom,
+            reservedControlCount: ToolbarActionSelection.persistentMobileControlCount,
+            requiredActions: [.settings, .help]
+        )
+
+        XCTAssertEqual(visible.map(\.rawValue), ["openFile", "undo", "settings", "help"])
+        XCTAssertEqual(visible.count + ToolbarActionSelection.persistentMobileControlCount, 6)
+    }
+
+    func testRequiredActionsRemainVisibleAtMinimumCustomCount() {
+        let visible = ToolbarActionSelection.visibleActions(
+            enabledActions: TestAction.allCases,
+            requestedCount: 4,
+            preset: .custom,
+            reservedControlCount: ToolbarActionSelection.persistentMobileControlCount,
+            requiredActions: [.settings, .help]
+        )
+
+        XCTAssertEqual(visible, [.settings, .help])
+        XCTAssertEqual(visible.count + ToolbarActionSelection.persistentMobileControlCount, 4)
+    }
+
+    func testCustomSelectableLimitIncludesPersistentAndUniversalControls() {
+        XCTAssertEqual(
+            ToolbarActionSelection.customSelectableActionLimit(
+                requestedCount: 6,
+                fallback: TestAction.allCases.count
+            ),
+            2
+        )
+    }
+
+    func testAllCustomActionsAreNotReducedByPersistentControls() {
+        let visible = ToolbarActionSelection.visibleActions(
+            enabledActions: TestAction.allCases,
+            requestedCount: 99,
+            preset: .custom,
+            reservedControlCount: ToolbarActionSelection.persistentMobileControlCount
+        )
+
+        XCTAssertEqual(visible.map(\.rawValue), TestAction.allCases.map(\.rawValue))
+    }
+
+    func testLimitedSelectedIDsDropsStaleSelectionBeyondCurrentLimit() {
+        let selected = ToolbarActionSelection.limitedSelectedIDs(
+            from: "openFile,undo,settings,help,clearEditor,insertTemplate,newTab",
+            orderedIDs: TestAction.allCases.map(\.rawValue),
+            excluding: ToolbarActionSelection.universallyAvailableMobileActionIDs,
+            limit: 2
+        )
+
+        XCTAssertEqual(selected, Set(["openFile", "undo"]))
+    }
+
     func testAllActionsPresetBypassesThePinnedActionLimit() {
         let visible = ToolbarActionSelection.visibleActions(
             enabledActions: TestAction.allCases,
@@ -140,6 +198,58 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertTrue(ToolbarPreset.all.mobileIDs.contains("markdownProjectPreview"))
         XCTAssertTrue(ToolbarPreset.all.mobileIDs.contains("fontIncrease"))
         XCTAssertEqual(ToolbarPreset.mobileSelectableIDs.count, Set(ToolbarPreset.mobileSelectableIDs).count)
+    }
+
+    func testEveryMobileToolbarActionHasAReadableButtonLabel() {
+        let labeledActionIDs = Set(ToolbarIconOption.allCases.map(\.rawValue))
+        XCTAssertTrue(Set(ToolbarPreset.mobileSelectableIDs).isSubset(of: labeledActionIDs))
+    }
+
+    func testAllActionsPresetUsesDistinctOverflowSymbol() {
+        XCTAssertEqual(ToolbarPreset.all.icon, "ellipsis.circle")
+        XCTAssertNotEqual(ToolbarPreset.all.icon, "square.grid.3x3")
+    }
+
+    func testMobileToolbarUsesCompactSingleLinePresentation() {
+        XCTAssertEqual(MobileToolbarPresentationPolicy.standardHeight, 52)
+        XCTAssertEqual(MobileToolbarPresentationPolicy.labeledItemWidth, 52)
+        XCTAssertTrue(MobileToolbarPresentationPolicy.showsButtonLabels(
+            preferenceEnabled: true,
+            toolbarMinimized: false
+        ))
+        XCTAssertFalse(MobileToolbarPresentationPolicy.showsButtonLabels(
+            preferenceEnabled: true,
+            toolbarMinimized: true
+        ))
+        XCTAssertEqual(MobileToolbarPresentationPolicy.symbolSize(usesLargeSymbols: true), 25)
+        XCTAssertEqual(MobileToolbarPresentationPolicy.symbolSize(usesLargeSymbols: false), 20)
+        XCTAssertEqual(MobileToolbarPresentationPolicy.compactTitle("Indentation Guides"), "Guides")
+        XCTAssertEqual(MobileToolbarPresentationPolicy.compactTitle("Decrease Font Size"), "Font −")
+        XCTAssertEqual(MobileToolbarPresentationPolicy.compactTitle("Export PDF"), "PDF")
+        XCTAssertEqual(MobileToolbarPresentationPolicy.compactTitle("Settings"), "Settings")
+    }
+
+    func testUnavailableContextualActionsDoNotReserveBlankToolbarSlots() {
+        XCTAssertFalse(MobileToolbarPresentationPolicy.isContextualActionAvailable(
+            actionID: "codeMinimap",
+            supportsMinimap: false,
+            showsMarkdownPreview: false,
+            isMarkdownDocument: false
+        ))
+        for actionID in ["markdownPreviewExport", "markdownPreviewStyle"] {
+            XCTAssertFalse(MobileToolbarPresentationPolicy.isContextualActionAvailable(
+                actionID: actionID,
+                supportsMinimap: true,
+                showsMarkdownPreview: false,
+                isMarkdownDocument: true
+            ))
+            XCTAssertTrue(MobileToolbarPresentationPolicy.isContextualActionAvailable(
+                actionID: actionID,
+                supportsMinimap: true,
+                showsMarkdownPreview: true,
+                isMarkdownDocument: true
+            ))
+        }
     }
 
     func testNamedPresetsIgnoreCustomActionIDs() {

@@ -125,6 +125,161 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(document.stringCallCount, 0)
     }
 
+    func testThemeRefreshPreservesLoadedViewportWithoutAnotherDocumentRead() async {
+        let defaults = UserDefaults.standard
+        let boldKeywordsKey = SettingsPreferenceKey.themeBoldKeywords
+        let previousBoldKeywords = defaults.object(forKey: boldKeywordsKey)
+        defer {
+            if let previousBoldKeywords { defaults.set(previousBoldKeywords, forKey: boldKeywordsKey) }
+            else { defaults.removeObject(forKey: boldKeywordsKey) }
+        }
+        defaults.set(false, forKey: boldKeywordsKey)
+
+        let sourceLine = "return NSVisualEffectView()"
+        let source = sourceLine + "\n"
+        let document = CountingEditorDocument(backing: FileBackedTextDocument(content: source))
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        let documentID = UUID()
+
+        func configure(themeRefreshToken: Int) {
+            canvas.configure(
+                document: document,
+                documentID: documentID,
+                resourceID: "theme-refresh",
+                displayName: "Theme.swift",
+                contentRevision: 0,
+                externalContentRevision: 0,
+                caret: 0,
+                language: "swift",
+                colorScheme: .light,
+                themeRefreshToken: themeRefreshToken,
+                fontSize: 14,
+                fontName: "",
+                lineHeightMultiplier: 1,
+                isReadOnly: false,
+                translucentBackgroundEnabled: false,
+                showsLineNumbers: true,
+                highlightCurrentLine: false,
+                lineWrapEnabled: true,
+                showsInvisibleCharacters: false,
+                showsIndentationGuides: false,
+                showsScopeGuides: false,
+                highlightsScopeBackground: false,
+                highlightsMatchingBrackets: false,
+                autoIndentEnabled: true,
+                autoCloseBracketsEnabled: false,
+                onFontSizeChange: nil,
+                onTextMutation: nil
+            )
+        }
+
+        configure(themeRefreshToken: 0)
+        let viewportReads = document.viewportCallCount
+        defaults.set(true, forKey: boldKeywordsKey)
+        configure(themeRefreshToken: 0)
+
+        XCTAssertEqual(document.viewportCallCount, viewportReads)
+        XCTAssertEqual(canvas.accessibilityValue() as? String, source)
+        let keywordBecameBold = await waitForBoldFont(in: canvas, line: sourceLine, at: 1)
+        XCTAssertTrue(keywordBecameBold, "A same-token formatting change must invalidate the visible-line cache")
+    }
+
+    func testMarkdownHeadingFormattingRefreshesOnTheExistingCanvasWithoutDocumentReload() async {
+        let defaults = UserDefaults.standard
+        let key = SettingsPreferenceKey.themeBoldMarkdownHeadings
+        let previous = defaults.object(forKey: key)
+        defer {
+            if let previous { defaults.set(previous, forKey: key) }
+            else { defaults.removeObject(forKey: key) }
+        }
+        defaults.set(false, forKey: key)
+
+        let sourceLine = "### Heading"
+        let document = CountingEditorDocument(backing: FileBackedTextDocument(content: sourceLine + "\n"))
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        let documentID = UUID()
+
+        func configure(themeRefreshToken: Int) {
+            canvas.configure(
+                document: document,
+                documentID: documentID,
+                resourceID: "heading-theme-refresh",
+                displayName: "Theme.md",
+                contentRevision: 0,
+                externalContentRevision: 0,
+                caret: 0,
+                language: "markdown",
+                colorScheme: .light,
+                themeRefreshToken: themeRefreshToken,
+                fontSize: 14,
+                fontName: "",
+                lineHeightMultiplier: 1,
+                isReadOnly: false,
+                translucentBackgroundEnabled: false,
+                showsLineNumbers: true,
+                highlightCurrentLine: false,
+                lineWrapEnabled: true,
+                showsInvisibleCharacters: false,
+                showsIndentationGuides: false,
+                showsScopeGuides: false,
+                highlightsScopeBackground: false,
+                highlightsMatchingBrackets: false,
+                autoIndentEnabled: true,
+                autoCloseBracketsEnabled: false,
+                onFontSizeChange: nil,
+                onTextMutation: nil
+            )
+        }
+
+        configure(themeRefreshToken: 0)
+        let viewportReads = document.viewportCallCount
+        defaults.set(true, forKey: key)
+
+        let start = ContinuousClock.now
+        configure(themeRefreshToken: 1)
+        let synchronousDuration = start.duration(to: .now)
+
+        XCTAssertLessThan(synchronousDuration, .milliseconds(100))
+        XCTAssertEqual(document.viewportCallCount, viewportReads)
+        let headingBecameBold = await waitForBoldFont(in: canvas, line: sourceLine, at: 5)
+        XCTAssertTrue(headingBecameBold)
+    }
+
+    func testVirtualEditorAppliesAndRemovesThemeBoldEmphasis() async {
+        let defaults = UserDefaults.standard
+        let boldKeywordsKey = SettingsPreferenceKey.themeBoldKeywords
+        let boldHeadingsKey = SettingsPreferenceKey.themeBoldMarkdownHeadings
+        let previousKeywords = defaults.object(forKey: boldKeywordsKey)
+        let previousHeadings = defaults.object(forKey: boldHeadingsKey)
+        defer {
+            if let previousKeywords { defaults.set(previousKeywords, forKey: boldKeywordsKey) }
+            else { defaults.removeObject(forKey: boldKeywordsKey) }
+            if let previousHeadings { defaults.set(previousHeadings, forKey: boldHeadingsKey) }
+            else { defaults.removeObject(forKey: boldHeadingsKey) }
+        }
+
+        defaults.set(true, forKey: boldKeywordsKey)
+        defaults.set(true, forKey: boldHeadingsKey)
+        let swiftCanvas = configuredSyntaxCanvas(source: "return value", language: "swift", resourceID: "bold-swift")
+        let markdownCanvas = configuredSyntaxCanvas(source: "### Heading", language: "markdown", resourceID: "bold-markdown")
+
+        let keywordBecameBold = await waitForBoldFont(in: swiftCanvas, line: "return value", at: 1)
+        let headingBecameBold = await waitForBoldFont(in: markdownCanvas, line: "### Heading", at: 5)
+        XCTAssertTrue(keywordBecameBold)
+        XCTAssertTrue(headingBecameBold)
+
+        defaults.set(false, forKey: boldKeywordsKey)
+        defaults.set(false, forKey: boldHeadingsKey)
+        let regularSwiftCanvas = configuredSyntaxCanvas(source: "return value", language: "swift", resourceID: "regular-swift")
+        let regularMarkdownCanvas = configuredSyntaxCanvas(source: "### Heading", language: "markdown", resourceID: "regular-markdown")
+        try? await Task.sleep(for: .milliseconds(100))
+
+        XCTAssertFalse(fontIsBold(in: regularSwiftCanvas.attributedLine("return value", localLine: 0), at: 1))
+        XCTAssertFalse(fontIsBold(in: regularMarkdownCanvas.attributedLine("### Heading", localLine: 0), at: 5))
+    }
+
     func testOfficialEmmetEngineExpandsComplexMarkupAndStylesheets() throws {
         let markup = try XCTUnwrap(EmmetExpander.expansionIfPossible(
             in: "ul#nav>li.item$*2>a{Item $}",
@@ -1366,11 +1521,107 @@ final class VirtualEditorLayoutTests: XCTestCase {
             fileByteCount: 0
         ))
     }
+
+    func testLargeOptimizationMetadataPolicy() {
+        XCTAssertTrue(ContentView.EditorPerformanceThresholds.shouldUseLargeDocumentOptimizations(
+            byteCount: 8_000_000,
+            lineCount: 1,
+            byteThreshold: 8_000_000,
+            lineThreshold: 25_000
+        ))
+        XCTAssertTrue(ContentView.EditorPerformanceThresholds.shouldUseLargeDocumentOptimizations(
+            byteCount: 2_000_000,
+            lineCount: 25_000,
+            byteThreshold: 8_000_000,
+            lineThreshold: 25_000
+        ))
+        XCTAssertFalse(ContentView.EditorPerformanceThresholds.shouldUseLargeDocumentOptimizations(
+            byteCount: 999_999,
+            lineCount: 100_000,
+            byteThreshold: 8_000_000,
+            lineThreshold: 25_000
+        ))
+    }
+
+    func testLargeFileSessionUIRequiresExcessiveFileCandidate() {
+        XCTAssertFalse(ContentView.EditorPerformanceThresholds.shouldPresentLargeFileSessionUI(
+            isExcessiveFileCandidate: false,
+            responsiveOptimizationsEnabled: true
+        ))
+        XCTAssertFalse(ContentView.EditorPerformanceThresholds.shouldPresentLargeFileSessionUI(
+            isExcessiveFileCandidate: true,
+            responsiveOptimizationsEnabled: false
+        ))
+        XCTAssertTrue(ContentView.EditorPerformanceThresholds.shouldPresentLargeFileSessionUI(
+            isExcessiveFileCandidate: true,
+            responsiveOptimizationsEnabled: true
+        ))
+    }
+
+    private func configuredSyntaxCanvas(source: String, language: String, resourceID: String) -> VirtualEditorCanvas {
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        reconfigureSyntaxCanvas(canvas, source: source, language: language, resourceID: resourceID, themeRefreshToken: 0)
+        return canvas
+    }
+
+    private func reconfigureSyntaxCanvas(
+        _ canvas: VirtualEditorCanvas,
+        source: String,
+        language: String,
+        resourceID: String,
+        themeRefreshToken: Int
+    ) {
+        canvas.configure(
+            document: FileBackedTextDocument(content: source),
+            documentID: UUID(),
+            resourceID: resourceID,
+            displayName: "Theme.\(language)",
+            contentRevision: 0,
+            externalContentRevision: 0,
+            caret: 0,
+            language: language,
+            colorScheme: .light,
+            themeRefreshToken: themeRefreshToken,
+            fontSize: 14,
+            fontName: "",
+            lineHeightMultiplier: 1,
+            isReadOnly: false,
+            translucentBackgroundEnabled: false,
+            showsLineNumbers: true,
+            highlightCurrentLine: false,
+            lineWrapEnabled: true,
+            showsInvisibleCharacters: false,
+            showsIndentationGuides: false,
+            showsScopeGuides: false,
+            highlightsScopeBackground: false,
+            highlightsMatchingBrackets: false,
+            autoIndentEnabled: true,
+            autoCloseBracketsEnabled: false,
+            onFontSizeChange: nil,
+            onTextMutation: nil
+        )
+    }
+
+    private func waitForBoldFont(in canvas: VirtualEditorCanvas, line: String, at index: Int) async -> Bool {
+        for _ in 0..<100 {
+            if fontIsBold(in: canvas.attributedLine(line, localLine: 0), at: index) { return true }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return false
+    }
+
+    private func fontIsBold(in attributed: NSAttributedString, at index: Int) -> Bool {
+        guard index >= 0, index < attributed.length,
+              let font = attributed.attribute(.font, at: index, effectiveRange: nil) as? NSFont else { return false }
+        return font.fontDescriptor.symbolicTraits.contains(.bold)
+    }
 }
 
 private final class CountingEditorDocument: EditorDocument {
     let backing: FileBackedTextDocument
     private(set) var stringCallCount = 0
+    private(set) var viewportCallCount = 0
 
     init(backing: FileBackedTextDocument) { self.backing = backing }
 
@@ -1401,7 +1652,8 @@ private final class CountingEditorDocument: EditorDocument {
     func replaceAll(with text: String) throws { try backing.replaceAll(with: text) }
     func markClean() { backing.markClean() }
     func viewport(aroundLine line: Int, maximumByteCount: Int, maximumLineCount: Int) throws -> EditorDocumentViewport {
-        try backing.viewport(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
+        viewportCallCount += 1
+        return try backing.viewport(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
     }
     func replace(in viewport: EditorDocumentViewport, utf16Range: NSRange, with replacement: String) throws {
         try backing.replace(in: viewport, utf16Range: utf16Range, with: replacement)

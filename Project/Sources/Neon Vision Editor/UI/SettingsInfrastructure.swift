@@ -39,6 +39,7 @@ struct SupportStatusAlertPresentation {
 /// Preference keys shared by Settings, the editor shell, and native editor bridges.
 /// Keep stored values stable; migrate every consumer before renaming a key.
 enum SettingsPreferenceKey {
+    nonisolated static let activeTab = "SettingsActiveTab"
     static let editorFontName = "SettingsEditorFontName"
     static let useSystemFont = "SettingsUseSystemFont"
     static let editorFontSize = "SettingsEditorFontSize"
@@ -70,6 +71,32 @@ enum SettingsPreferenceKey {
     static let markdownProjectPreviewSortOrder = "MarkdownProjectPreviewSortOrderV1"
     static let markdownPreviewSynchronousScroll = "MarkdownPreviewSynchronousScrollV1"
 }
+
+#if os(macOS)
+/// Routes Settings navigation without making every editor window observe tab changes.
+enum MacSettingsTabRoute {
+    static let didRequestTab = Notification.Name("NeonSettingsDidRequestTab")
+
+    @discardableResult
+    static func request(
+        _ tab: String,
+        defaults: UserDefaults = .standard,
+        notificationCenter: NotificationCenter = .default
+    ) -> String {
+        notificationCenter.post(name: didRequestTab, object: tab)
+        // Keep navigation on the current event cycle. A direct UserDefaults
+        // write synchronously wakes every AppStorage observer before SwiftUI can
+        // display the requested pane. The writer preserves immediate reads and
+        // coalesces persistence away from the interaction path.
+        EditorPreferenceWriter.shared.set(
+            .string(tab),
+            forKey: SettingsPreferenceKey.activeTab,
+            defaults: defaults
+        )
+        return tab
+    }
+}
+#endif
 
 enum WelcomeTourPresentationPolicy {
     static func shouldPresentAutomatically(

@@ -796,7 +796,6 @@ struct NeonVisionEditorApp: App {
                 supportPurchaseManager: supportPurchaseManager,
                 appUpdateManager: appUpdateManager
             )
-                .onAppear { scheduleMacWindowChromePolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
                 .onAppear { applyRuntimeLanguageOverride() }
                 .onChange(of: appLanguageCode) { _, _ in applyRuntimeLanguageOverride() }
@@ -804,10 +803,6 @@ struct NeonVisionEditorApp: App {
                 .tint(.blue)
                 .preferredColorScheme(preferredAppearance)
         }
-        .defaultSize(
-            width: NeonSettingsView.macSettingsInitialWindowSize().width,
-            height: NeonSettingsView.macSettingsInitialWindowSize().height
-        )
 
         Window("AI Activity Log", id: "ai-logs") {
             AIActivityLogView()

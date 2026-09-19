@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-09-18 (v1.8.2 release-aligned architecture)
+Last updated: 2026-09-19 (v1.8.3 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -9,21 +9,20 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
+### v1.8.3 (2026-09-19)
+
+- Refines mobile toolbars with system-adaptive glass, complete action slots, and an optional larger-symbol setting.
+- Fixes clipped unwrapped text on iPhone and iPad by keeping the drawing canvas and horizontal scrolling geometry aligned, including cursor reveal, keyboard transitions, and large-document installs.
+- Restores native macOS Settings pane sizing and titlebar material, removes repeated window repositioning, and keeps Settings navigation separate from editor-wide preference refreshes.
+- Makes the custom mobile toolbar action-count setting include persistent controls and keeps Settings and Help available.
+- Coalesces startup session observations and caches ordinary in-memory document text to avoid repeated materialization during view updates.
+
 ### v1.8.2 (2026-09-18)
 
 - Renders complete Markdown previews for documents up to 8 MB, including file-backed editor documents.
 - Opens an editor window when files or project folders are sent from Finder while no editor window is open.
 - Keeps the editor's scroll redraw focused on visible rows and avoids an unnecessary localization override during system-language startup.
 - Removes the 180 KB Markdown preview cutoff that showed a truncated raw-text fallback for ordinary large documents.
-
-### v1.8.1 (2026-09-16)
-
-- Adds a horizontally scrollable iPhone toolbar and an adaptive-width iPad toolbar; compact controls appear while scrolling.
-- Keeps the mobile editor keyboard toolbar visible by default and adds a setting to control it.
-- Uses system Liquid Glass for supported controls and respects system glass and accessibility appearance settings.
-- Adds Markdown theme selection to the iPad preview menu.
-- Keeps the mobile keyboard toolbar clear of the editor and on-screen keyboard, with a frosted surface in light and dark mode.
-- Centers and collapses the mobile editor status above the bottom toolbar, then hides it while scrolling.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.8.3] - 2026-09-19
+
 ### Why Upgrade
 
 - Edit complete text documents below 100 MB without entering the excessive-file preview mode.

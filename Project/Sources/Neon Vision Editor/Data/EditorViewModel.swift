@@ -92,6 +92,19 @@ struct DecodedFileText: Sendable {
 }
 
 private enum EditorLoadHelper {
+    nonisolated static let supportedTextFilenames: Set<String> = [
+        "package.resolved", "dockerfile", "makefile", "gnumakefile"
+    ]
+    nonisolated static let supportedTextExtensions: Set<String> = [
+        "swift", "py", "pyi", "js", "mjs", "cjs", "ts", "tsx", "php", "phtml",
+        "bak", "csv", "tsv", "cif", "mcif", "txt", "toml", "nix", "eml", "ini", "yaml", "yml", "xml", "svg", "plist", "sql",
+        "log", "vim", "ipynb", "java", "kt", "kts", "go", "rb", "rs", "ps1", "psm1",
+        "html", "htm", "xhtml", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
+        "m", "mm", "cs", "json", "jsonc", "json5", "ndjson", "md", "markdown", "env", "proto",
+        "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh", "fish", "pl", "pm", "lua", "r",
+        "tf", "tfvars", "hcl", "xcconfig", "strings", "stringsdict", "jsx",
+        "typ", "tex", "latex", "bib", "sty", "cls", "vasp", "isoviz", "upf", "xyz", "xsf"
+    ]
     // Sidebar-opened project files should reach the editor quickly; full scalar-by-scalar
     // sanitization is only worth the cost for smaller documents.
     nonisolated static let fastLoadSanitizeByteThreshold = 512_000
@@ -2966,8 +2979,7 @@ class EditorViewModel {
             }
         }
 
-        let supportedFilenames: Set<String> = ["package.resolved", "dockerfile", "makefile", "gnumakefile"]
-        if supportedFilenames.contains(fileName) {
+        if EditorLoadHelper.supportedTextFilenames.contains(fileName) {
             return true
         }
 
@@ -2975,17 +2987,7 @@ class EditorViewModel {
             return true // Unknown dotfiles and extensionless text are valid documents.
         }
 
-        let knownSupportedExtensions: Set<String> = [
-            "swift", "py", "pyi", "js", "mjs", "cjs", "ts", "tsx", "php", "phtml",
-            "bak", "csv", "tsv", "cif", "mcif", "txt", "toml", "nix", "eml", "ini", "yaml", "yml", "xml", "svg", "plist", "sql",
-            "log", "vim", "ipynb", "java", "kt", "kts", "go", "rb", "rs", "ps1", "psm1",
-            "html", "htm", "xhtml", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
-            "m", "mm", "cs", "json", "jsonc", "json5", "ndjson", "md", "markdown", "env", "proto",
-            "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh", "fish", "pl", "pm", "lua", "r",
-            "tf", "tfvars", "hcl", "xcconfig", "strings", "stringsdict", "jsx",
-            "typ", "tex", "latex", "bib", "sty", "cls", "vasp", "isoviz", "upf", "xyz", "xsf", "png", "pdf"
-        ]
-        if knownSupportedExtensions.contains(ext) {
+        if EditorLoadHelper.supportedTextExtensions.contains(ext) || isPreviewOnlyFileURL(url) {
             return true
         }
 
@@ -3030,6 +3032,14 @@ class EditorViewModel {
         byteCount: Int
     ) -> Int? {
         EditorLoadHelper.boundedPreviewLimit(forExtension: fileExtension, byteCount: byteCount)
+    }
+
+    nonisolated static var supportedTextExtensionsForTesting: Set<String> {
+        EditorLoadHelper.supportedTextExtensions
+    }
+
+    nonisolated static var supportedTextFilenamesForTesting: Set<String> {
+        EditorLoadHelper.supportedTextFilenames
     }
 
     nonisolated static func isFileBackedEligible(

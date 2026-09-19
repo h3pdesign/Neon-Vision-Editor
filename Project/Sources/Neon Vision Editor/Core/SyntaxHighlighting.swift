@@ -9,6 +9,13 @@ private enum SyntaxRegexCache {
     nonisolated static let storage = NVELock<[String: NSRegularExpression]>([:])
 }
 
+private enum SyntaxIdentifierCoverage {
+    nonisolated static let languages: Set<String> = [
+        "swift", "ada", "python", "javascript", "php", "java", "kotlin", "go", "ruby", "rust",
+        "fish", "perl", "lua", "r", "c", "cpp", "csharp", "objective-c"
+    ]
+}
+
 /// Lets queued syntax work stop between regex passes after a newer edit wins.
 /// NSRegularExpression cannot interrupt an individual match, so callers check
 /// this boundary before starting the next potentially expensive pattern.
@@ -486,7 +493,7 @@ func syntaxEmphasisPatterns(
 // MARK: - Syntax Pattern Lookup
 
 // Regex patterns per language mapped to colors. Keep light-weight for performance.
-func getSyntaxPatterns(
+private func baseSyntaxPatterns(
     for language: String,
     colors: SyntaxColors,
     profile: SyntaxPatternProfile = .full
@@ -1024,6 +1031,25 @@ func getSyntaxPatterns(
     default:
         return [:]
     }
+}
+
+/// Adds two cached, viewport-safe identifier passes to programming languages
+/// whose base grammars otherwise leave framework types and call sites plain.
+/// Keeping this centralized prevents platform-specific gaps without increasing
+/// whole-document work: every editor still applies the patterns only to its
+/// existing bounded highlight range.
+func getSyntaxPatterns(
+    for language: String,
+    colors: SyntaxColors,
+    profile: SyntaxPatternProfile = .full
+) -> [String: Color] {
+    let canonical = canonicalSyntaxLanguage(language)
+    var patterns = baseSyntaxPatterns(for: canonical, colors: colors, profile: profile)
+    guard SyntaxIdentifierCoverage.languages.contains(canonical) else { return patterns }
+
+    patterns[#"\b[A-Z][A-Za-z0-9_$]*\b"#] = colors.type
+    patterns[#"\b(?!if\b|for\b|while\b|switch\b|catch\b|func\b|function\b|return\b)[A-Za-z_$][A-Za-z0-9_$]*(?=\s*\()"#] = colors.def
+    return patterns
 }
 
 // Simple sheet to edit and persist API tokens for external AI providers.

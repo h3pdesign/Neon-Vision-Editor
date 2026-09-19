@@ -125,6 +125,53 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(document.stringCallCount, 0)
     }
 
+    func testThemeRefreshPreservesLoadedViewportWithoutAnotherDocumentRead() {
+        let source = "import AppKit\nlet view = NSVisualEffectView()\n"
+        let document = CountingEditorDocument(backing: FileBackedTextDocument(content: source))
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        let documentID = UUID()
+
+        func configure(themeRefreshToken: Int) {
+            canvas.configure(
+                document: document,
+                documentID: documentID,
+                resourceID: "theme-refresh",
+                displayName: "Theme.swift",
+                contentRevision: 0,
+                externalContentRevision: 0,
+                caret: 0,
+                language: "swift",
+                colorScheme: .light,
+                themeRefreshToken: themeRefreshToken,
+                fontSize: 14,
+                fontName: "",
+                lineHeightMultiplier: 1,
+                isReadOnly: false,
+                translucentBackgroundEnabled: false,
+                showsLineNumbers: true,
+                highlightCurrentLine: false,
+                lineWrapEnabled: true,
+                showsInvisibleCharacters: false,
+                showsIndentationGuides: false,
+                showsScopeGuides: false,
+                highlightsScopeBackground: false,
+                highlightsMatchingBrackets: false,
+                autoIndentEnabled: true,
+                autoCloseBracketsEnabled: false,
+                onFontSizeChange: nil,
+                onTextMutation: nil
+            )
+        }
+
+        configure(themeRefreshToken: 0)
+        let viewportReads = document.viewportCallCount
+        configure(themeRefreshToken: 1)
+
+        XCTAssertEqual(document.viewportCallCount, viewportReads)
+        XCTAssertEqual(canvas.accessibilityValue() as? String, source)
+    }
+
     func testOfficialEmmetEngineExpandsComplexMarkupAndStylesheets() throws {
         let markup = try XCTUnwrap(EmmetExpander.expansionIfPossible(
             in: "ul#nav>li.item$*2>a{Item $}",
@@ -1392,6 +1439,7 @@ final class VirtualEditorLayoutTests: XCTestCase {
 private final class CountingEditorDocument: EditorDocument {
     let backing: FileBackedTextDocument
     private(set) var stringCallCount = 0
+    private(set) var viewportCallCount = 0
 
     init(backing: FileBackedTextDocument) { self.backing = backing }
 
@@ -1422,7 +1470,8 @@ private final class CountingEditorDocument: EditorDocument {
     func replaceAll(with text: String) throws { try backing.replaceAll(with: text) }
     func markClean() { backing.markClean() }
     func viewport(aroundLine line: Int, maximumByteCount: Int, maximumLineCount: Int) throws -> EditorDocumentViewport {
-        try backing.viewport(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
+        viewportCallCount += 1
+        return try backing.viewport(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
     }
     func replace(in viewport: EditorDocumentViewport, utf16Range: NSRange, with replacement: String) throws {
         try backing.replace(in: viewport, utf16Range: utf16Range, with: replacement)

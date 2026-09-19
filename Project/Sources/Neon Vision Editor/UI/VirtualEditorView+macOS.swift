@@ -446,6 +446,7 @@ struct VirtualEditorView: NSViewRepresentable {
     let storedCaretLocation: Int?
     let language: String
     let colorScheme: ColorScheme
+    let themeRefreshToken: Int
     let fontSize: CGFloat
     let fontName: String
     let lineHeightMultiplier: CGFloat
@@ -490,6 +491,7 @@ struct VirtualEditorView: NSViewRepresentable {
             caret: storedCaretLocation,
             language: language,
             colorScheme: colorScheme,
+            themeRefreshToken: themeRefreshToken,
             fontSize: fontSize,
             fontName: fontName,
             lineHeightMultiplier: lineHeightMultiplier,
@@ -525,6 +527,7 @@ struct VirtualEditorView: NSViewRepresentable {
             caret: storedCaretLocation,
             language: language,
             colorScheme: colorScheme,
+            themeRefreshToken: themeRefreshToken,
             fontSize: fontSize,
             fontName: fontName,
             lineHeightMultiplier: lineHeightMultiplier,
@@ -779,7 +782,8 @@ final class VirtualEditorScrollView: NSScrollView {
     func configure(
         document: (any EditorDocument)?, documentID: UUID?, resourceID: String, displayName: String,
         contentRevision: Int, externalContentRevision: Int,
-        caret: Int?, language: String, colorScheme: ColorScheme, fontSize: CGFloat,
+        caret: Int?, language: String, colorScheme: ColorScheme,
+        themeRefreshToken: Int = 0, fontSize: CGFloat,
         fontName: String, lineHeightMultiplier: CGFloat,
         isReadOnly: Bool, translucentBackgroundEnabled: Bool, showsLineNumbers: Bool, highlightCurrentLine: Bool,
         lineWrapEnabled: Bool, showsInvisibleCharacters: Bool, showsIndentationGuides: Bool,
@@ -796,6 +800,7 @@ final class VirtualEditorScrollView: NSScrollView {
             document: document, documentID: documentID, resourceID: resourceID, displayName: displayName,
             contentRevision: contentRevision, externalContentRevision: externalContentRevision,
             caret: caret, language: language, colorScheme: colorScheme,
+            themeRefreshToken: themeRefreshToken,
             fontSize: fontSize, fontName: fontName, lineHeightMultiplier: lineHeightMultiplier,
             isReadOnly: isReadOnly,
             translucentBackgroundEnabled: translucentBackgroundEnabled,
@@ -1095,6 +1100,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var dragAutoScrollTimer: Timer?
     private let documentUndoManager = UndoManager()
     private var lastConfigurationKey = ""
+    private var lastStructuralConfigurationKey = ""
+    private var lastThemeConfigurationKey = ""
     private var documentDisplayName = "Untitled"
     private var layoutCache: [Int: CTLine] = [:]
     private var attributedLineCache: [Int: NSAttributedString] = [:]
@@ -1512,7 +1519,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     func configure(
         document: (any EditorDocument)?, documentID: UUID?, resourceID: String, displayName: String,
         contentRevision: Int, externalContentRevision: Int,
-        caret: Int?, language: String, colorScheme: ColorScheme, fontSize: CGFloat,
+        caret: Int?, language: String, colorScheme: ColorScheme,
+        themeRefreshToken: Int = 0, fontSize: CGFloat,
         fontName: String, lineHeightMultiplier: CGFloat,
         isReadOnly: Bool, translucentBackgroundEnabled: Bool, showsLineNumbers: Bool, highlightCurrentLine: Bool,
         lineWrapEnabled: Bool, showsInvisibleCharacters: Bool, showsIndentationGuides: Bool,
@@ -1533,8 +1541,14 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         // each part of the configuration key repeated UserDefaults reads and
         // theme-key generation on the main actor during every tab switch.
         let resolvedTheme = currentEditorTheme(colorScheme: colorScheme)
-        let key = "\(resourceID)|\(language)|\(fontSize)|\(fontName)|\(lineHeightMultiplier)|\(colorScheme)|\(syntaxThemeKey(for: resolvedTheme))|\(editorBaseThemeKey(for: resolvedTheme))|\(translucentBackgroundEnabled)|\(showsLineNumbers)|\(highlightCurrentLine)|\(lineWrapEnabled)|\(showsInvisibleCharacters)|\(showsIndentationGuides)|\(showsScopeGuides)|\(highlightsScopeBackground)|\(highlightsMatchingBrackets)|\(autoIndentEnabled)|\(autoCloseBracketsEnabled)|\(indentStyle)|\(indentWidth)"
+        let structuralConfigurationKey = "\(resourceID)|\(language)|\(fontSize)|\(fontName)|\(lineHeightMultiplier)|\(colorScheme)|\(translucentBackgroundEnabled)|\(showsLineNumbers)|\(highlightCurrentLine)|\(lineWrapEnabled)|\(showsInvisibleCharacters)|\(showsIndentationGuides)|\(showsScopeGuides)|\(highlightsScopeBackground)|\(highlightsMatchingBrackets)|\(autoIndentEnabled)|\(autoCloseBracketsEnabled)|\(indentStyle)|\(indentWidth)"
+        let themeConfigurationKey = "\(themeRefreshToken)|\(syntaxThemeKey(for: resolvedTheme))|\(editorBaseThemeKey(for: resolvedTheme))"
+        let key = "\(structuralConfigurationKey)|\(themeConfigurationKey)"
         let contentChanged = configuredContentRevision != contentRevision || configuredExternalContentRevision != externalContentRevision
+        let themeOnlyChanged = !lastConfigurationKey.isEmpty
+            && structuralConfigurationKey == lastStructuralConfigurationKey
+            && themeConfigurationKey != lastThemeConfigurationKey
+            && !contentChanged
         self.document = document
         self.documentID = documentID
         self.resourceID = resourceID
@@ -1575,6 +1589,22 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             pendingFontSizeDelta = 0
             layoutCache.removeAll()
         }
+        if themeOnlyChanged {
+            lastConfigurationKey = key
+            lastThemeConfigurationKey = themeConfigurationKey
+            configuredContentRevision = contentRevision
+            configuredExternalContentRevision = externalContentRevision
+            syntaxSpansByLine.removeAll(keepingCapacity: true)
+            attributedLineCache.removeAll(keepingCapacity: true)
+            visualFragmentCache.removeAll(keepingCapacity: true)
+            visualRowsSnapshot = nil
+            layoutCache.removeAll(keepingCapacity: true)
+            scheduleSyntaxHighlighting()
+            scheduleVisualMetricsRecalculation()
+            needsLayout = true
+            needsDisplay = true
+            return
+        }
         if key == lastConfigurationKey {
             configuredContentRevision = contentRevision
             configuredExternalContentRevision = externalContentRevision
@@ -1589,6 +1619,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         }
         guard key != lastConfigurationKey else { return }
         lastConfigurationKey = key
+        lastStructuralConfigurationKey = structuralConfigurationKey
+        lastThemeConfigurationKey = themeConfigurationKey
         hasValidVisualMetrics = false
         configuredContentRevision = contentRevision
         configuredExternalContentRevision = externalContentRevision

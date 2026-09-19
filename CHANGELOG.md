@@ -8,6 +8,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Fixes
 
+- Refreshes the visible macOS editor immediately when themes change, preserves the loaded viewport during recoloring, and restores framework-type and function-call highlighting across supported programming languages without expanding work beyond the existing visible range.
+
 - Keeps the iPhone and iPad editor toolbar at the standard compact height, adds optional larger symbols, restores colored preset icons with a distinct All Actions symbol, uses one-line abbreviated captions without sacrificing full accessibility labels, removes empty context-action slots, presents five complete iPhone actions before horizontal scrolling, switches the auto-minimized scrolling toolbar to icons only, and applies the same system-adaptive Liquid Glass setting to the toolbar, status pill, and keyboard bar.
 
 - Keeps syntax highlighting synchronized with the visible viewport while scrolling large programming files on iPhone and iPad, consistently honors the Large File Syntax setting, and applies responsive editor optimizations from existing document metadata without rescanning or copying text. Files below 100 MB remain normal complete editable documents.

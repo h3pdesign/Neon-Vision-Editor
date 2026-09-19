@@ -67,6 +67,32 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         }
     }
 
+    func testEverySelectableSyntaxLanguageHighlightsItsDefaultTemplate() throws {
+        for language in CodeTemplateCatalog.supportedLanguages where language != "plain" {
+            let template = try XCTUnwrap(CodeTemplateCatalog.defaultTemplate(for: language), language)
+            XCTAssertTrue(
+                anySyntaxPatternMatches(template, from: getSyntaxPatterns(for: language, colors: colors)),
+                "\(language) does not color any token in its default template."
+            )
+        }
+    }
+
+    func testProgrammingSyntaxAddsFrameworkTypeAndCallCoverage() {
+        let patterns = getSyntaxPatterns(for: "swift", colors: colors)
+        let sample = "let view: NSVisualEffectView = configure(context)"
+
+        XCTAssertTrue(matchesAnyPattern(
+            in: sample,
+            from: patterns,
+            expected: #"\b[A-Z][A-Za-z0-9_$]*\b"#
+        ))
+        XCTAssertTrue(matchesAnyPattern(
+            in: sample,
+            from: patterns,
+            expected: #"\b(?!if\b|for\b|while\b|switch\b|catch\b|func\b|function\b|return\b)[A-Za-z_$][A-Za-z0-9_$]*(?=\s*\()"#
+        ))
+    }
+
     func testHTMLAndCSSPatternsMatchTagsAndProperties() {
         let htmlPatterns = getSyntaxPatterns(for: "html", colors: colors)
         let cssPatterns = getSyntaxPatterns(for: "css", colors: colors)

@@ -3076,14 +3076,10 @@ struct ContentView: View {
                 }
             }
             .onChange(of: settingsThemeName) { _, _ in
-#if !os(macOS)
                 scheduleHighlightRefresh()
-#endif
             }
             .onChange(of: themeFormattingRefreshSignature) { _, _ in
-#if !os(macOS)
                 scheduleHighlightRefresh()
-#endif
             }
             .onChange(of: highlightMatchingBrackets) { _, _ in
 #if !os(macOS)
@@ -4881,6 +4877,7 @@ struct ContentView: View {
             storedCaretLocation: storedCaretLocation(for: tabID),
             language: language,
             colorScheme: effectiveEditorColorScheme,
+            themeRefreshToken: highlightRefreshToken,
             fontSize: editorFontSize,
             fontName: editorFontName,
             lineHeightMultiplier: editorLineHeight,
@@ -5652,9 +5649,9 @@ struct ContentView: View {
         }
         .onChange(of: settingsThemeHexOverridesData) { _, _ in
 #if os(macOS)
-            // The virtual editor reads the encoded override data while updating
-            // its native configuration. Reapplying every NSWindow surface here
-            // forces an unrelated full-window composition pass.
+            // Publish an explicit native-editor input so a palette edit updates
+            // the current viewport without waiting for a tab transition.
+            scheduleHighlightRefresh()
 #else
             applyWindowTranslucency(enableTranslucentWindow)
             highlightRefreshToken &+= 1

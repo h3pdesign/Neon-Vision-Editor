@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.8.2",
-            subtitle: "Release highlights for v1.8.2.",
+            title: "What’s New in v1.8.3",
+            subtitle: "Release highlights for v1.8.3.",
             bullets: [
-                "Editor Improvements: View large Markdown documents as rendered Markdown instead of a truncated source preview.",
-                "Workflow Refinements: Open files from Finder even when no editor window is currently open.",
-                "Performance Updates: Keep long-document scrolling focused on visible editor rows.",
-                "Usability Updates: Renders complete Markdown previews for documents up to 8 MB, including file-backed editor documents.",
-                "Editor Improvements: Opens an editor window when files or project folders are sent from Finder while no editor window is open.",
-                "Workflow Refinements: Keeps the editor's scroll redraw focused on visible rows and avoids an unnecessary localization override during…"
+                "Editor Improvements: Edit complete text documents below 100 MB without entering the excessive-file preview mode.",
+                "Workflow Refinements: Read long lines on iPhone and iPad without losing text when line wrap is disabled.",
+                "Performance Updates: Apply themes and formatting consistently, with less repeated work when using Settings.",
+                "Usability Updates: Refines mobile toolbars with system-adaptive glass, complete action slots, and an optional larger-symbol setting.",
+                "Editor Improvements: Fixes clipped unwrapped text on iPhone and iPad by keeping the drawing canvas and horizontal scrolling geometry aligned…",
+                "Editor Navigation: Restores native macOS Settings pane sizing and titlebar material, removes repeated window repositioning, and keeps Settings…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

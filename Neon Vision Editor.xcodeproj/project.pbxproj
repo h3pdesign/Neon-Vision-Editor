@@ -623,29 +623,11 @@
 		D20000000000000000000006 /* Prepare Apple Silicon Direct Bundle */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
-			inputPaths = (
-				"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/Sparkle.framework/Versions/B/Sparkle",
-			);
 			name = "Prepare Apple Silicon Direct Bundle";
 			shellPath = /bin/sh;
 			shellScript = (
 				"if [ \"${APP_STORE_BUILD:-NO}\" = \"YES\" ]; then",
 				"  rm -f \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/nve\"",
-				"fi",
-				"",
-				"if [ \"${PLATFORM_NAME:-}\" = \"macosx\" ] && [ \"${CONFIGURATION:-}\" = \"Release-GitHub\" ]; then",
-				"  sparkle_dir=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Sparkle.framework\"",
-				"  if [ -d \"${sparkle_dir}\" ]; then",
-				"    find \"${sparkle_dir}\" -type f -print0 | while IFS= read -r -d '' binary; do",
-				"      if /usr/bin/file -b \"${binary}\" | /usr/bin/grep -q 'Mach-O' && /usr/bin/lipo -archs \"${binary}\" | /usr/bin/grep -qw x86_64; then",
-				"        /usr/bin/lipo -remove x86_64 \"${binary}\" -output \"${binary}\"",
-				"        if /usr/bin/lipo -archs \"${binary}\" | /usr/bin/grep -qw x86_64; then",
-				"          echo \"Failed to remove the unsupported Intel slice from ${binary}.\" >&2",
-				"          exit 1",
-				"        fi",
-				"      fi",
-				"    done || exit 1",
-				"  fi",
 				"fi",
 				"",
 			);
@@ -770,7 +752,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Vision Editor App Clip/Neon Vision Editor App Clip.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_PREVIEWS = YES;
@@ -809,7 +791,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_PREVIEWS = YES;
@@ -921,7 +903,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -1159,7 +1141,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "Project/Sources/Neon Vision Editor/Neon Vision Editor iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Project/Sources/Neon Vision Editor/Neon Vision Editor macOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -1330,7 +1312,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "$(NVE_DEVELOPER_ID_IDENTITY)";
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -1419,7 +1401,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1459,7 +1441,7 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Vision Editor Share Extension/Neon Vision Editor Share Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -1514,7 +1496,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "$(NVE_DEVELOPER_ID_IDENTITY)";
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = CS727NF72U;
@@ -1594,7 +1576,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Pulse Watch App/Neon Pulse Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Neon Vision Editor Pulse";
@@ -1624,7 +1606,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Pulse Watch App/Neon Pulse Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Neon Vision Editor Pulse";
@@ -1654,7 +1636,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Pulse Watch App/Neon Pulse Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Neon Vision Editor Pulse";
@@ -1682,7 +1664,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Pulse Widget/Neon Pulse Widget.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Project/Configuration/Info.plist.widget";
@@ -1710,7 +1692,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Pulse Widget/Neon Pulse Widget.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Project/Configuration/Info.plist.widget";
@@ -1738,7 +1720,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Pulse Widget/Neon Pulse Widget.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Project/Configuration/Info.plist.widget";
@@ -1767,7 +1749,7 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Vision Editor Quick Look/Neon Vision Editor Quick Look.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1792,7 +1774,7 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Vision Editor Quick Look/Neon Vision Editor Quick Look.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1821,7 +1803,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "$(NVE_DEVELOPER_ID_IDENTITY)";
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
-				CURRENT_PROJECT_VERSION = 1053;
+				CURRENT_PROJECT_VERSION = 1054;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;

@@ -190,6 +190,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$EXPORT_PATH"
+          bash scripts/prepare_apple_silicon_archive.sh "$ARCHIVE_PATH"
 
           /usr/libexec/PlistBuddy -c "Clear dict" export.plist
           /usr/libexec/PlistBuddy -c "Add :method string developer-id" export.plist

@@ -418,6 +418,20 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn('if ! gh pr merge "${docs_pr}"', docs_sync)
         self.assertIn('if [[ -z "$merged_at" ]]', docs_sync)
 
+    def test_architecture_thinning_precedes_export_not_build(self):
+        project = (ROOT / "Neon Vision Editor.xcodeproj/project.pbxproj").read_text()
+        self.assertNotIn("lipo -remove", project)
+        for path in (
+            ".github/workflows/release-github-only.yml",
+            ".github/workflows/release-notarized-selfhosted.yml",
+            "scripts/workflow-templates/release-notarized.yml",
+            "scripts/workflow-templates/release-notarized-selfhosted.yml",
+        ):
+            workflow = (ROOT / path).read_text()
+            preparation = workflow.index('bash scripts/prepare_apple_silicon_archive.sh "$ARCHIVE_PATH"')
+            self.assertLess(workflow.index("- name: Export app"), preparation)
+            self.assertLess(preparation, workflow.index("xcodebuild -exportArchive"))
+
     def test_hosted_preflight_does_not_pass_when_runtime_checks_are_skipped(self):
         preflight = (ROOT / ".github/workflows/pre-release-ci.yml").read_text()
         self.assertIn("runs-on: ubuntu-latest", preflight)

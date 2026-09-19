@@ -8,6 +8,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Fixes
 
+- Keeps the iPhone and iPad editor toolbar at the standard compact height, uses one-line abbreviated captions without sacrificing full accessibility labels, removes empty context-action slots, and gives the status pill the same system-adaptive Liquid Glass setting as the toolbar.
+
 - Keeps syntax highlighting synchronized with the visible viewport while scrolling large programming files on iPhone and iPad, consistently honors the Large File Syntax setting, and applies responsive editor optimizations from existing document metadata without rescanning or copying text. Files below 100 MB remain normal complete editable documents.
 
 - Opens CSV, HTML, JSON, Markdown, source code, and other supported text files below 100 MB as complete editable documents on every platform, while keeping the excessive-file preview boundary at 100 MB.

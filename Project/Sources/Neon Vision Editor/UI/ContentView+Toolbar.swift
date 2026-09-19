@@ -350,6 +350,68 @@ enum ToolbarIconOption: String, CaseIterable, Identifiable {
     }
 }
 
+enum MobileToolbarPresentationPolicy {
+    static let standardHeight: CGFloat = 52
+    static let labeledItemWidth: CGFloat = 64
+
+    static func compactTitle(_ title: String) -> String {
+        switch title {
+        case "Open File": return "Open"
+        case "Clear Editor": return "Clear"
+        case "Insert Template": return "Template"
+        case "Code Snapshot": return "Snapshot"
+        case "Markdown Preview": return "MD Preview"
+        case "Markdown Cards": return "MD Cards"
+        case "Code Minimap": return "Minimap"
+        case "Indentation Guides": return "Guides"
+        case "Export PDF": return "PDF"
+        case "Preview Style": return "Style"
+        case "Close All Tabs": return "Close Tabs"
+        case "Toggle Sidebar": return "Contents"
+        case "Toggle Project Sidebar": return "Project"
+        case "Language Indicator": return "Language"
+        case "Find in Files": return "Find Files"
+        case "Compare with Disk": return "Disk Diff"
+        case "Compare Tabs": return "Tab Diff"
+        case "Compare Menu": return "Compare"
+        case "Git Changes": return "Git"
+        case "Side by Side": return "Split"
+        case "Editor Layout": return "Layout"
+        case "Preview Actions": return "Preview"
+        case "Line Wrap": return "Wrap"
+        case "Code Completion": return "Complete"
+        case "Keyboard Bar": return "Key Bar"
+        case "Hide Keyboard": return "Hide Keys"
+        case "Decrease Font Size": return "Font −"
+        case "Increase Font Size": return "Font +"
+        case "Performance Mode": return "Fast Mode"
+        case "Brain Dump": return "Notes"
+        case "Welcome Tour": return "Tour"
+        case "Translucent Window": return "Glass"
+        case "Blue Icons": return "Blue"
+        case "Table of Contents": return "Contents"
+        default: return title
+        }
+    }
+
+    static func isContextualActionAvailable(
+        actionID: String,
+        supportsMinimap: Bool,
+        showsMarkdownPreview: Bool,
+        isMarkdownDocument: Bool
+    ) -> Bool {
+        switch actionID {
+        case ToolbarIconOption.codeMinimap.rawValue:
+            return supportsMinimap
+        case ToolbarIconOption.markdownPreviewExport.rawValue,
+             ToolbarIconOption.markdownPreviewStyle.rawValue:
+            return showsMarkdownPreview && isMarkdownDocument
+        default:
+            return true
+        }
+    }
+}
+
 // MARK: - Toolbar Content
 
 extension ContentView {
@@ -761,6 +823,12 @@ extension ContentView {
                 customIDsRawValue: toolbarCustomFiveIDsIOS,
                 universalIDs: ToolbarActionSelection.universallyAvailableMobileActionIDs
             )
+            && MobileToolbarPresentationPolicy.isContextualActionAvailable(
+                actionID: $0.rawValue,
+                supportsMinimap: supportsCodeMinimap(language: currentLanguage),
+                showsMarkdownPreview: showMarkdownPreviewPane,
+                isMarkdownDocument: isMarkdownPreviewDocument
+            )
         }
     }
 
@@ -990,6 +1058,12 @@ extension ContentView {
                 preset: preset,
                 customIDsRawValue: toolbarCustomFiveIDsIOS,
                 universalIDs: ToolbarActionSelection.universallyAvailableMobileActionIDs
+            )
+            && MobileToolbarPresentationPolicy.isContextualActionAvailable(
+                actionID: $0.rawValue,
+                supportsMinimap: supportsCodeMinimap(language: currentLanguage),
+                showsMarkdownPreview: showMarkdownPreviewPane,
+                isMarkdownDocument: isMarkdownPreviewDocument
             )
         }
     }
@@ -2125,21 +2199,25 @@ extension ContentView {
         _ title: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(spacing: 1) {
+        ZStack(alignment: .bottom) {
             content()
                 .frame(width: 44, height: 44)
+                .offset(y: toolbarButtonLabelsIOS ? -4 : 0)
             if toolbarButtonLabelsIOS {
-                Text(title)
+                Text(MobileToolbarPresentationPolicy.compactTitle(title))
                     .font(.system(size: 9, weight: .semibold))
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 68, height: 22, alignment: .top)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .allowsTightening(true)
+                    .frame(width: 60, height: 13, alignment: .center)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
         }
-        .frame(width: toolbarButtonLabelsIOS ? 72 : 44)
-        .frame(minHeight: toolbarButtonLabelsIOS ? 68 : 44)
+        .frame(
+            width: toolbarButtonLabelsIOS ? MobileToolbarPresentationPolicy.labeledItemWidth : 44,
+            height: MobileToolbarPresentationPolicy.standardHeight
+        )
     }
 
     private func iPhoneBottomToolbarTitle(for action: IOSPrimaryToolbarAction) -> String {
@@ -2195,9 +2273,9 @@ extension ContentView {
             }
         }
         .frame(maxWidth: isPhoneBottomToolbarMinimized ? nil : .infinity)
-        .frame(minHeight: toolbarButtonLabelsIOS ? 68 : 52)
+        .frame(height: MobileToolbarPresentationPolicy.standardHeight)
         .background {
-            IOSReadableGlassBackground()
+            IOSAdaptiveChromeBackground(enabled: shouldUseLiquidGlass)
                 .clipShape(Capsule())
         }
         .clipShape(Capsule())
@@ -2290,7 +2368,7 @@ extension ContentView {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(minHeight: usesIPadBottomToolbar && toolbarButtonLabelsIOS ? 68 : 52)
+        .frame(minHeight: usesIPadBottomToolbar ? MobileToolbarPresentationPolicy.standardHeight : 52)
         .accessibilityLabel("Editor toolbar")
         .accessibilityHint("Swipe horizontally to reveal more editor actions")
     }
@@ -2312,7 +2390,7 @@ extension ContentView {
                     }
                 }
                 .padding(.horizontal, 8)
-                .frame(minHeight: toolbarButtonLabelsIOS ? 68 : 52)
+                .frame(height: MobileToolbarPresentationPolicy.standardHeight)
             } else {
                 iPadScrollableToolbarControls
             }
@@ -2322,7 +2400,7 @@ extension ContentView {
             minimized: isPhoneBottomToolbarMinimized
         ))
         .background {
-            IOSReadableGlassBackground()
+            IOSAdaptiveChromeBackground(enabled: shouldUseLiquidGlass)
                 .clipShape(Capsule())
         }
         .tint(iOSToolbarTintColor)

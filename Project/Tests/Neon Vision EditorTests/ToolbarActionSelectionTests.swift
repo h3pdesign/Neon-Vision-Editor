@@ -147,6 +147,37 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertTrue(Set(ToolbarPreset.mobileSelectableIDs).isSubset(of: labeledActionIDs))
     }
 
+    func testMobileToolbarUsesCompactSingleLinePresentation() {
+        XCTAssertEqual(MobileToolbarPresentationPolicy.standardHeight, 52)
+        XCTAssertEqual(MobileToolbarPresentationPolicy.compactTitle("Indentation Guides"), "Guides")
+        XCTAssertEqual(MobileToolbarPresentationPolicy.compactTitle("Decrease Font Size"), "Font −")
+        XCTAssertEqual(MobileToolbarPresentationPolicy.compactTitle("Export PDF"), "PDF")
+        XCTAssertEqual(MobileToolbarPresentationPolicy.compactTitle("Settings"), "Settings")
+    }
+
+    func testUnavailableContextualActionsDoNotReserveBlankToolbarSlots() {
+        XCTAssertFalse(MobileToolbarPresentationPolicy.isContextualActionAvailable(
+            actionID: "codeMinimap",
+            supportsMinimap: false,
+            showsMarkdownPreview: false,
+            isMarkdownDocument: false
+        ))
+        for actionID in ["markdownPreviewExport", "markdownPreviewStyle"] {
+            XCTAssertFalse(MobileToolbarPresentationPolicy.isContextualActionAvailable(
+                actionID: actionID,
+                supportsMinimap: true,
+                showsMarkdownPreview: false,
+                isMarkdownDocument: true
+            ))
+            XCTAssertTrue(MobileToolbarPresentationPolicy.isContextualActionAvailable(
+                actionID: actionID,
+                supportsMinimap: true,
+                showsMarkdownPreview: true,
+                isMarkdownDocument: true
+            ))
+        }
+    }
+
     func testNamedPresetsIgnoreCustomActionIDs() {
         XCTAssertFalse(
             ToolbarActionSelection.isAllowedByPreset(

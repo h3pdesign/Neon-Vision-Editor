@@ -60,6 +60,19 @@ struct IOSReadableGlassBackground: UIViewRepresentable {
         IOSReadableGlassAppearance.apply(to: view)
     }
 }
+
+struct IOSAdaptiveChromeBackground: View {
+    let enabled: Bool
+
+    @ViewBuilder
+    var body: some View {
+        if enabled {
+            IOSReadableGlassBackground()
+        } else {
+            Color(uiColor: .secondarySystemBackground)
+        }
+    }
+}
 #endif
 
 

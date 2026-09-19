@@ -198,7 +198,7 @@ extension ContentView {
         if usesIOSBottomToolbar {
             floatingStatusPillLabel
                 .background {
-                    IOSClearGlassBackground()
+                    IOSAdaptiveChromeBackground(enabled: shouldUseLiquidGlass)
                         .clipShape(Capsule())
                 }
         } else {

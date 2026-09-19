@@ -3075,6 +3075,7 @@ struct ContentView: View {
                     settingsLineWrapEnabled = enabled
                 }
             }
+#if !os(macOS)
             .onChange(of: settingsThemeName) { _, _ in
                 scheduleHighlightRefresh()
             }
@@ -3082,25 +3083,18 @@ struct ContentView: View {
                 scheduleHighlightRefresh()
             }
             .onChange(of: highlightMatchingBrackets) { _, _ in
-#if !os(macOS)
                 scheduleHighlightRefresh()
-#endif
             }
             .onChange(of: showScopeGuides) { _, _ in
-#if !os(macOS)
                 scheduleHighlightRefresh()
-#endif
             }
             .onChange(of: highlightScopeBackground) { _, _ in
-#if !os(macOS)
                 scheduleHighlightRefresh()
-#endif
             }
             .onChange(of: viewModel.isLineWrapEnabled) { _, _ in
-#if !os(macOS)
                 scheduleHighlightRefresh()
-#endif
             }
+#endif
     }
 
     private func applySessionStateObservers<Content: View>(to view: Content) -> some View {
@@ -5647,16 +5641,12 @@ struct ContentView: View {
             highlightRefreshToken &+= 1
 #endif
         }
+#if !os(macOS)
         .onChange(of: settingsThemeHexOverridesData) { _, _ in
-#if os(macOS)
-            // Publish an explicit native-editor input so a palette edit updates
-            // the current viewport without waiting for a tab transition.
-            scheduleHighlightRefresh()
-#else
             applyWindowTranslucency(enableTranslucentWindow)
             highlightRefreshToken &+= 1
-#endif
         }
+#endif
         )
 #if os(iOS) || os(visionOS)
         let eventAwareContent = AnyView(

@@ -125,8 +125,18 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(document.stringCallCount, 0)
     }
 
-    func testThemeRefreshPreservesLoadedViewportWithoutAnotherDocumentRead() {
-        let source = "import AppKit\nlet view = NSVisualEffectView()\n"
+    func testThemeRefreshPreservesLoadedViewportWithoutAnotherDocumentRead() async {
+        let defaults = UserDefaults.standard
+        let boldKeywordsKey = SettingsPreferenceKey.themeBoldKeywords
+        let previousBoldKeywords = defaults.object(forKey: boldKeywordsKey)
+        defer {
+            if let previousBoldKeywords { defaults.set(previousBoldKeywords, forKey: boldKeywordsKey) }
+            else { defaults.removeObject(forKey: boldKeywordsKey) }
+        }
+        defaults.set(false, forKey: boldKeywordsKey)
+
+        let sourceLine = "return NSVisualEffectView()"
+        let source = sourceLine + "\n"
         let document = CountingEditorDocument(backing: FileBackedTextDocument(content: source))
         let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
         _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
@@ -166,10 +176,13 @@ final class VirtualEditorLayoutTests: XCTestCase {
 
         configure(themeRefreshToken: 0)
         let viewportReads = document.viewportCallCount
-        configure(themeRefreshToken: 1)
+        defaults.set(true, forKey: boldKeywordsKey)
+        configure(themeRefreshToken: 0)
 
         XCTAssertEqual(document.viewportCallCount, viewportReads)
         XCTAssertEqual(canvas.accessibilityValue() as? String, source)
+        let keywordBecameBold = await waitForBoldFont(in: canvas, line: sourceLine, at: 1)
+        XCTAssertTrue(keywordBecameBold, "A same-token formatting change must invalidate the visible-line cache")
     }
 
     func testVirtualEditorAppliesAndRemovesThemeBoldEmphasis() async {

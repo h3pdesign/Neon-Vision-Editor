@@ -8,6 +8,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Fixes
 
+- Keeps macOS Settings controls responsive by eliminating the duplicate editor recoloring and layout pass that followed every theme, formatting, or palette change.
+
 - Refreshes the visible macOS editor immediately when themes change, preserves the loaded viewport during recoloring, applies bold keywords and Markdown headings plus italic comments and underlined links in the virtual renderer, and restores framework-type and function-call highlighting across supported programming languages without splitting existing comments, strings, attributes, or declarations or expanding work beyond the existing visible range.
 
 - Keeps the iPhone and iPad editor toolbar at the standard compact height, adds optional larger symbols, restores colored preset icons with a distinct All Actions symbol, uses one-line abbreviated captions without sacrificing full accessibility labels, removes empty context-action slots, presents five complete iPhone actions before horizontal scrolling, switches the auto-minimized scrolling toolbar to icons only, and applies the same system-adaptive Liquid Glass setting to the toolbar, status pill, and keyboard bar.

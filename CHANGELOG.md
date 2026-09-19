@@ -8,6 +8,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Fixes
 
+- Keeps syntax highlighting synchronized with the visible viewport while scrolling large programming files on iPhone and iPad, consistently honors the Large File Syntax setting, and applies responsive editor optimizations from existing document metadata without rescanning or copying text. Files below 100 MB remain normal complete editable documents.
+
 - Opens CSV, HTML, JSON, Markdown, source code, and other supported text files below 100 MB as complete editable documents on every platform, while keeping the excessive-file preview boundary at 100 MB.
 - Restores syntax highlighting for large untitled or extensionless documents on iPhone, iPad, and macOS by detecting their language from a bounded content sample.
 - Replaces the hard-coded clear iPhone and iPad bottom toolbar glass that distorted underlying editor text with readable system-adaptive Liquid Glass and adds enabled-by-default button captions with a Settings toggle.

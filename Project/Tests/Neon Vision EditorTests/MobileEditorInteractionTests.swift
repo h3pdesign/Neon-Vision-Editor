@@ -5,6 +5,37 @@ import SwiftUI
 
 @MainActor
 final class MobileEditorInteractionTests: XCTestCase {
+    func testLargeSyntaxScrollPolicy() {
+        let defaults = UserDefaults.standard
+        let syntaxKey = "SettingsLargeFileSyntaxHighlighting"
+        let openKey = "SettingsLargeFileOpenMode"
+        let previousSyntax = defaults.object(forKey: syntaxKey)
+        let previousOpen = defaults.object(forKey: openKey)
+        defer {
+            if let previousSyntax { defaults.set(previousSyntax, forKey: syntaxKey) }
+            else { defaults.removeObject(forKey: syntaxKey) }
+            if let previousOpen { defaults.set(previousOpen, forKey: openKey) }
+            else { defaults.removeObject(forKey: openKey) }
+        }
+
+        defaults.set("minimal", forKey: syntaxKey)
+        defaults.set("deferred", forKey: openKey)
+        for language in ["swift", "typescript", "python", "html", "json", "csv"] {
+            XCTAssertTrue(
+                shouldRefreshViewportSyntaxOnScroll(language: language, textLength: 2_500_000),
+                "Expected a bounded scrolling highlight pass for \(language)"
+            )
+        }
+        XCTAssertFalse(shouldRefreshViewportSyntaxOnScroll(language: "markdown", textLength: 2_500_000))
+
+        defaults.set("off", forKey: syntaxKey)
+        XCTAssertFalse(shouldRefreshViewportSyntaxOnScroll(language: "swift", textLength: 2_500_000))
+
+        defaults.set("minimal", forKey: syntaxKey)
+        defaults.set("plainText", forKey: openKey)
+        XCTAssertFalse(shouldRefreshViewportSyntaxOnScroll(language: "swift", textLength: 2_500_000))
+    }
+
     func testReadableToolbarGlassUsesSystemAdaptiveNativeGlass() throws {
         let view = UIVisualEffectView()
         IOSReadableGlassAppearance.apply(to: view)

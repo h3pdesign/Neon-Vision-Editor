@@ -1366,6 +1366,27 @@ final class VirtualEditorLayoutTests: XCTestCase {
             fileByteCount: 0
         ))
     }
+
+    func testLargeOptimizationMetadataPolicy() {
+        XCTAssertTrue(ContentView.EditorPerformanceThresholds.shouldUseLargeDocumentOptimizations(
+            byteCount: 8_000_000,
+            lineCount: 1,
+            byteThreshold: 8_000_000,
+            lineThreshold: 25_000
+        ))
+        XCTAssertTrue(ContentView.EditorPerformanceThresholds.shouldUseLargeDocumentOptimizations(
+            byteCount: 2_000_000,
+            lineCount: 25_000,
+            byteThreshold: 8_000_000,
+            lineThreshold: 25_000
+        ))
+        XCTAssertFalse(ContentView.EditorPerformanceThresholds.shouldUseLargeDocumentOptimizations(
+            byteCount: 999_999,
+            lineCount: 100_000,
+            byteThreshold: 8_000_000,
+            lineThreshold: 25_000
+        ))
+    }
 }
 
 private final class CountingEditorDocument: EditorDocument {

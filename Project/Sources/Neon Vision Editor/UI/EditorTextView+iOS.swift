@@ -2668,8 +2668,10 @@ struct CustomTextEditor: UIViewRepresentable {
 
         private func currentViewportAnchor(textLength: Int, language: String) -> Int {
             guard let textView,
-                  supportsResponsiveLargeFileHighlight(language: language, textLength: textLength),
-                  textLength >= 100_000 else { return -1 }
+                  shouldRefreshViewportSyntaxOnScroll(
+                    language: language,
+                    textLength: textLength
+                  ) else { return -1 }
             let visibleRect = CGRect(origin: textView.contentOffset, size: textView.bounds.size).insetBy(dx: 0, dy: -80)
             let glyphRange = textView.layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)
             let charRange = textView.layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
@@ -4063,7 +4065,10 @@ struct CustomTextEditor: UIViewRepresentable {
                 textView.setNeedsDisplay()
             }
             let textLength = (textView.text as NSString?)?.length ?? 0
-            if textLength >= 100_000 && supportsResponsiveLargeFileHighlight(language: parent.language, textLength: textLength) {
+            if shouldRefreshViewportSyntaxOnScroll(
+                language: parent.language,
+                textLength: textLength
+            ) {
                 guard !isPhoneActivelyEditing else { return }
                 scheduleHighlightIfNeeded(currentText: textView.text)
             }

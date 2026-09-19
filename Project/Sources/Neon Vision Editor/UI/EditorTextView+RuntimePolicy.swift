@@ -171,12 +171,20 @@ func supportsResponsiveLargeFileHighlight(language: String, textLength: Int) -> 
 }
 
 func supportsViewportSyntaxHighlighting(language: String, textLength: Int) -> Bool {
+    guard currentLargeFileSyntaxHighlightMode() != .off,
+          currentLargeFileOpenMode() != .plainText else { return false }
     if supportsResponsiveLargeFileHighlight(language: language, textLength: textLength) {
         return true
     }
     return textLength >= EditorRuntimeLimits.programmingViewportSyntaxUTF16Length &&
-        isViewportSafeSyntaxLanguage(language) &&
-        currentLargeFileOpenMode() != .plainText
+        isViewportSafeSyntaxLanguage(language)
+}
+
+func shouldRefreshViewportSyntaxOnScroll(language: String, textLength: Int) -> Bool {
+    textLength >= 100_000 && supportsViewportSyntaxHighlighting(
+        language: language,
+        textLength: textLength
+    )
 }
 
 enum LargeFileSyntaxHighlightMode: String {

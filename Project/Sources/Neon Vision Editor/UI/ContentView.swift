@@ -554,6 +554,18 @@ struct ContentView: View {
                   documentUTF16Length < tocMaterializationUTF16Length else { return false }
             return !usesFileBackedStorage || fileByteCount <= tocMaterializationUTF16Length
         }
+
+        static func shouldUseLargeDocumentOptimizations(
+            byteCount: Int,
+            lineCount: Int,
+            byteThreshold: Int,
+            lineThreshold: Int
+        ) -> Bool {
+            byteCount >= byteThreshold || (
+                byteCount >= minimumBytesForLargeFileLineThreshold &&
+                lineCount >= lineThreshold
+            )
+        }
         static let largeFileLineBreaks = 40_000
         static let largeFileLineBreaksHTMLCSV = 15_000
         static let largeFileLineBreaksMobile = 25_000
@@ -2111,37 +2123,14 @@ struct ContentView: View {
         let lowerLanguage = currentLanguage.lowercased()
         let isHTMLLike = ["html", "htm", "xml", "svg", "xhtml"].contains(lowerLanguage)
         let isCSVLike = ["csv", "tsv"].contains(lowerLanguage)
-        let useAggressiveThresholds = isHTMLLike || isCSVLike
-        #if os(iOS) || os(visionOS)
-        var byteThreshold = useAggressiveThresholds
-            ? EditorPerformanceThresholds.largeFileBytesHTMLCSVMobile
-            : EditorPerformanceThresholds.largeFileBytesMobile
-        var lineThreshold = useAggressiveThresholds
-            ? EditorPerformanceThresholds.largeFileLineBreaksHTMLCSVMobile
-            : EditorPerformanceThresholds.largeFileLineBreaksMobile
-        #else
-        var byteThreshold = useAggressiveThresholds
-            ? EditorPerformanceThresholds.largeFileBytesHTMLCSV
-            : EditorPerformanceThresholds.largeFileBytes
-        var lineThreshold = useAggressiveThresholds
-            ? EditorPerformanceThresholds.largeFileLineBreaksHTMLCSV
-            : EditorPerformanceThresholds.largeFileLineBreaks
-        #endif
-        switch performancePreset {
-        case .balanced:
-            break
-        case .largeFiles:
-            byteThreshold = max(1_000_000, Int(Double(byteThreshold) * 0.75))
-            lineThreshold = max(5_000, Int(Double(lineThreshold) * 0.75))
-        case .battery:
-            byteThreshold = max(750_000, Int(Double(byteThreshold) * 0.55))
-            lineThreshold = max(3_000, Int(Double(lineThreshold) * 0.55))
-        }
+        let thresholds = largeFilePerformanceThresholds(
+            useAggressiveThresholds: isHTMLLike || isCSVLike
+        )
         let estimate = largeFileEstimate(
             for: text,
             language: lowerLanguage,
-            byteThreshold: byteThreshold,
-            lineThreshold: lineThreshold,
+            byteThreshold: thresholds.bytes,
+            lineThreshold: thresholds.lines,
             isCSVLike: isCSVLike
         )
         let exceedsByteThreshold = estimate.exceedsByteThreshold
@@ -2158,6 +2147,37 @@ struct ContentView: View {
             largeFileModeEnabled = isLarge
             scheduleHighlightRefresh()
         }
+    }
+
+    private func largeFilePerformanceThresholds(
+        useAggressiveThresholds: Bool
+    ) -> (bytes: Int, lines: Int) {
+#if os(iOS) || os(visionOS)
+        var byteThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileBytesHTMLCSVMobile
+            : EditorPerformanceThresholds.largeFileBytesMobile
+        var lineThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileLineBreaksHTMLCSVMobile
+            : EditorPerformanceThresholds.largeFileLineBreaksMobile
+#else
+        var byteThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileBytesHTMLCSV
+            : EditorPerformanceThresholds.largeFileBytes
+        var lineThreshold = useAggressiveThresholds
+            ? EditorPerformanceThresholds.largeFileLineBreaksHTMLCSV
+            : EditorPerformanceThresholds.largeFileLineBreaks
+#endif
+        switch performancePreset {
+        case .balanced:
+            break
+        case .largeFiles:
+            byteThreshold = max(1_000_000, Int(Double(byteThreshold) * 0.75))
+            lineThreshold = max(5_000, Int(Double(lineThreshold) * 0.75))
+        case .battery:
+            byteThreshold = max(750_000, Int(Double(byteThreshold) * 0.55))
+            lineThreshold = max(3_000, Int(Double(lineThreshold) * 0.55))
+        }
+        return (byteThreshold, lineThreshold)
     }
 
     private func largeFileEstimate(
@@ -2251,6 +2271,31 @@ struct ContentView: View {
         if viewModel.selectedTab?.isLargeFileCandidate == true {
             if !largeFileModeEnabled {
                 largeFileModeEnabled = true
+                scheduleHighlightRefresh()
+            }
+            return
+        }
+        if let tab = viewModel.selectedTab {
+            let lowerLanguage = tab.language.lowercased()
+            let isHTMLLike = ["html", "htm", "xml", "svg", "xhtml"].contains(lowerLanguage)
+            let isCSVLike = ["csv", "tsv"].contains(lowerLanguage)
+            let thresholds = largeFilePerformanceThresholds(
+                useAggressiveThresholds: isHTMLLike || isCSVLike
+            )
+            let estimatedByteCount = max(tab.fileByteCount, tab.document.utf16Length)
+            let shouldUseResponsiveOptimizations = EditorPerformanceThresholds.shouldUseLargeDocumentOptimizations(
+                byteCount: estimatedByteCount,
+                lineCount: tab.document.lineCount,
+                byteThreshold: thresholds.bytes,
+                lineThreshold: thresholds.lines
+            )
+#if os(iOS) || os(visionOS)
+            let isLarge = forceLargeFileMode || shouldUseResponsiveOptimizations
+#else
+            let isLarge = shouldUseResponsiveOptimizations
+#endif
+            if largeFileModeEnabled != isLarge {
+                largeFileModeEnabled = isLarge
                 scheduleHighlightRefresh()
             }
             return

@@ -3,6 +3,30 @@ import XCTest
 
 @MainActor
 final class FileBackedTextDocumentTests: XCTestCase {
+    func testRepeatedEditsAtPieceBoundariesPreserveEncodingAndCachedText() throws {
+        let identifiers: [TextEncodingDescriptor.Identifier] = [
+            .utf8, .utf8WithBOM, .utf16LittleEndian, .utf16LittleEndianWithBOM,
+            .utf16BigEndian, .utf16BigEndianWithBOM
+        ]
+        for identifier in identifiers {
+            let prefix = String(repeating: "é😀\r\n", count: 100)
+            let document = FileBackedTextDocument(
+                content: prefix + "Xsuffix", encoding: TextEncodingDescriptor(identifier: identifier)
+            )
+            let location = prefix.utf16.count
+            for replacement in ["Y", "😀", "é", "Z"] {
+                let previousLength = document.utf16Length - location - "suffix".utf16.count
+                try document.replace(utf16Range: NSRange(location: location, length: previousLength), with: replacement)
+                XCTAssertEqual(document.string(), prefix + replacement + "suffix", identifier.rawValue)
+                XCTAssertEqual(try document.text(inUTF16Range: NSRange(location: location, length: replacement.utf16.count)), replacement)
+            }
+            try document.replace(utf16Range: NSRange(location: document.utf16Length, length: 0), with: "\nend")
+            XCTAssertEqual(document.string(), prefix + "Zsuffix\r\nend")
+            try document.replace(utf16Range: NSRange(location: 0, length: 1), with: "E")
+            XCTAssertTrue(document.string().hasPrefix("E😀\r\n"))
+        }
+    }
+
     func testCompatibilityProjectionIsInvalidatedByEveryEditPath() throws {
         let document = FileBackedTextDocument(content: "{\"value\":\"😀\"}\n")
         let original = document.string()

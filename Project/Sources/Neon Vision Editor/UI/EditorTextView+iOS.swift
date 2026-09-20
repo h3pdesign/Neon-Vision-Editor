@@ -2698,6 +2698,9 @@ struct CustomTextEditor: UIViewRepresentable {
         fileprivate var isInstallingLargeText = false
         private var largeTextInstallGeneration: Int = 0
         private var largeTextWidthTask: Task<Void, Never>?
+        var hasPendingLargeTextWork: Bool {
+            isInstallingLargeText || largeTextWidthTask != nil
+        }
         private var lastHighlightedText: String = ""
         private var lastLanguage: String?
         private var lastColorScheme: ColorScheme?
@@ -2963,6 +2966,11 @@ struct CustomTextEditor: UIViewRepresentable {
                     let fontSize = textView.font?.pointSize ?? parent.fontSize
                     let letterSpacing = parent.letterSpacing
                     largeTextWidthTask = Task { [weak self, weak textView] in
+                        defer {
+                            if let self, generation == self.largeTextInstallGeneration {
+                                self.largeTextWidthTask = nil
+                            }
+                        }
                         let worker = Task.detached(priority: .utility) {
                             let font = UIFont(name: fontName, size: fontSize)
                                 ?? UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)

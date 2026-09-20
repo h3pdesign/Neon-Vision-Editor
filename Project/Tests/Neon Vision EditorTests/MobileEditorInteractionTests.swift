@@ -135,6 +135,61 @@ final class MobileEditorInteractionTests: XCTestCase {
         window.isHidden = true
     }
 
+    func testLargeJSONInstallsCompleteUnicodeBufferWithoutClaimingFocus() async throws {
+        try await assertLargeJSONInstallation(
+            "[\n" + String(repeating: "{\"name\":\"😀 sample\",\"value\":123},\n", count: 80_000) + "null\n]"
+        )
+    }
+
+    func testMinifiedJSONInstallsCompleteBufferWithoutBlockingRunLoop() async throws {
+        try await assertLargeJSONInstallation(
+            "{\"items\":[" + String(repeating: "{\"id\":123,\"text\":\"sample\",\"active\":true},", count: 65_000)
+                + "{\"text\":\"😀\"}]}"
+        )
+    }
+
+    private func assertLargeJSONInstallation(_ source: String) async throws {
+        let defaults = UserDefaults.standard
+        let key = "SettingsLargeFileOpenMode"
+        let previous = defaults.object(forKey: key)
+        defaults.set("deferred", forKey: key)
+        defer {
+            if let previous { defaults.set(previous, forKey: key) }
+            else { defaults.removeObject(forKey: key) }
+        }
+        let host = UIHostingController(rootView: editor(source, language: "json", isLargeFileMode: true))
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        host.view.layoutIfNeeded()
+        func find(_ view: UIView) -> LineNumberedTextViewContainer? {
+            if let container = view as? LineNumberedTextViewContainer { return container }
+            return view.subviews.lazy.compactMap(find).first
+        }
+        let container = try XCTUnwrap(find(host.view))
+        let expectedLength = (source as NSString).length
+        let start = ProcessInfo.processInfo.systemUptime
+        var previousTick = start
+        var longestGap = 0.0
+        while container.textView.textStorage.length < expectedLength,
+              ProcessInfo.processInfo.systemUptime - start < 30 {
+            try await Task.sleep(nanoseconds: 10_000_000)
+            let now = ProcessInfo.processInfo.systemUptime
+            longestGap = max(longestGap, now - previousTick)
+            previousTick = now
+        }
+        // The final chunk yields once before restoring editing.
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertTrue(container.textView.text == source, "The complete document must survive chunk installation")
+        XCTAssertTrue(container.textView.isEditable)
+        XCTAssertFalse(container.textView.isFirstResponder)
+        print("JSON_INSTALL bytes=\(source.utf8.count) elapsed=\(ProcessInfo.processInfo.systemUptime - start) main_gap=\(longestGap)")
+        XCTAssertLessThan(longestGap, 1.0, "Chunk installation must yield to the main run loop")
+    }
+
     func testUnwrappedLongLineKeepsLastGlyphReachable() {
         withEditor(String(repeating: "W", count: 5_000)) { container in
             let view = container.textView
@@ -881,6 +936,10 @@ final class MobileEditorInteractionTests: XCTestCase {
 
     func testLongLineBeyondFormerSamplingLimitIsNotClipped() {
         let source = String(repeating: "short\n", count: 20_001) + String(repeating: "W", count: 5_000)
+        let measurementStart = ProcessInfo.processInfo.systemUptime
+        let width = measuredEditorTextWidth(source, attributes: [.font: UIFont.monospacedSystemFont(ofSize: 16, weight: .regular)])
+        XCTAssertGreaterThan(width, 40_000)
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime - measurementStart, 1, "Width measurement")
         let start = ProcessInfo.processInfo.systemUptime
         withEditor(source) { container in
             XCTAssertGreaterThan(container.textView.textContainer.size.width, 40_000)

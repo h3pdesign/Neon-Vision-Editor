@@ -5,6 +5,25 @@ import Foundation
 import OSLog
 import UIKit
 
+/// NSString's multiline measurement is costly for buffers with many paragraphs.
+/// Measure every logical line independently, reusing common generated lines.
+nonisolated func measuredEditorTextWidth(
+    _ text: String, attributes: [NSAttributedString.Key: Any]
+) -> CGFloat {
+    var maximum: CGFloat = 0
+    var widths: [String: CGFloat] = [:]
+    text.enumerateLines { line, _ in
+        if let cached = widths[line] {
+            maximum = max(maximum, cached)
+        } else {
+            let width = (line as NSString).size(withAttributes: attributes).width
+            maximum = max(maximum, width)
+            if widths.count < 256 { widths[line] = width }
+        }
+    }
+    return maximum
+}
+
 // MARK: - iOS Editor Text View
 
 nonisolated func iPadShiftScrollFontSizeDelta(contentOffsetDeltaY: CGFloat) -> CGFloat {
@@ -2273,7 +2292,7 @@ struct CustomTextEditor: UIViewRepresentable {
             shouldWrapText: shouldWrapText,
             containerWidth: targetContainerWidth
         )
-        if (textView.text as NSString?)?.length ?? 0 <= 300_000 {
+        if textView.textStorage.length <= EditorRuntimeLimits.maximumSyntaxPassUTF16Length {
             textView.layoutManager.ensureLayout(for: textView.textContainer)
         }
         if !shouldWrapText {
@@ -2311,7 +2330,7 @@ struct CustomTextEditor: UIViewRepresentable {
             var attributes = textView.typingAttributes
             attributes[.font] = font
             attributes[.kern] = letterSpacing
-            let measuredWidth = ceil((text as NSString).size(withAttributes: attributes).width) + 32
+            let measuredWidth = ceil(measuredEditorTextWidth(text, attributes: attributes)) + 32
             return max(minimumScrollableWidth, measuredWidth)
         }
     }
@@ -2356,6 +2375,9 @@ struct CustomTextEditor: UIViewRepresentable {
         )
 
         textView.delegate = context.coordinator
+        if (text as NSString).length > EditorRuntimeLimits.maximumSyntaxPassUTF16Length {
+            textView.layoutManager.allowsNonContiguousLayout = true
+        }
         textView.isEditable = !isReadOnly
         textView.isSelectable = true
         textView.markdownFormattingEnabled = language.lowercased() == "markdown"
@@ -2450,7 +2472,6 @@ struct CustomTextEditor: UIViewRepresentable {
     func updateUIView(_ uiView: LineNumberedTextViewContainer, context: Context) {
         let textView = uiView.textView
         context.coordinator.parent = self
-        textView.isEditable = !isReadOnly
         textView.isSelectable = true
         let didSwitchDocumentResource = context.coordinator.lastDocumentResourceID != documentResourceID
         let didChangeStoredCaretLocation = context.coordinator.lastStoredCaretLocation != storedCaretLocation
@@ -2473,6 +2494,7 @@ struct CustomTextEditor: UIViewRepresentable {
             context.coordinator.clearPendingTextMutation()
             context.coordinator.invalidateHighlightCache()
         }
+        textView.isEditable = !isReadOnly && !context.coordinator.isInstallingLargeText
         context.coordinator.lastDocumentResourceID = documentResourceID
         context.coordinator.lastTabLoadingContent = isTabLoadingContent
         context.coordinator.lastExternalEditRevision = externalEditRevision
@@ -2672,7 +2694,7 @@ struct CustomTextEditor: UIViewRepresentable {
         }
         private var pendingTextMutation: (range: NSRange, replacement: String)?
         private var pendingEditedRange: NSRange?
-        private var isInstallingLargeText = false
+        fileprivate var isInstallingLargeText = false
         private var largeTextInstallGeneration: Int = 0
         private var lastHighlightedText: String = ""
         private var lastLanguage: String?
@@ -2927,10 +2949,39 @@ struct CustomTextEditor: UIViewRepresentable {
                     }
                     self.updateCaretStatus()
                     self.scheduleHighlightIfNeeded(currentText: target, immediate: true)
+                    // Measuring a multi-megabyte unwrapped line is expensive too.
+                    // Finish horizontal sizing off-thread after the text is usable.
+                    let fontName = textView.font?.fontName ?? ""
+                    let fontSize = textView.font?.pointSize ?? parent.fontSize
+                    let letterSpacing = parent.letterSpacing
+                    Task { [weak self, weak textView] in
+                        let measuredWidth = await Task.detached(priority: .utility) {
+                            let font = UIFont(name: fontName, size: fontSize)
+                                ?? UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+                            return ceil(measuredEditorTextWidth(target, attributes: [
+                                .font: font, .kern: letterSpacing
+                            ])) + 32
+                        }.value
+                        guard let self, let textView,
+                              generation == self.largeTextInstallGeneration,
+                              self.parent.documentID == installDocumentID,
+                              self.parent.documentResourceID == installDocumentResourceID,
+                              textView.text == target,
+                              textView.textContainer.lineBreakMode == .byClipping else { return }
+                        let width = max(textView.textContainer.size.width, measuredWidth)
+                        textView.textContainer.size.width = width
+                        textView.rememberPreferredWrapLayout(shouldWrapText: false, containerWidth: width)
+                        self.parent.enforceNoWrapContentWidth(textView, containerWidth: width)
+                        textView.showsHorizontalScrollIndicator = width > textView.bounds.width
+                    }
                     return
                 }
 
-                let chunkLength = min(LargeFileInstallRuntime.chunkUTF16, remaining)
+                var chunkLength = min(LargeFileInstallRuntime.chunkUTF16, remaining)
+                if location + chunkLength < targetLength,
+                   (0xDC00...0xDFFF).contains(nsTarget.character(at: location + chunkLength)) {
+                    chunkLength -= 1
+                }
                 let chunk = nsTarget.substring(with: NSRange(location: location, length: chunkLength))
                 for codeUnit in chunk.utf16 {
                     switch codeUnit {
@@ -2945,7 +2996,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 }
                 let storage = textView.textStorage
                 storage.beginEditing()
-                storage.append(NSAttributedString(string: chunk))
+                storage.append(NSAttributedString(string: chunk, attributes: textView.typingAttributes))
                 storage.endEditing()
                 DispatchQueue.main.async {
                     applyChunk(from: location + chunkLength)
@@ -3409,7 +3460,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 }
                 return
             }
-            guard let textView else { return }
+            guard let textView, !isInstallingLargeText else { return }
             let text = currentText ?? textView.text ?? ""
             let lang = parent.language
             let scheme = parent.colorScheme
@@ -3592,12 +3643,7 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         private func expandedRange(around range: NSRange, in text: NSString, maxUTF16Padding: Int = 8000) -> NSRange {
-            let start = max(0, range.location - maxUTF16Padding)
-            let end = min(text.length, NSMaxRange(range) + maxUTF16Padding)
-            let startLine = text.lineRange(for: NSRange(location: start, length: 0)).location
-            let endAnchor = max(startLine, min(text.length - 1, max(0, end - 1)))
-            let endLine = NSMaxRange(text.lineRange(for: NSRange(location: endAnchor, length: 0)))
-            return NSRange(location: startLine, length: max(0, endLine - startLine))
+            boundedSyntaxHighlightRange(around: range, in: text, padding: maxUTF16Padding)
         }
 
         private func preferredHighlightRange(
@@ -3633,7 +3679,11 @@ struct CustomTextEditor: UIViewRepresentable {
             let visibleRect = textView.editorViewport.insetBy(dx: 0, dy: -80)
             let glyphRange = textView.layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)
             let charRange = textView.layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
-            guard charRange.length > 0 else { return fullRange }
+            // TextKit can have no laid-out glyphs on the first frame. Do not
+            // fall back to styling the entire file while layout catches up.
+            guard charRange.length > 0 else {
+                return expandedRange(around: NSRange(location: 0, length: 0), in: text)
+            }
             let padding = EditorRuntimeLimits.largeFileJSONVisiblePaddingUTF16
             return expandedRange(around: charRange, in: text, maxUTF16Padding: padding)
         }

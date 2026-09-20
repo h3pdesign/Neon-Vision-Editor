@@ -3,6 +3,19 @@ import XCTest
 
 @MainActor
 final class FileBackedTextDocumentTests: XCTestCase {
+    func testCompatibilityProjectionIsInvalidatedByEveryEditPath() throws {
+        let document = FileBackedTextDocument(content: "{\"value\":\"😀\"}\n")
+        let original = document.string()
+        XCTAssertEqual(document.string(), original)
+        try document.replace(utf16Range: NSRange(location: 2, length: 5), with: "name")
+        XCTAssertEqual(document.string(), "{\"name\":\"😀\"}\n")
+        let viewport = try document.viewport(aroundLine: 0, maximumByteCount: 64_000)
+        try document.replace(in: viewport, utf16Range: NSRange(location: 2, length: 4), with: "title")
+        XCTAssertEqual(document.string(), "{\"title\":\"😀\"}\n")
+        try document.replaceAll(with: "replacement")
+        XCTAssertEqual(document.string(), "replacement")
+    }
+
     func testUTF16RangeReadsStayBoundedAcrossLazyAndEditedDocuments() throws {
         let prefix = String(repeating: "prefix line\n", count: 30_000)
         let selected = "selected 😀 text"

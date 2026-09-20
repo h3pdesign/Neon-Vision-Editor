@@ -76,7 +76,7 @@ nonisolated struct JSONPreviewDocument: Sendable {
 
         func failure(_ reason: String) -> Failure {
             let prefix = String(decoding: bytes.prefix(offset), as: UTF8.self)
-            let lines = prefix.split(separator: "\n", omittingEmptySubsequences: false)
+            let lines = prefix.split(omittingEmptySubsequences: false) { $0 == "\n" || $0 == "\r" || $0 == "\r\n" }
             return Failure(message: "\(reason) at line \(lines.count), column \((lines.last?.count ?? 0) + 1).")
         }
 
@@ -188,8 +188,17 @@ nonisolated struct JSONPreviewDocument: Sendable {
         }
 
         static func clipped(_ text: String, limit: Int) -> String {
-            let prefix = text.prefix(limit)
-            return String(prefix) + (prefix.endIndex == text.endIndex ? "" : "…")
+            // A single grapheme can contain unbounded combining scalars. Bound
+            // actual layout input, while never splitting a UTF-16 surrogate pair.
+            var result = ""
+            var length = 0
+            for scalar in text.unicodeScalars {
+                let scalarLength = scalar.utf16.count
+                guard length + scalarLength <= limit else { return result + "…" }
+                result.unicodeScalars.append(scalar)
+                length += scalarLength
+            }
+            return result
         }
     }
 }

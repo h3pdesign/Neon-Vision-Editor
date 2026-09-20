@@ -3518,12 +3518,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                         text: source, in: range, colors: colors
                     ) {
                         lineSpans = ranges.map { VirtualEditorSyntaxSpan(range: $0.0, color: $0.1) }
-                        VirtualEditorSyntaxLineCache.store(lineSpans, for: cacheKey)
-                        if !lineSpans.isEmpty { result[line.localLine] = lineSpans }
-                        continue
                     }
                     var fallbackSpans: [(priority: Int, span: VirtualEditorSyntaxSpan)] = []
-                    for (pattern, color) in patterns {
+                    for (pattern, color) in patterns where syntaxLanguage != "json" {
                         guard !Task.isCancelled else { return result }
                         guard let regex = cachedSyntaxRegex(pattern: pattern, options: [.anchorsMatchLines]) else { continue }
                         let matches = regex.matches(in: line.text, range: range).map {

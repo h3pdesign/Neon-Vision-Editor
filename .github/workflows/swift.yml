@@ -31,7 +31,7 @@ jobs:
     runs-on: xcode-27
     timeout-minutes: 30
     env:
-      DERIVED_DATA_ROOT: ${{ runner.temp }}/nve-pr-matrix
+      DERIVED_DATA_ROOT: ${{ github.workspace }}/.DerivedDataPR
 
     steps:
       - uses: actions/checkout@v5
@@ -90,7 +90,7 @@ jobs:
 
       - name: Remove temporary build products
         if: ${{ always() }}
-        run: rm -rf -- "$RUNNER_TEMP/nve-pr-matrix"
+        run: rm -rf -- "$GITHUB_WORKSPACE/.DerivedDataPR"
 
   macos_sequoia_syntax_regressions:
     if: ${{ !startsWith(github.head_ref, 'release/') }}

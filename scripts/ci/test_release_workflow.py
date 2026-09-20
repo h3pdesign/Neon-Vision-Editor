@@ -116,7 +116,10 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("build_platform_matrix.sh --keep-derived-data", workflow)
         self.assertIn('-derivedDataPath "$DERIVED_DATA_ROOT/macos"', workflow)
         self.assertIn('APP="$DERIVED_DATA_ROOT/macos/Build/Products/Debug/Neon Vision Editor.app"', workflow)
-        self.assertIn('run: rm -rf -- "$RUNNER_TEMP/nve-pr-matrix"', workflow)
+        self.assertIn('run: rm -rf -- "$GITHUB_WORKSPACE/.DerivedDataPR"', workflow)
+        self.assertIn('DERIVED_DATA_ROOT: ${{ github.workspace }}/.DerivedDataPR', workflow)
+        job_settings = workflow.split('    steps:', 1)[0]
+        self.assertNotIn('runner.temp', job_settings)
         self.assertEqual(workflow.count('-project "Neon Vision Editor.xcodeproj"'), 1)
         for suite in ("ReleaseRuntimePolicyTests", "AppDelegateExternalOpenTests", "VirtualEditorPerformanceTests"):
             self.assertIn(f'-only-testing:"Neon Vision EditorTests/{suite}"', workflow)

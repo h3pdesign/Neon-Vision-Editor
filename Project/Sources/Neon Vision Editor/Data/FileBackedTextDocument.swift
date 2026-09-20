@@ -1317,6 +1317,9 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
             let length = piece.utf16Length
             if target <= utf16 + length {
                 let local = target - utf16
+                // Repeated edits land at piece boundaries. Their byte offsets are
+                // already known; decoding the unchanged prefix makes typing linear.
+                if local == length, local > 0 { return byteOffset + piece.length }
                 return byteOffset + Self.byteOffset(forUTF16Offset: local, in: piece.data, encoding: encodingDescriptor, includesByteOrderMark: byteOffset == 0)
             }
             utf16 += length

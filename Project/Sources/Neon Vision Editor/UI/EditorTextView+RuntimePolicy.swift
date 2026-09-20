@@ -5,6 +5,7 @@ import OSLog
 nonisolated let syntaxHighlightSignposter = OSSignposter(subsystem: "h3p.Neon-Vision-Editor", category: "SyntaxHighlight")
 
 enum EditorRuntimeLimits {
+    nonisolated static let maximumSyntaxPassUTF16Length = 16_384
     // Above this, keep editing responsive by skipping regex-heavy syntax passes.
     static let syntaxMinimalUTF16Length = 1_200_000
     // HTML uses a bounded visible-range scanner, so it can keep structural
@@ -39,6 +40,38 @@ enum EditorRuntimeLimits {
     // lines). Coalesce keystrokes before starting its full-document pass.
     static let markdownHighlightDebounce: TimeInterval = 0.28
     static let bracketScopeNearestFallbackWindowUTF16 = 8_000
+}
+
+/// Line alignment must never turn a viewport into an entire minified document.
+/// Search only within the work budget, preserving UTF-16 scalar boundaries.
+nonisolated func boundedSyntaxHighlightRange(
+    around range: NSRange,
+    in text: NSString,
+    padding: Int = 2_400
+) -> NSRange {
+    let limit = EditorRuntimeLimits.maximumSyntaxPassUTF16Length
+    let location = min(max(0, range.location), text.length)
+    let padding = min(max(0, padding), limit / 4)
+    let lowerBound = max(0, location - padding)
+    let upperBound = lowerBound + min(limit, text.length - lowerBound)
+    var start = location
+    while start > lowerBound {
+        let previous = text.character(at: start - 1)
+        if previous == 10 || previous == 13 { break }
+        start -= 1
+    }
+    var end = location + min(max(0, range.length), upperBound - location)
+    let scanEnd = min(upperBound, end + padding)
+    while end < scanEnd {
+        let character = text.character(at: end)
+        end += 1
+        if character == 10 || character == 13 { break }
+    }
+    if start > 0, start < text.length,
+       (0xDC00...0xDFFF).contains(text.character(at: start)) { start += 1 }
+    if end > start, end < text.length,
+       (0xDC00...0xDFFF).contains(text.character(at: end)) { end -= 1 }
+    return NSRange(location: start, length: max(0, end - start))
 }
 
 nonisolated func isMarkdownSyntaxLanguage(_ language: String) -> Bool {

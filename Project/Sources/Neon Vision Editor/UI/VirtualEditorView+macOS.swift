@@ -3503,12 +3503,25 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                         if !cachedSpans.isEmpty { result[line.localLine] = cachedSpans }
                         continue
                     }
-                    let range = NSRange(location: 0, length: (line.text as NSString).length)
+                    let source = line.text as NSString
+                    let range = boundedSyntaxHighlightRange(
+                        around: NSRange(location: 0, length: source.length), in: source, padding: 0
+                    )
                     guard range.length > 0 else {
                         VirtualEditorSyntaxLineCache.store([], for: cacheKey)
                         continue
                     }
                     var lineSpans: [VirtualEditorSyntaxSpan] = []
+                    if syntaxLanguage == "json", let ranges = fastSyntaxColorRanges(
+                        language: syntaxLanguage,
+                        profile: source.length >= EditorRuntimeLimits.maximumSyntaxPassUTF16Length ? .jsonFast : .full,
+                        text: source, in: range, colors: colors
+                    ) {
+                        lineSpans = ranges.map { VirtualEditorSyntaxSpan(range: $0.0, color: $0.1) }
+                        VirtualEditorSyntaxLineCache.store(lineSpans, for: cacheKey)
+                        if !lineSpans.isEmpty { result[line.localLine] = lineSpans }
+                        continue
+                    }
                     var fallbackSpans: [(priority: Int, span: VirtualEditorSyntaxSpan)] = []
                     for (pattern, color) in patterns {
                         guard !Task.isCancelled else { return result }

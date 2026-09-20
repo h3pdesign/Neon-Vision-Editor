@@ -3,6 +3,43 @@ import XCTest
 
 @MainActor
 final class FileBackedTextDocumentTests: XCTestCase {
+    func testRepeatedEditsAtPieceBoundariesPreserveEncodingAndCachedText() throws {
+        let identifiers: [TextEncodingDescriptor.Identifier] = [
+            .utf8, .utf8WithBOM, .utf16LittleEndian, .utf16LittleEndianWithBOM,
+            .utf16BigEndian, .utf16BigEndianWithBOM
+        ]
+        for identifier in identifiers {
+            let prefix = String(repeating: "é😀\r\n", count: 100)
+            let document = FileBackedTextDocument(
+                content: prefix + "Xsuffix", encoding: TextEncodingDescriptor(identifier: identifier)
+            )
+            let location = prefix.utf16.count
+            for replacement in ["Y", "😀", "é", "Z"] {
+                let previousLength = document.utf16Length - location - "suffix".utf16.count
+                try document.replace(utf16Range: NSRange(location: location, length: previousLength), with: replacement)
+                XCTAssertEqual(document.string(), prefix + replacement + "suffix", identifier.rawValue)
+                XCTAssertEqual(try document.text(inUTF16Range: NSRange(location: location, length: replacement.utf16.count)), replacement)
+            }
+            try document.replace(utf16Range: NSRange(location: document.utf16Length, length: 0), with: "\nend")
+            XCTAssertEqual(document.string(), prefix + "Zsuffix\r\nend")
+            try document.replace(utf16Range: NSRange(location: 0, length: 1), with: "E")
+            XCTAssertTrue(document.string().hasPrefix("E😀\r\n"))
+        }
+    }
+
+    func testCompatibilityProjectionIsInvalidatedByEveryEditPath() throws {
+        let document = FileBackedTextDocument(content: "{\"value\":\"😀\"}\n")
+        let original = document.string()
+        XCTAssertEqual(document.string(), original)
+        try document.replace(utf16Range: NSRange(location: 2, length: 5), with: "name")
+        XCTAssertEqual(document.string(), "{\"name\":\"😀\"}\n")
+        let viewport = try document.viewport(aroundLine: 0, maximumByteCount: 64_000)
+        try document.replace(in: viewport, utf16Range: NSRange(location: 2, length: 4), with: "title")
+        XCTAssertEqual(document.string(), "{\"title\":\"😀\"}\n")
+        try document.replaceAll(with: "replacement")
+        XCTAssertEqual(document.string(), "replacement")
+    }
+
     func testUTF16RangeReadsStayBoundedAcrossLazyAndEditedDocuments() throws {
         let prefix = String(repeating: "prefix line\n", count: 30_000)
         let selected = "selected 😀 text"

@@ -83,7 +83,7 @@ extension ContentView {
         @ViewBuilder actions: () -> Actions
     ) -> some View {
         PreviewPaneHeader(
-            title: title,
+            title: viewModel.selectedTab == nil ? title : previewDocumentTitle,
             iconName: iconName,
             metadata: metadata,
             backgroundStyle: editorSurfaceBackgroundStyle,
@@ -157,6 +157,8 @@ extension ContentView {
     }
 
     var previewModeForCurrentDocument: PreviewMode? {
+        if isJSONPreviewDocument { return .json }
+        if isYAMLPreviewDocument { return .yaml }
         if isMarkdownPreviewDocument { return .markdown }
         if isSVGDocument || isHTMLPreviewDocument { return .web }
         if isPNGPreviewDocument { return .image }
@@ -199,7 +201,14 @@ extension ContentView {
         previewMode == previewModeForCurrentDocument
     }
 
+    var previewDocumentTitle: String {
+        let fileURL = previewMode == .pdf ? pdfPreviewURL : viewModel.selectedTab?.fileURL
+        return fileURL?.lastPathComponent ?? viewModel.selectedTab?.name ?? previewTitle
+    }
+
     var previewTitle: String {
+        if isJSONPreviewDocument { return "JSON Preview" }
+        if isYAMLPreviewDocument { return "YAML Preview" }
         if isSVGDocument { return "SVG Preview" }
         if isHTMLPreviewDocument { return "HTML Preview" }
         if isPNGPreviewDocument { return "PNG Preview" }
@@ -227,6 +236,32 @@ extension ContentView {
 #endif
 
     var canShowMarkdownPreviewPane: Bool { true }
+
+    var isJSONPreviewDocument: Bool {
+        viewModel.selectedTab?.fileURL?.pathExtension.lowercased() == "json" || currentLanguage.lowercased() == "json"
+    }
+
+    var isJSONPreviewSplitVisible: Bool {
+        canShowMarkdownPreviewSplitPane && previewMode == .json && isJSONPreviewDocument &&
+        !isSafeModeActive && !brainDumpLayoutEnabled && !focusModeEnabled
+    }
+
+    var jsonPreviewSplitPane: some View {
+        previewSplitPane { jsonPreviewPane }
+    }
+
+    var isYAMLPreviewDocument: Bool {
+        YAMLPreviewDocument.supports(extension: viewModel.selectedTab?.fileURL?.pathExtension, language: currentLanguage)
+    }
+
+    var isYAMLPreviewSplitVisible: Bool {
+        canShowMarkdownPreviewSplitPane && previewMode == .yaml && isYAMLPreviewDocument &&
+        !isSafeModeActive && !brainDumpLayoutEnabled && !focusModeEnabled
+    }
+
+    var yamlPreviewSplitPane: some View {
+        previewSplitPane { yamlPreviewPane }
+    }
 
     var isMarkdownPreviewSplitVisible: Bool {
         canShowMarkdownPreviewSplitPane &&

@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Keep AI review available on demand without repeating it on every push.
+reviews:
+  auto_review:
+    enabled: false
+    auto_incremental_review: false

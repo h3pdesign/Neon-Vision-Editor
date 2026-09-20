@@ -15,6 +15,11 @@ on:
       - "scripts/ci/select_xcode17.sh"
       - "scripts/ci/run_syntax_highlighting_regressions.swift"
       - "scripts/ci/verify_icon_payload.sh"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "docs/**"
+      - "appcast.xml"
+      - "site/appcast.xml"
 
 concurrency:
   group: swift-${{ github.event.pull_request.number || github.ref }}

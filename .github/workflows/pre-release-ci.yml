@@ -5,12 +5,6 @@ name: Pre-release CI
 on:
   pull_request:
     branches: ["main", "develop"]
-    paths-ignore:
-      - "README.md"
-      - "CHANGELOG.md"
-      - "docs/**"
-      - "appcast.xml"
-      - "site/appcast.xml"
 
 permissions:
   contents: read

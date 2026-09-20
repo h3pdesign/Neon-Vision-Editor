@@ -371,6 +371,7 @@ struct ContentView: View {
     enum PreviewMode: String, Equatable {
         case none
         case json
+        case yaml
         case markdown
         case web
         case image
@@ -3802,6 +3803,8 @@ struct ContentView: View {
                         Group {
                             if contentView.isJSONPreviewDocument {
                                 contentView.jsonPreviewPane
+                            } else if contentView.isYAMLPreviewDocument {
+                                contentView.yamlPreviewPane
                             } else if contentView.isSVGDocument || contentView.isHTMLPreviewDocument {
                                 contentView.webPreviewPane
                             } else if contentView.isPNGPreviewDocument {
@@ -5413,6 +5416,10 @@ struct ContentView: View {
                 previewPaneResizeHandle
                 jsonPreviewSplitPane
                     .frame(width: clampedPreviewPaneWidth)
+            } else if isYAMLPreviewSplitVisible {
+                previewPaneResizeHandle
+                yamlPreviewSplitPane
+                    .frame(width: clampedPreviewPaneWidth)
             } else if isWebPreviewSplitVisible {
                 previewPaneResizeHandle
                 webPreviewSplitPane
@@ -5487,6 +5494,9 @@ struct ContentView: View {
                     } else if isJSONPreviewSplitVisible {
                         iOSPaneDivider
                         jsonPreviewSplitPane
+                    } else if isYAMLPreviewSplitVisible {
+                        iOSPaneDivider
+                        yamlPreviewSplitPane
                     } else if isWebPreviewSplitVisible {
                         iOSPaneDivider
                         webPreviewSplitPane

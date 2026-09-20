@@ -158,6 +158,7 @@ extension ContentView {
 
     var previewModeForCurrentDocument: PreviewMode? {
         if isJSONPreviewDocument { return .json }
+        if isYAMLPreviewDocument { return .yaml }
         if isMarkdownPreviewDocument { return .markdown }
         if isSVGDocument || isHTMLPreviewDocument { return .web }
         if isPNGPreviewDocument { return .image }
@@ -207,6 +208,7 @@ extension ContentView {
 
     var previewTitle: String {
         if isJSONPreviewDocument { return "JSON Preview" }
+        if isYAMLPreviewDocument { return "YAML Preview" }
         if isSVGDocument { return "SVG Preview" }
         if isHTMLPreviewDocument { return "HTML Preview" }
         if isPNGPreviewDocument { return "PNG Preview" }
@@ -246,6 +248,19 @@ extension ContentView {
 
     var jsonPreviewSplitPane: some View {
         previewSplitPane { jsonPreviewPane }
+    }
+
+    var isYAMLPreviewDocument: Bool {
+        YAMLPreviewDocument.supports(extension: viewModel.selectedTab?.fileURL?.pathExtension, language: currentLanguage)
+    }
+
+    var isYAMLPreviewSplitVisible: Bool {
+        canShowMarkdownPreviewSplitPane && previewMode == .yaml && isYAMLPreviewDocument &&
+        !isSafeModeActive && !brainDumpLayoutEnabled && !focusModeEnabled
+    }
+
+    var yamlPreviewSplitPane: some View {
+        previewSplitPane { yamlPreviewPane }
     }
 
     var isMarkdownPreviewSplitVisible: Bool {

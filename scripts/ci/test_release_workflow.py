@@ -111,6 +111,18 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("group: codeql-actions-${{ github.event.pull_request.number || github.ref }}", workflow)
         self.assertIn("vars.NVE_ADVANCED_CODEQL == 'enabled'", workflow)
 
+    def test_pr_tests_reuse_matrix_products_and_keep_all_suites(self):
+        workflow = (ROOT / ".github/workflows/swift.yml").read_text()
+        self.assertIn("build_platform_matrix.sh --keep-derived-data", workflow)
+        self.assertIn('-derivedDataPath "$DERIVED_DATA_ROOT/macos"', workflow)
+        self.assertIn('APP="$DERIVED_DATA_ROOT/macos/Build/Products/Debug/Neon Vision Editor.app"', workflow)
+        self.assertIn('run: rm -rf -- "$RUNNER_TEMP/nve-pr-matrix"', workflow)
+        self.assertEqual(workflow.count('-project "Neon Vision Editor.xcodeproj"'), 1)
+        for suite in ("ReleaseRuntimePolicyTests", "AppDelegateExternalOpenTests", "VirtualEditorPerformanceTests"):
+            self.assertIn(f'-only-testing:"Neon Vision EditorTests/{suite}"', workflow)
+        self.assertIn("'OTHER_SWIFT_FLAGS=$(inherited) -Werror NoUseUnstructuredThrowingTask'", workflow)
+        self.assertNotIn("MACOSX_DEPLOYMENT_TARGET=15.5", workflow)
+
     def test_privacy_log_audit_checks_sources_and_rejects_search_errors(self):
         audit = ROOT / "scripts/ci/privacy_log_audit.sh"
         with tempfile.TemporaryDirectory() as directory:
@@ -440,12 +452,12 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertNotIn("project_probe", preflight)
         swift = (ROOT / ".github/workflows/swift.yml").read_text()
         self.assertNotIn("- name: Run critical runtime tests", preflight)
-        runtime = swift.split("- name: Run critical runtime tests", 1)[1].split(
-            "- name: Record virtual editor performance trends", 1
+        runtime = swift.split("- name: Run critical runtime and performance tests", 1)[1].split(
+            "- name: Upload virtual editor performance results", 1
         )[0]
         self.assertNotIn("if:", runtime)
         self.assertIn('Neon Vision EditorTests/AppDelegateExternalOpenTests', runtime)
-        self.assertLess(swift.index("- name: Build platform matrix"), swift.index("- name: Run critical runtime tests"))
+        self.assertLess(swift.index("- name: Build platform matrix"), swift.index("- name: Run critical runtime and performance tests"))
         self.assertIn("- name: Verify icon payload in built app", swift)
 
     @unittest.skipUnless(shutil.which("ssh-keygen"), "SSH signing executable unavailable")

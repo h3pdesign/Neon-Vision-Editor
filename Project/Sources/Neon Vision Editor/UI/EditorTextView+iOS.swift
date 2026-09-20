@@ -12,7 +12,11 @@ nonisolated func measuredEditorTextWidth(
 ) -> CGFloat {
     var maximum: CGFloat = 0
     var widths: [String: CGFloat] = [:]
-    text.enumerateLines { line, _ in
+    text.enumerateLines { line, stop in
+        guard !Task.isCancelled else {
+            stop = true
+            return
+        }
         if let cached = widths[line] {
             maximum = max(maximum, cached)
         } else {
@@ -2292,7 +2296,7 @@ struct CustomTextEditor: UIViewRepresentable {
             shouldWrapText: shouldWrapText,
             containerWidth: targetContainerWidth
         )
-        if textView.textStorage.length <= EditorRuntimeLimits.maximumSyntaxPassUTF16Length {
+        if textView.textStorage.length <= 300_000 {
             textView.layoutManager.ensureLayout(for: textView.textContainer)
         }
         if !shouldWrapText {
@@ -2375,9 +2379,6 @@ struct CustomTextEditor: UIViewRepresentable {
         )
 
         textView.delegate = context.coordinator
-        if (text as NSString).length > EditorRuntimeLimits.maximumSyntaxPassUTF16Length {
-            textView.layoutManager.allowsNonContiguousLayout = true
-        }
         textView.isEditable = !isReadOnly
         textView.isSelectable = true
         textView.markdownFormattingEnabled = language.lowercased() == "markdown"
@@ -2696,6 +2697,7 @@ struct CustomTextEditor: UIViewRepresentable {
         private var pendingEditedRange: NSRange?
         fileprivate var isInstallingLargeText = false
         private var largeTextInstallGeneration: Int = 0
+        private var largeTextWidthTask: Task<Void, Never>?
         private var lastHighlightedText: String = ""
         private var lastLanguage: String?
         private var lastColorScheme: ColorScheme?
@@ -2757,6 +2759,7 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         deinit {
+            largeTextWidthTask?.cancel()
             NotificationCenter.default.removeObserver(self)
         }
 
@@ -2809,6 +2812,8 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         func invalidateHighlightCache() {
+            largeTextWidthTask?.cancel()
+            largeTextWidthTask = nil
             lastHighlightedText = ""
             lastLanguage = nil
             lastColorScheme = nil
@@ -2891,6 +2896,8 @@ struct CustomTextEditor: UIViewRepresentable {
 
             largeTextInstallGeneration &+= 1
             let generation = largeTextInstallGeneration
+            largeTextWidthTask?.cancel()
+            largeTextWidthTask = nil
             isInstallingLargeText = true
             cancelPendingHighlight()
 
@@ -2949,23 +2956,32 @@ struct CustomTextEditor: UIViewRepresentable {
                     }
                     self.updateCaretStatus()
                     self.scheduleHighlightIfNeeded(currentText: target, immediate: true)
+                    guard !parent.isLineWrapEnabled else { return }
                     // Measuring a multi-megabyte unwrapped line is expensive too.
                     // Finish horizontal sizing off-thread after the text is usable.
                     let fontName = textView.font?.fontName ?? ""
                     let fontSize = textView.font?.pointSize ?? parent.fontSize
                     let letterSpacing = parent.letterSpacing
-                    Task { [weak self, weak textView] in
-                        let measuredWidth = await Task.detached(priority: .utility) {
+                    largeTextWidthTask = Task { [weak self, weak textView] in
+                        let worker = Task.detached(priority: .utility) {
                             let font = UIFont(name: fontName, size: fontSize)
                                 ?? UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
                             return ceil(measuredEditorTextWidth(target, attributes: [
                                 .font: font, .kern: letterSpacing
                             ])) + 32
-                        }.value
-                        guard let self, let textView,
+                        }
+                        let measuredWidth = await withTaskCancellationHandler {
+                            await worker.value
+                        } onCancel: {
+                            worker.cancel()
+                        }
+                        guard !Task.isCancelled, let self, let textView,
                               generation == self.largeTextInstallGeneration,
                               self.parent.documentID == installDocumentID,
                               self.parent.documentResourceID == installDocumentResourceID,
+                              textView.font?.fontName == fontName,
+                              textView.font?.pointSize == fontSize,
+                              self.parent.letterSpacing == letterSpacing,
                               textView.text == target,
                               textView.textContainer.lineBreakMode == .byClipping else { return }
                         let width = max(textView.textContainer.size.width, measuredWidth)

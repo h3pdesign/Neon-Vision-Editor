@@ -949,6 +949,26 @@ final class MobileEditorInteractionTests: XCTestCase {
         XCTAssertLessThan(elapsed, 3)
     }
 
+    func testLineWidthMeasurementPreservesUnicodeAndTabAdvances() {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.monospacedSystemFont(ofSize: 16, weight: .regular),
+            .kern: 1.5
+        ]
+        let lines = ["short", "日本語😀\tend", String(repeating: "W", count: 100)]
+        let expected = lines.map { ($0 as NSString).size(withAttributes: attributes).width }.max()!
+        XCTAssertEqual(measuredEditorTextWidth(lines.joined(separator: "\n"), attributes: attributes), expected, accuracy: 0.01)
+        XCTAssertEqual(measuredEditorTextWidth("", attributes: attributes), 0)
+    }
+
+    func testCancelledWidthMeasurementSkipsDocumentScan() async {
+        let worker = Task.detached {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return measuredEditorTextWidth(String(repeating: "line\n", count: 100_000), attributes: [:])
+        }
+        let width = await worker.value
+        XCTAssertEqual(width, 0)
+    }
+
     func testLargeDocumentLineIndexUpdatesWithoutDocumentMutationCallback() {
         let source = String(repeating: "line\n", count: 52_000)
         let container = LineNumberedTextViewContainer(frame: CGRect(x: 0, y: 0, width: 390, height: 600))

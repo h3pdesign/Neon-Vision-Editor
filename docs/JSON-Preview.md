@@ -34,6 +34,8 @@ Automated verification on 2026-09-20: macOS 124 passed; iPad simulator 124 passe
 
 The parser regression suite covers all JSON types, root primitives, order/duplicate keys, exact large numbers, escapes, malformed input with location, a multi-megabyte array, a 500,000-emoji value, paging, row/depth/size limits, cancellation, and preview-mode toggling.
 
+Follow-up cleanup verification on 2026-09-20: macOS 124, iPhone 163, and iPad 136 selected tests passed with zero failures. The earlier caret failure did not reproduce in this run; it is not declared permanently fixed. Removed two unnecessary mobile layout overrides, retaining upstream layout behavior. Accurate width measurement remains necessary for Unicode/tab content, but now skips wrapped files, cancels obsolete work, and rejects stale font/spacing results. Added width and cancellation regressions. The performance-audit skill guided this task-lifetime cleanup; binding/cache models, scrolling policy, and syntax-formatting precedence remain unchanged. Exact commands are retained in `/private/tmp/nve-cleanup.x0SEgK/verification.md`.
+
 Interactive checks still required before release:
 
 - **macOS:** open valid and invalid JSON; toggle Preview; expand/collapse and page a large array. Check filename updates, live edits, saved/unsaved source preservation, two independent windows, light/dark themes, keyboard Tab/Shift-Tab and button activation. Check existing Markdown/HTML/PDF previews still route correctly.

@@ -95,13 +95,14 @@ class ReleaseWorkflowTests(unittest.TestCase):
             self.assertNotIn("Running release preflight gate", result.stdout)
             self.assertFalse(derived.exists())
 
-    def test_swift_ci_cancels_stale_pr_runs_and_skips_audit_only_changes(self):
+    def test_swift_ci_reports_required_checks_for_every_pr(self):
         workflow = (ROOT / ".github/workflows/swift.yml").read_text()
         self.assertIn("group: swift-${{ github.event.pull_request.number || github.ref }}", workflow)
         self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", workflow)
-        self.assertIn('"Project/**"', workflow)
-        self.assertIn('"Neon Vision Editor.xcodeproj/**"', workflow)
-        self.assertIn('"scripts/ci/build_platform_matrix.sh"', workflow)
+        triggers = workflow.split("concurrency:", 1)[0]
+        self.assertIn("pull_request:", triggers)
+        self.assertIn('branches: [ "main", "develop" ]', triggers)
+        self.assertNotIn("paths:", triggers)
         self.assertNotIn("paths-ignore:", workflow)
 
     def test_codeql_actions_scans_workflow_changes_only(self):

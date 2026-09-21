@@ -90,6 +90,8 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsShareImportsAutoOpen") private var shareImportsAutoOpen: Bool = true
 #if os(macOS)
     @AppStorage("SettingsShowMenuBarIconMac") private var showMenuBarIconMac: Bool = true
+    @AppStorage("SettingsOpenFilesOnCurrentDesktop") private var openFilesOnCurrentDesktop = false
+    @AppStorage("SettingsCloseWindowWhenLastTabClosed") private var closeWindowWhenLastTabClosed = true
     @AppStorage("SettingsToolbarUseCustomMac") private var toolbarUseCustomMac: Bool = false
     @AppStorage("SettingsToolbarCustomIDsMac") private var toolbarCustomIDsMac: String = ""
     @AppStorage("SettingsToolbarPresetMac") private var toolbarPresetMacRaw: String = ToolbarPreset.standard.rawValue
@@ -2315,6 +2317,11 @@ struct NeonSettingsView: View {
                     .help(localized("Starts the editor with the macOS toolbar collapsed."))
                     .accessibilityHint(localized("Starts the editor with the macOS toolbar collapsed."))
                     .frame(maxWidth: .infinity, alignment: .leading)
+
+                Toggle(localized("Open files on the current desktop"), isOn: $openFilesOnCurrentDesktop)
+                    .help(localized("Reuse an editor on this desktop, or open a new window without switching desktops."))
+                Toggle(localized("Close window when the last tab is closed"), isOn: $closeWindowWhenLastTabClosed)
+                    .help(localized("Turn off to keep an empty editor window available for opening files."))
 
                 Toggle(localized("Show Menu Bar Icon"), isOn: $showMenuBarIconMac)
                     .help(localized("Shows the Welcome Tour shortcut in the macOS menu bar."))

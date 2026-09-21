@@ -665,8 +665,8 @@ final class EditorInputTextView: UITextView {
         return (font?.lineHeight ?? 20) * max(1, paragraph?.lineHeightMultiple ?? 1)
     }
 
-    func revealCaretWithContext() {
-        guard isFirstResponder, selectedRange.length == 0,
+    func revealCaretWithContext(force: Bool = false) {
+        guard (isFirstResponder || force), selectedRange.length == 0,
               let position = selectedTextRange?.end else { return }
         var rect = caretRect(for: position)
         rect.size.height += editingLineHeight * 3
@@ -2394,7 +2394,12 @@ struct CustomTextEditor: UIViewRepresentable {
         typing[.kern] = letterSpacing
         textView.typingAttributes = typing
         let initialLength = (text as NSString).length
-        if shouldUseChunkedLargeFileInstall(isLargeFileMode: isLargeFileMode, textLength: initialLength) {
+        if shouldUseChunkedLargeFileInstall(
+            isLargeFileMode: isLargeFileMode,
+            textLength: initialLength,
+            language: language,
+            text: text as NSString
+        ) {
             textView.text = ""
         } else {
             textView.text = text
@@ -2451,7 +2456,12 @@ struct CustomTextEditor: UIViewRepresentable {
         }
         context.coordinator.container = container
         context.coordinator.textView = textView
-        if shouldUseChunkedLargeFileInstall(isLargeFileMode: isLargeFileMode, textLength: initialLength) {
+        if shouldUseChunkedLargeFileInstall(
+            isLargeFileMode: isLargeFileMode,
+            textLength: initialLength,
+            language: language,
+            text: text as NSString
+        ) {
             DispatchQueue.main.async {
                 _ = context.coordinator.installLargeTextIfNeeded(
                     on: textView,
@@ -2891,11 +2901,15 @@ struct CustomTextEditor: UIViewRepresentable {
             preserveViewport: Bool = true,
             restoredCaretLocation: Int? = nil
         ) -> Bool {
-            guard parent.isLargeFileMode else { return false }
             let openMode = currentLargeFileOpenMode()
             guard openMode != .standard else { return false }
             let targetLength = (target as NSString).length
-            guard targetLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length else { return false }
+            guard shouldUseChunkedLargeFileInstall(
+                isLargeFileMode: parent.isLargeFileMode,
+                textLength: targetLength,
+                language: parent.language,
+                text: target as NSString
+            ) else { return false }
 
             largeTextInstallGeneration &+= 1
             let generation = largeTextInstallGeneration
@@ -4087,6 +4101,21 @@ struct CustomTextEditor: UIViewRepresentable {
                 cancelPendingHighlight()
                 highlightGeneration &+= 1
                 scheduleHighlightIfNeeded(currentText: textView.text, immediate: true)
+            }
+            // Selection callbacks can arrive before UIKit has promoted the
+            // editor to first responder.  That ordering used to skip the
+            // three-line caret reveal until the first typed character caused
+            // another layout pass.  Reveal once after the responder and
+            // keyboard geometry are committed, then repeat on the next run
+            // loop for the final viewport size without touching selection.
+            if let editorTextView = textView as? EditorInputTextView {
+                editorTextView.layoutIfNeeded()
+                editorTextView.revealCaretWithContext(force: true)
+                DispatchQueue.main.async { [weak editorTextView] in
+                    guard let editorTextView, editorTextView.isFirstResponder else { return }
+                    editorTextView.layoutIfNeeded()
+                    editorTextView.revealCaretWithContext(force: true)
+                }
             }
             NotificationCenter.default.post(name: .editorFocusDidChange, object: true)
         }

@@ -320,6 +320,36 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(shouldSuppressGeneratedFileSyntaxHighlighting(text: minified, language: "javascript"))
     }
 
+    func testGeneratedMinifiedDocumentsUseBoundedInstallationOutsideExplicitLargeFileMode() {
+        let defaults = UserDefaults.standard
+        let key = "SettingsLargeFileOpenMode"
+        let previous = defaults.object(forKey: key)
+        defer {
+            if let previous { defaults.set(previous, forKey: key) }
+            else { defaults.removeObject(forKey: key) }
+        }
+        defaults.set("deferred", forKey: key)
+
+        let minified = NSString(string: "{\"items\":[" + String(repeating: "{\"value\":123},", count: 100_000) + "null]}")
+        XCTAssertTrue(
+            shouldUseChunkedLargeFileInstall(
+                isLargeFileMode: false,
+                textLength: minified.length,
+                language: "json",
+                text: minified
+            )
+        )
+        defaults.set("standard", forKey: key)
+        XCTAssertFalse(
+            shouldUseChunkedLargeFileInstall(
+                isLargeFileMode: false,
+                textLength: minified.length,
+                language: "json",
+                text: minified
+            )
+        )
+    }
+
     func testNewProjectAndInfrastructureSyntaxesHavePatterns() {
         let samples: [(String, String)] = [
             ("dockerfile", "FROM swift:6.0\nRUN swift build"),

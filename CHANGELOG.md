@@ -6,6 +6,15 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Highlights
+
+- Adds opt-in macOS settings to open files on the current desktop and keep an empty window after closing its last tab.
+
+### Fixes
+
+- Uses the same registered-window routing for new and already-open files across macOS Spaces.
+- Keeps an empty macOS editor available without creating an unwanted untitled tab; Close Window remains available with Command-Shift-W.
+
 ## [v1.8.3] - 2026-09-19
 
 ### Why Upgrade

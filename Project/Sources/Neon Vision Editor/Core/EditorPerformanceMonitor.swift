@@ -45,6 +45,7 @@ final class EditorPerformanceMonitor {
         }
     }
 
+
     static let shared = EditorPerformanceMonitor()
 
     private let logger = Logger(subsystem: "h3p.Neon-Vision-Editor", category: "Performance")
@@ -133,6 +134,7 @@ final class EditorPerformanceMonitor {
     func markPreviewUpdated(tabID: UUID) {
         signposter.emitEvent("preview")
     }
+
 
     func markPreviewReloadScheduled(coalesced: Bool) {
         previewReloadRequestedCount &+= 1

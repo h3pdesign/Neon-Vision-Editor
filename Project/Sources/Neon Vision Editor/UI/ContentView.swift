@@ -2738,6 +2738,14 @@ struct ContentView: View {
                 guard let tab = viewModel.selectedTab else { return }
                 requestCloseTab(tab)
             }
+            .onReceive(NotificationCenter.default.publisher(for: .editorLastTabClosed)) { notif in
+                #if os(macOS)
+                guard let model = notif.object as? EditorViewModel, model === viewModel,
+                      UserDefaults.standard.object(forKey: "SettingsCloseWindowWhenLastTabClosed") as? Bool ?? true,
+                      let number = hostWindowNumber else { return }
+                NSApp.window(withWindowNumber: number)?.performClose(nil)
+                #endif
+            }
             .onReceive(NotificationCenter.default.publisher(for: .showUpdaterRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 let shouldCheckNow = (notif.object as? Bool) ?? true

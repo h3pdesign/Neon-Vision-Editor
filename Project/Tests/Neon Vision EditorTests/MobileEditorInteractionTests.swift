@@ -915,6 +915,25 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
+    func testCaretRevealRunsWhenSelectionPredatesResponderPromotion() {
+        withEditor(String(repeating: "line\n", count: 50)) { container in
+            let view = container.textView
+            view.selectedRange = NSRange(location: view.textStorage.length, length: 0)
+            XCTAssertFalse(view.isFirstResponder)
+
+            XCTAssertTrue(view.becomeFirstResponder())
+            container.layoutIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+            let caret = view.caretRect(for: view.endOfDocument)
+            XCTAssertGreaterThanOrEqual(
+                view.bounds.maxY - caret.maxY,
+                view.editingLineHeight * 3 - 1,
+                "Caret reveal must not wait for the first typed character"
+            )
+        }
+    }
+
     func testEmptyGutterAndHorizontalScrollRenderNumbers() {
         for text in ["", "short\n" + String(repeating: "W", count: 5_000)] {
             withEditor(text) { container in

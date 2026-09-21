@@ -4479,6 +4479,7 @@ extension Notification.Name {
     static let showUpdaterRequested = Notification.Name("showUpdaterRequested")
     static let showSettingsRequested = Notification.Name("showSettingsRequested")
     static let closeSelectedTabRequested = Notification.Name("closeSelectedTabRequested")
+    static let editorLastTabClosed = Notification.Name("editorLastTabClosed")
     static let openRecentFileRequested = Notification.Name("openRecentFileRequested")
     static let recentFilesDidChange = Notification.Name("recentFilesDidChange")
     static let sharedImportsDidChange = Notification.Name("sharedImportsDidChange")
@@ -4661,6 +4662,21 @@ final class WindowViewModelRegistry {
 
     func activeViewModel() -> EditorViewModel? {
         viewModel(for: NSApp.keyWindow?.windowNumber ?? NSApp.mainWindow?.windowNumber)
+    }
+
+    func externalOpenTarget(for url: URL?, currentDesktopOnly: Bool,
+                            windows: [NSWindow]) -> EditorViewModel? {
+        let candidates = windows.filter {
+            (!currentDesktopOnly || $0.isOnActiveSpace) && viewModel(for: $0.windowNumber) != nil
+        }
+        if let url, let existing = candidates.first(where: {
+            viewModel(for: $0.windowNumber)?.hasOpenFile(url: url) == true
+        }) {
+            return viewModel(for: existing.windowNumber)
+        }
+        let target = candidates.first(where: { $0.isKeyWindow })
+            ?? candidates.first(where: { $0.isMainWindow }) ?? candidates.first
+        return viewModel(for: target?.windowNumber)
     }
 
     func windowNumber(for viewModel: EditorViewModel) -> Int? {

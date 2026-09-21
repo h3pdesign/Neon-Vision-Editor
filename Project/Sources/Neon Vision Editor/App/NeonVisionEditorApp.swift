@@ -87,6 +87,7 @@ private enum RuntimeLanguageOverride {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    var editorWindows: () -> [NSWindow] = { NSApp.windows }
     weak var viewModel: EditorViewModel? {
         didSet {
             guard let viewModel else { return }
@@ -132,14 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     projectFolderURL = projectFolderURL ?? fileURL
                     continue
                 }
-                if let existing = WindowViewModelRegistry.shared.viewModel(containing: fileURL),
-                   let window = NSApp.window(withWindowNumber: existing.windowNumber) {
-                    _ = existing.viewModel.focusTabIfOpen(for: fileURL)
-                    window.makeKeyAndOrderFront(nil)
-                    NSApp.activate(ignoringOtherApps: true)
-                    continue
-                }
-                let target = existingEditorViewModel()
+                let target = existingEditorViewModel(for: fileURL)
                 if let target {
                     if target.openFileFromExternalRequest(url: fileURL) {
                         self.bringEditorWindowToFront(for: target)
@@ -234,6 +228,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func bringEditorWindowToFront(for viewModel: EditorViewModel) {
         let registeredWindow = WindowViewModelRegistry.shared.windowNumber(for: viewModel)
             .flatMap { NSApp.window(withWindowNumber: $0) }
+        // A new scene may report its model before its window is registered.
+        // Never bring an unrelated, off-Space window forward while it is attaching.
+        if UserDefaults.standard.bool(forKey: "SettingsOpenFilesOnCurrentDesktop"), registeredWindow == nil {
+            return
+        }
         let fallbackWindow = NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first { window in
             window.isVisible && !window.isMiniaturized
         }
@@ -252,14 +251,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openPrimaryWindow?()
     }
 
-    private func existingEditorViewModel() -> EditorViewModel? {
-        if let active = WindowViewModelRegistry.shared.activeViewModel() {
-            return active
-        }
-        guard let viewModel,
-              let number = WindowViewModelRegistry.shared.windowNumber(for: viewModel),
-              NSApp.window(withWindowNumber: number) != nil else { return nil }
-        return viewModel
+    private func existingEditorViewModel(for url: URL? = nil) -> EditorViewModel? {
+        WindowViewModelRegistry.shared.externalOpenTarget(
+            for: url,
+            currentDesktopOnly: UserDefaults.standard.bool(forKey: "SettingsOpenFilesOnCurrentDesktop"),
+            windows: editorWindows()
+        )
     }
 }
 
@@ -880,7 +877,11 @@ struct NeonVisionEditorApp: App {
                 } else {
                     ForEach(recentFiles) { item in
                         Button {
+                            #if os(macOS)
+                            appDelegate.handleExternalOpenURLs([item.url])
+                            #else
                             postWindowCommand(.openRecentFileRequested, object: item.url)
+                            #endif
                         } label: {
                             Label(item.title, systemImage: item.isPinned ? "pin.fill" : "doc")
                         }

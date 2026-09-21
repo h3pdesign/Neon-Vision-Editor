@@ -292,10 +292,22 @@ func shouldSuppressGeneratedFileSyntaxHighlighting(text: NSString, language: Str
     }
 }
 
-func shouldUseChunkedLargeFileInstall(isLargeFileMode: Bool, textLength: Int) -> Bool {
-    guard isLargeFileMode else { return false }
-    guard currentLargeFileOpenMode() != .standard else { return false }
-    return textLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length
+func shouldUseChunkedLargeFileInstall(
+    isLargeFileMode: Bool,
+    textLength: Int,
+    language: String? = nil,
+    text: NSString? = nil
+) -> Bool {
+    guard currentLargeFileOpenMode() != .standard,
+          textLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length else { return false }
+    if isLargeFileMode { return true }
+    guard let language, let text else { return false }
+    // Generated/minified documents can be multi-megabyte single-line payloads
+    // without being classified as explicit large-file mode. They still need
+    // bounded installation; otherwise TextKit performs full line-width
+    // measurement synchronously during the first frame.
+    return shouldSuppressGeneratedFileSyntaxHighlighting(text: text, language: language)
+        || isLikelyGeneratedOrMinifiedSyntaxText(text)
 }
 
 func editorCaretLineColumn(in text: NSString, location rawLocation: Int) -> (line: Int, column: Int) {

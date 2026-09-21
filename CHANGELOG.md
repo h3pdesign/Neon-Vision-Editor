@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.8.4] - 2026-09-21
+
 ### Why Upgrade
 
 - Browse JSON in a structured preview and read YAML with syntax colors.

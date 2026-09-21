@@ -148,7 +148,34 @@ final class MobileEditorInteractionTests: XCTestCase {
         )
     }
 
-    private func assertLargeJSONInstallation(_ source: String) async throws {
+    func testChunkedJSONOpeningIncludesDelayedWidthWork() async throws {
+        try await assertLargeJSONInstallation(
+            "[\n" + String(repeating: "{\"name\":\"😀 sample\",\"value\":123},\n", count: 80_000) + "null\n]",
+            largeFileMode: true
+        )
+    }
+
+    func testExtremelyLongUnicodeJSONBelowSyntaxCutoffRemainsResponsive() async throws {
+        try await assertLargeJSONInstallation("\"" + String(repeating: "😀", count: 500_000) + "\"")
+    }
+
+    func testExtremelyLongUnicodeJSONAboveSyntaxCutoffRemainsResponsive() async throws {
+        try await assertLargeJSONInstallation("\"" + String(repeating: "😀", count: 650_000) + "\"")
+    }
+
+    func testOpeningProbeIncludesWorkBeforeFirstRunLoopTick() {
+        let probe = OpeningProbe()
+        probe.start()
+        // Deliberately block only this test to prove the measurement cannot omit
+        // synchronous presentation simply because its timer has not fired yet.
+        Thread.sleep(forTimeInterval: 0.03)
+        probe.stop()
+        XCTAssertGreaterThanOrEqual(probe.longestGap, 0.03)
+        XCTAssertGreaterThanOrEqual(probe.elapsed, probe.longestGap)
+    }
+
+    private func assertLargeJSONInstallation(_ source: String, largeFileMode: Bool = false) async throws {
+        executionTimeAllowance = 60
         let defaults = UserDefaults.standard
         let key = "SettingsLargeFileOpenMode"
         let previous = defaults.object(forKey: key)
@@ -157,7 +184,11 @@ final class MobileEditorInteractionTests: XCTestCase {
             if let previous { defaults.set(previous, forKey: key) }
             else { defaults.removeObject(forKey: key) }
         }
-        let host = UIHostingController(rootView: editor(source, language: "json", isLargeFileMode: true))
+        let probe = OpeningProbe()
+        probe.start()
+        defer { probe.stop() }
+        // Ordinary multi-megabyte documents do not use the 100 MB large-file flag.
+        let host = UIHostingController(rootView: editor(source, language: "json", isLargeFileMode: largeFileMode))
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let window = UIWindow(windowScene: scene)
         window.frame = scene.coordinateSpace.bounds
@@ -170,28 +201,91 @@ final class MobileEditorInteractionTests: XCTestCase {
             return view.subviews.lazy.compactMap(find).first
         }
         let container = try XCTUnwrap(find(host.view))
-        XCTAssertTrue(
-            container.textView.layoutManager.allowsNonContiguousLayout,
-            "Chunked installation must enable non-contiguous TextKit layout before appending JSON chunks"
-        )
+        let coordinator = try XCTUnwrap(container.textView.delegate as? CustomTextEditor.Coordinator)
         let expectedLength = (source as NSString).length
-        let start = ProcessInfo.processInfo.systemUptime
-        var previousTick = start
-        var longestGap = 0.0
-        while container.textView.textStorage.length < expectedLength,
-              ProcessInfo.processInfo.systemUptime - start < 30 {
+        let presentation = probe.elapsed
+        while container.textView.textStorage.length < expectedLength, probe.elapsed < 30 {
             try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        let bufferInstalled = probe.elapsed
+        while coordinator.hasPendingLargeTextWork, probe.elapsed < 30 {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        let widthSettled = probe.elapsed
+        host.view.layoutIfNeeded()
+        // Display-link callbacks are display opportunities, not a physical
+        // first-pixel measurement. Include two after the final width/layout work.
+        let targetFrames = probe.displayTicks + 2
+        while probe.displayTicks < targetFrames, probe.elapsed < 30 {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        probe.stop()
+        let metrics: [String: Any] = [
+            "utf8Bytes": source.utf8.count, "utf16Units": expectedLength,
+            "largeFileMode": largeFileMode, "presentationSeconds": presentation,
+            "bufferInstalledSeconds": bufferInstalled, "widthSettledSeconds": widthSettled,
+            "firstDisplayTickSeconds": probe.firstDisplayTick ?? -1,
+            "settledDisplaySeconds": probe.elapsed, "longestMainRunLoopGapSeconds": probe.longestGap,
+            "displayTicks": probe.displayTicks, "widthWorkStillPending": coordinator.hasPendingLargeTextWork
+        ]
+        let attachment = XCTAttachment(data: try JSONSerialization.data(withJSONObject: metrics, options: [.prettyPrinted, .sortedKeys]), uniformTypeIdentifier: "public.json")
+        attachment.name = "Editor opening responsiveness"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        XCTAssertFalse(coordinator.hasPendingLargeTextWork, "Opening includes delayed width work")
+        XCTAssertGreaterThanOrEqual(probe.displayTicks, targetFrames, "Include post-layout display cycles")
+        XCTAssertTrue(container.textView.text == source, "The complete document must survive chunk installation")
+        XCTAssertTrue(container.textView.isEditable)
+        XCTAssertFalse(container.textView.isFirstResponder)
+        XCTAssertLessThan(probe.elapsed, 30, "Presentation, installation and delayed layout must finish")
+        XCTAssertLessThan(probe.longestGap, 1.0, "The entire opening interval must yield to the main run loop")
+    }
+
+    @MainActor
+    private final class OpeningProbe: NSObject {
+        private var timer: Timer?
+        private var displayLink: CADisplayLink?
+        private var startedAt = ProcessInfo.processInfo.systemUptime
+        private var previousTick = ProcessInfo.processInfo.systemUptime
+        private var stoppedAt: TimeInterval?
+        private(set) var longestGap = 0.0
+        private(set) var displayTicks = 0
+        private(set) var firstDisplayTick: TimeInterval?
+        var elapsed: TimeInterval { (stoppedAt ?? ProcessInfo.processInfo.systemUptime) - startedAt }
+
+        func start() {
+            startedAt = ProcessInfo.processInfo.systemUptime
+            previousTick = startedAt
+            let timer = Timer(timeInterval: 0.01, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.tick() }
+            }
+            self.timer = timer
+            RunLoop.main.add(timer, forMode: .common)
+            let link = CADisplayLink(target: self, selector: #selector(displayTick))
+            displayLink = link
+            link.add(to: .main, forMode: .common)
+        }
+
+        private func tick() {
             let now = ProcessInfo.processInfo.systemUptime
             longestGap = max(longestGap, now - previousTick)
             previousTick = now
         }
-        // The final chunk yields once before restoring editing.
-        try await Task.sleep(nanoseconds: 50_000_000)
-        XCTAssertTrue(container.textView.text == source, "The complete document must survive chunk installation")
-        XCTAssertTrue(container.textView.isEditable)
-        XCTAssertFalse(container.textView.isFirstResponder)
-        print("JSON_INSTALL bytes=\(source.utf8.count) elapsed=\(ProcessInfo.processInfo.systemUptime - start) main_gap=\(longestGap)")
-        XCTAssertLessThan(longestGap, 1.0, "Chunk installation must yield to the main run loop")
+
+        @objc private func displayTick() {
+            if firstDisplayTick == nil { firstDisplayTick = elapsed }
+            displayTicks += 1
+        }
+
+        func stop() {
+            guard stoppedAt == nil else { return }
+            tick()
+            stoppedAt = ProcessInfo.processInfo.systemUptime
+            timer?.invalidate()
+            timer = nil
+            displayLink?.invalidate()
+            displayLink = nil
+        }
     }
 
     func testUnwrappedLongLineKeepsLastGlyphReachable() {

@@ -54,12 +54,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.8.3**
+> Latest release: **v1.8.4**
 > Next release target: **v1.8.4**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: supported
 > Direct GitHub release: **v1.8.3** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-09-21** for latest release **v1.8.3**
+> Last updated (README): **2026-09-21** for latest release **v1.8.4**
 
 ## What's New in v1.8.2 and v1.8.3
 
@@ -162,7 +162,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=12707&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=12698&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -782,7 +782,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.8.1`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.8.1) | **Release highlights** — Gives iPhone and iPad a compact bottom editor toolbar with easier access to tools while keeping more code visible. | Keeps the mobile keyboard toolbar clear of the editor and on-screen keyboard, with a frosted surface in light and dark mode. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.8.3**
+- Latest release: **v1.8.4**
 - Compare recent changes: [v1.8.2...v1.8.3](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.8.2...v1.8.3)
 
 ## Known Limitations

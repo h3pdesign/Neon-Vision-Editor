@@ -54,8 +54,8 @@ struct YAMLPreviewView: View {
             html = nil
             guard let document, document.pages.indices.contains(page) else { return }
             do {
-                let text = document.pages[page]
-                let worker = Task.detached(priority: .userInitiated) { try YAMLPreviewDocument.html(for: text) }
+                let selectedPage = page
+                let worker = Task.detached(priority: .userInitiated) { try document.html(forPage: selectedPage) }
                 let result = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
                 try Task.checkCancellation()
                 html = result

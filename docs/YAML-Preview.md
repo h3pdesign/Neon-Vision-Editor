@@ -6,7 +6,7 @@ YAML needs a readable, syntax-colored source preview like a Markdown code block,
 
 ## 2. Solution
 
-Open a `.yaml` or `.yml` file (or select YAML as its language), then select the existing Preview eye action. The header shows the current filename. Indentation, comments, tags, scalar spelling, and order are preserved; keys, strings, comments, numbers, booleans, and anchors receive light/dark colors. This is lexical highlighting, not a YAML parser or validator. Page boundaries may divide long lines or multiline tokens.
+Open a `.yaml` or `.yml` file (or select YAML as its language), then select the existing Preview eye action. The header shows the current filename. Indentation, comments, tags, scalar spelling, and order are preserved; keys, strings, comments, numbers, booleans, and anchors receive light/dark colors. This is lexical highlighting, not a YAML parser or validator. Page boundaries may divide long lines or multiline tokens, but coloring retains their scalar context. Implicit booleans use YAML 1.2 spellings; `yes`, `no`, `on`, and `off` remain strings.
 
 ## 3. Scope
 
@@ -22,7 +22,7 @@ This phase adds preview routing, bounded coloring, and regression tests. Full YA
 
 ## 6. Patch
 
-`YAMLPreviewDocument` prepares source pages and escaped, syntax-colored HTML off the main actor. `YAMLPreviewView` owns loading, page selection, cancellation, and error states. The shared preview routing exposes the feature on macOS, iOS, and iPadOS. Existing editor cleanup changes are preserved separately.
+`YAMLPreviewDocument` lexes the original source before distributing token ranges into bounded pages, then prepares escaped HTML for the selected page off the main actor. This preserves quoted, block, and plain-scalar context across page boundaries without decoding or re-encoding YAML. `YAMLPreviewView` owns loading, page selection, cancellation, and error states. The shared preview routing exposes the feature on macOS, iOS, and iPadOS. Existing editor cleanup changes are preserved separately.
 
 ## 7. Acceptance criteria
 

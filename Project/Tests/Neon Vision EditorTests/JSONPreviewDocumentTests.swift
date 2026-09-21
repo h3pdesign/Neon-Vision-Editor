@@ -36,6 +36,40 @@ final class JSONPreviewDocumentTests: XCTestCase {
         }
     }
 
+    func testValidationRecognizesAllJSONLineEndings() {
+        for newline in ["\n", "\r", "\r\n"] {
+            XCTAssertThrowsError(try JSONPreviewDocument.parse("{\(newline)  \"a\": ?\(newline)}")) { error in
+                XCTAssertTrue(error.localizedDescription.contains("line 2, column 8"), error.localizedDescription)
+            }
+        }
+    }
+
+    func testDisplayBudgetsBoundCombiningScalarsAndJoinedEmoji() throws {
+        for text in ["a" + String(repeating: "\u{0301}", count: 500_000),
+                     String(repeating: "👩\u{200D}", count: 100_000) + "👩"] {
+            let source = "{\"\(text)\":\"\(text)\"}"
+            let parsed = try JSONPreviewDocument.parse(source)
+            let node = parsed.nodes[1]
+            XCTAssertLessThanOrEqual(node.name.utf16.count, 257)
+            XCTAssertLessThanOrEqual(node.value.utf16.count, 515)
+            XCTAssertTrue(node.name.hasSuffix("…"))
+            XCTAssertTrue(node.value.hasSuffix("…\""))
+            XCTAssertFalse(node.name.contains("\u{FFFD}"))
+            XCTAssertFalse(node.value.contains("\u{FFFD}"))
+            XCTAssertEqual(source, "{\"\(text)\":\"\(text)\"}")
+        }
+    }
+
+    func testDisplayBudgetPreservesCompleteSurrogatePairsAndExactBoundary() throws {
+        for count in [255, 256, 257] {
+            let text = String(repeating: "😀", count: count)
+            let value = try JSONPreviewDocument.parse("\"\(text)\"").nodes[0].value
+            XCTAssertEqual(value, "\"" + String(repeating: "😀", count: min(count, 256)) + (count > 256 ? "…" : "") + "\"")
+        }
+        let value = try JSONPreviewDocument.parse("\"" + String(repeating: "a", count: 511) + "😀\"").nodes[0].value
+        XCTAssertEqual(value, "\"" + String(repeating: "a", count: 511) + "…\"")
+    }
+
     func testLongUnicodeValuesAreBoundedAndSourceUnchanged() throws {
         let source = "\"" + String(repeating: "😀", count: 500_000) + "\""
         let parsed = try JSONPreviewDocument.parse(source)

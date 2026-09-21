@@ -280,6 +280,31 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertFalse(fontIsBold(in: regularMarkdownCanvas.attributedLine("### Heading", localLine: 0), at: 5))
     }
 
+    func testJSONFastScannerPreservesKeywordEmphasis() async {
+        let defaults = UserDefaults.standard
+        let key = SettingsPreferenceKey.themeBoldKeywords
+        let previous = defaults.object(forKey: key)
+        defer {
+            if let previous { defaults.set(previous, forKey: key) }
+            else { defaults.removeObject(forKey: key) }
+        }
+        let source = #"{"enabled":true,"disabled":false,"value":null}"#
+        defaults.set(true, forKey: key)
+        let boldCanvas = configuredSyntaxCanvas(source: source, language: "json", resourceID: "bold-json")
+        for keyword in ["true", "false", "null"] {
+            let index = (source as NSString).range(of: keyword).location
+            let becameBold = await waitForBoldFont(in: boldCanvas, line: source, at: index)
+            XCTAssertTrue(becameBold, keyword)
+        }
+        defaults.set(false, forKey: key)
+        let regularCanvas = configuredSyntaxCanvas(source: source, language: "json", resourceID: "regular-json")
+        try? await Task.sleep(for: .milliseconds(100))
+        for keyword in ["true", "false", "null"] {
+            let index = (source as NSString).range(of: keyword).location
+            XCTAssertFalse(fontIsBold(in: regularCanvas.attributedLine(source, localLine: 0), at: index), keyword)
+        }
+    }
+
     func testOfficialEmmetEngineExpandsComplexMarkupAndStylesheets() throws {
         let markup = try XCTUnwrap(EmmetExpander.expansionIfPossible(
             in: "ul#nav>li.item$*2>a{Item $}",

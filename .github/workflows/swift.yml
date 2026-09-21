@@ -6,20 +6,8 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [ "main", "develop" ]
-    paths:
-      - ".github/workflows/swift.yml"
-      - "Project/**"
-      - "Neon Vision Editor.xcodeproj/**"
-      - "samples/**"
-      - "scripts/ci/build_platform_matrix.sh"
-      - "scripts/ci/select_xcode17.sh"
-      - "scripts/ci/run_syntax_highlighting_regressions.swift"
-      - "scripts/ci/verify_icon_payload.sh"
-      - "README.md"
-      - "CHANGELOG.md"
-      - "docs/**"
-      - "appcast.xml"
-      - "site/appcast.xml"
+    # Both jobs are required by branch protection. Workflow-level path filters
+    # leave excluded PRs waiting forever for checks that are never created.
 
 concurrency:
   group: swift-${{ github.event.pull_request.number || github.ref }}

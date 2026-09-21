@@ -221,7 +221,7 @@ func autoIndentReturnContext(
 }
 
 enum LargeFileInstallRuntime {
-    static let chunkUTF16 = 262_144
+    static let chunkUTF16 = 32_768
 }
 
 @MainActor
@@ -762,13 +762,17 @@ nonisolated func fastSyntaxColorRanges(
         }
     }()
     if useJSONScanner {
-        let rangeEnd = NSMaxRange(range)
-        var out: [(NSRange, Color)] = []
-        var i = range.location
         let isBudgeted: Bool = {
             if case .jsonFast = profile { return true }
             return false
         }()
+        // A single string/number can be megabytes long. The outer-loop time
+        // budget alone cannot interrupt those token scans.
+        let rangeEnd = isBudgeted
+            ? range.location + min(range.length, EditorRuntimeLimits.maximumSyntaxPassUTF16Length)
+            : NSMaxRange(range)
+        var out: [(NSRange, Color)] = []
+        var i = range.location
         let budgetDeadline = CFAbsoluteTimeGetCurrent() + EditorRuntimeLimits.largeFileJSONTokenBudgetSeconds
         while i < rangeEnd {
             if isBudgeted && CFAbsoluteTimeGetCurrent() >= budgetDeadline {

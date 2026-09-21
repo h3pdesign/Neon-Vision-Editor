@@ -370,6 +370,8 @@ struct ContentView: View {
 
     enum PreviewMode: String, Equatable {
         case none
+        case json
+        case yaml
         case markdown
         case web
         case image
@@ -2736,6 +2738,14 @@ struct ContentView: View {
                 guard let tab = viewModel.selectedTab else { return }
                 requestCloseTab(tab)
             }
+            .onReceive(NotificationCenter.default.publisher(for: .editorLastTabClosed)) { notif in
+                #if os(macOS)
+                guard let model = notif.object as? EditorViewModel, model === viewModel,
+                      UserDefaults.standard.object(forKey: "SettingsCloseWindowWhenLastTabClosed") as? Bool ?? true,
+                      let number = hostWindowNumber else { return }
+                NSApp.window(withWindowNumber: number)?.performClose(nil)
+                #endif
+            }
             .onReceive(NotificationCenter.default.publisher(for: .showUpdaterRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 let shouldCheckNow = (notif.object as? Bool) ?? true
@@ -3799,7 +3809,11 @@ struct ContentView: View {
                 .sheet(isPresented: contentView.previewSheetPresentationBinding) {
                     NavigationStack {
                         Group {
-                            if contentView.isSVGDocument || contentView.isHTMLPreviewDocument {
+                            if contentView.isJSONPreviewDocument {
+                                contentView.jsonPreviewPane
+                            } else if contentView.isYAMLPreviewDocument {
+                                contentView.yamlPreviewPane
+                            } else if contentView.isSVGDocument || contentView.isHTMLPreviewDocument {
                                 contentView.webPreviewPane
                             } else if contentView.isPNGPreviewDocument {
                                 contentView.imagePreviewPane
@@ -3809,7 +3823,7 @@ struct ContentView: View {
                                 contentView.markdownPreviewPane
                             }
                         }
-                            .navigationTitle(Text(contentView.previewTitle))
+                            .navigationTitle(Text(contentView.previewDocumentTitle))
                             .navigationBarTitleDisplayMode(.inline)
                             .toolbar {
 #if os(iOS) || os(visionOS)
@@ -3900,7 +3914,7 @@ struct ContentView: View {
                 .background(
                     DetachedPreviewWindowPresenter(
                         isPresented: contentView.$showDetachedPreviewWindow,
-                        title: contentView.previewTitle,
+                        title: contentView.previewDocumentTitle,
                         metadata: contentView.previewFileSizeText(for: contentView.viewModel.selectedTab?.fileURL),
                         html: contentView.detachedPreviewHTML,
                         baseURL: contentView.detachedPreviewBaseURL
@@ -5406,6 +5420,14 @@ struct ContentView: View {
                 previewPaneResizeHandle
                 markdownPreviewSplitPane
                     .frame(width: clampedPreviewPaneWidth)
+            } else if isJSONPreviewSplitVisible {
+                previewPaneResizeHandle
+                jsonPreviewSplitPane
+                    .frame(width: clampedPreviewPaneWidth)
+            } else if isYAMLPreviewSplitVisible {
+                previewPaneResizeHandle
+                yamlPreviewSplitPane
+                    .frame(width: clampedPreviewPaneWidth)
             } else if isWebPreviewSplitVisible {
                 previewPaneResizeHandle
                 webPreviewSplitPane
@@ -5477,6 +5499,12 @@ struct ContentView: View {
                     if isMarkdownPreviewSplitVisible {
                         iOSPaneDivider
                         markdownPreviewSplitPane
+                    } else if isJSONPreviewSplitVisible {
+                        iOSPaneDivider
+                        jsonPreviewSplitPane
+                    } else if isYAMLPreviewSplitVisible {
+                        iOSPaneDivider
+                        yamlPreviewSplitPane
                     } else if isWebPreviewSplitVisible {
                         iOSPaneDivider
                         webPreviewSplitPane

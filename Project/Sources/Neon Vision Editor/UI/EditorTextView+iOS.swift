@@ -5,6 +5,29 @@ import Foundation
 import OSLog
 import UIKit
 
+/// NSString's multiline measurement is costly for buffers with many paragraphs.
+/// Measure every logical line independently, reusing common generated lines.
+nonisolated func measuredEditorTextWidth(
+    _ text: String, attributes: [NSAttributedString.Key: Any]
+) -> CGFloat {
+    var maximum: CGFloat = 0
+    var widths: [String: CGFloat] = [:]
+    text.enumerateLines { line, stop in
+        guard !Task.isCancelled else {
+            stop = true
+            return
+        }
+        if let cached = widths[line] {
+            maximum = max(maximum, cached)
+        } else {
+            let width = (line as NSString).size(withAttributes: attributes).width
+            maximum = max(maximum, width)
+            if widths.count < 256 { widths[line] = width }
+        }
+    }
+    return maximum
+}
+
 // MARK: - iOS Editor Text View
 
 nonisolated func iPadShiftScrollFontSizeDelta(contentOffsetDeltaY: CGFloat) -> CGFloat {
@@ -642,8 +665,8 @@ final class EditorInputTextView: UITextView {
         return (font?.lineHeight ?? 20) * max(1, paragraph?.lineHeightMultiple ?? 1)
     }
 
-    func revealCaretWithContext() {
-        guard isFirstResponder, selectedRange.length == 0,
+    func revealCaretWithContext(force: Bool = false) {
+        guard (isFirstResponder || force), selectedRange.length == 0,
               let position = selectedTextRange?.end else { return }
         var rect = caretRect(for: position)
         rect.size.height += editingLineHeight * 3
@@ -2273,7 +2296,7 @@ struct CustomTextEditor: UIViewRepresentable {
             shouldWrapText: shouldWrapText,
             containerWidth: targetContainerWidth
         )
-        if (textView.text as NSString?)?.length ?? 0 <= 300_000 {
+        if textView.textStorage.length <= 300_000 {
             textView.layoutManager.ensureLayout(for: textView.textContainer)
         }
         if !shouldWrapText {
@@ -2311,7 +2334,7 @@ struct CustomTextEditor: UIViewRepresentable {
             var attributes = textView.typingAttributes
             attributes[.font] = font
             attributes[.kern] = letterSpacing
-            let measuredWidth = ceil((text as NSString).size(withAttributes: attributes).width) + 32
+            let measuredWidth = ceil(measuredEditorTextWidth(text, attributes: attributes)) + 32
             return max(minimumScrollableWidth, measuredWidth)
         }
     }
@@ -2358,6 +2381,12 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.delegate = context.coordinator
         textView.isEditable = !isReadOnly
         textView.isSelectable = true
+        // Chunked installs can begin from the first main-run-loop turn. Enable
+        // non-contiguous TextKit layout before any text is appended; setting it
+        // later in updateUIView makes every growing chunk lay out the complete
+        // single-line document synchronously (especially pathological Unicode
+        // JSON), starving the run loop and making the editor appear frozen.
+        textView.layoutManager.allowsNonContiguousLayout = true
         textView.markdownFormattingEnabled = language.lowercased() == "markdown"
         let initialFont = resolvedUIFont()
         textView.font = initialFont
@@ -2371,7 +2400,12 @@ struct CustomTextEditor: UIViewRepresentable {
         typing[.kern] = letterSpacing
         textView.typingAttributes = typing
         let initialLength = (text as NSString).length
-        if shouldUseChunkedLargeFileInstall(isLargeFileMode: isLargeFileMode, textLength: initialLength) {
+        if shouldUseChunkedLargeFileInstall(
+            isLargeFileMode: isLargeFileMode,
+            textLength: initialLength,
+            language: language,
+            text: text as NSString
+        ) {
             textView.text = ""
         } else {
             textView.text = text
@@ -2428,7 +2462,12 @@ struct CustomTextEditor: UIViewRepresentable {
         }
         context.coordinator.container = container
         context.coordinator.textView = textView
-        if shouldUseChunkedLargeFileInstall(isLargeFileMode: isLargeFileMode, textLength: initialLength) {
+        if shouldUseChunkedLargeFileInstall(
+            isLargeFileMode: isLargeFileMode,
+            textLength: initialLength,
+            language: language,
+            text: text as NSString
+        ) {
             DispatchQueue.main.async {
                 _ = context.coordinator.installLargeTextIfNeeded(
                     on: textView,
@@ -2450,7 +2489,6 @@ struct CustomTextEditor: UIViewRepresentable {
     func updateUIView(_ uiView: LineNumberedTextViewContainer, context: Context) {
         let textView = uiView.textView
         context.coordinator.parent = self
-        textView.isEditable = !isReadOnly
         textView.isSelectable = true
         let didSwitchDocumentResource = context.coordinator.lastDocumentResourceID != documentResourceID
         let didChangeStoredCaretLocation = context.coordinator.lastStoredCaretLocation != storedCaretLocation
@@ -2473,6 +2511,7 @@ struct CustomTextEditor: UIViewRepresentable {
             context.coordinator.clearPendingTextMutation()
             context.coordinator.invalidateHighlightCache()
         }
+        textView.isEditable = !isReadOnly && !context.coordinator.isInstallingLargeText
         context.coordinator.lastDocumentResourceID = documentResourceID
         context.coordinator.lastTabLoadingContent = isTabLoadingContent
         context.coordinator.lastExternalEditRevision = externalEditRevision
@@ -2672,8 +2711,12 @@ struct CustomTextEditor: UIViewRepresentable {
         }
         private var pendingTextMutation: (range: NSRange, replacement: String)?
         private var pendingEditedRange: NSRange?
-        private var isInstallingLargeText = false
+        fileprivate var isInstallingLargeText = false
         private var largeTextInstallGeneration: Int = 0
+        private var largeTextWidthTask: Task<Void, Never>?
+        var hasPendingLargeTextWork: Bool {
+            isInstallingLargeText || largeTextWidthTask != nil
+        }
         private var lastHighlightedText: String = ""
         private var lastLanguage: String?
         private var lastColorScheme: ColorScheme?
@@ -2735,6 +2778,7 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         deinit {
+            largeTextWidthTask?.cancel()
             NotificationCenter.default.removeObserver(self)
         }
 
@@ -2787,6 +2831,8 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         func invalidateHighlightCache() {
+            largeTextWidthTask?.cancel()
+            largeTextWidthTask = nil
             lastHighlightedText = ""
             lastLanguage = nil
             lastColorScheme = nil
@@ -2861,14 +2907,20 @@ struct CustomTextEditor: UIViewRepresentable {
             preserveViewport: Bool = true,
             restoredCaretLocation: Int? = nil
         ) -> Bool {
-            guard parent.isLargeFileMode else { return false }
             let openMode = currentLargeFileOpenMode()
             guard openMode != .standard else { return false }
             let targetLength = (target as NSString).length
-            guard targetLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length else { return false }
+            guard shouldUseChunkedLargeFileInstall(
+                isLargeFileMode: parent.isLargeFileMode,
+                textLength: targetLength,
+                language: parent.language,
+                text: target as NSString
+            ) else { return false }
 
             largeTextInstallGeneration &+= 1
             let generation = largeTextInstallGeneration
+            largeTextWidthTask?.cancel()
+            largeTextWidthTask = nil
             isInstallingLargeText = true
             cancelPendingHighlight()
 
@@ -2881,6 +2933,9 @@ struct CustomTextEditor: UIViewRepresentable {
             var currentVisualColumn = 0
             var maximumVisualColumns = 0
             textView.isEditable = false
+            // Keep this invariant local to the installation path as well. A
+            // reused text view may arrive here before its next SwiftUI update.
+            textView.layoutManager.allowsNonContiguousLayout = true
             textView.text = ""
             textView.invalidateTextMetrics()
 
@@ -2927,10 +2982,53 @@ struct CustomTextEditor: UIViewRepresentable {
                     }
                     self.updateCaretStatus()
                     self.scheduleHighlightIfNeeded(currentText: target, immediate: true)
+                    guard !parent.isLineWrapEnabled else { return }
+                    // Measuring a multi-megabyte unwrapped line is expensive too.
+                    // Finish horizontal sizing off-thread after the text is usable.
+                    let fontName = textView.font?.fontName ?? ""
+                    let fontSize = textView.font?.pointSize ?? parent.fontSize
+                    let letterSpacing = parent.letterSpacing
+                    largeTextWidthTask = Task { [weak self, weak textView] in
+                        defer {
+                            if let self, generation == self.largeTextInstallGeneration {
+                                self.largeTextWidthTask = nil
+                            }
+                        }
+                        let worker = Task.detached(priority: .utility) {
+                            let font = UIFont(name: fontName, size: fontSize)
+                                ?? UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+                            return ceil(measuredEditorTextWidth(target, attributes: [
+                                .font: font, .kern: letterSpacing
+                            ])) + 32
+                        }
+                        let measuredWidth = await withTaskCancellationHandler {
+                            await worker.value
+                        } onCancel: {
+                            worker.cancel()
+                        }
+                        guard !Task.isCancelled, let self, let textView,
+                              generation == self.largeTextInstallGeneration,
+                              self.parent.documentID == installDocumentID,
+                              self.parent.documentResourceID == installDocumentResourceID,
+                              textView.font?.fontName == fontName,
+                              textView.font?.pointSize == fontSize,
+                              self.parent.letterSpacing == letterSpacing,
+                              textView.text == target,
+                              textView.textContainer.lineBreakMode == .byClipping else { return }
+                        let width = max(textView.textContainer.size.width, measuredWidth)
+                        textView.textContainer.size.width = width
+                        textView.rememberPreferredWrapLayout(shouldWrapText: false, containerWidth: width)
+                        self.parent.enforceNoWrapContentWidth(textView, containerWidth: width)
+                        textView.showsHorizontalScrollIndicator = width > textView.bounds.width
+                    }
                     return
                 }
 
-                let chunkLength = min(LargeFileInstallRuntime.chunkUTF16, remaining)
+                var chunkLength = min(LargeFileInstallRuntime.chunkUTF16, remaining)
+                if location + chunkLength < targetLength,
+                   (0xDC00...0xDFFF).contains(nsTarget.character(at: location + chunkLength)) {
+                    chunkLength -= 1
+                }
                 let chunk = nsTarget.substring(with: NSRange(location: location, length: chunkLength))
                 for codeUnit in chunk.utf16 {
                     switch codeUnit {
@@ -2945,7 +3043,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 }
                 let storage = textView.textStorage
                 storage.beginEditing()
-                storage.append(NSAttributedString(string: chunk))
+                storage.append(NSAttributedString(string: chunk, attributes: textView.typingAttributes))
                 storage.endEditing()
                 DispatchQueue.main.async {
                     applyChunk(from: location + chunkLength)
@@ -3409,7 +3507,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 }
                 return
             }
-            guard let textView else { return }
+            guard let textView, !isInstallingLargeText else { return }
             let text = currentText ?? textView.text ?? ""
             let lang = parent.language
             let scheme = parent.colorScheme
@@ -3592,12 +3690,7 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         private func expandedRange(around range: NSRange, in text: NSString, maxUTF16Padding: Int = 8000) -> NSRange {
-            let start = max(0, range.location - maxUTF16Padding)
-            let end = min(text.length, NSMaxRange(range) + maxUTF16Padding)
-            let startLine = text.lineRange(for: NSRange(location: start, length: 0)).location
-            let endAnchor = max(startLine, min(text.length - 1, max(0, end - 1)))
-            let endLine = NSMaxRange(text.lineRange(for: NSRange(location: endAnchor, length: 0)))
-            return NSRange(location: startLine, length: max(0, endLine - startLine))
+            boundedSyntaxHighlightRange(around: range, in: text, padding: maxUTF16Padding)
         }
 
         private func preferredHighlightRange(
@@ -3633,7 +3726,11 @@ struct CustomTextEditor: UIViewRepresentable {
             let visibleRect = textView.editorViewport.insetBy(dx: 0, dy: -80)
             let glyphRange = textView.layoutManager.glyphRange(forBoundingRect: visibleRect, in: textView.textContainer)
             let charRange = textView.layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
-            guard charRange.length > 0 else { return fullRange }
+            // TextKit can have no laid-out glyphs on the first frame. Do not
+            // fall back to styling the entire file while layout catches up.
+            guard charRange.length > 0 else {
+                return expandedRange(around: NSRange(location: 0, length: 0), in: text)
+            }
             let padding = EditorRuntimeLimits.largeFileJSONVisiblePaddingUTF16
             return expandedRange(around: charRange, in: text, maxUTF16Padding: padding)
         }
@@ -4013,6 +4110,21 @@ struct CustomTextEditor: UIViewRepresentable {
                 cancelPendingHighlight()
                 highlightGeneration &+= 1
                 scheduleHighlightIfNeeded(currentText: textView.text, immediate: true)
+            }
+            // Selection callbacks can arrive before UIKit has promoted the
+            // editor to first responder.  That ordering used to skip the
+            // three-line caret reveal until the first typed character caused
+            // another layout pass.  Reveal once after the responder and
+            // keyboard geometry are committed, then repeat on the next run
+            // loop for the final viewport size without touching selection.
+            if let editorTextView = textView as? EditorInputTextView {
+                editorTextView.layoutIfNeeded()
+                editorTextView.revealCaretWithContext(force: true)
+                DispatchQueue.main.async { [weak editorTextView] in
+                    guard let editorTextView, editorTextView.isFirstResponder else { return }
+                    editorTextView.layoutIfNeeded()
+                    editorTextView.revealCaretWithContext(force: true)
+                }
             }
             NotificationCenter.default.post(name: .editorFocusDidChange, object: true)
         }

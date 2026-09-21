@@ -22,6 +22,9 @@ jobs:
     # GitHub's xcode-27 image is currently a macOS 26 host with the complete
     # OS 27 SDK family. This job verifies the SDK-gated Agent Mode sources.
     runs-on: xcode-27
+    timeout-minutes: 30
+    env:
+      DERIVED_DATA_ROOT: ${{ github.workspace }}/.DerivedDataPR
 
     steps:
       - uses: actions/checkout@v5
@@ -41,31 +44,12 @@ jobs:
           # The hosted xcode-27 image remains a preview until GitHub replaces
           # its beta toolchain with the public Xcode 27 RC.
           NVE_ALLOW_BETA_XCODE: 1
-        run: scripts/ci/build_platform_matrix.sh
+        run: scripts/ci/build_platform_matrix.sh --keep-derived-data
 
       # Reuse the runner that already resolved and built all platform packages.
       # A second fresh xcode-27 runner has stalled during package resolution.
-      - name: Run critical runtime tests
+      - name: Run critical runtime and performance tests
         env:
-          DERIVED_DATA: ${{ runner.temp }}/DerivedData
-        run: |
-          set -euo pipefail
-          xcodebuild \
-            -project "Neon Vision Editor.xcodeproj" \
-            -scheme "Neon Vision Editor" \
-            -destination "platform=macOS" \
-            -derivedDataPath "$DERIVED_DATA" \
-            MACOSX_DEPLOYMENT_TARGET=15.5 \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            -only-testing:"Neon Vision EditorTests/ReleaseRuntimePolicyTests" \
-            -only-testing:"Neon Vision EditorTests/AppDelegateExternalOpenTests" \
-            test
-
-      - name: Record virtual editor performance trends
-        env:
-          DERIVED_DATA: ${{ runner.temp }}/DerivedData
           RESULT_BUNDLE: ${{ runner.temp }}/VirtualEditorPerformance.xcresult
         run: |
           set -euo pipefail
@@ -73,12 +57,12 @@ jobs:
             -project "Neon Vision Editor.xcodeproj" \
             -scheme "Neon Vision Editor" \
             -destination "platform=macOS" \
-            -derivedDataPath "$DERIVED_DATA" \
+            -derivedDataPath "$DERIVED_DATA_ROOT/macos" \
             -resultBundlePath "$RESULT_BUNDLE" \
-            MACOSX_DEPLOYMENT_TARGET=15.5 \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
+            'OTHER_SWIFT_FLAGS=$(inherited) -Werror NoUseUnstructuredThrowingTask' \
+            -only-testing:"Neon Vision EditorTests/ReleaseRuntimePolicyTests" \
+            -only-testing:"Neon Vision EditorTests/AppDelegateExternalOpenTests" \
             -only-testing:"Neon Vision EditorTests/VirtualEditorPerformanceTests" \
             test
 
@@ -92,12 +76,14 @@ jobs:
           retention-days: 30
 
       - name: Verify icon payload in built app
-        env:
-          DERIVED_DATA: ${{ runner.temp }}/DerivedData
         run: |
           set -euo pipefail
-          APP="$DERIVED_DATA/Build/Products/Debug/Neon Vision Editor.app"
+          APP="$DERIVED_DATA_ROOT/macos/Build/Products/Debug/Neon Vision Editor.app"
           scripts/ci/verify_icon_payload.sh "$APP"
+
+      - name: Remove temporary build products
+        if: ${{ always() }}
+        run: rm -rf -- "$GITHUB_WORKSPACE/.DerivedDataPR"
 
   macos_sequoia_syntax_regressions:
     if: ${{ !startsWith(github.head_ref, 'release/') }}

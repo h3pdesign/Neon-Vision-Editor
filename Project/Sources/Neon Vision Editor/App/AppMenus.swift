@@ -245,6 +245,13 @@ struct NeonVisionMacAppCommands: Commands {
             }
             .modifier(dynamicShortcut(.closeTab))
             .disabled(!hasActiveEditorWindow() || !hasSelectedTab)
+            #if os(macOS)
+            Button("Close Window") {
+                NSApp.keyWindow?.performClose(nil)
+            }
+            .keyboardShortcut("w", modifiers: [.command, .shift])
+            .disabled(!hasActiveEditorWindow())
+            #endif
         }
     }
 

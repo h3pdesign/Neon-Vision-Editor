@@ -135,6 +135,159 @@ final class MobileEditorInteractionTests: XCTestCase {
         window.isHidden = true
     }
 
+    func testLargeJSONInstallsCompleteUnicodeBufferWithoutClaimingFocus() async throws {
+        try await assertLargeJSONInstallation(
+            "[\n" + String(repeating: "{\"name\":\"😀 sample\",\"value\":123},\n", count: 80_000) + "null\n]"
+        )
+    }
+
+    func testMinifiedJSONInstallsCompleteBufferWithoutBlockingRunLoop() async throws {
+        try await assertLargeJSONInstallation(
+            "{\"items\":[" + String(repeating: "{\"id\":123,\"text\":\"sample\",\"active\":true},", count: 65_000)
+                + "{\"text\":\"😀\"}]}"
+        )
+    }
+
+    func testChunkedJSONOpeningIncludesDelayedWidthWork() async throws {
+        try await assertLargeJSONInstallation(
+            "[\n" + String(repeating: "{\"name\":\"😀 sample\",\"value\":123},\n", count: 80_000) + "null\n]",
+            largeFileMode: true
+        )
+    }
+
+    func testExtremelyLongUnicodeJSONBelowSyntaxCutoffRemainsResponsive() async throws {
+        try await assertLargeJSONInstallation("\"" + String(repeating: "😀", count: 500_000) + "\"")
+    }
+
+    func testExtremelyLongUnicodeJSONAboveSyntaxCutoffRemainsResponsive() async throws {
+        try await assertLargeJSONInstallation("\"" + String(repeating: "😀", count: 650_000) + "\"")
+    }
+
+    func testOpeningProbeIncludesWorkBeforeFirstRunLoopTick() {
+        let probe = OpeningProbe()
+        probe.start()
+        // Deliberately block only this test to prove the measurement cannot omit
+        // synchronous presentation simply because its timer has not fired yet.
+        Thread.sleep(forTimeInterval: 0.03)
+        probe.stop()
+        XCTAssertGreaterThanOrEqual(probe.longestGap, 0.03)
+        XCTAssertGreaterThanOrEqual(probe.elapsed, probe.longestGap)
+    }
+
+    private func assertLargeJSONInstallation(_ source: String, largeFileMode: Bool = false) async throws {
+        executionTimeAllowance = 60
+        let defaults = UserDefaults.standard
+        let key = "SettingsLargeFileOpenMode"
+        let previous = defaults.object(forKey: key)
+        defaults.set("deferred", forKey: key)
+        defer {
+            if let previous { defaults.set(previous, forKey: key) }
+            else { defaults.removeObject(forKey: key) }
+        }
+        let probe = OpeningProbe()
+        probe.start()
+        defer { probe.stop() }
+        // Ordinary multi-megabyte documents do not use the 100 MB large-file flag.
+        let host = UIHostingController(rootView: editor(source, language: "json", isLargeFileMode: largeFileMode))
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        host.view.layoutIfNeeded()
+        func find(_ view: UIView) -> LineNumberedTextViewContainer? {
+            if let container = view as? LineNumberedTextViewContainer { return container }
+            return view.subviews.lazy.compactMap(find).first
+        }
+        let container = try XCTUnwrap(find(host.view))
+        let coordinator = try XCTUnwrap(container.textView.delegate as? CustomTextEditor.Coordinator)
+        let expectedLength = (source as NSString).length
+        let presentation = probe.elapsed
+        while container.textView.textStorage.length < expectedLength, probe.elapsed < 30 {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        let bufferInstalled = probe.elapsed
+        while coordinator.hasPendingLargeTextWork, probe.elapsed < 30 {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        let widthSettled = probe.elapsed
+        host.view.layoutIfNeeded()
+        // Display-link callbacks are display opportunities, not a physical
+        // first-pixel measurement. Include two after the final width/layout work.
+        let targetFrames = probe.displayTicks + 2
+        while probe.displayTicks < targetFrames, probe.elapsed < 30 {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        probe.stop()
+        let metrics: [String: Any] = [
+            "utf8Bytes": source.utf8.count, "utf16Units": expectedLength,
+            "largeFileMode": largeFileMode, "presentationSeconds": presentation,
+            "bufferInstalledSeconds": bufferInstalled, "widthSettledSeconds": widthSettled,
+            "firstDisplayTickSeconds": probe.firstDisplayTick ?? -1,
+            "settledDisplaySeconds": probe.elapsed, "longestMainRunLoopGapSeconds": probe.longestGap,
+            "displayTicks": probe.displayTicks, "widthWorkStillPending": coordinator.hasPendingLargeTextWork
+        ]
+        let attachment = XCTAttachment(data: try JSONSerialization.data(withJSONObject: metrics, options: [.prettyPrinted, .sortedKeys]), uniformTypeIdentifier: "public.json")
+        attachment.name = "Editor opening responsiveness"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        XCTAssertFalse(coordinator.hasPendingLargeTextWork, "Opening includes delayed width work")
+        XCTAssertGreaterThanOrEqual(probe.displayTicks, targetFrames, "Include post-layout display cycles")
+        XCTAssertTrue(container.textView.text == source, "The complete document must survive chunk installation")
+        XCTAssertTrue(container.textView.isEditable)
+        XCTAssertFalse(container.textView.isFirstResponder)
+        XCTAssertLessThan(probe.elapsed, 30, "Presentation, installation and delayed layout must finish")
+        XCTAssertLessThan(probe.longestGap, 1.0, "The entire opening interval must yield to the main run loop")
+    }
+
+    @MainActor
+    private final class OpeningProbe: NSObject {
+        private var timer: Timer?
+        private var displayLink: CADisplayLink?
+        private var startedAt = ProcessInfo.processInfo.systemUptime
+        private var previousTick = ProcessInfo.processInfo.systemUptime
+        private var stoppedAt: TimeInterval?
+        private(set) var longestGap = 0.0
+        private(set) var displayTicks = 0
+        private(set) var firstDisplayTick: TimeInterval?
+        var elapsed: TimeInterval { (stoppedAt ?? ProcessInfo.processInfo.systemUptime) - startedAt }
+
+        func start() {
+            startedAt = ProcessInfo.processInfo.systemUptime
+            previousTick = startedAt
+            let timer = Timer(timeInterval: 0.01, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.tick() }
+            }
+            self.timer = timer
+            RunLoop.main.add(timer, forMode: .common)
+            let link = CADisplayLink(target: self, selector: #selector(displayTick))
+            displayLink = link
+            link.add(to: .main, forMode: .common)
+        }
+
+        private func tick() {
+            let now = ProcessInfo.processInfo.systemUptime
+            longestGap = max(longestGap, now - previousTick)
+            previousTick = now
+        }
+
+        @objc private func displayTick() {
+            if firstDisplayTick == nil { firstDisplayTick = elapsed }
+            displayTicks += 1
+        }
+
+        func stop() {
+            guard stoppedAt == nil else { return }
+            tick()
+            stoppedAt = ProcessInfo.processInfo.systemUptime
+            timer?.invalidate()
+            timer = nil
+            displayLink?.invalidate()
+            displayLink = nil
+        }
+    }
+
     func testUnwrappedLongLineKeepsLastGlyphReachable() {
         withEditor(String(repeating: "W", count: 5_000)) { container in
             let view = container.textView
@@ -860,6 +1013,25 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
+    func testCaretRevealRunsWhenSelectionPredatesResponderPromotion() {
+        withEditor(String(repeating: "line\n", count: 50)) { container in
+            let view = container.textView
+            view.selectedRange = NSRange(location: view.textStorage.length, length: 0)
+            XCTAssertFalse(view.isFirstResponder)
+
+            XCTAssertTrue(view.becomeFirstResponder())
+            container.layoutIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+
+            let caret = view.caretRect(for: view.endOfDocument)
+            XCTAssertGreaterThanOrEqual(
+                view.bounds.maxY - caret.maxY,
+                view.editingLineHeight * 3 - 1,
+                "Caret reveal must not wait for the first typed character"
+            )
+        }
+    }
+
     func testEmptyGutterAndHorizontalScrollRenderNumbers() {
         for text in ["", "short\n" + String(repeating: "W", count: 5_000)] {
             withEditor(text) { container in
@@ -881,6 +1053,10 @@ final class MobileEditorInteractionTests: XCTestCase {
 
     func testLongLineBeyondFormerSamplingLimitIsNotClipped() {
         let source = String(repeating: "short\n", count: 20_001) + String(repeating: "W", count: 5_000)
+        let measurementStart = ProcessInfo.processInfo.systemUptime
+        let width = measuredEditorTextWidth(source, attributes: [.font: UIFont.monospacedSystemFont(ofSize: 16, weight: .regular)])
+        XCTAssertGreaterThan(width, 40_000)
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime - measurementStart, 1, "Width measurement")
         let start = ProcessInfo.processInfo.systemUptime
         withEditor(source) { container in
             XCTAssertGreaterThan(container.textView.textContainer.size.width, 40_000)
@@ -888,6 +1064,26 @@ final class MobileEditorInteractionTests: XCTestCase {
         let elapsed = ProcessInfo.processInfo.systemUptime - start
         print("Mobile long-line fixture (125 KB) open: \(elapsed) seconds")
         XCTAssertLessThan(elapsed, 3)
+    }
+
+    func testLineWidthMeasurementPreservesUnicodeAndTabAdvances() {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.monospacedSystemFont(ofSize: 16, weight: .regular),
+            .kern: 1.5
+        ]
+        let lines = ["short", "日本語😀\tend", String(repeating: "W", count: 100)]
+        let expected = lines.map { ($0 as NSString).size(withAttributes: attributes).width }.max()!
+        XCTAssertEqual(measuredEditorTextWidth(lines.joined(separator: "\n"), attributes: attributes), expected, accuracy: 0.01)
+        XCTAssertEqual(measuredEditorTextWidth("", attributes: attributes), 0)
+    }
+
+    func testCancelledWidthMeasurementSkipsDocumentScan() async {
+        let worker = Task.detached {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return measuredEditorTextWidth(String(repeating: "line\n", count: 100_000), attributes: [:])
+        }
+        let width = await worker.value
+        XCTAssertEqual(width, 0)
     }
 
     func testLargeDocumentLineIndexUpdatesWithoutDocumentMutationCallback() {

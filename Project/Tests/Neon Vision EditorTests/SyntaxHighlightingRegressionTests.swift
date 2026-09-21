@@ -6,6 +6,46 @@ import SwiftUI
 final class SyntaxHighlightingRegressionTests: XCTestCase {
     private let colors = SyntaxColors.fromVibrantLightTheme(colorScheme: .dark)
 
+    func testMinifiedViewportDoesNotExpandToEntireDocument() {
+        let text = String(repeating: "{\"value\":123},", count: 200_000) as NSString
+        for location in [0, text.length / 2, text.length - 10] {
+            let range = boundedSyntaxHighlightRange(
+                around: NSRange(location: location, length: 10), in: text
+            )
+            XCTAssertLessThanOrEqual(range.length, EditorRuntimeLimits.maximumSyntaxPassUTF16Length)
+            XCTAssertLessThanOrEqual(range.location, location)
+            XCTAssertGreaterThanOrEqual(NSMaxRange(range), location + 10)
+            XCTAssertLessThanOrEqual(NSMaxRange(range), text.length)
+        }
+    }
+
+    func testSyntaxViewportHandlesEmptyTextAndAlignsOrdinaryLines() {
+        XCTAssertEqual(boundedSyntaxHighlightRange(around: NSRange(location: 0, length: 0), in: ""),
+                       NSRange(location: 0, length: 0))
+        let text = "first\nsecond\nthird" as NSString
+        XCTAssertEqual(boundedSyntaxHighlightRange(around: NSRange(location: 8, length: 1), in: text),
+                       NSRange(location: 6, length: 7))
+    }
+
+    func testSyntaxViewportDoesNotSplitSurrogatePairs() {
+        let text = String(repeating: "😀", count: 100_000) as NSString
+        let range = boundedSyntaxHighlightRange(around: NSRange(location: 20_001, length: 40_000), in: text)
+        XCTAssertEqual(range.location % 2, 0)
+        XCTAssertEqual(NSMaxRange(range) % 2, 0)
+        XCTAssertLessThanOrEqual(range.length, EditorRuntimeLimits.maximumSyntaxPassUTF16Length)
+    }
+
+    func testFastJSONScannerBoundsSingleHugeToken() {
+        for value in ["\"" + String(repeating: "x", count: 2_000_000) + "\"",
+                      String(repeating: "1", count: 2_000_000)] {
+            let text = value as NSString
+            let ranges = fastSyntaxColorRanges(language: "json", profile: .jsonFast, text: text,
+                                               in: NSRange(location: 0, length: text.length), colors: colors) ?? []
+            XCTAssertFalse(ranges.isEmpty)
+            XCTAssertTrue(ranges.allSatisfy { NSMaxRange($0.0) <= EditorRuntimeLimits.maximumSyntaxPassUTF16Length })
+        }
+    }
+
     func testEverySupportedNonStatefulSyntaxUsesViewportPolicyForLargeDocuments() {
         let defaults = UserDefaults.standard
         let openModeKey = "SettingsLargeFileOpenMode"
@@ -278,6 +318,36 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertFalse(shouldSuppressGeneratedFileSyntaxHighlighting(text: minified, language: "javascript"))
         defaults.set("off", forKey: key)
         XCTAssertTrue(shouldSuppressGeneratedFileSyntaxHighlighting(text: minified, language: "javascript"))
+    }
+
+    func testGeneratedMinifiedDocumentsUseBoundedInstallationOutsideExplicitLargeFileMode() {
+        let defaults = UserDefaults.standard
+        let key = "SettingsLargeFileOpenMode"
+        let previous = defaults.object(forKey: key)
+        defer {
+            if let previous { defaults.set(previous, forKey: key) }
+            else { defaults.removeObject(forKey: key) }
+        }
+        defaults.set("deferred", forKey: key)
+
+        let minified = NSString(string: "{\"items\":[" + String(repeating: "{\"value\":123},", count: 100_000) + "null]}")
+        XCTAssertTrue(
+            shouldUseChunkedLargeFileInstall(
+                isLargeFileMode: false,
+                textLength: minified.length,
+                language: "json",
+                text: minified
+            )
+        )
+        defaults.set("standard", forKey: key)
+        XCTAssertFalse(
+            shouldUseChunkedLargeFileInstall(
+                isLargeFileMode: false,
+                textLength: minified.length,
+                language: "json",
+                text: minified
+            )
+        )
     }
 
     func testNewProjectAndInfrastructureSyntaxesHavePatterns() {

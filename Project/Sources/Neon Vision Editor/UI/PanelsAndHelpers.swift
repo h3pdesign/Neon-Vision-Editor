@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.8.3",
-            subtitle: "Release highlights for v1.8.3.",
+            title: "What’s New in v1.8.4",
+            subtitle: "Release highlights for v1.8.4.",
             bullets: [
-                "Editor Improvements: Edit complete text documents below 100 MB without entering the excessive-file preview mode.",
-                "Workflow Refinements: Read long lines on iPhone and iPad without losing text when line wrap is disabled.",
-                "Performance Updates: Apply themes and formatting consistently, with less repeated work when using Settings.",
-                "Usability Updates: Refines mobile toolbars with system-adaptive glass, complete action slots, and an optional larger-symbol setting.",
-                "Editor Improvements: Fixes clipped unwrapped text on iPhone and iPad by keeping the drawing canvas and horizontal scrolling geometry aligned…",
-                "Editor Navigation: Restores native macOS Settings pane sizing and titlebar material, removes repeated window repositioning, and keeps Settings…"
+                "Editor Improvements: Browse JSON in a structured preview and read YAML with syntax colors.",
+                "Workflow Refinements: Choose how macOS opens files across desktops and handles the last tab.",
+                "Performance Updates: Keep space below the cursor when placing it on iPhone and iPad.",
+                "Usability Updates: Adds opt-in macOS settings to open files on the current desktop and keep an empty window after closing its last tab.",
+                "Editor Improvements: Adds structured JSON previews and syntax-colored YAML previews for large documents.",
+                "Workflow Refinements: Uses the same window routing for new and already-open files across macOS Spaces (#583, #584)."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4479,6 +4479,7 @@ extension Notification.Name {
     static let showUpdaterRequested = Notification.Name("showUpdaterRequested")
     static let showSettingsRequested = Notification.Name("showSettingsRequested")
     static let closeSelectedTabRequested = Notification.Name("closeSelectedTabRequested")
+    static let editorLastTabClosed = Notification.Name("editorLastTabClosed")
     static let openRecentFileRequested = Notification.Name("openRecentFileRequested")
     static let recentFilesDidChange = Notification.Name("recentFilesDidChange")
     static let sharedImportsDidChange = Notification.Name("sharedImportsDidChange")
@@ -4661,6 +4662,21 @@ final class WindowViewModelRegistry {
 
     func activeViewModel() -> EditorViewModel? {
         viewModel(for: NSApp.keyWindow?.windowNumber ?? NSApp.mainWindow?.windowNumber)
+    }
+
+    func externalOpenTarget(for url: URL?, currentDesktopOnly: Bool,
+                            windows: [NSWindow]) -> EditorViewModel? {
+        let candidates = windows.filter {
+            (!currentDesktopOnly || $0.isOnActiveSpace) && viewModel(for: $0.windowNumber) != nil
+        }
+        if let url, let existing = candidates.first(where: {
+            viewModel(for: $0.windowNumber)?.hasOpenFile(url: url) == true
+        }) {
+            return viewModel(for: existing.windowNumber)
+        }
+        let target = candidates.first(where: { $0.isKeyWindow })
+            ?? candidates.first(where: { $0.isMainWindow }) ?? candidates.first
+        return viewModel(for: target?.windowNumber)
     }
 
     func windowNumber(for viewModel: EditorViewModel) -> Int? {

@@ -4,6 +4,23 @@ import XCTest
 
 @MainActor
 final class EditorViewModelTabTests: XCTestCase {
+    #if os(macOS)
+    func testClosingLastTabLeavesNoUnrequestedUntitledDocumentAndCanReopen() throws {
+        let model = EditorViewModel()
+        model.resetTabsForSessionRestore()
+        model.addNewTab()
+        let id = try XCTUnwrap(model.selectedTabID)
+        model.closeTab(tabID: id)
+        XCTAssertTrue(model.tabs.isEmpty)
+        XCTAssertNil(model.selectedTabID)
+        model.closeTab(tabID: id)
+        XCTAssertTrue(model.tabs.isEmpty)
+        model.addNewTab()
+        XCTAssertEqual(model.tabs.count, 1)
+        XCTAssertNotNil(model.selectedTab)
+    }
+    #endif
+
     func testTabPersistenceRevisionCoalescesMutationsAcrossOneDisplayFrame() async throws {
         let viewModel = EditorViewModel()
         try await Task.sleep(for: .milliseconds(50))

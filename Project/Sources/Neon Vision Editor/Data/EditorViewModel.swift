@@ -1091,6 +1091,9 @@ class EditorViewModel {
             clearExternalRefreshActivity(tabID: tabID)
             tabs.remove(at: index)
             if tabs.isEmpty {
+                #if os(macOS)
+                selectedTabID = nil
+                #else
                 let newTab = TabData(
                     name: nextUntitledTabName(),
                     content: "",
@@ -1100,10 +1103,16 @@ class EditorViewModel {
                 )
                 tabs.append(newTab)
                 selectedTabID = newTab.id
+                #endif
             } else if selectedTabID == tabID {
                 selectedTabID = tabs.first?.id
             }
             recordTabStateMutation(rebuildIndexes: true)
+            #if os(macOS)
+            if tabs.isEmpty {
+                NotificationCenter.default.post(name: .editorLastTabClosed, object: self)
+            }
+            #endif
             return TabCommandOutcome()
 
         case let .addNewTab(name, language):

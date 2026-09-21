@@ -118,7 +118,19 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.8.3</h2><span class="date">19 September 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.8.4</h2><span class="date">21 September 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds opt-in macOS settings to open files on the current desktop and keep an empty window after closing its last tab.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds structured JSON previews and syntax-colored YAML previews for large documents.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Uses the same window routing for new and already-open files across macOS Spaces (#583, #584).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps an empty macOS editor available without creating an unwanted untitled tab; Close Window remains available with Command-Shift-W (#586).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Reveals space below the cursor after placing it on iPhone and iPad, as well as while typing.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves YAML string colors across preview pages and restores keyword formatting in previews.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.8.3</h2><span class="date">19 September 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Refines mobile toolbars with system-adaptive glass, complete action slots, and an optional larger-symbol setting.</p></div>
           <div class="item"><span class="badge fixed">Fixed</span><p>Fixes clipped unwrapped text on iPhone and iPad by keeping the drawing canvas and horizontal scrolling geometry aligned, including cursor reveal, keyboard transitions, and large-document installs.</p></div>

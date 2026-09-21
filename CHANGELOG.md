@@ -14,6 +14,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - Uses the same registered-window routing for new and already-open files across macOS Spaces.
 - Keeps an empty macOS editor available without creating an unwanted untitled tab; Close Window remains available with Command-Shift-W.
+- Enables non-contiguous UIKit text layout before chunked installation, preventing large single-line Unicode JSON from blocking the iPhone and iPad run loop while preserving full editing.
 
 ## [v1.8.3] - 2026-09-19
 
@@ -56,7 +57,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Maintenance
 
-- Advances the post-v1.8.2 development version to 1.8.3 (1053).
+- Advances the post-v1.8.3 development version to 1.8.4 (1055).
 
 ## [v1.8.2] - 2026-09-18
 

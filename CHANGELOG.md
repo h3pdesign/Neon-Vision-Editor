@@ -6,15 +6,36 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- Browse JSON in a structured preview and read YAML with syntax colors.
+- Choose how macOS opens files across desktops and handles the last tab.
+- Keep space below the cursor when placing it on iPhone and iPad.
+
 ### Highlights
 
 - Adds opt-in macOS settings to open files on the current desktop and keep an empty window after closing its last tab.
+- Adds structured JSON previews and syntax-colored YAML previews for large documents.
 
 ### Fixes
 
-- Uses the same registered-window routing for new and already-open files across macOS Spaces.
-- Keeps an empty macOS editor available without creating an unwanted untitled tab; Close Window remains available with Command-Shift-W.
-- Enables non-contiguous UIKit text layout before chunked installation, preventing large single-line Unicode JSON from blocking the iPhone and iPad run loop while preserving full editing.
+- Uses the same window routing for new and already-open files across macOS Spaces (#583, #584).
+- Keeps an empty macOS editor available without creating an unwanted untitled tab; Close Window remains available with Command-Shift-W (#586).
+- Reveals space below the cursor after placing it on iPhone and iPad, as well as while typing.
+- Preserves YAML string colors across preview pages and restores keyword formatting in previews.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No document migration is required. Very large single-line Unicode JSON can still stall mobile editing; this remains tracked in #595.
+
+### Maintenance
+
+- Enables non-contiguous UIKit layout before large-text installation and adds complete-opening responsiveness tests. Physical-device verification for #595 remains outstanding.
+- Advances the development version to 1.8.4; release preparation allocates the build number from the live Xcode Cloud counter.
 
 ## [v1.8.3] - 2026-09-19
 
@@ -57,7 +78,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Maintenance
 
-- Advances the post-v1.8.3 development version to 1.8.4 (1055).
+- Advances the post-v1.8.2 development version to 1.8.3 (1053).
 
 ## [v1.8.2] - 2026-09-18
 

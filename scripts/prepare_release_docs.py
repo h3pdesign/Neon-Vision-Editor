@@ -597,6 +597,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v1.8.4": ("Strukturierte Vorschauen und flexible Fenster", "Ergänzt JSON- und YAML-Vorschauen, Optionen für macOS-Schreibtische und leere Fenster sowie Platz unter dem Cursor auf iPhone und iPad.", ["Vorschau", "macOS", "Editor"]),
         "v1.8.3": ("Vollständige Textdateien und verlässlicher Zeilenumbruch", "Bearbeitet Textdateien unter 100 MB vollständig, behebt abgeschnittene lange Zeilen auf iPhone und iPad und verbessert Themes, Formatierung, Symbolleisten und native macOS-Einstellungen. Mac-Versionen unterstützen nur noch Apple Silicon.", ["Editor", "Einstellungen", "iPhone und iPad"]),
         "v1.8.2": ("Vollständige Vorschau großer Markdown-Dateien", "Zeigt große Markdown-Dateien vollständig formatiert statt als gekürzten Quelltext an. Öffnet Dateien aus dem Finder auch ohne offenes Editorfenster und beschränkt das Scrollen langer Dokumente auf sichtbare Zeilen.", ["Markdown", "Editor", "macOS"]),
         "v1.8.1": ("Mobile Symbolleisten und natives Glas", "Kompakte Symbolleisten für iPhone und iPad halten den Editor sichtbar. Tastaturaktionen, Status und Vorschauen passen sich dem Editor-Theme und den Systemeinstellungen für Glas an.", ["Editor", "Symbolleiste", "iPhone und iPad"]),
@@ -630,6 +631,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v1.8.4": ("Strukturerede forhåndsvisninger og fleksible vinduer", "Tilføjer JSON- og YAML-forhåndsvisninger, indstillinger for macOS-skriveborde og tomme vinduer samt plads under markøren på iPhone og iPad.", ["Forhåndsvisning", "macOS", "Editor"]),
         "v1.8.3": ("Komplette tekstfiler og pålidelige lange linjer", "Redigerer hele tekstfiler under 100 MB, retter afklippede lange linjer på iPhone og iPad og forbedrer temaer, formatering, værktøjslinjer og native macOS-indstillinger. Mac-versioner understøtter nu kun Apple Silicon.", ["Editor", "Indstillinger", "iPhone og iPad"]),
         "v1.8.2": ("Fuld visning af store Markdown-filer", "Viser store Markdown-filer som formateret indhold i stedet for afkortet kildetekst. Åbner filer fra Finder uden et åbent redigeringsvindue og begrænser rulning i lange dokumenter til synlige linjer.", ["Markdown", "Editor", "macOS"]),
         "v1.8.1": ("Mobile værktøjslinjer og indbygget glas", "Kompakte værktøjslinjer til iPhone og iPad holder editoren synlig. Tastaturhandlinger, status og forhåndsvisninger følger editorens tema og systemets glasindstillinger.", ["Editor", "Værktøjslinje", "iPhone og iPad"]),
@@ -663,6 +665,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v1.8.4": ("Aperçus structurés et fenêtres flexibles", "Ajoute des aperçus JSON et YAML, des options pour les bureaux et fenêtres vides sur macOS, et de l’espace sous le curseur sur iPhone et iPad.", ["Aperçu", "macOS", "Éditeur"]),
         "v1.8.3": ("Fichiers texte complets et lignes longues lisibles", "Permet de modifier entièrement les fichiers texte de moins de 100 Mo, corrige les lignes tronquées sur iPhone et iPad et améliore thèmes, mise en forme, barres d’outils et réglages natifs de macOS. Les versions Mac nécessitent désormais Apple Silicon.", ["Éditeur", "Réglages", "iPhone et iPad"]),
         "v1.8.2": ("Aperçu complet des grands fichiers Markdown", "Affiche les grands fichiers Markdown mis en forme plutôt qu’un extrait de code tronqué. Ouvre les fichiers depuis le Finder sans fenêtre d’édition et limite le défilement des longs documents aux lignes visibles.", ["Markdown", "Éditeur", "macOS"]),
         "v1.8.1": ("Barres d’outils mobiles et verre natif", "Des barres d’outils compactes sur iPhone et iPad laissent l’éditeur visible. Les commandes du clavier, l’état et les aperçus suivent le thème de l’éditeur et les réglages système du verre.", ["Éditeur", "Barre d’outils", "iPhone et iPad"]),
@@ -696,6 +699,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v1.8.4": ("Vistas previas estructuradas y ventanas flexibles", "Añade vistas previas de JSON y YAML, opciones para escritorios y ventanas vacías de macOS y espacio bajo el cursor en iPhone y iPad.", ["Vista previa", "macOS", "Editor"]),
         "v1.8.3": ("Archivos de texto completos y líneas largas legibles", "Edita archivos de texto completos de menos de 100 MB, corrige las líneas cortadas en iPhone y iPad y mejora temas, formato, barras de herramientas y ajustes nativos de macOS. Las versiones para Mac ahora requieren Apple Silicon.", ["Editor", "Ajustes", "iPhone y iPad"]),
         "v1.8.2": ("Vista previa completa de archivos Markdown grandes", "Muestra los archivos Markdown grandes con formato en lugar de texto de origen truncado. Abre archivos desde Finder sin una ventana de edición y limita el desplazamiento en documentos largos a las líneas visibles.", ["Markdown", "Editor", "macOS"]),
         "v1.8.1": ("Barras móviles y cristal nativo", "Las barras compactas de iPhone y iPad dejan visible el editor. Los controles del teclado, el estado y las vistas previas siguen el tema del editor y los ajustes de cristal del sistema.", ["Editor", "Barra de herramientas", "iPhone y iPad"]),
@@ -729,6 +733,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v1.8.4": ("構造化プレビューと柔軟なウインドウ", "JSON と YAML のプレビュー、macOS のデスクトップと空のウインドウに関する設定、iPhone と iPad でカーソルの下に余白を表示する改善を追加しました。", ["プレビュー", "macOS", "エディタ"]),
         "v1.8.3": ("テキスト全文の編集と長い行の表示を改善", "100 MB 未満のテキストファイルを全文編集できます。iPhone と iPad で長い行が途中で切れる問題を修正し、テーマ、書式、ツールバー、macOS のネイティブ設定画面を改善しました。Mac 版は Apple Silicon のみをサポートします。", ["エディタ", "設定", "iPhone と iPad"]),
         "v1.8.2": ("大きな Markdown ファイルを最後までプレビュー", "大きな Markdown ファイルを途中で切れたソース表示ではなく、書式付きで最後まで表示します。編集ウインドウがなくても Finder からファイルを開けます。長い文書のスクロールでは表示行のみを描画します。", ["Markdown", "エディタ", "macOS"]),
         "v1.8.1": ("モバイルツールバーとネイティブガラス", "iPhone と iPad のコンパクトなツールバーでエディタを広く表示。キーボード操作、ステータス、プレビューがエディタのテーマとシステムのガラス設定に合わせて変化します。", ["エディタ", "ツールバー", "iPhone と iPad"]),
@@ -762,6 +767,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v1.8.4": ("结构化预览与灵活的窗口", "新增 JSON 和 YAML 预览、macOS 桌面和空窗口选项，并改善 iPhone 和 iPad 上光标下方的留白。", ["预览", "macOS", "编辑器"]),
         "v1.8.3": ("完整编辑文本并改善长行显示", "完整编辑小于 100 MB 的文本文件，修复 iPhone 和 iPad 上长行被截断的问题，并改善主题、格式、工具栏和 macOS 原生设置窗口。Mac 版本现仅支持 Apple Silicon。", ["编辑器", "设置", "iPhone 和 iPad"]),
         "v1.8.2": ("完整预览大型 Markdown 文件", "将大型 Markdown 文件完整呈现为格式化内容，而不是截断的源文本。即使没有打开编辑器窗口，也能从 Finder 打开文件；滚动长文档时只重绘可见行。", ["Markdown", "编辑器", "macOS"]),
         "v1.8.1": ("移动工具栏与原生玻璃效果", "iPhone 和 iPad 的紧凑工具栏让编辑器保留更多可见空间。键盘操作、状态信息和预览会适应编辑器主题及系统玻璃效果设置。", ["编辑器", "工具栏", "iPhone 和 iPad"]),

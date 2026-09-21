@@ -2381,6 +2381,12 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.delegate = context.coordinator
         textView.isEditable = !isReadOnly
         textView.isSelectable = true
+        // Chunked installs can begin from the first main-run-loop turn. Enable
+        // non-contiguous TextKit layout before any text is appended; setting it
+        // later in updateUIView makes every growing chunk lay out the complete
+        // single-line document synchronously (especially pathological Unicode
+        // JSON), starving the run loop and making the editor appear frozen.
+        textView.layoutManager.allowsNonContiguousLayout = true
         textView.markdownFormattingEnabled = language.lowercased() == "markdown"
         let initialFont = resolvedUIFont()
         textView.font = initialFont
@@ -2924,6 +2930,9 @@ struct CustomTextEditor: UIViewRepresentable {
             var currentVisualColumn = 0
             var maximumVisualColumns = 0
             textView.isEditable = false
+            // Keep this invariant local to the installation path as well. A
+            // reused text view may arrive here before its next SwiftUI update.
+            textView.layoutManager.allowsNonContiguousLayout = true
             textView.text = ""
             textView.invalidateTextMetrics()
 

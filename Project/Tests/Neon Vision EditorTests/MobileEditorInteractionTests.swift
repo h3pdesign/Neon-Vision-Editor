@@ -170,6 +170,10 @@ final class MobileEditorInteractionTests: XCTestCase {
             return view.subviews.lazy.compactMap(find).first
         }
         let container = try XCTUnwrap(find(host.view))
+        XCTAssertTrue(
+            container.textView.layoutManager.allowsNonContiguousLayout,
+            "Chunked installation must enable non-contiguous TextKit layout before appending JSON chunks"
+        )
         let expectedLength = (source as NSString).length
         let start = ProcessInfo.processInfo.systemUptime
         var previousTick = start

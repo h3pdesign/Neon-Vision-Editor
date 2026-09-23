@@ -85,12 +85,7 @@ struct ToolbarActionSelection {
         guard supportedVisibleCounts.contains(requestedCount) else {
             return max(0, fallback - universallyAvailableMobileActionIDs.count)
         }
-        return max(
-            0,
-            requestedCount
-                - persistentMobileControlCount
-                - universallyAvailableMobileActionIDs.count
-        )
+        return requestedCount
     }
 
     static func limitedSelectedIDs(
@@ -144,15 +139,42 @@ struct ToolbarActionSelection {
         orderedIDs: [String],
         limit: Int
     ) -> String {
-        var selected = selectedIDs(from: currentRawValue)
-        if selected.contains(toggledID) {
-            selected.remove(toggledID)
-        } else if selected.count < limit {
-            selected.insert(toggledID)
+        let allowedIDs = Set(orderedIDs)
+        var selected = currentRawValue
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && allowedIDs.contains($0) }
+            .reduce(into: [String]()) { result, id in
+                if !result.contains(id) { result.append(id) }
+            }
+
+        if let existingIndex = selected.firstIndex(of: toggledID) {
+            selected.remove(at: existingIndex)
+        } else if allowedIDs.contains(toggledID), selected.count < max(0, limit) {
+            selected.append(toggledID)
         }
-        return orderedIDs
-            .filter { selected.contains($0) }
-            .joined(separator: ",")
+        return selected.joined(separator: ",")
+    }
+
+    static func orderedActions<Action>(
+        _ actions: [Action],
+        customIDsRawValue: String,
+        id: (Action) -> String
+    ) -> [Action] {
+        let order = customIDsRawValue
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .enumerated()
+            .reduce(into: [String: Int]()) { result, item in
+                if result[item.element] == nil {
+                    result[item.element] = item.offset
+                }
+            }
+        return actions.enumerated().sorted { lhs, rhs in
+            let leftOrder = order[id(lhs.element)] ?? (order.count + lhs.offset)
+            let rightOrder = order[id(rhs.element)] ?? (order.count + rhs.offset)
+            return leftOrder == rightOrder ? lhs.offset < rhs.offset : leftOrder < rightOrder
+        }.map(\.element)
     }
 }
 
@@ -672,7 +694,10 @@ extension ContentView {
         toolbarPresetIOSRaw = preset.rawValue
         toolbarUseCustomFiveIOS = preset == .custom
         if preset == .custom && toolbarCustomFiveIDsIOS.isEmpty {
-            toolbarCustomFiveIDsIOS = ToolbarPreset.mobileSelectableIDs.prefix(toolbarFavoriteCountIOS).joined(separator: ",")
+            toolbarCustomFiveIDsIOS = ToolbarPreset.mobileSelectableIDs
+                .filter { !ToolbarActionSelection.universallyAvailableMobileActionIDs.contains($0) }
+                .prefix(toolbarFavoriteCountIOS)
+                .joined(separator: ",")
         }
 #endif
     }
@@ -881,7 +906,7 @@ extension ContentView {
 #if os(iOS)
         actions.append(.toolbarIconColor)
 #endif
-        return actions.filter {
+        let availableActions = actions.filter {
             ToolbarActionSelection.isAllowedByPreset(
                 actionID: $0.rawValue,
                 preset: preset,
@@ -895,6 +920,12 @@ extension ContentView {
                 isMarkdownDocument: isMarkdownPreviewDocument
             )
         }
+        guard preset == .custom else { return availableActions }
+        return ToolbarActionSelection.orderedActions(
+            availableActions,
+            customIDsRawValue: toolbarCustomFiveIDsIOS,
+            id: \.rawValue
+        )
     }
 
     private var visibleIOSPrimaryToolbarActions: [IOSPrimaryToolbarAction] {
@@ -904,9 +935,8 @@ extension ContentView {
         })
         return ToolbarActionSelection.visibleActions(
             enabledActions: enabledActions,
-            requestedCount: toolbarFavoriteCountIOS,
+            requestedCount: toolbarFavoriteCountIOS + requiredActions.count,
             preset: effectiveIOSToolbarPreset,
-            reservedControlCount: ToolbarActionSelection.persistentMobileControlCount,
             requiredActions: requiredActions
         )
     }
@@ -1119,7 +1149,7 @@ extension ContentView {
 
     private var enabledIPadActionPriority: [IPadToolbarAction] {
         let preset = effectiveIOSToolbarPreset
-        return iPadActionPriority.filter {
+        let availableActions = iPadActionPriority.filter {
             ToolbarActionSelection.shouldIncludeConfiguredAction(
                 actionID: $0.rawValue,
                 isConfiguredVisible: toolbarActionIsEnabled($0),
@@ -1137,6 +1167,12 @@ extension ContentView {
                 isMarkdownDocument: isMarkdownPreviewDocument
             )
         }
+        guard preset == .custom else { return availableActions }
+        return ToolbarActionSelection.orderedActions(
+            availableActions,
+            customIDsRawValue: toolbarCustomFiveIDsIOS,
+            id: \.rawValue
+        )
     }
 
     private func toolbarActionIsEnabled(_ action: IPadToolbarAction) -> Bool {
@@ -1158,9 +1194,8 @@ extension ContentView {
         })
         return ToolbarActionSelection.visibleActions(
             enabledActions: enabledActions,
-            requestedCount: toolbarFavoriteCountIOS,
+            requestedCount: toolbarFavoriteCountIOS + requiredActions.count,
             preset: effectiveIOSToolbarPreset,
-            reservedControlCount: ToolbarActionSelection.persistentMobileControlCount,
             requiredActions: requiredActions
         )
         .filter { $0 != .toggleSidebar }

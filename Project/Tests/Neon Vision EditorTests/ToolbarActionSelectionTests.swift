@@ -107,13 +107,13 @@ final class ToolbarActionSelectionTests: XCTestCase {
         XCTAssertEqual(visible.count + ToolbarActionSelection.persistentMobileControlCount, 4)
     }
 
-    func testCustomSelectableLimitIncludesPersistentAndUniversalControls() {
+    func testCustomSelectableLimitMatchesConfiguredActionCount() {
         XCTAssertEqual(
             ToolbarActionSelection.customSelectableActionLimit(
                 requestedCount: 6,
                 fallback: TestAction.allCases.count
             ),
-            2
+            6
         )
     }
 
@@ -180,6 +180,34 @@ final class ToolbarActionSelectionTests: XCTestCase {
             limit: 7
         )
         XCTAssertEqual(removed, "openFile,undo,help,clearEditor,insertTemplate,newTab")
+    }
+
+    func testCustomSelectionKeepsUserChosenOrder() {
+        let orderedIDs = TestAction.allCases.map(\.rawValue)
+        var rawValue = ""
+        for action in [TestAction.findReplace, .saveFile, .openFile] {
+            rawValue = ToolbarActionSelection.toggledSelectionRawValue(
+                toggledID: action.rawValue,
+                currentRawValue: rawValue,
+                orderedIDs: orderedIDs,
+                limit: 6
+            )
+        }
+
+        XCTAssertEqual(rawValue, "findReplace,saveFile,openFile")
+        XCTAssertEqual(
+            ToolbarActionSelection.orderedActions(
+                [TestAction.openFile, .saveFile, .findReplace],
+                customIDsRawValue: rawValue,
+                id: \.rawValue
+            ),
+            [.findReplace, .saveFile, .openFile]
+        )
+    }
+
+    func testMarkdownOpenModeMapsToEditorAndPreviewStates() {
+        XCTAssertEqual(MarkdownPreviewOpenMode.edit.previewMode, .none)
+        XCTAssertEqual(MarkdownPreviewOpenMode.preview.previewMode, .markdown)
     }
 
     func testToolbarPresetsExposeStablePlatformActions() {

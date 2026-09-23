@@ -219,6 +219,9 @@ struct NeonSettingsView: View {
     @AppStorage(KeyboardAccessoryAction.storageKey) private var keyboardShortcutAccessoryActionsIOS: String = KeyboardAccessoryAction.storageValue(for: KeyboardAccessoryAction.defaultActions)
 #endif
     @State private var showToolbarIconChooser: Bool = false
+#if os(iOS) || os(visionOS)
+    @State private var toolbarChooserEditMode: EditMode = .inactive
+#endif
     @State private var generalSettingsCardHeight: CGFloat = 0
     @State private var isThemeSelectionHovering: Bool = false
     @State private var isThemeSelectionSelecting: Bool = false
@@ -287,6 +290,7 @@ struct NeonSettingsView: View {
     @AppStorage("MarkdownPreviewBackgroundStyle") private var markdownPreviewBackgroundStyleRaw: String = "automatic"
     @AppStorage("MarkdownPreviewDialect") private var markdownPreviewDialectRaw: String = ContentView.MarkdownPreviewDialect.gfm.rawValue
 #if os(macOS)
+    @AppStorage(SettingsPreferenceKey.markdownPreviewDefaultMode) private var markdownPreviewDefaultModeRaw: String = MarkdownPreviewOpenMode.edit.rawValue
     @AppStorage("DetachedMarkdownPreviewUsesQuickLookTransparency") private var detachedMarkdownPreviewUsesQuickLookTransparency: Bool = false
 #endif
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewEnabled) private var markdownProjectPreviewEnabled: Bool = true
@@ -2099,7 +2103,7 @@ struct NeonSettingsView: View {
                 .font(Typography.footnote)
                 .foregroundStyle(.secondary)
             if toolbarUseCustomFiveIOS {
-                iOSLabeledRow(LocalizedStringKey(localized("Visible Toolbar Actions"))) {
+                    iOSLabeledRow(LocalizedStringKey(localized("Custom Actions Shown"))) {
                     Picker("", selection: $toolbarFavoriteCountIOS) {
                         Text("4").tag(4)
                         Text("5").tag(5)
@@ -2627,7 +2631,10 @@ struct NeonSettingsView: View {
                 toolbarPresetIOSRaw = rawValue
                 toolbarUseCustomFiveIOS = rawValue == ToolbarPreset.custom.rawValue
                 if toolbarUseCustomFiveIOS && toolbarCustomFiveIDsIOS.isEmpty {
-                    toolbarCustomFiveIDsIOS = ToolbarPreset.mobileSelectableIDs.prefix(toolbarFavoriteCountIOS).joined(separator: ",")
+                    toolbarCustomFiveIDsIOS = ToolbarPreset.mobileSelectableIDs
+                        .filter { !ToolbarActionSelection.universallyAvailableMobileActionIDs.contains($0) }
+                        .prefix(toolbarFavoriteCountIOS)
+                        .joined(separator: ",")
                 }
             }
         )
@@ -2653,15 +2660,25 @@ struct NeonSettingsView: View {
         )
     }
 
+    private var toolbarIconChooserOptions: [ToolbarIconOption] {
+        let available = ToolbarIconOption.allCases.filter {
+            ToolbarPreset.mobileSelectableIDs.contains($0.rawValue)
+                && !ToolbarActionSelection.universallyAvailableMobileActionIDs.contains($0.rawValue)
+        }
+        let selected = ToolbarActionSelection.orderedIDs(from: toolbarCustomFiveIDsIOS, fallback: [])
+            .filter { selectedID in available.contains { $0.rawValue == selectedID } }
+        let selectedSet = Set(selected)
+        let remaining = available.map(\.rawValue).filter { !selectedSet.contains($0) }
+        let byID = Dictionary(uniqueKeysWithValues: available.map { ($0.rawValue, $0) })
+        return (selected + remaining).compactMap { byID[$0] }
+    }
+
     @ViewBuilder
     private var toolbarIconChooserSheet: some View {
         NavigationStack {
             List {
-                Section("Choose up to \(toolbarCustomIconLimit) icons") {
-                    ForEach(ToolbarIconOption.allCases.filter {
-                        ToolbarPreset.mobileSelectableIDs.contains($0.rawValue)
-                            && !ToolbarActionSelection.universallyAvailableMobileActionIDs.contains($0.rawValue)
-                    }) { option in
+                Section("Choose up to \(toolbarCustomIconLimit) icons · tap Edit to reorder") {
+                    ForEach(toolbarIconChooserOptions) { option in
                         Button(action: { toggleToolbarCustomIcon(option.rawValue) }) {
                             HStack {
                                 Text(option.title)
@@ -2677,6 +2694,7 @@ struct NeonSettingsView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    .onMove(perform: moveToolbarCustomIcons)
                 }
             }
             .navigationTitle("Toolbar Icons")
@@ -2686,11 +2704,24 @@ struct NeonSettingsView: View {
                         toolbarCustomFiveIDsIOS = ""
                     }
                 }
+                ToolbarItem(placement: .principal) {
+                    EditButton()
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { showToolbarIconChooser = false }
                 }
             }
+            .environment(\.editMode, $toolbarChooserEditMode)
         }
+    }
+
+    private func moveToolbarCustomIcons(from source: IndexSet, to destination: Int) {
+        var reorderedIDs = toolbarIconChooserOptions.map(\.rawValue)
+        reorderedIDs.move(fromOffsets: source, toOffset: destination)
+        let selectedIDs = toolbarCustomSelectedIDs
+        toolbarCustomFiveIDsIOS = reorderedIDs
+            .filter(selectedIDs.contains)
+            .joined(separator: ",")
     }
 
     private func toggleToolbarCustomIcon(_ rawValue: String) {
@@ -4208,6 +4239,16 @@ struct NeonSettingsView: View {
             Text("Choose how the Markdown preview surface and parser behave.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+#if os(macOS)
+            Picker("Open Markdown files in", selection: $markdownPreviewDefaultModeRaw) {
+                ForEach(MarkdownPreviewOpenMode.allCases) { mode in
+                    Text(mode.title).tag(mode.rawValue)
+                }
+            }
+            .accessibilityLabel("Default Markdown opening mode")
+            .accessibilityHint("Choose whether Markdown files open in the editor or rendered preview. Switch modes from the toolbar or with Command-Shift-P on Mac.")
+#endif
 
             Toggle("Sync preview with editor scrolling", isOn: $markdownPreviewSynchronousScroll)
                 .accessibilityLabel("Sync Markdown preview with editor scrolling")

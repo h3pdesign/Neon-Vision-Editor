@@ -16,6 +16,24 @@ enum PreviewPaneResizeGeometry {
 }
 #endif
 
+enum MarkdownPreviewOpenMode: String, CaseIterable, Identifiable {
+    case edit
+    case preview
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .edit: return "Editor"
+        case .preview: return "Preview"
+        }
+    }
+
+    var previewMode: ContentView.PreviewMode {
+        self == .preview ? .markdown : .none
+    }
+}
+
 // MARK: - Preview Split Coordination
 
 struct PreviewPaneHeader<Actions: View>: View {
@@ -75,6 +93,14 @@ struct PreviewPaneHeader<Actions: View>: View {
 }
 
 extension ContentView {
+#if os(macOS)
+    func applyDefaultMarkdownPreviewOpenMode() {
+        guard isMarkdownPreviewDocument else { return }
+        let openMode = MarkdownPreviewOpenMode(rawValue: markdownPreviewDefaultModeRaw) ?? .edit
+        previewMode = openMode.previewMode
+    }
+#endif
+
     func previewPaneHeader<Actions: View>(
         title: String,
         iconName: String,

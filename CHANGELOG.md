@@ -6,6 +6,14 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixes
+
+- Fixes the custom iPhone and iPad toolbar icon limit so it matches the selected action count, and lets users reorder their chosen icons ([#615](https://github.com/h3pdesign/Neon-Vision-Editor/issues/615)).
+
+### Highlights
+
+- Adds a default Markdown opening mode with in-window editor/preview switching from the toolbar or Command-Shift-P ([#617](https://github.com/h3pdesign/Neon-Vision-Editor/issues/617)).
+
 ## [v1.8.4] - 2026-09-21
 
 ### Why Upgrade

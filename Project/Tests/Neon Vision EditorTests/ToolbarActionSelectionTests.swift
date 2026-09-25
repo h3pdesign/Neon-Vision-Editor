@@ -207,7 +207,40 @@ final class ToolbarActionSelectionTests: XCTestCase {
 
     func testMarkdownOpenModeMapsToEditorAndPreviewStates() {
         XCTAssertEqual(MarkdownPreviewOpenMode.edit.previewMode, .none)
+        XCTAssertFalse(MarkdownPreviewOpenMode.edit.presentsAsReadingView)
         XCTAssertEqual(MarkdownPreviewOpenMode.preview.previewMode, .markdown)
+        XCTAssertTrue(MarkdownPreviewOpenMode.preview.presentsAsReadingView)
+    }
+
+    func testMarkdownReadingModeReplacesRatherThanSplitsTheEditor() {
+        let readingViewVisible = MarkdownPreviewPresentationPolicy.showsReadingView(
+            isReadingMode: true,
+            isMarkdownDocument: true,
+            isPreviewActive: true,
+            isSafeMode: false,
+            isBrainDumpLayout: false,
+            isFocusMode: false
+        )
+
+        XCTAssertTrue(readingViewVisible)
+        XCTAssertFalse(MarkdownPreviewPresentationPolicy.showsSplitPane(
+            canShowPane: true,
+            isMarkdownDocument: true,
+            isPreviewActive: true,
+            readingViewVisible: readingViewVisible,
+            isSafeMode: false,
+            isBrainDumpLayout: false,
+            isFocusMode: false
+        ))
+        XCTAssertTrue(MarkdownPreviewPresentationPolicy.showsSplitPane(
+            canShowPane: true,
+            isMarkdownDocument: true,
+            isPreviewActive: true,
+            readingViewVisible: false,
+            isSafeMode: false,
+            isBrainDumpLayout: false,
+            isFocusMode: false
+        ))
     }
 
     func testToolbarPresetsExposeStablePlatformActions() {

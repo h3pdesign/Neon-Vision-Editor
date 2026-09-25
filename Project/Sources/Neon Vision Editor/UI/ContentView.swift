@@ -1038,6 +1038,7 @@ struct ContentView: View {
     @AppStorage("SettingsToolbarUseCustomMac") var toolbarUseCustomMac: Bool = false
     @AppStorage("SettingsToolbarCustomIDsMac") var toolbarCustomIDsMac: String = ""
     @AppStorage("SettingsToolbarPresetMac") var toolbarPresetMacRaw: String = ToolbarPreset.standard.rawValue
+    @State var isMarkdownPreviewReadingMode = false
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
 #endif
     @State var previewMode: PreviewMode = .none
@@ -5267,7 +5268,9 @@ struct ContentView: View {
                 }
 
                 Group {
-                    if shouldShowDelimitedTable && !brainDumpLayoutEnabled {
+                    if isMarkdownPreviewReadingViewVisible {
+                        markdownPreviewPane
+                    } else if shouldShowDelimitedTable && !brainDumpLayoutEnabled {
                         delimitedTableView
                     } else if shouldShowPlistStructure && !brainDumpLayoutEnabled {
                         plistStructureView

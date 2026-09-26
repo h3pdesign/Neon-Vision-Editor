@@ -21,10 +21,12 @@ final class ShortcutPreferencesTests: XCTestCase {
     }
 
     func testDefaultShortcutExistsForEveryAction() {
+        var shortcuts: Set<EditorShortcutDescriptor> = []
         for action in EditorShortcutAction.allCases {
             let shortcut = action.defaultShortcut
             XCTAssertFalse(shortcut.key.isEmpty)
             XCTAssertTrue(shortcut.modifiers.contains(.command))
+            XCTAssertTrue(shortcuts.insert(shortcut).inserted, "Duplicate default shortcut: \(action.title)")
         }
     }
 

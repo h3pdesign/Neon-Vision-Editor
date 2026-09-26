@@ -1064,7 +1064,7 @@ struct NeonVisionEditorApp: App {
                 }
             }
 
-            CommandMenu("Help") {
+            CommandGroup(replacing: .help) {
                 Button("Toolbar Help…") {
                     NotificationCenter.default.post(name: .showEditorHelpRequested, object: nil)
                 }
@@ -1073,7 +1073,9 @@ struct NeonVisionEditorApp: App {
                 Button("Show Welcome Tour") {
                     NotificationCenter.default.post(name: .showWelcomeTourRequested, object: nil)
                 }
+            }
 
+            CommandGroup(replacing: .appSettings) {
                 Button("Settings…") {
                     NotificationCenter.default.post(name: .showSettingsRequested, object: nil)
                 }

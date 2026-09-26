@@ -140,6 +140,7 @@ enum EditorLargeTextFormatting {
 
 final class EditorInputTextView: UITextView {
     static let keyboardToolbarHeight: CGFloat = 46
+    var onConfiguredAppShortcut: ((EditorShortcutAction) -> Void)?
     private struct NoWrapWidthCache {
         let revision: Int
         let visibleWidth: CGFloat
@@ -796,11 +797,11 @@ final class EditorInputTextView: UITextView {
     }
 
     override var keyCommands: [UIKeyCommand]? {
-        guard UIDevice.current.userInterfaceIdiom == .pad ||
-              UIDevice.current.userInterfaceIdiom == .phone else {
+        guard KeyboardCommandView.supportsHardwareKeyboardCommands else {
             return super.keyCommands
         }
-        let baseCommands = hardwareKeyboardEditingCommands(merging: super.keyCommands)
+        let baseCommands = hardwareKeyboardEditingCommands(merging: super.keyCommands) +
+            KeyboardCommandView.configuredAppCommands(action: #selector(handleConfiguredAppShortcut(_:)))
         guard UserDefaults.standard.bool(forKey: vimInterceptionDefaultsKey),
               UserDefaults.standard.bool(forKey: vimModeDefaultsKey) else {
             return baseCommands
@@ -830,6 +831,11 @@ final class EditorInputTextView: UITextView {
         commands.append(vimCommand(input: "d", action: #selector(vimDeleteLineStep), title: "Vim: Delete Line"))
         commands.append(vimCommand(input: "$", modifiers: [.shift], action: #selector(vimMoveToLineEnd), title: "Vim: Line End"))
         return commands
+    }
+
+    @objc func handleConfiguredAppShortcut(_ command: UIKeyCommand) {
+        guard let action = KeyboardCommandView.configuredAction(for: command) else { return }
+        onConfiguredAppShortcut?(action)
     }
 
     private func hardwareKeyboardEditingCommands(merging existing: [UIKeyCommand]?) -> [UIKeyCommand] {
@@ -2129,6 +2135,7 @@ struct CustomTextEditor: UIViewRepresentable {
     let isReadOnly: Bool
     let onFontSizeChange: ((CGFloat) -> Void)?
     let onTextMutation: ((EditorTextMutation) -> Void)?
+    let onShortcutAction: ((EditorShortcutAction) -> Void)?
 
     /// A published caret location must not overwrite an active UIKit selection.
     /// UIKit reports a triple-tap line selection immediately, while the binding
@@ -2379,6 +2386,7 @@ struct CustomTextEditor: UIViewRepresentable {
         )
 
         textView.delegate = context.coordinator
+        textView.onConfiguredAppShortcut = onShortcutAction
         textView.isEditable = !isReadOnly
         textView.isSelectable = true
         // Chunked installs can begin from the first main-run-loop turn. Enable
@@ -2488,6 +2496,7 @@ struct CustomTextEditor: UIViewRepresentable {
     // must not claim first responder status just because a tab changed.
     func updateUIView(_ uiView: LineNumberedTextViewContainer, context: Context) {
         let textView = uiView.textView
+        textView.onConfiguredAppShortcut = onShortcutAction
         context.coordinator.parent = self
         textView.isSelectable = true
         let didSwitchDocumentResource = context.coordinator.lastDocumentResourceID != documentResourceID

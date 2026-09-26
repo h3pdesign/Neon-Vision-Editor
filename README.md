@@ -54,12 +54,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.8.4**
+> Latest release: **v1.8.5**
 > Next release target: **v1.8.5**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: supported
 > Direct GitHub release: **v1.8.4** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-09-23** for latest release **v1.8.4**
+> Last updated (README): **2026-09-26** for latest release **v1.8.5**
 
 ## What's New in v1.8.3 and v1.8.4
 
@@ -163,7 +163,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=12981&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=13101&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -178,12 +178,12 @@
 
 <p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>
 <p align="center">
-  <img alt="Unique cloners (14d)" src="https://img.shields.io/static/v1?label=Unique+cloners+%2814d%29&message=692&color=7C3AED&style=for-the-badge">
-  <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=284&color=0EA5E9&style=for-the-badge">
+  <img alt="Unique cloners (14d)" src="https://img.shields.io/static/v1?label=Unique+cloners+%2814d%29&message=631&color=7C3AED&style=for-the-badge">
+  <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=287&color=0EA5E9&style=for-the-badge">
 </p>
 <p align="center">
-  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-09-23&color=334155&style=flat-square">
-  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-09-23&color=334155&style=flat-square">
+  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-09-26&color=334155&style=flat-square">
+  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-09-26&color=334155&style=flat-square">
 </p>
 
 ## Project Documentation
@@ -783,7 +783,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.8.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.8.2) | **A more deliberate workflow** — View large Markdown documents as rendered Markdown instead of a truncated source preview. | Opens an editor window when files or project folders are sent from Finder while no editor window is open. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.8.4**
+- Latest release: **v1.8.5**
 - Compare recent changes: [v1.8.3...v1.8.4](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.8.3...v1.8.4)
 
 ## Known Limitations

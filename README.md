@@ -1,9 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
-> Prepared release: **v1.8.5** — not published. See [candidate notes](CHANGELOG.md).
-
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.8.4-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.8.5-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-github-only.yml"><img alt="Primary Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-github-only.yml?branch=main&label=Primary%20Release"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md"><img alt="Security Policy" src="https://img.shields.io/badge/security-policy-22C55E"></a>
@@ -54,16 +52,26 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.8.4**
-> Next release target: **v1.8.5**
+> Latest release: **v1.8.5**
+> Next release target: **v1.8.6**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: supported
-> Direct GitHub release: **v1.8.4** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-09-23** for latest release **v1.8.4**
+> Direct GitHub release: **v1.8.5** / App Store and TestFlight availability varies by platform and review status
+> Last updated (README): **2026-09-26** for latest release **v1.8.5**
 
-## What's New in v1.8.3 and v1.8.4
+## What's New in v1.8.4 and v1.8.5
 
 ### Why Upgrade
+
+- v1.8.5: Choose whether Markdown opens for editing or full-window reading, and switch modes from the toolbar or keyboard.
+- v1.8.5: Arrange preferred iPhone and iPad toolbar actions and use configured app shortcuts while the editor has hardware-keyboard focus.
+- v1.8.5: Navigate line and document boundaries with standard Command-arrow keys on macOS.
+
+### v1.8.5 Highlights
+
+- Adds a default Markdown opening mode for editing or full-window reading, with toolbar or Command-Shift-P switching ([#617](https://github.com/h3pdesign/Neon-Vision-Editor/issues/617)).
+
+### v1.8.4 Context
 
 - v1.8.4: Browse JSON in a structured preview and read YAML with syntax colors.
 - v1.8.4: Choose how macOS opens files across desktops and handles the last tab.
@@ -73,16 +81,6 @@
 
 - Adds opt-in macOS settings to open files on the current desktop and keep an empty window after closing its last tab.
 - Adds structured JSON previews and syntax-colored YAML previews for large documents.
-
-### v1.8.3 Context
-
-- v1.8.3: Edit complete text documents below 100 MB without entering the excessive-file preview mode.
-- v1.8.3: Read long lines on iPhone and iPad without losing text when line wrap is disabled.
-- v1.8.3: Apply themes and formatting consistently, with less repeated work when using Settings.
-
-### v1.8.3 Highlights
-
-- Refines mobile toolbars with system-adaptive glass, complete action slots, and an optional larger-symbol setting.
 
 ## Start Here
 
@@ -142,7 +140,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v1.8.4 release docs current; v1.8.4 direct download current</td>
+        <td>v1.8.5 release docs current; v1.8.5 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -234,7 +232,7 @@ The direct GitHub release is currently ahead of the iOS/iPadOS App Store version
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.8.4** | Current direct download |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v1.8.5** | Current direct download |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.8.3** | Current public App Store listing |
 | **Store Review** | macOS | Corrected App Store update | App Store Connect review | **v1.8.4** | In Apple review |
 | **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.6.1** | Current recorded visionOS listing |
@@ -373,7 +371,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - **Languages and structured documents:** Swift 6-ready highlighting includes TeX/LaTeX and Typst/CeTZ-aware editing; CSV/TSV, property lists, Apple crash reports, and recognized logs can switch between structured and raw-text views, and plain text can be transformed into validated JSON through an explicit AI-assisted action.
 - **Project and preview workflows:** project-level Markdown/PDF cards reuse the project index for bounded excerpts and thumbnails, while Markdown, HTML, SVG, PDF, and PNG previews remain integrated with the editor.
 - **macOS integration:** the embedded Quick Look extension previews supported Markdown and source files in Finder, and detached Markdown previews can use the same glass treatment without changing editor content.
-- **Latest stable additions (v1.8.4):** Adds opt-in macOS settings to open files on the current desktop and keep an empty window after closing its last tab; Adds structured JSON previews and syntax-colored YAML previews for large documents.
+- **Latest stable additions (v1.8.5):** Adds a default Markdown opening mode for editing or full-window reading, with toolbar or Command-Shift-P switching ([#617](https://github.com/h3pdesign/Neon-Vision-Editor/issues/617)).
 <!-- FEATURE_COVERAGE:END -->
 
 ### Editing Core
@@ -643,7 +641,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v1.8.4` notarized GitHub release | Current |
+| Stable direct download | `v1.8.5` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
 | Post-1.4 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v1.5+` work |
@@ -651,19 +649,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.8.4-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.8.5-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v1.8.5-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v1.8.6-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v1.5%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v1.8.4)
+### Now (v1.8.5)
 
 - ![v1.4.0](https://img.shields.io/badge/v1.4.0-22C55E?style=flat-square) delivers file-backed large-document editing, bounded live viewport virtualization, reliable ordinary-file installation, and the release workflow hardening shipped alongside the release.
-  Tracking: [Release v1.8.4](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.8.4)
+  Tracking: [Release v1.8.5](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.8.5)
 
-### Next (v1.8.5)
+### Next (v1.8.6)
 
-- ![v1.8.5](https://img.shields.io/badge/v1.8.5-F59E0B?style=flat-square) targets the reviewed changes listed under Unreleased in CHANGELOG.md; scope is not final until release preparation.
+- ![v1.8.6](https://img.shields.io/badge/v1.8.6-F59E0B?style=flat-square) targets the reviewed changes listed under Unreleased in CHANGELOG.md; scope is not final until release preparation.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v1.5+)
@@ -751,7 +749,7 @@ Vim navigation is also available on iPad with a hardware keyboard after enabling
 
 ## Changelog
 
-Latest stable: **v1.8.4** (2026-09-21)
+Latest stable: **v1.8.5** (2026-09-26)
 
 ### Editor Evolution
 
@@ -759,8 +757,6 @@ Latest stable: **v1.8.4** (2026-09-21)
 ```mermaid
 timeline
     title Neon Vision Editor — recent release story
-    14 September 2026 : v1.8.0 · Release highlights
-                : Opens files from Finder by dropping them anywhere in the macOS workspace, with each file placed in its own editor tab.
     16 September 2026 : v1.8.1 · Release highlights
                 : Gives iPhone and iPad a compact bottom editor toolbar with easier access to tools while keeping more code visible.
     18 September 2026 : v1.8.2 · A more deliberate workflow
@@ -769,6 +765,8 @@ timeline
                 : Edit complete text documents below 100 MB without entering the excessive-file preview mode.
     21 September 2026 : v1.8.4 · Release highlights
                 : Browse JSON in a structured preview and read YAML with syntax colors.
+    26 September 2026 : v1.8.5 · A more deliberate workflow
+                : Choose whether Markdown opens for editing or full-window reading, and switch modes from the toolbar or keyboard.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -778,13 +776,13 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
+| [`v1.8.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.8.5) | **A more deliberate workflow** — Choose whether Markdown opens for editing or full-window reading, and switch modes from the toolbar or keyboard. | Makes configured app shortcuts available while the mobile editor has hardware-keyboard focus; restores the documented Save As, Line Wrap, and… |
 | [`v1.8.4`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.8.4) | **Release highlights** — Browse JSON in a structured preview and read YAML with syntax colors. | Uses the same window routing for new and already-open files across macOS Spaces (#583, #584). |
 | [`v1.8.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.8.3) | **Release highlights** — Edit complete text documents below 100 MB without entering the excessive-file preview mode. | Fixes clipped unwrapped text on iPhone and iPad by keeping the drawing canvas and horizontal scrolling geometry aligned, including cursor reveal… |
-| [`v1.8.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.8.2) | **A more deliberate workflow** — View large Markdown documents as rendered Markdown instead of a truncated source preview. | Opens an editor window when files or project folders are sent from Finder while no editor window is open. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.8.4**
-- Compare recent changes: [v1.8.3...v1.8.4](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.8.3...v1.8.4)
+- Latest release: **v1.8.5**
+- Compare recent changes: [v1.8.4...v1.8.5](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.8.4...v1.8.5)
 
 ## Known Limitations
 
@@ -805,12 +803,12 @@ The recent release arc is about continuity: files that change outside the app, w
 
 ## Release Integrity
 
-- Tag: `v1.8.4`
+- Tag: `v1.8.5`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v1.8.4
+git rev-parse --verify v1.8.5
 ```
 
 - Verify downloaded artifact checksum locally:

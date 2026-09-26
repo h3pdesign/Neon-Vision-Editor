@@ -135,8 +135,15 @@ struct EditorShortcutDescriptor: Equatable, Hashable {
 enum ShortcutPreferences {
     private static let keyPrefix = "SettingsShortcut."
     static let reservedMobileCommandShortcuts: Set<EditorShortcutDescriptor> = [
+        .init(key: "a", modifiers: [.command]),
+        .init(key: "c", modifiers: [.command]),
+        .init(key: "x", modifiers: [.command]),
+        .init(key: "v", modifiers: [.command]),
         .init(key: "z", modifiers: [.command]),
         .init(key: "z", modifiers: [.command, .shift]),
+        .init(key: "b", modifiers: [.command]),
+        .init(key: "i", modifiers: [.command]),
+        .init(key: "k", modifiers: [.command]),
         .init(key: "o", modifiers: [.command, .shift]),
         .init(key: "g", modifiers: [.command]),
         .init(key: "?", modifiers: [.command]),

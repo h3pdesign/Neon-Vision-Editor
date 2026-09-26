@@ -226,6 +226,25 @@ final class MobileEditorInteractionTests: XCTestCase {
         XCTAssertEqual(receivedAction, .quickOpen)
     }
 
+    func testConfiguredShortcutCannotReplaceFocusedEditorCopy() {
+        let key = ShortcutPreferences.storageKey(for: .quickOpen)
+        let previous = UserDefaults.standard.object(forKey: key)
+        defer {
+            if let previous { UserDefaults.standard.set(previous, forKey: key) }
+            else { UserDefaults.standard.removeObject(forKey: key) }
+        }
+        UserDefaults.standard.set("cmd+c", forKey: key)
+        let editor = EditorInputTextView(frame: .zero, textContainer: nil)
+        let copyCommands = (editor.keyCommands ?? []).filter {
+            $0.input == "c" && $0.modifierFlags == .command
+        }
+        XCTAssertEqual(copyCommands.count, 1)
+        XCTAssertNil(copyCommands.first.flatMap { KeyboardCommandView.configuredAction(for: $0) })
+        XCTAssertFalse((KeyboardCommandView().keyCommands ?? []).contains {
+            $0.input == "c" && $0.modifierFlags == .command
+        })
+    }
+
     private func assertLargeJSONInstallation(_ source: String, largeFileMode: Bool = false) async throws {
         executionTimeAllowance = 60
         let defaults = UserDefaults.standard

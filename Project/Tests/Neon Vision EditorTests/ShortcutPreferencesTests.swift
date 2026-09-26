@@ -59,6 +59,20 @@ final class ShortcutPreferencesTests: XCTestCase {
         )
     }
 
+    func testMobileEditorEditingShortcutsStayReserved() {
+        let editingKeys = ["a", "c", "x", "v", "z", "b", "i", "k"]
+        for key in editingKeys {
+            let descriptor = EditorShortcutDescriptor(key: key, modifiers: [.command])
+            XCTAssertTrue(
+                ShortcutPreferences.reservedMobileCommandShortcuts.contains(descriptor),
+                "Editor-owned Cmd+\(key.uppercased()) must not be assigned to an app action"
+            )
+        }
+        XCTAssertTrue(ShortcutPreferences.reservedMobileCommandShortcuts.contains(
+            .init(key: "z", modifiers: [.command, .shift])
+        ))
+    }
+
     func testKeyboardAccessoryActionsUseDefaultsAndIgnoreUnknownValues() {
         XCTAssertEqual(KeyboardAccessoryAction.configuredActions(rawValue: nil), KeyboardAccessoryAction.defaultActions)
         XCTAssertEqual(

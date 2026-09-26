@@ -1332,7 +1332,6 @@ extension ContentView {
             Button(action: { presentLanguageSearchSheet() }) {
                 Label("Language…", systemImage: "magnifyingglass")
             }
-            .keyboardShortcut("l", modifiers: [.command, .shift])
             Divider()
             ForEach(languageOptions.filter { $0 != selectedLanguage }, id: \.self) { lang in
                 Button {

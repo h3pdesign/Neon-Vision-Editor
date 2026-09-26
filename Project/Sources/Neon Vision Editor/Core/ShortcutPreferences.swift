@@ -16,6 +16,9 @@ enum EditorShortcutAction: String, CaseIterable, Identifiable {
     case newTab
     case openFile
     case save
+    case saveAs
+    case toggleLineWrap
+    case languageSearch
     case find
     case findInFiles
     case goToLine
@@ -32,6 +35,9 @@ enum EditorShortcutAction: String, CaseIterable, Identifiable {
         case .newTab: return "New Tab"
         case .openFile: return "Open File"
         case .save: return "Save"
+        case .saveAs: return "Save As"
+        case .toggleLineWrap: return "Toggle Line Wrap"
+        case .languageSearch: return "Search Languages"
         case .find: return "Find"
         case .findInFiles: return "Find in Files"
         case .goToLine: return "Go to Line"
@@ -48,6 +54,9 @@ enum EditorShortcutAction: String, CaseIterable, Identifiable {
         case .newTab: return .init(key: "t", modifiers: [.command])
         case .openFile: return .init(key: "o", modifiers: [.command])
         case .save: return .init(key: "s", modifiers: [.command])
+        case .saveAs: return .init(key: "s", modifiers: [.command, .shift])
+        case .toggleLineWrap: return .init(key: "l", modifiers: [.command, .alternate])
+        case .languageSearch: return .init(key: "l", modifiers: [.command, .shift])
         case .find: return .init(key: "f", modifiers: [.command])
         case .findInFiles: return .init(key: "f", modifiers: [.command, .shift])
         case .goToLine: return .init(key: "l", modifiers: [.command])
@@ -126,8 +135,15 @@ struct EditorShortcutDescriptor: Equatable, Hashable {
 enum ShortcutPreferences {
     private static let keyPrefix = "SettingsShortcut."
     static let reservedMobileCommandShortcuts: Set<EditorShortcutDescriptor> = [
+        .init(key: "a", modifiers: [.command]),
+        .init(key: "c", modifiers: [.command]),
+        .init(key: "x", modifiers: [.command]),
+        .init(key: "v", modifiers: [.command]),
         .init(key: "z", modifiers: [.command]),
         .init(key: "z", modifiers: [.command, .shift]),
+        .init(key: "b", modifiers: [.command]),
+        .init(key: "i", modifiers: [.command]),
+        .init(key: "k", modifiers: [.command]),
         .init(key: "o", modifiers: [.command, .shift]),
         .init(key: "g", modifiers: [.command]),
         .init(key: "?", modifiers: [.command]),

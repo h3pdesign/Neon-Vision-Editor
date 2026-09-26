@@ -8,6 +8,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Fixes
 
+- Makes configured app shortcuts available while the mobile editor has hardware-keyboard focus; restores the documented Save As, Line Wrap, and Language Search keys, resolves a macOS shortcut collision, and removes duplicate mobile Settings and Help bindings.
 - Fixes the custom iPhone and iPad toolbar icon limit so it matches the selected action count, and lets users reorder their chosen icons ([#615](https://github.com/h3pdesign/Neon-Vision-Editor/issues/615)).
 - Restores the standard macOS Command-arrow and Command-Shift-arrow navigation for line and document boundaries ([#622](https://github.com/h3pdesign/Neon-Vision-Editor/issues/622)).
 

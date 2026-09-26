@@ -95,7 +95,8 @@ final class MobileEditorInteractionTests: XCTestCase {
             indentStyle: "spaces", indentWidth: 4, autoIndentEnabled: false,
             autoCloseBracketsEnabled: false, highlightRefreshToken: 0,
             isTabLoadingContent: false, isReadOnly: false,
-            onFontSizeChange: nil, onTextMutation: onTextMutation)
+            onFontSizeChange: nil, onTextMutation: onTextMutation,
+            onShortcutAction: nil)
     }
 
     private func withEditor(
@@ -172,6 +173,76 @@ final class MobileEditorInteractionTests: XCTestCase {
         probe.stop()
         XCTAssertGreaterThanOrEqual(probe.longestGap, 0.03)
         XCTAssertGreaterThanOrEqual(probe.elapsed, probe.longestGap)
+    }
+
+    func testFocusedEditorExposesConfiguredAppShortcuts() {
+        let editor = EditorInputTextView(frame: .zero, textContainer: nil)
+        var receivedAction: EditorShortcutAction?
+        editor.onConfiguredAppShortcut = { receivedAction = $0 }
+        let commands = editor.keyCommands ?? []
+        let bridgeCommands = KeyboardCommandView().keyCommands ?? []
+        for action in EditorShortcutAction.allCases {
+            let shortcut = action.defaultShortcut
+            var flags: UIKeyModifierFlags = []
+            if shortcut.modifiers.contains(.command) { flags.insert(.command) }
+            if shortcut.modifiers.contains(.shift) { flags.insert(.shift) }
+            if shortcut.modifiers.contains(.alternate) { flags.insert(.alternate) }
+            if shortcut.modifiers.contains(.control) { flags.insert(.control) }
+            let matches = commands.filter {
+                $0.input == shortcut.key &&
+                $0.modifierFlags == flags
+            }
+            XCTAssertEqual(matches.count, 1, "Focused-editor shortcut must have one owner: \(action.title)")
+            XCTAssertEqual(bridgeCommands.filter {
+                $0.input == shortcut.key && $0.modifierFlags == flags
+            }.count, 1, "Unfocused shortcut bridge must match: \(action.title)")
+            XCTAssertEqual(matches.first.flatMap { KeyboardCommandView.configuredAction(for: $0) }, action)
+        }
+        let newTabCommand = try? XCTUnwrap(commands.first {
+            $0.input == "t" && $0.modifierFlags == .command
+        })
+        if let newTabCommand {
+            editor.handleConfiguredAppShortcut(newTabCommand)
+            XCTAssertEqual(receivedAction, .newTab)
+        }
+    }
+
+    func testFocusedEditorUsesUpdatedShortcutPreference() {
+        let key = ShortcutPreferences.storageKey(for: .quickOpen)
+        let previous = UserDefaults.standard.object(forKey: key)
+        defer {
+            if let previous { UserDefaults.standard.set(previous, forKey: key) }
+            else { UserDefaults.standard.removeObject(forKey: key) }
+        }
+        let editor = EditorInputTextView(frame: .zero, textContainer: nil)
+        UserDefaults.standard.set("cmd+shift+9", forKey: key)
+        let command = editor.keyCommands?.first {
+            $0.input == "9" && $0.modifierFlags == [.command, .shift]
+        }
+        XCTAssertNotNil(command)
+        var receivedAction: EditorShortcutAction?
+        editor.onConfiguredAppShortcut = { receivedAction = $0 }
+        if let command { editor.handleConfiguredAppShortcut(command) }
+        XCTAssertEqual(receivedAction, .quickOpen)
+    }
+
+    func testConfiguredShortcutCannotReplaceFocusedEditorCopy() {
+        let key = ShortcutPreferences.storageKey(for: .quickOpen)
+        let previous = UserDefaults.standard.object(forKey: key)
+        defer {
+            if let previous { UserDefaults.standard.set(previous, forKey: key) }
+            else { UserDefaults.standard.removeObject(forKey: key) }
+        }
+        UserDefaults.standard.set("cmd+c", forKey: key)
+        let editor = EditorInputTextView(frame: .zero, textContainer: nil)
+        let copyCommands = (editor.keyCommands ?? []).filter {
+            $0.input == "c" && $0.modifierFlags == .command
+        }
+        XCTAssertEqual(copyCommands.count, 1)
+        XCTAssertNil(copyCommands.first.flatMap { KeyboardCommandView.configuredAction(for: $0) })
+        XCTAssertFalse((KeyboardCommandView().keyCommands ?? []).contains {
+            $0.input == "c" && $0.modifierFlags == .command
+        })
     }
 
     private func assertLargeJSONInstallation(_ source: String, largeFileMode: Bool = false) async throws {
@@ -583,7 +654,8 @@ final class MobileEditorInteractionTests: XCTestCase {
                 isTabLoadingContent: false,
                 isReadOnly: false,
                 onFontSizeChange: nil,
-                onTextMutation: nil
+                onTextMutation: nil,
+                onShortcutAction: nil
             )
         }
 
@@ -617,7 +689,7 @@ final class MobileEditorInteractionTests: XCTestCase {
         XCTAssertEqual(textView.bounds.width, textView.editorViewport.width, accuracy: 1)
         XCTAssertFalse(textView.editorContainer?.horizontalScrollView.isScrollEnabled ?? true)
 
-        textView.resignFirstResponder()
+        _ = textView.resignFirstResponder()
         host.rootView = root(keyboardVisible: false)
         host.view.layoutIfNeeded()
 
@@ -868,7 +940,7 @@ final class MobileEditorInteractionTests: XCTestCase {
         withEditor("Code behind toolbar", showKeyboardAccessoryBar: true, softwareKeyboardVisible: true) { container in
             let view = container.textView
             XCTAssertTrue(view.becomeFirstResponder())
-            func shortcutButtons(in root: UIView?) -> [UIButton] {
+            @MainActor func shortcutButtons(in root: UIView?) -> [UIButton] {
                 guard let root else { return [] }
                 let current = (root as? UIButton).flatMap {
                     $0.accessibilityIdentifier?.hasPrefix("keyboard-accessory-") == true ? $0 : nil
@@ -990,7 +1062,7 @@ final class MobileEditorInteractionTests: XCTestCase {
     func testActiveTypingUpdatesLineNumbersImmediately() {
         withEditor("one\ntwo") { container in
             let view = container.textView
-            view.becomeFirstResponder()
+            XCTAssertTrue(view.becomeFirstResponder())
             view.selectedRange = NSRange(location: 3, length: 0)
             view.insertText("\n")
             XCTAssertEqual(container.lineNumberView.lineStarts, EditorLineStartIndex.offsets(in: view.text))

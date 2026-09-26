@@ -315,6 +315,14 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertNotIn("## [v1.6.2]", result)
         self.assertIn("## [v1.6.1]", result)
 
+    def test_changelog_issue_links_render_as_safe_html(self):
+        bullet = 'Fixed [#617](https://github.com/h3pdesign/Neon-Vision-Editor/issues/617) <script> and [outside](https://example.com).'
+        rendered = docs.render_changelog_bullet(bullet)
+        self.assertIn('<a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/617">#617</a>', rendered)
+        self.assertIn('&lt;script&gt;', rendered)
+        self.assertIn('[outside](https://example.com)', rendered)
+        self.assertNotIn('<script>', rendered)
+
     def test_mixed_build_numbers_fail_closed(self):
         for text in ("", "CURRENT_PROJECT_VERSION = 1;\nCURRENT_PROJECT_VERSION = 2;"):
             with self.assertRaises(ValueError):

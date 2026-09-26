@@ -9,6 +9,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Fixes
 
 - Fixes the custom iPhone and iPad toolbar icon limit so it matches the selected action count, and lets users reorder their chosen icons ([#615](https://github.com/h3pdesign/Neon-Vision-Editor/issues/615)).
+- Restores the standard macOS Command-arrow and Command-Shift-arrow navigation for line and document boundaries ([#622](https://github.com/h3pdesign/Neon-Vision-Editor/issues/622)).
 
 ### Highlights
 

@@ -578,6 +578,18 @@ def full_changelog_tags(changelog: str, minimum_tag: str = "v0.5.0") -> list[str
     return [tag for tag in sorted_latest_tags(extract_release_headings(changelog), limit=len(extract_release_headings(changelog))) if parse_version_key(tag) >= minimum_key]
 
 
+def render_changelog_bullet(bullet: str) -> str:
+    issue_link = re.compile(r"\[([^\]\n]+)\]\((https://github\.com/h3pdesign/Neon-Vision-Editor/issues/\d+)\)")
+    parts: list[str] = []
+    start = 0
+    for match in issue_link.finditer(bullet):
+        parts.append(html.escape(bullet[start:match.start()]))
+        parts.append(f'<a href="{html.escape(match.group(2), quote=True)}">{html.escape(match.group(1))}</a>')
+        start = match.end()
+    parts.append(html.escape(bullet[start:]))
+    return "".join(parts)
+
+
 def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
     entries: list[str] = []
     for tag in full_changelog_tags(changelog):
@@ -586,7 +598,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
         groups = [(heading, extract_heading_bullets(section, heading, limit=20)) for heading in ("Highlights", "Improvements", "Fixes", "Breaking changes")]
         current_class = " current" if tag == current_tag else ""
         latest = '<span class="latest">Latest</span>' if tag == current_tag else ""
-        items = [f'          <div class="item"><span class="badge {changelog_badge_class(heading)}">{html.escape(changelog_badge_label(heading))}</span><p>{html.escape(bullet.removeprefix("- "))}</p></div>' for heading, bullets in groups for bullet in bullets]
+        items = [f'          <div class="item"><span class="badge {changelog_badge_class(heading)}">{html.escape(changelog_badge_label(heading))}</span><p>{render_changelog_bullet(bullet.removeprefix("- "))}</p></div>' for heading, bullets in groups for bullet in bullets]
         entries.append("\n".join([f'      <article class="release{current_class}">', f'        <div class="release-header"><h2>{html.escape(tag)}</h2><span class="date">{html.escape(display_release_date(date))}</span>{latest}</div>', '        <div class="items">', *items, '        </div>', '      </article>']))
     replacement = "\n".join(["    <!-- CHANGELOG_ENTRIES:START -->", *entries, "    <!-- CHANGELOG_ENTRIES:END -->"])
     pattern = re.compile(r"    <!-- CHANGELOG_ENTRIES:START -->.*?    <!-- CHANGELOG_ENTRIES:END -->", flags=re.S)

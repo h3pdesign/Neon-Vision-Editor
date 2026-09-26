@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-09-21 (v1.8.4 release-aligned architecture)
+Last updated: 2026-09-26 (v1.8.5 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -8,6 +8,13 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v1.8.5 (2026-09-26)
+
+- Adds a default Markdown opening mode for editing or full-window reading, with toolbar or Command-Shift-P switching ([#617](https://github.com/h3pdesign/Neon-Vision-Editor/issues/617)).
+- Makes configured app shortcuts available while the mobile editor has hardware-keyboard focus; restores the documented Save As, Line Wrap, and Language Search keys, reserves editor-owned editing keys, resolves a macOS shortcut collision, and removes duplicate mobile Settings and Help bindings.
+- Fixes the custom iPhone and iPad toolbar icon limit so it matches the selected action count, and lets users reorder their chosen icons ([#615](https://github.com/h3pdesign/Neon-Vision-Editor/issues/615)).
+- Restores the standard macOS Command-arrow and Command-Shift-arrow navigation for line and document boundaries ([#622](https://github.com/h3pdesign/Neon-Vision-Editor/issues/622)).
 
 ### v1.8.4 (2026-09-21)
 
@@ -17,14 +24,6 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 - Keeps an empty macOS editor available without creating an unwanted untitled tab; Close Window remains available with Command-Shift-W (#586).
 - Reveals space below the cursor after placing it on iPhone and iPad, as well as while typing.
 - Preserves YAML string colors across preview pages and restores keyword formatting in previews.
-
-### v1.8.3 (2026-09-19)
-
-- Refines mobile toolbars with system-adaptive glass, complete action slots, and an optional larger-symbol setting.
-- Fixes clipped unwrapped text on iPhone and iPad by keeping the drawing canvas and horizontal scrolling geometry aligned, including cursor reveal, keyboard transitions, and large-document installs.
-- Restores native macOS Settings pane sizing and titlebar material, removes repeated window repositioning, and keeps Settings navigation separate from editor-wide preference refreshes.
-- Makes the custom mobile toolbar action-count setting include persistent controls and keeps Settings and Help available.
-- Coalesces startup session observations and caches ordinary in-memory document text to avoid repeated materialization during view updates.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

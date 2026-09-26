@@ -4456,6 +4456,7 @@ extension Notification.Name {
     static let showInAppChangelogRequested = Notification.Name("showInAppChangelogRequested")
     static let applyEditorLayoutPresetRequested = Notification.Name("applyEditorLayoutPresetRequested")
     static let openPreviewInSeparateWindowRequested = Notification.Name("openPreviewInSeparateWindowRequested")
+    static let togglePreviewRequested = Notification.Name("togglePreviewRequested")
     nonisolated static let moveCursorToRange = Notification.Name("moveCursorToRange")
     nonisolated static let updateEditorFindHighlights = Notification.Name("updateEditorFindHighlights")
     nonisolated static let replaceEditorRangeRequested = Notification.Name("replaceEditorRangeRequested")

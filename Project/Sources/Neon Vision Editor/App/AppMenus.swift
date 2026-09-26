@@ -299,6 +299,12 @@ struct NeonVisionMacAppCommands: Commands {
             }
             .modifier(dynamicShortcut(.toggleProjectSidebar))
 
+            Button("Toggle Document Preview") {
+                post(.togglePreviewRequested)
+            }
+            .keyboardShortcut("p", modifiers: [.command, .shift])
+            .disabled(!hasSelectedTab)
+
             Button("Toggle Code Minimap") {
                 post(.toggleCodeMinimapRequested)
             }

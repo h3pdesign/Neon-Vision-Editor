@@ -769,6 +769,14 @@ extension ContentView {
     func togglePreviewFromToolbar() {
         guard !isSafeModeActive else { return }
         guard let requestedMode = previewModeForCurrentDocument else { return }
+#if os(macOS)
+        if isMarkdownPreviewDocument {
+            let openingReadingView = !isMarkdownPreviewReadingMode
+            isMarkdownPreviewReadingMode = openingReadingView
+            previewMode = openingReadingView ? .markdown : .none
+            return
+        }
+#endif
         previewMode = previewMode.toggled(for: requestedMode)
         let isOpeningPreview = previewMode != .none
 #if os(iOS) || os(visionOS)
@@ -783,6 +791,9 @@ extension ContentView {
     }
 
     func closeCurrentPreview() {
+#if os(macOS)
+        isMarkdownPreviewReadingMode = false
+#endif
         previewMode = .none
     }
 
@@ -792,6 +803,9 @@ extension ContentView {
         if previewMode == .pdf, isPDFNoteMarkdownPreviewVisible {
             isPDFNoteMarkdownPreviewVisible = false
         } else if previewMode == .markdown {
+#if os(macOS)
+            isMarkdownPreviewReadingMode = false
+#endif
             previewMode = .none
         }
     }

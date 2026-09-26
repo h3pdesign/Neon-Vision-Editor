@@ -6,6 +6,15 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixes
+
+- Fixes the custom iPhone and iPad toolbar icon limit so it matches the selected action count, and lets users reorder their chosen icons ([#615](https://github.com/h3pdesign/Neon-Vision-Editor/issues/615)).
+- Restores the standard macOS Command-arrow and Command-Shift-arrow navigation for line and document boundaries ([#622](https://github.com/h3pdesign/Neon-Vision-Editor/issues/622)).
+
+### Highlights
+
+- Adds a default Markdown opening mode for editing or full-window reading, with toolbar or Command-Shift-P switching ([#617](https://github.com/h3pdesign/Neon-Vision-Editor/issues/617)).
+
 ## [v1.8.4] - 2026-09-21
 
 ### Why Upgrade

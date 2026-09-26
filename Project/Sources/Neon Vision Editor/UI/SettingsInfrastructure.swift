@@ -70,6 +70,7 @@ enum SettingsPreferenceKey {
     static let markdownProjectPreviewPlacement = "MarkdownProjectPreviewPlacementV1"
     static let markdownProjectPreviewSortOrder = "MarkdownProjectPreviewSortOrderV1"
     static let markdownPreviewSynchronousScroll = "MarkdownPreviewSynchronousScrollV1"
+    static let markdownPreviewDefaultMode = "MarkdownPreviewDefaultOpenModeV1"
 }
 
 #if os(macOS)

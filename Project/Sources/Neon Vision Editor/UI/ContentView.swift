@@ -1038,6 +1038,7 @@ struct ContentView: View {
     @AppStorage("SettingsToolbarUseCustomMac") var toolbarUseCustomMac: Bool = false
     @AppStorage("SettingsToolbarCustomIDsMac") var toolbarCustomIDsMac: String = ""
     @AppStorage("SettingsToolbarPresetMac") var toolbarPresetMacRaw: String = ToolbarPreset.standard.rawValue
+    @State var isMarkdownPreviewReadingMode = false
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
 #endif
     @State var previewMode: PreviewMode = .none
@@ -1057,6 +1058,9 @@ struct ContentView: View {
 #endif
     @AppStorage("MarkdownPreviewBackgroundStyle") var markdownPreviewBackgroundStyleRaw: String = "automatic"
     @AppStorage("MarkdownPreviewDialect") var markdownPreviewDialectRaw: String = ContentView.MarkdownPreviewDialect.gfm.rawValue
+#if os(macOS)
+    @AppStorage(SettingsPreferenceKey.markdownPreviewDefaultMode) var markdownPreviewDefaultModeRaw: String = MarkdownPreviewOpenMode.edit.rawValue
+#endif
     @AppStorage(SettingsPreferenceKey.markdownPreviewSynchronousScroll) var markdownPreviewSynchronousScroll: Bool = false
     @State var markdownPreviewEditorScrollFraction: CGFloat?
     @State var pendingMarkdownPreviewEditorScrollWorkItem: DispatchWorkItem?
@@ -2538,6 +2542,11 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 openPreviewInSeparateWindow()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .togglePreviewRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                guard isPreviewSupportedDocument else { return }
+                togglePreviewFromToolbar()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .applyEditorLayoutPresetRequested)) { notif in
                 guard matchesCurrentWindow(notif), let rawValue = notif.object as? String,
                       let preset = EditorLayoutPreset(rawValue: rawValue) else { return }
@@ -3135,9 +3144,17 @@ struct ContentView: View {
                     splitSecondaryTabID = nil
                 }
                 synchronizePDFNoteContext()
+#if os(macOS)
+                if let automaticPreviewMode = automaticPreviewModeForCurrentDocument {
+                    previewMode = automaticPreviewMode
+                } else {
+                    applyDefaultMarkdownPreviewOpenMode()
+                }
+#else
                 if let automaticPreviewMode = automaticPreviewModeForCurrentDocument {
                     previewMode = automaticPreviewMode
                 }
+#endif
                 // Keep the selection immediately available in memory; the serial
                 // writer delivers preference notifications off the main thread.
                 persistSelectedSessionFileURLImmediately()
@@ -5251,7 +5268,9 @@ struct ContentView: View {
                 }
 
                 Group {
-                    if shouldShowDelimitedTable && !brainDumpLayoutEnabled {
+                    if isMarkdownPreviewReadingViewVisible {
+                        markdownPreviewPane
+                    } else if shouldShowDelimitedTable && !brainDumpLayoutEnabled {
                         delimitedTableView
                     } else if shouldShowPlistStructure && !brainDumpLayoutEnabled {
                         plistStructureView
@@ -5625,6 +5644,9 @@ struct ContentView: View {
         }
         .onChange(of: viewModel.selectedTab?.fileURL) { _, _ in
             openAutomaticPreviewIfNeeded()
+#if os(macOS)
+            applyDefaultMarkdownPreviewOpenMode()
+#endif
         }
         .onChange(of: projectNavigationObservationSnapshot) { _, snapshot in
             refreshMarkdownProjectPreview()

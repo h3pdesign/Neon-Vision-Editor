@@ -16,6 +16,55 @@ enum PreviewPaneResizeGeometry {
 }
 #endif
 
+enum MarkdownPreviewOpenMode: String, CaseIterable, Identifiable {
+    case edit
+    case preview
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .edit: return "Editor"
+        case .preview: return "Preview"
+        }
+    }
+
+    var previewMode: ContentView.PreviewMode {
+        self == .preview ? .markdown : .none
+    }
+
+    var presentsAsReadingView: Bool {
+        self == .preview
+    }
+}
+
+enum MarkdownPreviewPresentationPolicy {
+    static func showsReadingView(
+        isReadingMode: Bool,
+        isMarkdownDocument: Bool,
+        isPreviewActive: Bool,
+        isSafeMode: Bool,
+        isBrainDumpLayout: Bool,
+        isFocusMode: Bool
+    ) -> Bool {
+        isReadingMode && isMarkdownDocument && isPreviewActive &&
+        !isSafeMode && !isBrainDumpLayout && !isFocusMode
+    }
+
+    static func showsSplitPane(
+        canShowPane: Bool,
+        isMarkdownDocument: Bool,
+        isPreviewActive: Bool,
+        readingViewVisible: Bool,
+        isSafeMode: Bool,
+        isBrainDumpLayout: Bool,
+        isFocusMode: Bool
+    ) -> Bool {
+        canShowPane && isMarkdownDocument && isPreviewActive && !readingViewVisible &&
+        !isSafeMode && !isBrainDumpLayout && !isFocusMode
+    }
+}
+
 // MARK: - Preview Split Coordination
 
 struct PreviewPaneHeader<Actions: View>: View {
@@ -75,6 +124,33 @@ struct PreviewPaneHeader<Actions: View>: View {
 }
 
 extension ContentView {
+#if os(macOS)
+    func applyDefaultMarkdownPreviewOpenMode() {
+        guard isMarkdownPreviewDocument else {
+            isMarkdownPreviewReadingMode = false
+            return
+        }
+        let openMode = MarkdownPreviewOpenMode(rawValue: markdownPreviewDefaultModeRaw) ?? .edit
+        previewMode = openMode.previewMode
+        isMarkdownPreviewReadingMode = openMode.presentsAsReadingView
+    }
+#endif
+
+    var isMarkdownPreviewReadingViewVisible: Bool {
+#if os(macOS)
+        MarkdownPreviewPresentationPolicy.showsReadingView(
+            isReadingMode: isMarkdownPreviewReadingMode,
+            isMarkdownDocument: isMarkdownPreviewDocument,
+            isPreviewActive: previewMode == .markdown,
+            isSafeMode: isSafeModeActive,
+            isBrainDumpLayout: brainDumpLayoutEnabled,
+            isFocusMode: focusModeEnabled
+        )
+#else
+        false
+#endif
+    }
+
     func previewPaneHeader<Actions: View>(
         title: String,
         iconName: String,
@@ -264,12 +340,15 @@ extension ContentView {
     }
 
     var isMarkdownPreviewSplitVisible: Bool {
-        canShowMarkdownPreviewSplitPane &&
-        showMarkdownPreviewPane &&
-        isMarkdownPreviewDocument &&
-        !isSafeModeActive &&
-        !brainDumpLayoutEnabled &&
-        !focusModeEnabled
+        MarkdownPreviewPresentationPolicy.showsSplitPane(
+            canShowPane: canShowMarkdownPreviewSplitPane,
+            isMarkdownDocument: isMarkdownPreviewDocument,
+            isPreviewActive: showMarkdownPreviewPane,
+            readingViewVisible: isMarkdownPreviewReadingViewVisible,
+            isSafeMode: isSafeModeActive,
+            isBrainDumpLayout: brainDumpLayoutEnabled,
+            isFocusMode: focusModeEnabled
+        )
     }
 
     var isWebPreviewSplitVisible: Bool {

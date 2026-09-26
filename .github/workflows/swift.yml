@@ -63,6 +63,7 @@ jobs:
             'OTHER_SWIFT_FLAGS=$(inherited) -Werror NoUseUnstructuredThrowingTask' \
             -only-testing:"Neon Vision EditorTests/ReleaseRuntimePolicyTests" \
             -only-testing:"Neon Vision EditorTests/AppDelegateExternalOpenTests" \
+            -only-testing:"Neon Vision EditorTests/ToolbarActionSelectionTests" \
             -only-testing:"Neon Vision EditorTests/VirtualEditorPerformanceTests" \
             test
 

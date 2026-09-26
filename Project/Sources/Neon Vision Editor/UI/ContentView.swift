@@ -1038,6 +1038,7 @@ struct ContentView: View {
     @AppStorage("SettingsToolbarUseCustomMac") var toolbarUseCustomMac: Bool = false
     @AppStorage("SettingsToolbarCustomIDsMac") var toolbarCustomIDsMac: String = ""
     @AppStorage("SettingsToolbarPresetMac") var toolbarPresetMacRaw: String = ToolbarPreset.standard.rawValue
+    @State var isMarkdownPreviewReadingMode = false
     @State private var windowCloseConfirmationDelegate: WindowCloseConfirmationDelegate? = nil
 #endif
     @State var previewMode: PreviewMode = .none
@@ -1057,6 +1058,9 @@ struct ContentView: View {
 #endif
     @AppStorage("MarkdownPreviewBackgroundStyle") var markdownPreviewBackgroundStyleRaw: String = "automatic"
     @AppStorage("MarkdownPreviewDialect") var markdownPreviewDialectRaw: String = ContentView.MarkdownPreviewDialect.gfm.rawValue
+#if os(macOS)
+    @AppStorage(SettingsPreferenceKey.markdownPreviewDefaultMode) var markdownPreviewDefaultModeRaw: String = MarkdownPreviewOpenMode.edit.rawValue
+#endif
     @AppStorage(SettingsPreferenceKey.markdownPreviewSynchronousScroll) var markdownPreviewSynchronousScroll: Bool = false
     @State var markdownPreviewEditorScrollFraction: CGFloat?
     @State var pendingMarkdownPreviewEditorScrollWorkItem: DispatchWorkItem?
@@ -2538,6 +2542,11 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 openPreviewInSeparateWindow()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .togglePreviewRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                guard isPreviewSupportedDocument else { return }
+                togglePreviewFromToolbar()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .applyEditorLayoutPresetRequested)) { notif in
                 guard matchesCurrentWindow(notif), let rawValue = notif.object as? String,
                       let preset = EditorLayoutPreset(rawValue: rawValue) else { return }
@@ -3035,31 +3044,21 @@ struct ContentView: View {
 #if os(iOS) || os(visionOS)
             .background(
                 IPadKeyboardShortcutBridge(
-                    onCloseTab: {
-                        if let tab = viewModel.selectedTab {
-                            requestCloseTab(tab)
-                        }
-                    },
-                    onNewTab: { viewModel.addNewTab() },
-                    onOpenFile: { openFileFromToolbar() },
-                    onSave: { saveCurrentTabFromToolbar() },
+                    onCloseTab: { performConfiguredAppShortcut(.closeTab) },
+                    onNewTab: { performConfiguredAppShortcut(.newTab) },
+                    onOpenFile: { performConfiguredAppShortcut(.openFile) },
+                    onSave: { performConfiguredAppShortcut(.save) },
+                    onSaveAs: { performConfiguredAppShortcut(.saveAs) },
+                    onToggleLineWrap: { performConfiguredAppShortcut(.toggleLineWrap) },
+                    onLanguageSearch: { performConfiguredAppShortcut(.languageSearch) },
                     onUndo: { undoFromToolbar() },
-                    onFind: { showFindReplace = true },
-                    onFindInFiles: { requestFindInFilesFromToolbar() },
-                    onGoToLine: {
-                        goToLineInput = currentCaretLineNumber.map(String.init) ?? ""
-                        showGoToLine = true
-                    },
-                    onGoToSymbol: {
-                        goToSymbolQuery = ""
-                        showGoToSymbol = true
-                    },
-                    onQuickOpen: {
-                        quickSwitcherQuery = ""
-                        showQuickSwitcher = true
-                    },
-                    onToggleSidebar: { toggleSidebarFromToolbar() },
-                    onToggleProjectSidebar: { toggleProjectSidebarFromToolbar() }
+                    onFind: { performConfiguredAppShortcut(.find) },
+                    onFindInFiles: { performConfiguredAppShortcut(.findInFiles) },
+                    onGoToLine: { performConfiguredAppShortcut(.goToLine) },
+                    onGoToSymbol: { performConfiguredAppShortcut(.goToSymbol) },
+                    onQuickOpen: { performConfiguredAppShortcut(.quickOpen) },
+                    onToggleSidebar: { performConfiguredAppShortcut(.toggleSidebar) },
+                    onToggleProjectSidebar: { performConfiguredAppShortcut(.toggleProjectSidebar) }
                 )
                 .frame(width: 0, height: 0)
             )
@@ -3067,13 +3066,27 @@ struct ContentView: View {
     }
 
     private var rootViewWithStateObservers: some View {
-        applyPresentationStateObservers(
-            to: applySessionStateObservers(
-                to: applyEditorSettingObservers(
-                    to: applyUpdateVisibilityObservers(to: basePlatformRootView)
+        applyingShortcutActionObservers(
+            to: applyPresentationStateObservers(
+                to: applySessionStateObservers(
+                    to: applyEditorSettingObservers(
+                        to: applyUpdateVisibilityObservers(to: basePlatformRootView)
+                    )
                 )
             )
         )
+    }
+
+    private func applyingShortcutActionObservers<Content: View>(to content: Content) -> some View {
+        content
+            .onReceive(NotificationCenter.default.publisher(for: .showLanguageSearchRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                presentLanguageSearchSheet()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .toggleLineWrapRequested)) { notif in
+                guard matchesCurrentWindow(notif), viewModel.selectedTab != nil else { return }
+                viewModel.isLineWrapEnabled.toggle()
+            }
     }
 
     private func applyEditorSettingObservers<Content: View>(to view: Content) -> some View {
@@ -3135,9 +3148,17 @@ struct ContentView: View {
                     splitSecondaryTabID = nil
                 }
                 synchronizePDFNoteContext()
+#if os(macOS)
+                if let automaticPreviewMode = automaticPreviewModeForCurrentDocument {
+                    previewMode = automaticPreviewMode
+                } else {
+                    applyDefaultMarkdownPreviewOpenMode()
+                }
+#else
                 if let automaticPreviewMode = automaticPreviewModeForCurrentDocument {
                     previewMode = automaticPreviewMode
                 }
+#endif
                 // Keep the selection immediately available in memory; the serial
                 // writer delivers preference notifications off the main thread.
                 persistSelectedSessionFileURLImmediately()
@@ -4984,7 +5005,8 @@ struct ContentView: View {
                         replacement: mutation.replacement
                     )
                 }
-            }
+            },
+            onShortcutAction: { performConfiguredAppShortcut($0) }
         )
         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
@@ -5251,7 +5273,9 @@ struct ContentView: View {
                 }
 
                 Group {
-                    if shouldShowDelimitedTable && !brainDumpLayoutEnabled {
+                    if isMarkdownPreviewReadingViewVisible {
+                        markdownPreviewPane
+                    } else if shouldShowDelimitedTable && !brainDumpLayoutEnabled {
                         delimitedTableView
                     } else if shouldShowPlistStructure && !brainDumpLayoutEnabled {
                         plistStructureView
@@ -5625,6 +5649,9 @@ struct ContentView: View {
         }
         .onChange(of: viewModel.selectedTab?.fileURL) { _, _ in
             openAutomaticPreviewIfNeeded()
+#if os(macOS)
+            applyDefaultMarkdownPreviewOpenMode()
+#endif
         }
         .onChange(of: projectNavigationObservationSnapshot) { _, snapshot in
             refreshMarkdownProjectPreview()

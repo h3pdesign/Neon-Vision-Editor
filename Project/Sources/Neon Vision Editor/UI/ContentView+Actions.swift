@@ -295,6 +295,34 @@ extension ContentView {
 
     // MARK: - Window and Toolbar Commands
 
+    func performConfiguredAppShortcut(_ action: EditorShortcutAction) {
+        switch action {
+        case .closeTab:
+            if let tab = viewModel.selectedTab { requestCloseTab(tab) }
+        case .newTab: viewModel.addNewTab()
+        case .openFile: openFileFromToolbar()
+        case .save: saveCurrentTabFromToolbar()
+        case .saveAs: saveCurrentTabAsFromToolbar()
+        case .toggleLineWrap:
+            guard viewModel.selectedTab != nil else { return }
+            viewModel.isLineWrapEnabled.toggle()
+        case .languageSearch: presentLanguageSearchSheet()
+        case .find: showFindReplace = true
+        case .findInFiles: requestFindInFilesFromToolbar()
+        case .goToLine:
+            goToLineInput = currentCaretLineNumber.map(String.init) ?? ""
+            showGoToLine = true
+        case .goToSymbol:
+            goToSymbolQuery = ""
+            showGoToSymbol = true
+        case .quickOpen:
+            quickSwitcherQuery = ""
+            showQuickSwitcher = true
+        case .toggleSidebar: toggleSidebarFromToolbar()
+        case .toggleProjectSidebar: toggleProjectSidebarFromToolbar()
+        }
+    }
+
     func dismissTransientSheetsForCommand() {
         showWelcomeTour = false
         showSupportPromptSheet = false
@@ -769,6 +797,14 @@ extension ContentView {
     func togglePreviewFromToolbar() {
         guard !isSafeModeActive else { return }
         guard let requestedMode = previewModeForCurrentDocument else { return }
+#if os(macOS)
+        if isMarkdownPreviewDocument {
+            let openingReadingView = !isMarkdownPreviewReadingMode
+            isMarkdownPreviewReadingMode = openingReadingView
+            previewMode = openingReadingView ? .markdown : .none
+            return
+        }
+#endif
         previewMode = previewMode.toggled(for: requestedMode)
         let isOpeningPreview = previewMode != .none
 #if os(iOS) || os(visionOS)
@@ -783,6 +819,9 @@ extension ContentView {
     }
 
     func closeCurrentPreview() {
+#if os(macOS)
+        isMarkdownPreviewReadingMode = false
+#endif
         previewMode = .none
     }
 
@@ -792,6 +831,9 @@ extension ContentView {
         if previewMode == .pdf, isPDFNoteMarkdownPreviewVisible {
             isPDFNoteMarkdownPreviewVisible = false
         } else if previewMode == .markdown {
+#if os(macOS)
+            isMarkdownPreviewReadingMode = false
+#endif
             previewMode = .none
         }
     }

@@ -2563,7 +2563,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         return true
     }
 
-    private func moveToLineBoundary(end: Bool) {
+    private func moveToLineBoundary(end: Bool, extending: Bool = false) {
         let local = max(0, min(viewportText.utf16.count, absoluteCaret - viewportLineOriginStartUTF16))
         let source = viewportText as NSString
         let lineRange = source.lineRange(for: NSRange(location: local, length: 0))
@@ -2572,7 +2572,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
               source.character(at: target - 1) == 10 || source.character(at: target - 1) == 13 {
             target -= 1
         }
-        moveCaret(to: viewportLineOriginStartUTF16 + target, extending: false)
+        moveCaret(to: viewportLineOriginStartUTF16 + target, extending: extending)
     }
 
     private func requestCloseSelectedTab() {
@@ -2643,6 +2643,19 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         case #selector(moveRight(_:)): moveCaret(1, extending: false)
         case #selector(moveUp(_:)): moveCaretVertically(-1, extending: false)
         case #selector(moveDown(_:)): moveCaretVertically(1, extending: false)
+        case #selector(moveToBeginningOfLine(_:)): moveToLineBoundary(end: false)
+        case #selector(moveToEndOfLine(_:)): moveToLineBoundary(end: true)
+        case #selector(moveToBeginningOfLineAndModifySelection(_:)):
+            moveToLineBoundary(end: false, extending: true)
+        case #selector(moveToEndOfLineAndModifySelection(_:)):
+            moveToLineBoundary(end: true, extending: true)
+        case #selector(moveToBeginningOfDocument(_:)): moveCaret(to: 0, extending: false)
+        case #selector(moveToEndOfDocument(_:)):
+            moveCaret(to: document?.utf16Length ?? viewportText.utf16.count, extending: false)
+        case #selector(moveToBeginningOfDocumentAndModifySelection(_:)):
+            moveCaret(to: 0, extending: true)
+        case #selector(moveToEndOfDocumentAndModifySelection(_:)):
+            moveCaret(to: document?.utf16Length ?? viewportText.utf16.count, extending: true)
         case #selector(copy(_:)): copySelection()
         case #selector(cut(_:)): cutSelection()
         case #selector(paste(_:)): pasteSelection()

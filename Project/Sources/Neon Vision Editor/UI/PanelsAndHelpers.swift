@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.8.4",
-            subtitle: "Release highlights for v1.8.4.",
+            title: "What’s New in v1.8.5",
+            subtitle: "Release highlights for v1.8.5.",
             bullets: [
-                "Editor Improvements: Browse JSON in a structured preview and read YAML with syntax colors.",
-                "Workflow Refinements: Choose how macOS opens files across desktops and handles the last tab.",
-                "Performance Updates: Keep space below the cursor when placing it on iPhone and iPad.",
-                "Usability Updates: Adds opt-in macOS settings to open files on the current desktop and keep an empty window after closing its last tab.",
-                "Editor Improvements: Adds structured JSON previews and syntax-colored YAML previews for large documents.",
-                "Workflow Refinements: Uses the same window routing for new and already-open files across macOS Spaces (#583, #584)."
+                "Editor Improvements: Choose whether Markdown opens for editing or full-window reading, and switch modes from the toolbar or keyboard.",
+                "Workflow Refinements: Arrange preferred iPhone and iPad toolbar actions and use configured app shortcuts while the editor has hardware-keyboard…",
+                "Performance Updates: Navigate line and document boundaries with standard Command-arrow keys on macOS.",
+                "Usability Updates: Adds a default Markdown opening mode for editing or full-window reading, with toolbar or Command-Shift-P switching…",
+                "Reliable Saves: Makes configured app shortcuts available while the mobile editor has hardware-keyboard focus; restores the documented Save…",
+                "Workflow Refinements: Fixes the custom iPhone and iPad toolbar icon limit so it matches the selected action count, and lets users reorder their…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4181,7 +4181,7 @@ struct EditorHelpView: View {
                 HelpItem(title: "New Tab", description: "Create a new tab in the current editor window.", shortcutMac: Self.configuredShortcut(.newTab), shortcutPad: Self.configuredShortcut(.newTab), iconName: "plus.square.on.square"),
                 HelpItem(title: "Open File", description: "Choose a local text or code file and open it in the editor.", shortcutMac: Self.configuredShortcut(.openFile), shortcutPad: Self.configuredShortcut(.openFile), iconName: "folder"),
                 HelpItem(title: "Save File", description: "Write the current tab back to its file.", shortcutMac: Self.configuredShortcut(.save), shortcutPad: Self.configuredShortcut(.save), iconName: "square.and.arrow.down"),
-                HelpItem(title: "Save As", description: "Save the current tab to a new location.", shortcutMac: "Cmd+Shift+S", shortcutPad: "Cmd+Shift+S", iconName: "square.and.arrow.down.on.square"),
+                HelpItem(title: "Save As", description: "Save the current tab to a new location.", shortcutMac: Self.configuredShortcut(.saveAs), shortcutPad: Self.configuredShortcut(.saveAs), iconName: "square.and.arrow.down.on.square"),
                 HelpItem(title: "Close All Tabs", description: "Close every open tab with confirmation.", shortcutMac: "None", shortcutPad: "None", iconName: "xmark.square"),
                 HelpItem(title: "Collapse Toolbar", description: "Hide or show the expanded macOS toolbar controls.", shortcutMac: "None", shortcutPad: "None", iconName: "chevron.up"),
                 HelpItem(title: "Font Zoom with Scroll", description: "Hold Shift and scroll over the editor to increase or decrease the font size on macOS.", shortcutMac: "Shift + mouse wheel", shortcutPad: "None", iconName: "textformat.size")
@@ -4194,7 +4194,7 @@ struct EditorHelpView: View {
                 HelpItem(title: "Undo", description: "Undo the latest editor change.", shortcutMac: "Cmd+Z", shortcutPad: "Cmd+Z", iconName: "arrow.uturn.backward"),
                 HelpItem(title: "Clear Editor", description: "Remove the current editor contents after confirmation.", shortcutMac: "None", shortcutPad: "None", iconName: "eraser"),
                 HelpItem(title: "Insert Template", description: "Insert a starter snippet for the selected language.", shortcutMac: "None", shortcutPad: "None", iconName: "doc.badge.plus"),
-                HelpItem(title: "Line Wrap", description: "Toggle soft wrapping for long lines.", shortcutMac: "Cmd+Opt+L", shortcutPad: "Cmd+Opt+L", iconName: "text.justify"),
+                HelpItem(title: "Line Wrap", description: "Toggle soft wrapping for long lines.", shortcutMac: Self.configuredShortcut(.toggleLineWrap), shortcutPad: Self.configuredShortcut(.toggleLineWrap), iconName: "text.justify"),
                 HelpItem(title: "Font Smaller", description: "Decrease the editor font size.", shortcutMac: "None", shortcutPad: "None", iconName: "textformat.size.smaller"),
                 HelpItem(title: "Font Larger", description: "Increase the editor font size.", shortcutMac: "None", shortcutPad: "None", iconName: "textformat.size.larger")
             ]
@@ -4208,7 +4208,7 @@ struct EditorHelpView: View {
                 HelpItem(title: "Quick Open", description: "Open project files quickly by name.", shortcutMac: Self.configuredShortcut(.quickOpen), shortcutPad: Self.configuredShortcut(.quickOpen), iconName: "magnifyingglass.circle"),
                 HelpItem(title: "Go to Line", description: "Jump to a specific line in the current document.", shortcutMac: Self.configuredShortcut(.goToLine), shortcutPad: Self.configuredShortcut(.goToLine), iconName: "text.line.first.and.arrowtriangle.forward"),
                 HelpItem(title: "Go to Symbol", description: "Jump to a symbol discovered in the current document.", shortcutMac: Self.configuredShortcut(.goToSymbol), shortcutPad: Self.configuredShortcut(.goToSymbol), iconName: "list.bullet.indent"),
-                HelpItem(title: "Language", description: "Change the syntax language or open the language search.", shortcutMac: "Cmd+Shift+L", shortcutPad: "Cmd+Shift+L", iconName: "textformat")
+                HelpItem(title: "Language", description: "Change the syntax language or open the language search.", shortcutMac: Self.configuredShortcut(.languageSearch), shortcutPad: Self.configuredShortcut(.languageSearch), iconName: "textformat")
             ]
         ),
         HelpSection(
@@ -4260,7 +4260,7 @@ struct EditorHelpView: View {
             title: "App Controls",
             iconName: "gearshape",
             items: [
-                HelpItem(title: "Settings", description: "Open app settings and support options.", shortcutMac: "Cmd+,", shortcutPad: "None", iconName: "gearshape"),
+                HelpItem(title: "Settings", description: "Open app settings and support options.", shortcutMac: "Cmd+,", shortcutPad: "Cmd+,", iconName: "gearshape"),
                 HelpItem(title: "Toolbar Help", description: "Open this toolbar reference.", shortcutMac: "Cmd+?", shortcutPad: "Cmd+?", iconName: "questionmark.circle"),
                 HelpItem(title: "Welcome Tour", description: "Show the onboarding tour and release overview.", shortcutMac: "None", shortcutPad: "None", iconName: "sparkles.rectangle.stack"),
                 HelpItem(title: "Translucent Window", description: "Toggle translucent window styling where supported.", shortcutMac: "None", shortcutPad: "None", iconName: "rectangle"),
@@ -4448,6 +4448,7 @@ extension Notification.Name {
     static let showFindInFilesRequested = Notification.Name("showFindInFilesRequested")
     static let showGoToLineRequested = Notification.Name("showGoToLineRequested")
     static let showGoToSymbolRequested = Notification.Name("showGoToSymbolRequested")
+    static let showLanguageSearchRequested = Notification.Name("showLanguageSearchRequested")
     static let compareCurrentTabAgainstDiskRequested = Notification.Name("compareCurrentTabAgainstDiskRequested")
     static let compareOpenTabsRequested = Notification.Name("compareOpenTabsRequested")
     static let showWelcomeTourRequested = Notification.Name("showWelcomeTourRequested")
@@ -4456,6 +4457,7 @@ extension Notification.Name {
     static let showInAppChangelogRequested = Notification.Name("showInAppChangelogRequested")
     static let applyEditorLayoutPresetRequested = Notification.Name("applyEditorLayoutPresetRequested")
     static let openPreviewInSeparateWindowRequested = Notification.Name("openPreviewInSeparateWindowRequested")
+    static let togglePreviewRequested = Notification.Name("togglePreviewRequested")
     nonisolated static let moveCursorToRange = Notification.Name("moveCursorToRange")
     nonisolated static let updateEditorFindHighlights = Notification.Name("updateEditorFindHighlights")
     nonisolated static let replaceEditorRangeRequested = Notification.Name("replaceEditorRangeRequested")
@@ -4467,6 +4469,7 @@ extension Notification.Name {
     static let droppedFileLoadProgress = Notification.Name("droppedFileLoadProgress")
     static let droppedFileLoadFinished = Notification.Name("droppedFileLoadFinished")
     static let toggleSidebarRequested = Notification.Name("toggleSidebarRequested")
+    static let toggleLineWrapRequested = Notification.Name("toggleLineWrapRequested")
     static let toggleBrainDumpModeRequested = Notification.Name("toggleBrainDumpModeRequested")
     static let zoomEditorFontRequested = Notification.Name("zoomEditorFontRequested")
     static let inspectWhitespaceScalarsRequested = Notification.Name("inspectWhitespaceScalarsRequested")

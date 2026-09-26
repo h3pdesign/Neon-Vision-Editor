@@ -11,6 +11,9 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
     let onNewTab: () -> Void
     let onOpenFile: () -> Void
     let onSave: () -> Void
+    let onSaveAs: () -> Void
+    let onToggleLineWrap: () -> Void
+    let onLanguageSearch: () -> Void
     let onUndo: () -> Void
     let onFind: () -> Void
     let onFindInFiles: () -> Void
@@ -26,6 +29,9 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
         view.onNewTab = onNewTab
         view.onOpenFile = onOpenFile
         view.onSave = onSave
+        view.onSaveAs = onSaveAs
+        view.onToggleLineWrap = onToggleLineWrap
+        view.onLanguageSearch = onLanguageSearch
         view.onUndo = onUndo
         view.onFind = onFind
         view.onFindInFiles = onFindInFiles
@@ -42,6 +48,9 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
         uiView.onCloseTab = onCloseTab
         uiView.onOpenFile = onOpenFile
         uiView.onSave = onSave
+        uiView.onSaveAs = onSaveAs
+        uiView.onToggleLineWrap = onToggleLineWrap
+        uiView.onLanguageSearch = onLanguageSearch
         uiView.onUndo = onUndo
         uiView.onFind = onFind
         uiView.onFindInFiles = onFindInFiles
@@ -59,6 +68,9 @@ final class KeyboardCommandView: UIView {
     var onNewTab: (() -> Void)?
     var onOpenFile: (() -> Void)?
     var onSave: (() -> Void)?
+    var onSaveAs: (() -> Void)?
+    var onToggleLineWrap: (() -> Void)?
+    var onLanguageSearch: (() -> Void)?
     var onUndo: (() -> Void)?
     var onFind: (() -> Void)?
     var onFindInFiles: (() -> Void)?
@@ -73,38 +85,7 @@ final class KeyboardCommandView: UIView {
     override var keyCommands: [UIKeyCommand]? {
         // The same hardware-keyboard command bridge is useful on iPhone with
         // an attached keyboard; keep it aligned with the iPadOS/iOS/visionOS help text.
-        guard UIDevice.current.userInterfaceIdiom == .pad || UIDevice.current.userInterfaceIdiom == .phone else { return [] }
-        let mappings: [(EditorShortcutAction, Selector, String)] = [
-            (.closeTab, #selector(closeTab), "Close Tab"),
-            (.newTab, #selector(newTab), "New Tab"),
-            (.openFile, #selector(openFile), "Open File"),
-            (.save, #selector(saveFile), "Save"),
-            (.find, #selector(handleFindCommand), "Find"),
-            (.findInFiles, #selector(findInFiles), "Find in Files"),
-            (.goToLine, #selector(goToLine), "Go to Line"),
-            (.goToSymbol, #selector(goToSymbol), "Go to Symbol"),
-            (.quickOpen, #selector(quickOpen), "Quick Open"),
-            (.toggleSidebar, #selector(handleToggleSidebarCommand), "Toggle Sidebar"),
-            (.toggleProjectSidebar, #selector(handleToggleProjectSidebarCommand), "Toggle Project Structure Sidebar")
-        ]
-        let actions = Set(
-            ShortcutPreferences.nonConflictingActions(
-                mappings.map(\.0),
-                reservedShortcuts: ShortcutPreferences.reservedMobileCommandShortcuts
-            )
-        )
-        let configuredCommands: [UIKeyCommand] = mappings.compactMap { action, selector, title in
-            guard actions.contains(action) else { return nil }
-            let descriptor = ShortcutPreferences.shortcut(for: action)
-            guard let input = uiKeyInput(from: descriptor.key) else { return nil }
-            let command = UIKeyCommand(
-                input: input,
-                modifierFlags: uiKeyModifierFlags(from: descriptor.modifiers),
-                action: selector
-            )
-            command.discoverabilityTitle = title
-            return command
-        }
+        guard Self.supportsHardwareKeyboardCommands else { return [] }
         let undoCommand = UIKeyCommand(
             input: "z",
             modifierFlags: .command,
@@ -114,10 +95,46 @@ final class KeyboardCommandView: UIView {
         if #available(iOS 15.0, *) {
             undoCommand.wantsPriorityOverSystemBehavior = true
         }
-        return configuredCommands + [undoCommand]
+        return Self.configuredAppCommands(action: #selector(handleConfiguredAppShortcut(_:))) + [undoCommand]
     }
 
-    private func uiKeyModifierFlags(from modifiers: EditorShortcutModifiers) -> UIKeyModifierFlags {
+    static func configuredAppCommands(action selector: Selector) -> [UIKeyCommand] {
+        ShortcutPreferences.nonConflictingActions(
+            EditorShortcutAction.allCases,
+            reservedShortcuts: ShortcutPreferences.reservedMobileCommandShortcuts
+        ).compactMap { action in
+            let descriptor = ShortcutPreferences.shortcut(for: action)
+            guard let input = uiKeyInput(from: descriptor.key) else { return nil }
+            let command = UIKeyCommand(
+                input: input,
+                modifierFlags: uiKeyModifierFlags(from: descriptor.modifiers),
+                action: selector
+            )
+            command.discoverabilityTitle = action.title
+            return command
+        }
+    }
+
+    static func configuredAction(for command: UIKeyCommand) -> EditorShortcutAction? {
+        ShortcutPreferences.nonConflictingActions(
+            EditorShortcutAction.allCases,
+            reservedShortcuts: ShortcutPreferences.reservedMobileCommandShortcuts
+        ).first { action in
+            let descriptor = ShortcutPreferences.shortcut(for: action)
+            return uiKeyInput(from: descriptor.key) == command.input &&
+                uiKeyModifierFlags(from: descriptor.modifiers) == command.modifierFlags
+        }
+    }
+
+    static var supportsHardwareKeyboardCommands: Bool {
+#if os(visionOS)
+        true
+#else
+        UIDevice.current.userInterfaceIdiom == .pad || UIDevice.current.userInterfaceIdiom == .phone
+#endif
+    }
+
+    private static func uiKeyModifierFlags(from modifiers: EditorShortcutModifiers) -> UIKeyModifierFlags {
         var result: UIKeyModifierFlags = []
         if modifiers.contains(.command) { result.insert(.command) }
         if modifiers.contains(.shift) { result.insert(.shift) }
@@ -126,7 +143,7 @@ final class KeyboardCommandView: UIView {
         return result
     }
 
-    private func uiKeyInput(from key: String) -> String? {
+    private static func uiKeyInput(from key: String) -> String? {
         switch key {
         case "↑": return UIKeyCommand.inputUpArrow
         case "↓": return UIKeyCommand.inputDownArrow
@@ -144,8 +161,7 @@ final class KeyboardCommandView: UIView {
     }
 
     func refreshFirstResponderStatus() {
-        guard window != nil,
-              UIDevice.current.userInterfaceIdiom == .pad || UIDevice.current.userInterfaceIdiom == .phone else { return }
+        guard window != nil, Self.supportsHardwareKeyboardCommands else { return }
         DispatchQueue.main.async { [weak self] in
             guard let self, let window else { return }
             if let currentResponder = window.neonFirstResponder() {
@@ -158,18 +174,26 @@ final class KeyboardCommandView: UIView {
         }
     }
 
-    @objc private func newTab() { onNewTab?() }
-    @objc private func closeTab() { onCloseTab?() }
-    @objc private func openFile() { onOpenFile?() }
-    @objc private func saveFile() { onSave?() }
+    @objc private func handleConfiguredAppShortcut(_ command: UIKeyCommand) {
+        guard let action = Self.configuredAction(for: command) else { return }
+        switch action {
+        case .closeTab: onCloseTab?()
+        case .newTab: onNewTab?()
+        case .openFile: onOpenFile?()
+        case .save: onSave?()
+        case .saveAs: onSaveAs?()
+        case .toggleLineWrap: onToggleLineWrap?()
+        case .languageSearch: onLanguageSearch?()
+        case .find: onFind?()
+        case .findInFiles: onFindInFiles?()
+        case .goToLine: onGoToLine?()
+        case .goToSymbol: onGoToSymbol?()
+        case .quickOpen: onQuickOpen?()
+        case .toggleSidebar: onToggleSidebar?()
+        case .toggleProjectSidebar: onToggleProjectSidebar?()
+        }
+    }
     @objc private func undo() { onUndo?() }
-    @objc private func handleFindCommand() { onFind?() }
-    @objc private func findInFiles() { onFindInFiles?() }
-    @objc private func goToLine() { onGoToLine?() }
-    @objc private func goToSymbol() { onGoToSymbol?() }
-    @objc private func quickOpen() { onQuickOpen?() }
-    @objc private func handleToggleSidebarCommand() { onToggleSidebar?() }
-    @objc private func handleToggleProjectSidebarCommand() { onToggleProjectSidebar?() }
 }
 
 private extension UIView {

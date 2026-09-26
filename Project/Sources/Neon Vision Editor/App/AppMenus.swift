@@ -193,7 +193,7 @@ struct NeonVisionMacAppCommands: Commands {
                     current.saveFileAs(tabID: tab.id)
                 }
             }
-            .keyboardShortcut("s", modifiers: [.command, .shift])
+            .modifier(dynamicShortcut(.saveAs))
             .disabled(!hasSelectedTabWithSaveAsSupport)
 
             Button("Rename") {
@@ -258,6 +258,14 @@ struct NeonVisionMacAppCommands: Commands {
     @CommandsBuilder
     private var languageCommands: some Commands {
         CommandMenu("Language") {
+            Button("Search Languages…") {
+                post(.showLanguageSearchRequested)
+            }
+            .modifier(dynamicShortcut(.languageSearch))
+            .disabled(!hasSelectedTab)
+
+            Divider()
+
             ForEach(Self.languageOptions, id: \.self) { language in
                 Button(languageLabel(for: language)) {
                     let current = activeEditorViewModel()
@@ -298,6 +306,18 @@ struct NeonVisionMacAppCommands: Commands {
                 post(.toggleProjectStructureSidebarRequested)
             }
             .modifier(dynamicShortcut(.toggleProjectSidebar))
+
+            Button("Toggle Line Wrap") {
+                post(.toggleLineWrapRequested)
+            }
+            .modifier(dynamicShortcut(.toggleLineWrap))
+            .disabled(!hasSelectedTab)
+
+            Button("Toggle Document Preview") {
+                post(.togglePreviewRequested)
+            }
+            .keyboardShortcut("p", modifiers: [.command, .shift])
+            .disabled(!hasSelectedTab)
 
             Button("Toggle Code Minimap") {
                 post(.toggleCodeMinimapRequested)
@@ -484,7 +504,7 @@ struct NeonVisionMacAppCommands: Commands {
             Button("Open AI Activity Log") {
                 openAIDiagnosticsWindow()
             }
-            .keyboardShortcut("l", modifiers: [.command, .shift])
+            .keyboardShortcut("l", modifiers: [.command, .option, .shift])
 
             Button("Inspect Whitespace Scalars at Caret") {
                 post(.inspectWhitespaceScalarsRequested)

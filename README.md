@@ -1,5 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
+> Prepared release: **v1.8.5** — not published. See [candidate notes](CHANGELOG.md).
+
 <p align="center">
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v1.8.4-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
@@ -715,7 +717,7 @@ All shortcuts use `Cmd` (`⌘`). iPhone, iPad, and Apple Vision Pro require an e
 | `Cmd+Shift+O` | Open Folder | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
 | `Cmd+S` | Save | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
 | `Cmd+Shift+S` | Save As | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
-| `Cmd+W` | Close Tab | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | -- | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | -- |
+| `Cmd+W` | Close Tab | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
 | `Cmd+X`, `Cmd+C`, `Cmd+V`, `Cmd+A` | Cut, Copy, Paste, Select All | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
 | `Cmd+Z`, `Cmd+Shift+Z` | Undo, Redo | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
 | `Cmd+B`, `Cmd+I`, `Cmd+K` | Bold, Italic, Link in Markdown | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | -- | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | -- |
@@ -726,9 +728,9 @@ All shortcuts use `Cmd` (`⌘`). iPhone, iPad, and Apple Vision Pro require an e
 |---|---|---|---|---|---|
 | `Cmd+F`, `Cmd+G` | Find, Find Next | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
 | `Cmd+Shift+F` | Find in Files | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
-| `Cmd+P` | Quick Open | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | -- | -- | -- |
-| `Cmd+L` | Go to Line | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | -- | -- | -- |
-| `Cmd+Shift+J` | Go to Symbol | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | -- | -- | -- |
+| `Cmd+P` | Quick Open | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
+| `Cmd+L` | Go to Line | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
+| `Cmd+Shift+J` | Go to Symbol | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
 | `Cmd+Option+S` | Toggle Sidebar | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
 | `Cmd+Option+L` | Toggle Line Wrap | ![Full](https://img.shields.io/badge/Full-22C55E?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) | ![Keyboard](https://img.shields.io/badge/Keyboard-F59E0B?style=flat-square) |
 | `Cmd+Option+M` | Toggle Code Minimap | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) | -- | -- | -- |
@@ -742,7 +744,7 @@ All shortcuts use `Cmd` (`⌘`). iPhone, iPad, and Apple Vision Pro require an e
 | `Cmd+Shift+D` | Brain Dump Mode | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) |
 | `Cmd+Shift+V` | Toggle Vim Mode | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) |
 | `Cmd+Shift+G` | Suggest Code | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) |
-| `Cmd+Shift+L` | AI Activity Log | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) |
+| `Cmd+Option+Shift+L` | AI Activity Log | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) |
 | `Cmd+Shift+U` | Inspect whitespace at caret | ![macOS only](https://img.shields.io/badge/macOS_only-6B7280?style=flat-square) |
 
 Vim navigation is also available on iPad with a hardware keyboard after enabling Vim mode; arrow keys and the standard Vim movement keys work in Normal mode.

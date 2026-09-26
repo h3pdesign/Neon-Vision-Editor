@@ -1500,6 +1500,52 @@ final class VirtualEditorLayoutTests: XCTestCase {
         ))
     }
 
+    func testCommandArrowTextCommandsMoveToNativeLineAndDocumentBoundaries() {
+        let source = "first line\nsecond line\nthird"
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        canvas.configure(
+            document: FileBackedTextDocument(content: source),
+            documentID: UUID(),
+            resourceID: "command-arrow-navigation",
+            displayName: "Navigation.txt",
+            contentRevision: 0,
+            externalContentRevision: 0,
+            caret: 17,
+            language: "plain",
+            colorScheme: .light,
+            fontSize: 14,
+            fontName: "",
+            lineHeightMultiplier: 1,
+            isReadOnly: false,
+            translucentBackgroundEnabled: false,
+            showsLineNumbers: true,
+            highlightCurrentLine: false,
+            lineWrapEnabled: true,
+            showsInvisibleCharacters: false,
+            showsIndentationGuides: false,
+            showsScopeGuides: false,
+            highlightsScopeBackground: false,
+            highlightsMatchingBrackets: false,
+            autoIndentEnabled: true,
+            autoCloseBracketsEnabled: false,
+            onFontSizeChange: nil,
+            onTextMutation: nil
+        )
+
+        canvas.doCommand(by: #selector(NSResponder.moveToBeginningOfLine(_:)))
+        XCTAssertEqual(canvas.selectedRange(), NSRange(location: 11, length: 0))
+
+        canvas.doCommand(by: #selector(NSResponder.moveToEndOfLineAndModifySelection(_:)))
+        XCTAssertEqual(canvas.selectedRange(), NSRange(location: 11, length: 11))
+
+        canvas.doCommand(by: #selector(NSResponder.moveToBeginningOfDocument(_:)))
+        XCTAssertEqual(canvas.selectedRange(), NSRange(location: 0, length: 0))
+
+        canvas.doCommand(by: #selector(NSResponder.moveToEndOfDocumentAndModifySelection(_:)))
+        XCTAssertEqual(canvas.selectedRange(), NSRange(location: 0, length: (source as NSString).length))
+    }
+
     func testCloseTabRoutingMatchesConfiguredShortcutExactly() {
         let shortcut = EditorShortcutDescriptor(key: "k", modifiers: [.command, .shift])
 

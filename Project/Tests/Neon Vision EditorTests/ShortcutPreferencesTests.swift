@@ -21,10 +21,12 @@ final class ShortcutPreferencesTests: XCTestCase {
     }
 
     func testDefaultShortcutExistsForEveryAction() {
+        var shortcuts: Set<EditorShortcutDescriptor> = []
         for action in EditorShortcutAction.allCases {
             let shortcut = action.defaultShortcut
             XCTAssertFalse(shortcut.key.isEmpty)
             XCTAssertTrue(shortcut.modifiers.contains(.command))
+            XCTAssertTrue(shortcuts.insert(shortcut).inserted, "Duplicate default shortcut: \(action.title)")
         }
     }
 
@@ -55,6 +57,20 @@ final class ShortcutPreferencesTests: XCTestCase {
                 defaults: defaults
             ).isEmpty
         )
+    }
+
+    func testMobileEditorEditingShortcutsStayReserved() {
+        let editingKeys = ["a", "c", "x", "v", "z", "b", "i", "k"]
+        for key in editingKeys {
+            let descriptor = EditorShortcutDescriptor(key: key, modifiers: [.command])
+            XCTAssertTrue(
+                ShortcutPreferences.reservedMobileCommandShortcuts.contains(descriptor),
+                "Editor-owned Cmd+\(key.uppercased()) must not be assigned to an app action"
+            )
+        }
+        XCTAssertTrue(ShortcutPreferences.reservedMobileCommandShortcuts.contains(
+            .init(key: "z", modifiers: [.command, .shift])
+        ))
     }
 
     func testKeyboardAccessoryActionsUseDefaultsAndIgnoreUnknownValues() {

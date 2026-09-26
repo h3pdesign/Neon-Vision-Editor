@@ -6,15 +6,33 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
-### Fixes
+### Why Upgrade
 
-- Makes configured app shortcuts available while the mobile editor has hardware-keyboard focus; restores the documented Save As, Line Wrap, and Language Search keys, resolves a macOS shortcut collision, and removes duplicate mobile Settings and Help bindings.
-- Fixes the custom iPhone and iPad toolbar icon limit so it matches the selected action count, and lets users reorder their chosen icons ([#615](https://github.com/h3pdesign/Neon-Vision-Editor/issues/615)).
-- Restores the standard macOS Command-arrow and Command-Shift-arrow navigation for line and document boundaries ([#622](https://github.com/h3pdesign/Neon-Vision-Editor/issues/622)).
+- Choose whether Markdown opens for editing or full-window reading, and switch modes from the toolbar or keyboard.
+- Arrange preferred iPhone and iPad toolbar actions and use configured app shortcuts while the editor has hardware-keyboard focus.
+- Navigate line and document boundaries with standard Command-arrow keys on macOS.
 
 ### Highlights
 
 - Adds a default Markdown opening mode for editing or full-window reading, with toolbar or Command-Shift-P switching ([#617](https://github.com/h3pdesign/Neon-Vision-Editor/issues/617)).
+
+### Fixes
+
+- Makes configured app shortcuts available while the mobile editor has hardware-keyboard focus; restores the documented Save As, Line Wrap, and Language Search keys, reserves editor-owned editing keys, resolves a macOS shortcut collision, and removes duplicate mobile Settings and Help bindings.
+- Fixes the custom iPhone and iPad toolbar icon limit so it matches the selected action count, and lets users reorder their chosen icons ([#615](https://github.com/h3pdesign/Neon-Vision-Editor/issues/615)).
+- Restores the standard macOS Command-arrow and Command-Shift-arrow navigation for line and document boundaries ([#622](https://github.com/h3pdesign/Neon-Vision-Editor/issues/622)).
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No document migration is required. Large single-line Unicode JSON responsiveness on iPhone and iPad remains tracked in #595; native macOS tab behavior remains tracked in #621.
+
+### Maintenance
+
+- Advances the 1.8.5 development build to 1058; release preparation allocates the final build from the live Xcode Cloud counter.
 
 ## [v1.8.4] - 2026-09-21
 

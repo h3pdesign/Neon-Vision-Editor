@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.8.4",
-            subtitle: "Release highlights for v1.8.4.",
+            title: "What’s New in v1.8.5",
+            subtitle: "Release highlights for v1.8.5.",
             bullets: [
-                "Editor Improvements: Browse JSON in a structured preview and read YAML with syntax colors.",
-                "Workflow Refinements: Choose how macOS opens files across desktops and handles the last tab.",
-                "Performance Updates: Keep space below the cursor when placing it on iPhone and iPad.",
-                "Usability Updates: Adds opt-in macOS settings to open files on the current desktop and keep an empty window after closing its last tab.",
-                "Editor Improvements: Adds structured JSON previews and syntax-colored YAML previews for large documents.",
-                "Workflow Refinements: Uses the same window routing for new and already-open files across macOS Spaces (#583, #584)."
+                "Editor Improvements: Choose whether Markdown opens for editing or full-window reading, and switch modes from the toolbar or keyboard.",
+                "Workflow Refinements: Arrange preferred iPhone and iPad toolbar actions and use configured app shortcuts while the editor has hardware-keyboard…",
+                "Performance Updates: Navigate line and document boundaries with standard Command-arrow keys on macOS.",
+                "Usability Updates: Adds a default Markdown opening mode for editing or full-window reading, with toolbar or Command-Shift-P switching…",
+                "Reliable Saves: Makes configured app shortcuts available while the mobile editor has hardware-keyboard focus; restores the documented Save…",
+                "Workflow Refinements: Fixes the custom iPhone and iPad toolbar icon limit so it matches the selected action count, and lets users reorder their…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.8.5] - 2026-09-26
+
 ### Why Upgrade
 
 - Choose whether Markdown opens for editing or full-window reading, and switch modes from the toolbar or keyboard.

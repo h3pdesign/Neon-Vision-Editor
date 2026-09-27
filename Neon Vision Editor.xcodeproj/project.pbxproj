@@ -175,7 +175,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		F1000000000000000000000A /* Exceptions for "Neon Vision Editor Quick Look" folder in "Neon Vision Editor Quick Look" target */ = {
+		F1000000000000000000000A /* Exceptions for "Project/Sources/Neon Vision Editor Quick Look" folder in "Neon Vision Editor Quick Look" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -185,25 +185,25 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		98EAE6352E5F15E80050E579 /* Neon Vision Editor */ = {
+		98EAE6352E5F15E80050E579 /* Project/Sources/Neon Vision Editor */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Project/Sources/Neon Vision Editor";
 			sourceTree = "<group>";
 		};
-		E30000000000000000000016 /* Neon Pulse Widget */ = {
+		E30000000000000000000016 /* Project/Sources/Neon Pulse Widget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Project/Sources/Neon Pulse Widget";
 			sourceTree = "<group>";
 		};
-		F10000000000000000000009 /* Neon Vision Editor Quick Look */ = {
+		F10000000000000000000009 /* Project/Sources/Neon Vision Editor Quick Look */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				F1000000000000000000000A /* Exceptions for "Neon Vision Editor Quick Look" folder in "Neon Vision Editor Quick Look" target */,
+				F1000000000000000000000A /* Exceptions for "Project/Sources/Neon Vision Editor Quick Look" folder in "Neon Vision Editor Quick Look" target */,
 			);
 			path = "Project/Sources/Neon Vision Editor Quick Look";
 			sourceTree = "<group>";
 		};
-		FCA13954DC9E4188A1DC88BE /* Neon Vision EditorTests */ = {
+		FCA13954DC9E4188A1DC88BE /* Project/Tests/Neon Vision EditorTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Project/Tests/Neon Vision EditorTests";
 			sourceTree = "<group>";
@@ -260,14 +260,14 @@
 		98EAE62A2E5F15E80050E579 = {
 			isa = PBXGroup;
 			children = (
-				98EAE6352E5F15E80050E579 /* Neon Vision Editor */,
-				E30000000000000000000015 /* Neon Pulse Watch App */,
-				E30000000000000000000016 /* Neon Pulse Widget */,
+				98EAE6352E5F15E80050E579 /* Project/Sources/Neon Vision Editor */,
+				E30000000000000000000015 /* Project/Sources/Neon Pulse Watch App */,
+				E30000000000000000000016 /* Project/Sources/Neon Pulse Widget */,
 				E30000000000000000000002 /* Project/Sources/Neon Pulse Shared/NeonPulseShared.swift */,
-				C4DB32978E63402B963CF1EF /* Neon Vision Editor App Clip */,
-				A1000000000000000000000A /* Neon Vision Editor Share Extension */,
-				FCA13954DC9E4188A1DC88BE /* Neon Vision EditorTests */,
-				F10000000000000000000009 /* Neon Vision Editor Quick Look */,
+				C4DB32978E63402B963CF1EF /* Project/Sources/Neon Vision Editor App Clip */,
+				A1000000000000000000000A /* Project/Sources/Neon Vision Editor Share Extension */,
+				FCA13954DC9E4188A1DC88BE /* Project/Tests/Neon Vision EditorTests */,
+				F10000000000000000000009 /* Project/Sources/Neon Vision Editor Quick Look */,
 				98EAE6532E5F175B0050E579 /* Frameworks */,
 				98EAE6342E5F15E80050E579 /* Products */,
 			);
@@ -296,7 +296,7 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		A1000000000000000000000A /* Neon Vision Editor Share Extension */ = {
+		A1000000000000000000000A /* Project/Sources/Neon Vision Editor Share Extension */ = {
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000005 /* ShareViewController.swift */,
@@ -306,7 +306,7 @@
 			path = "Project/Sources/Neon Vision Editor Share Extension";
 			sourceTree = "<group>";
 		};
-		C4DB32978E63402B963CF1EF /* Neon Vision Editor App Clip */ = {
+		C4DB32978E63402B963CF1EF /* Project/Sources/Neon Vision Editor App Clip */ = {
 			isa = PBXGroup;
 			children = (
 				9827D2A83015F5650009A4A8 /* Neon Vision Editor App ClipRelease-GitHub.entitlements */,
@@ -318,7 +318,7 @@
 			path = "Project/Sources/Neon Vision Editor App Clip";
 			sourceTree = "<group>";
 		};
-		E30000000000000000000015 /* Neon Pulse Watch App */ = {
+		E30000000000000000000015 /* Project/Sources/Neon Pulse Watch App */ = {
 			isa = PBXGroup;
 			children = (
 				E30000000000000000000036 /* CaptureInNeonIntent.swift */,
@@ -349,7 +349,7 @@
 				98D001C72F3A432F00AA505C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				FCA13954DC9E4188A1DC88BE /* Neon Vision EditorTests */,
+				FCA13954DC9E4188A1DC88BE /* Project/Tests/Neon Vision EditorTests */,
 			);
 			name = "Neon Vision EditorTests";
 			productName = "Neon Vision EditorTests";
@@ -393,7 +393,7 @@
 				F1000000000000000000000C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				98EAE6352E5F15E80050E579 /* Neon Vision Editor */,
+				98EAE6352E5F15E80050E579 /* Project/Sources/Neon Vision Editor */,
 			);
 			name = "Neon Vision Editor";
 			productName = "Neon Vision Editor";
@@ -432,7 +432,7 @@
 				F1000000000000000000000C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				98EAE6352E5F15E80050E579 /* Neon Vision Editor */,
+				98EAE6352E5F15E80050E579 /* Project/Sources/Neon Vision Editor */,
 			);
 			name = "Neon Vision Editor Direct";
 			packageProductDependencies = (
@@ -472,7 +472,7 @@
 			buildRules = (
 			);
 			fileSystemSynchronizedGroups = (
-				E30000000000000000000016 /* Neon Pulse Widget */,
+				E30000000000000000000016 /* Project/Sources/Neon Pulse Widget */,
 			);
 			name = "Neon Pulse Widget";
 			productName = "Neon Pulse Widget";
@@ -490,7 +490,7 @@
 			buildRules = (
 			);
 			fileSystemSynchronizedGroups = (
-				F10000000000000000000009 /* Neon Vision Editor Quick Look */,
+				F10000000000000000000009 /* Project/Sources/Neon Vision Editor Quick Look */,
 			);
 			name = "Neon Vision Editor Quick Look";
 			productName = "Neon Vision Editor Quick Look";
@@ -752,7 +752,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Vision Editor App Clip/Neon Vision Editor App Clip.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_PREVIEWS = YES;
@@ -791,7 +791,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_PREVIEWS = YES;
@@ -903,7 +903,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -1141,7 +1141,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "Project/Sources/Neon Vision Editor/Neon Vision Editor iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Project/Sources/Neon Vision Editor/Neon Vision Editor macOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -1312,7 +1312,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "$(NVE_DEVELOPER_ID_IDENTITY)";
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -1401,7 +1401,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1441,7 +1441,7 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Vision Editor Share Extension/Neon Vision Editor Share Extension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
@@ -1496,7 +1496,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "$(NVE_DEVELOPER_ID_IDENTITY)";
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = CS727NF72U;
@@ -1576,7 +1576,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Pulse Watch App/Neon Pulse Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Neon Vision Editor Pulse";
@@ -1606,7 +1606,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Pulse Watch App/Neon Pulse Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Neon Vision Editor Pulse";
@@ -1636,7 +1636,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Pulse Watch App/Neon Pulse Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Neon Vision Editor Pulse";
@@ -1664,10 +1664,10 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Pulse Widget/Neon Pulse Widget.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "Project/Configuration/Info.plist.widget";
+				INFOPLIST_FILE = Project/Configuration/Info.plist.widget;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
@@ -1692,10 +1692,10 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Pulse Widget/Neon Pulse Widget.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "Project/Configuration/Info.plist.widget";
+				INFOPLIST_FILE = Project/Configuration/Info.plist.widget;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
@@ -1720,10 +1720,10 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Pulse Widget/Neon Pulse Widget.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "Project/Configuration/Info.plist.widget";
+				INFOPLIST_FILE = Project/Configuration/Info.plist.widget;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
@@ -1749,7 +1749,7 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Vision Editor Quick Look/Neon Vision Editor Quick Look.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1774,7 +1774,7 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = "Project/Sources/Neon Vision Editor Quick Look/Neon Vision Editor Quick Look.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1803,7 +1803,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "$(NVE_DEVELOPER_ID_IDENTITY)";
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
-				CURRENT_PROJECT_VERSION = 1060;
+				CURRENT_PROJECT_VERSION = 1061;
 				DEVELOPMENT_TEAM = CS727NF72U;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;

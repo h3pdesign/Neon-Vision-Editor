@@ -19,26 +19,39 @@ enum PreviewPaneResizeGeometry {
 enum MarkdownPreviewOpenMode: String, CaseIterable, Identifiable {
     case edit
     case preview
+    case reading
+
+    static let defaultMode: Self = .preview
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .edit: return "Editor"
-        case .preview: return "Preview"
+        case .preview: return "Editor + Preview"
+        case .reading: return "Full-window Preview"
         }
     }
 
     var previewMode: ContentView.PreviewMode {
-        self == .preview ? .markdown : .none
+        self == .edit ? .none : .markdown
     }
 
     var presentsAsReadingView: Bool {
-        self == .preview
+        self == .reading
     }
 }
 
 enum MarkdownPreviewPresentationPolicy {
+    static func toggledPresentation(
+        previewIsActive: Bool,
+        selectedMode: MarkdownPreviewOpenMode
+    ) -> (previewMode: ContentView.PreviewMode, isReadingMode: Bool) {
+        previewIsActive
+            ? (.none, false)
+            : (.markdown, selectedMode.presentsAsReadingView)
+    }
+
     static func showsReadingView(
         isReadingMode: Bool,
         isMarkdownDocument: Bool,
@@ -130,7 +143,7 @@ extension ContentView {
             isMarkdownPreviewReadingMode = false
             return
         }
-        let openMode = MarkdownPreviewOpenMode(rawValue: markdownPreviewDefaultModeRaw) ?? .edit
+        let openMode = MarkdownPreviewOpenMode(rawValue: markdownPreviewDefaultModeRaw) ?? .defaultMode
         previewMode = openMode.previewMode
         isMarkdownPreviewReadingMode = openMode.presentsAsReadingView
     }

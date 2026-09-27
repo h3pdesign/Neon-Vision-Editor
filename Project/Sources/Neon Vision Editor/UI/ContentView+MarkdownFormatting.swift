@@ -75,12 +75,14 @@ enum MarkdownFormattingChromePolicy {
         brainDumpLayoutEnabled: Bool,
         isLoadingContent: Bool,
         findPresented: Bool,
-        findOccupiesEditorChrome: Bool
+        findOccupiesEditorChrome: Bool,
+        isReadingViewVisible: Bool = false
     ) -> Bool {
         isMarkdown
             && !isReadOnlyPreview
             && !brainDumpLayoutEnabled
             && !isLoadingContent
+            && !isReadingViewVisible
             && !(findPresented && findOccupiesEditorChrome)
     }
 
@@ -133,7 +135,8 @@ extension ContentView {
             brainDumpLayoutEnabled: brainDumpLayoutEnabled,
             isLoadingContent: viewModel.selectedTab?.isLoadingContent == true,
             findPresented: showFindReplace,
-            findOccupiesEditorChrome: findOccupiesEditorChrome
+            findOccupiesEditorChrome: findOccupiesEditorChrome,
+            isReadingViewVisible: isMarkdownPreviewReadingViewVisible
         )
     }
 

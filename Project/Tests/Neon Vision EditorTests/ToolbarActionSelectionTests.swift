@@ -205,11 +205,45 @@ final class ToolbarActionSelectionTests: XCTestCase {
         )
     }
 
-    func testMarkdownOpenModeMapsToEditorAndPreviewStates() {
+    func testMarkdownOpenModeDefaultsToSplitAndKeepsReadingOptIn() {
+        XCTAssertEqual(MarkdownPreviewOpenMode.defaultMode, .preview)
         XCTAssertEqual(MarkdownPreviewOpenMode.edit.previewMode, .none)
         XCTAssertFalse(MarkdownPreviewOpenMode.edit.presentsAsReadingView)
         XCTAssertEqual(MarkdownPreviewOpenMode.preview.previewMode, .markdown)
-        XCTAssertTrue(MarkdownPreviewOpenMode.preview.presentsAsReadingView)
+        XCTAssertFalse(MarkdownPreviewOpenMode.preview.presentsAsReadingView)
+        XCTAssertEqual(MarkdownPreviewOpenMode(rawValue: "preview"), .preview)
+        XCTAssertEqual(MarkdownPreviewOpenMode.reading.previewMode, .markdown)
+        XCTAssertTrue(MarkdownPreviewOpenMode.reading.presentsAsReadingView)
+    }
+
+    func testMarkdownPreviewToggleUsesChosenLayoutAndClosesEitherLayout() {
+        let split = MarkdownPreviewPresentationPolicy.toggledPresentation(
+            previewIsActive: false,
+            selectedMode: .preview
+        )
+        XCTAssertEqual(split.previewMode, .markdown)
+        XCTAssertFalse(split.isReadingMode)
+
+        let editorOnly = MarkdownPreviewPresentationPolicy.toggledPresentation(
+            previewIsActive: false,
+            selectedMode: .edit
+        )
+        XCTAssertEqual(editorOnly.previewMode, .markdown)
+        XCTAssertFalse(editorOnly.isReadingMode)
+
+        let reading = MarkdownPreviewPresentationPolicy.toggledPresentation(
+            previewIsActive: false,
+            selectedMode: .reading
+        )
+        XCTAssertEqual(reading.previewMode, .markdown)
+        XCTAssertTrue(reading.isReadingMode)
+
+        let closed = MarkdownPreviewPresentationPolicy.toggledPresentation(
+            previewIsActive: true,
+            selectedMode: .reading
+        )
+        XCTAssertEqual(closed.previewMode, .none)
+        XCTAssertFalse(closed.isReadingMode)
     }
 
     func testMarkdownReadingModeReplacesRatherThanSplitsTheEditor() {

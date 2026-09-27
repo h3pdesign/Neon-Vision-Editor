@@ -799,9 +799,13 @@ extension ContentView {
         guard let requestedMode = previewModeForCurrentDocument else { return }
 #if os(macOS)
         if isMarkdownPreviewDocument {
-            let openingReadingView = !isMarkdownPreviewReadingMode
-            isMarkdownPreviewReadingMode = openingReadingView
-            previewMode = openingReadingView ? .markdown : .none
+            let selectedMode = MarkdownPreviewOpenMode(rawValue: markdownPreviewDefaultModeRaw) ?? .defaultMode
+            let presentation = MarkdownPreviewPresentationPolicy.toggledPresentation(
+                previewIsActive: previewMode == .markdown,
+                selectedMode: selectedMode
+            )
+            isMarkdownPreviewReadingMode = presentation.isReadingMode
+            previewMode = presentation.previewMode
             return
         }
 #endif

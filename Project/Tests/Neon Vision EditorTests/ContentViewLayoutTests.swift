@@ -236,6 +236,20 @@ final class ContentViewLayoutTests: XCTestCase {
         )
     }
 
+    func testWholeWindowMarkdownReadingHidesEditingFormattingChrome() {
+        XCTAssertFalse(
+            MarkdownFormattingChromePolicy.shouldShow(
+                isMarkdown: true,
+                isReadOnlyPreview: false,
+                brainDumpLayoutEnabled: false,
+                isLoadingContent: false,
+                findPresented: false,
+                findOccupiesEditorChrome: false,
+                isReadingViewVisible: true
+            )
+        )
+    }
+
     func testCollapsedPhoneFormattingChromeOverlaysEditorWithoutReservingARow() {
         XCTAssertFalse(
             MarkdownFormattingChromePolicy.shouldReserveMobileFormattingRow(

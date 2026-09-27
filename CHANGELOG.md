@@ -6,6 +6,14 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Changes
+
+- Opens Markdown with the editor and preview side by side by default; full-window reading remains available as a Settings choice. The Markdown formatting toolbar stays with the editor rather than overlaying the full-window preview.
+
+### Fixes
+
+- Keeps pathological single-line files editable on iPhone and iPad with display-only segmented wrapping, including when No Wrap is selected. The saved text and copied selections retain their original bytes; ordinary formatted documents retain their chosen layout ([#595](https://github.com/h3pdesign/Neon-Vision-Editor/issues/595)).
+
 ## [v1.8.5] - 2026-09-26
 
 ### Why Upgrade

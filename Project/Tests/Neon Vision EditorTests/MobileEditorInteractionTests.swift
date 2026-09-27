@@ -157,11 +157,188 @@ final class MobileEditorInteractionTests: XCTestCase {
     }
 
     func testExtremelyLongUnicodeJSONBelowSyntaxCutoffRemainsResponsive() async throws {
-        try await assertLargeJSONInstallation("\"" + String(repeating: "😀", count: 500_000) + "\"")
+        try await assertLargeJSONInstallation(
+            "\"" + String(repeating: "😀", count: 500_000) + "\"",
+            exerciseEditing: true
+        )
     }
 
     func testExtremelyLongUnicodeJSONAboveSyntaxCutoffRemainsResponsive() async throws {
         try await assertLargeJSONInstallation("\"" + String(repeating: "😀", count: 650_000) + "\"")
+    }
+
+    func testSegmentedLargeLineMappingPreservesUnicodeAndOriginalBreaks() {
+        let source = "pre\u{2029}\n" + String(repeating: "x😀", count: 6_000) + "\rpost"
+        let segmented = SegmentedLargeLineText(source: source)
+        XCTAssertFalse(segmented.separatorOffsets.isEmpty)
+        let displayed = NSMutableString(string: segmented.display)
+        for offset in segmented.separatorOffsets.reversed() {
+            displayed.deleteCharacters(in: NSRange(location: offset, length: 1))
+        }
+        XCTAssertEqual(displayed as String, source)
+        for separator in segmented.separatorOffsets {
+            let raw = SegmentedLargeLineText.sourceOffset(separator, separators: segmented.separatorOffsets)
+            XCTAssertEqual(SegmentedLargeLineText.displayOffset(raw, separators: segmented.separatorOffsets), separator + 1)
+            XCTAssertEqual(SegmentedLargeLineText.sourceOffset(separator + 1, separators: segmented.separatorOffsets), raw)
+        }
+    }
+
+    func testSegmentedLargeLineEditorEditsAndCopiesRawText() throws {
+        // This is the actual ContentView path for the issue's x-emoji fixture;
+        // the legacy TextKit 1 editor is no longer selected for this document.
+        final class TextBox { var value: String; init(_ value: String) { self.value = value } }
+        let original = "\"" + String(repeating: "x😀", count: 500_000) + "\""
+        let box = TextBox(original)
+        let documentID = UUID()
+        var mutationCount = 0
+        let applyMutation: (EditorTextMutation) -> Void = { mutation in
+            XCTAssertEqual(mutation.documentID, documentID)
+            box.value = (box.value as NSString).replacingCharacters(in: mutation.range, with: mutation.replacement)
+            mutationCount += 1
+        }
+        var shortcutAction: EditorShortcutAction?
+        let binding = Binding<String>(get: { box.value }, set: { box.value = $0 })
+        let editor = SegmentedLargeLineEditor(
+            text: binding,
+            documentID: documentID,
+            documentResourceID: "segmented-test",
+            storedCaretLocation: nil,
+            colorScheme: .light,
+            formattingPreferences: EditorFormattingPreferences(
+                boldKeywords: false,
+                italicComments: false,
+                underlineLinks: false,
+                boldMarkdownHeadings: false
+            ),
+            ignoreBackgroundOverrides: false,
+            fontSize: 14,
+            isReadOnly: false,
+            showKeyboardAccessoryBar: false,
+            softwareKeyboardVisible: false,
+            onTextMutation: applyMutation,
+            onShortcutAction: { shortcutAction = $0 }
+        )
+        let openingProbe = OpeningProbe()
+        openingProbe.start()
+        let host = UIHostingController(rootView: editor)
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        host.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        openingProbe.stop()
+        XCTAssertLessThan(openingProbe.longestGap, 1.0)
+        func find(_ view: UIView) -> SegmentedLargeLineInputView? {
+            if let input = view as? SegmentedLargeLineInputView { return input }
+            return view.subviews.lazy.compactMap(find).first
+        }
+        let input = try XCTUnwrap(find(host.view))
+        XCTAssertNotNil(input.textLayoutManager)
+        let newTabCommand = try XCTUnwrap((input.keyCommands ?? []).first {
+            $0.input == "t" && $0.modifierFlags == .command
+        })
+        input.handleConfiguredAppShortcut(newTabCommand)
+        XCTAssertEqual(shortcutAction, .newTab)
+        XCTAssertGreaterThan(input.text.utf16.count, original.utf16.count)
+        XCTAssertEqual(input.accessibilityValue, original)
+        let started = ProcessInfo.processInfo.systemUptime
+        input.selectedRange = NSRange(location: 1, length: 0)
+        XCTAssertTrue(input.becomeFirstResponder())
+        input.insertText("z")
+        XCTAssertEqual((box.value as NSString).substring(to: 3), "\"zx")
+        XCTAssertEqual((box.value as NSString).length, (original as NSString).length + 1)
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime - started, 5)
+        let breakOffset = try XCTUnwrap(SegmentedLargeLineText(source: box.value).separatorOffsets.first)
+        let displayBeforeCopy = try XCTUnwrap(input.text)
+        let copyBreakIndex = String.Index(utf16Offset: breakOffset, in: displayBeforeCopy)
+        let copyRange = NSRange(
+            displayBeforeCopy.index(before: copyBreakIndex)..<displayBeforeCopy.index(copyBreakIndex, offsetBy: 2),
+            in: displayBeforeCopy
+        )
+        input.selectedRange = copyRange
+        input.copy(nil)
+        XCTAssertEqual(UIPasteboard.general.string, input.copiedSource?(copyRange))
+        let undoManager = try XCTUnwrap(input.undoManager)
+        XCTAssertTrue(undoManager.canUndo)
+        undoManager.undo()
+        XCTAssertEqual((box.value as NSString).length, (original as NSString).length)
+        XCTAssertGreaterThanOrEqual(mutationCount, 2)
+        XCTAssertEqual((box.value as NSString).substring(to: 2), "\"x")
+        input.selectedRange = NSRange(location: 1, length: 0)
+        let largeInsertion = String(repeating: "q😀", count: 10_000)
+        let insertionStart = ProcessInfo.processInfo.systemUptime
+        input.insertText(largeInsertion)
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime - insertionStart, 1.0)
+        XCTAssertEqual((box.value as NSString).length, (original as NSString).length + (largeInsertion as NSString).length)
+        XCTAssertNotNil(input.textLayoutManager)
+        XCTAssertGreaterThan(input.text.utf16.count - (box.value as NSString).length, 1)
+        undoManager.undo()
+        XCTAssertEqual((box.value as NSString).length, (original as NSString).length)
+        let initialBreak = try XCTUnwrap(SegmentedLargeLineText(source: box.value).separatorOffsets.first)
+        let displayBeforeCut = try XCTUnwrap(input.text)
+        let cutBreakIndex = String.Index(utf16Offset: initialBreak, in: displayBeforeCut)
+        let cutRange = NSRange(
+            displayBeforeCut.index(before: cutBreakIndex)..<displayBeforeCut.index(cutBreakIndex, offsetBy: 2),
+            in: displayBeforeCut
+        )
+        input.selectedRange = cutRange
+        let selectedSource = try XCTUnwrap(input.copiedSource?(cutRange))
+        let selectedLength = (selectedSource as NSString).length
+        input.cut(nil)
+        XCTAssertEqual((box.value as NSString).length, (original as NSString).length - selectedLength)
+        XCTAssertFalse(box.value.contains(SegmentedLargeLineText.separator))
+        XCTAssertEqual(UIPasteboard.general.string, selectedSource)
+        XCTAssertTrue(input.isFirstResponder)
+        XCTAssertEqual(input.selectedRange.length, 0)
+        input.paste(nil)
+        XCTAssertTrue(box.value == original, "Cut and paste across a display-only break must preserve original bytes")
+        let external = "external\n" + String(repeating: "x😀", count: 500_000)
+        box.value = external
+        host.rootView = SegmentedLargeLineEditor(
+            text: binding,
+            documentID: documentID,
+            documentResourceID: "segmented-external",
+            storedCaretLocation: nil,
+            colorScheme: .light,
+            formattingPreferences: EditorFormattingPreferences(
+                boldKeywords: false,
+                italicComments: false,
+                underlineLinks: false,
+                boldMarkdownHeadings: false
+            ),
+            ignoreBackgroundOverrides: false,
+            fontSize: 14,
+            isReadOnly: false,
+            showKeyboardAccessoryBar: false,
+            softwareKeyboardVisible: false,
+            onTextMutation: applyMutation,
+            onShortcutAction: nil
+        )
+        let reloadDeadline = Date().addingTimeInterval(2)
+        while !(find(host.view)?.accessibilityValue as? String ?? "").hasPrefix("external"), Date() < reloadDeadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.01))
+        }
+        let refreshed = try XCTUnwrap(find(host.view))
+        XCTAssertEqual((refreshed.accessibilityValue ?? "").prefix(8), "external")
+        XCTAssertEqual((refreshed.accessibilityValue ?? "").utf16.count, external.utf16.count)
+        XCTAssertNotNil(refreshed.textLayoutManager)
+    }
+
+    func testPathologicalGeneratedSwiftLineUsesSafetyWrap() async throws {
+        try await assertLargeJSONInstallation(
+            "//" + String(repeating: "W", count: 500_000),
+            language: "swift"
+        )
+    }
+
+    func testPathologicalUnicodeLineWithStandardOpenModeRemainsResponsive() async throws {
+        try await assertLargeJSONInstallation(
+            "\"" + String(repeating: "😀", count: 500_000) + "\"",
+            openMode: "standard"
+        )
     }
 
     func testOpeningProbeIncludesWorkBeforeFirstRunLoopTick() {
@@ -245,12 +422,18 @@ final class MobileEditorInteractionTests: XCTestCase {
         })
     }
 
-    private func assertLargeJSONInstallation(_ source: String, largeFileMode: Bool = false) async throws {
+    private func assertLargeJSONInstallation(
+        _ source: String,
+        largeFileMode: Bool = false,
+        language: String = "json",
+        openMode: String = "deferred",
+        exerciseEditing: Bool = false
+    ) async throws {
         executionTimeAllowance = 60
         let defaults = UserDefaults.standard
         let key = "SettingsLargeFileOpenMode"
         let previous = defaults.object(forKey: key)
-        defaults.set("deferred", forKey: key)
+        defaults.set(openMode, forKey: key)
         defer {
             if let previous { defaults.set(previous, forKey: key) }
             else { defaults.removeObject(forKey: key) }
@@ -259,7 +442,7 @@ final class MobileEditorInteractionTests: XCTestCase {
         probe.start()
         defer { probe.stop() }
         // Ordinary multi-megabyte documents do not use the 100 MB large-file flag.
-        let host = UIHostingController(rootView: editor(source, language: "json", isLargeFileMode: largeFileMode))
+        let host = UIHostingController(rootView: editor(source, language: language, isLargeFileMode: largeFileMode))
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let window = UIWindow(windowScene: scene)
         window.frame = scene.coordinateSpace.bounds
@@ -308,8 +491,31 @@ final class MobileEditorInteractionTests: XCTestCase {
         XCTAssertTrue(container.textView.text == source, "The complete document must survive chunk installation")
         XCTAssertTrue(container.textView.isEditable)
         XCTAssertFalse(container.textView.isFirstResponder)
+        if shouldUseMobileSafetyWrap(text: source as NSString, requestedWrap: false) {
+            XCTAssertEqual(container.textView.textContainer.lineBreakMode, .byCharWrapping)
+            XCTAssertTrue(container.textView.textContainer.widthTracksTextView)
+            XCTAssertFalse(container.horizontalScrollView.isScrollEnabled)
+            XCTAssertFalse((container.textView.accessibilityHint ?? "").isEmpty)
+        }
         XCTAssertLessThan(probe.elapsed, 30, "Presentation, installation and delayed layout must finish")
         XCTAssertLessThan(probe.longestGap, 1.0, "The entire opening interval must yield to the main run loop")
+        if exerciseEditing {
+            let editingStart = ProcessInfo.processInfo.systemUptime
+            container.textView.selectedRange = NSRange(location: 1, length: 0)
+            XCTAssertTrue(container.textView.becomeFirstResponder())
+            container.textView.insertText("x")
+            XCTAssertEqual(container.textView.textStorage.length, expectedLength + 1)
+            let undoManager = try XCTUnwrap(container.textView.undoManager)
+            XCTAssertTrue(undoManager.canUndo)
+            undoManager.undo()
+            XCTAssertEqual(container.textView.text, source)
+            undoManager.redo()
+            XCTAssertEqual(container.textView.textStorage.length, expectedLength + 1)
+            XCTAssertLessThan(
+                ProcessInfo.processInfo.systemUptime - editingStart, 5,
+                "Selection, focus, insertion and undo/redo must remain interactive"
+            )
+        }
     }
 
     @MainActor

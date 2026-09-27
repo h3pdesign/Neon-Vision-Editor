@@ -339,8 +339,23 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
                 text: minified
             )
         )
+        let belowSyntaxCutoff = NSString(string: "\"" + String(repeating: "😀", count: 500_000) + "\"")
+        XCTAssertLessThan(belowSyntaxCutoff.length, EditorRuntimeLimits.syntaxMinimalUTF16Length)
+        XCTAssertTrue(shouldUseChunkedLargeFileInstall(
+            isLargeFileMode: false,
+            textLength: belowSyntaxCutoff.length,
+            language: "json",
+            text: belowSyntaxCutoff
+        ))
+        let formatted = NSString(string: String(repeating: "{\"value\":1}\n", count: 90_000))
+        XCTAssertFalse(shouldUseChunkedLargeFileInstall(
+            isLargeFileMode: false,
+            textLength: formatted.length,
+            language: "json",
+            text: formatted
+        ))
         defaults.set("standard", forKey: key)
-        XCTAssertFalse(
+        XCTAssertTrue(
             shouldUseChunkedLargeFileInstall(
                 isLargeFileMode: false,
                 textLength: minified.length,
@@ -348,6 +363,26 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
                 text: minified
             )
         )
+        XCTAssertFalse(shouldUseChunkedLargeFileInstall(
+            isLargeFileMode: false,
+            textLength: formatted.length,
+            language: "json",
+            text: formatted
+        ))
+    }
+
+    func testMobileSafetyWrapTargetsPathologicalLinesWithoutChangingDocumentText() {
+        let unicode = NSString(string: "\"" + String(repeating: "😀", count: 500_000) + "\"")
+        XCTAssertTrue(shouldUseMobileSafetyWrap(text: unicode, requestedWrap: false))
+        XCTAssertFalse(shouldUseMobileSafetyWrap(text: unicode, requestedWrap: true))
+
+        let formatted = NSString(string: String(repeating: "{\"value\":1}\n", count: 90_000))
+        XCTAssertFalse(shouldUseMobileSafetyWrap(text: formatted, requestedWrap: false))
+
+        let laterLongLine = NSString(string: String(repeating: "short\n", count: 70_000)
+            + String(repeating: "😀", count: 40_000))
+        XCTAssertTrue(shouldUseMobileSafetyWrap(text: laterLongLine, requestedWrap: false))
+        XCTAssertEqual(unicode.length, 1_000_002)
     }
 
     func testNewProjectAndInfrastructureSyntaxesHavePatterns() {

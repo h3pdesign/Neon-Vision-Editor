@@ -6,15 +6,35 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
-### Changes
+### Why Upgrade
 
-- Opens Markdown with the editor and preview side by side by default; full-window reading remains available as a Settings choice. The Markdown formatting toolbar stays with the editor rather than overlaying the full-window preview.
+- Edit unusually long generated lines on iPhone and iPad without changing the saved text.
+- Work with Markdown source and rendered preview side by side again.
+- Rearrange macOS document tabs without opening the dragged document first.
+
+### Highlights
+
+- Restores side-by-side Markdown editing and preview as the default; full-window reading remains a Settings option.
 
 ### Fixes
 
 - Keeps pathological single-line files editable on iPhone and iPad with display-only segmented wrapping, including when No Wrap is selected. The saved text and copied selections retain their original bytes; ordinary formatted documents retain their chosen layout ([#595](https://github.com/h3pdesign/Neon-Vision-Editor/issues/595)).
 
-- Makes macOS document-tab dragging responsive by deferring editor activation until a click completes and accepting reorder drops across tab gaps and strip edges ([#632](https://github.com/h3pdesign/Neon-Vision-Editor/issues/632)). Native macOS window tabs remain a separate, future change ([#621](https://github.com/h3pdesign/Neon-Vision-Editor/issues/621)).
+- Keeps the Markdown formatting toolbar with the editor instead of overlaying full-window reading.
+
+- Defers macOS document-tab activation until a click completes, allowing a drag to start without switching editors; accepts reorder drops across tab gaps and strip edges ([#632](https://github.com/h3pdesign/Neon-Vision-Editor/issues/632)). Native macOS window tabs remain a separate, future change ([#621](https://github.com/h3pdesign/Neon-Vision-Editor/issues/621)).
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No document migration is required. Full-window Markdown reading remains available in Settings.
+
+### Maintenance
+
+- Advances the development build to 1061; release preparation allocates the final build from the live Xcode Cloud counter.
 
 ## [v1.8.5] - 2026-09-26
 

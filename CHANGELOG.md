@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.8.6] - 2026-09-27
+
 ### Why Upgrade
 
 - Edit unusually long generated lines on iPhone and iPad without changing the saved text.

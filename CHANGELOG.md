@@ -6,6 +6,10 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixes
+
+- Makes macOS document-tab dragging responsive by deferring editor activation until a click completes and accepting reorder drops across tab gaps and strip edges ([#632](https://github.com/h3pdesign/Neon-Vision-Editor/issues/632)). Native macOS window tabs remain a separate, future change ([#621](https://github.com/h3pdesign/Neon-Vision-Editor/issues/621)).
+
 ## [v1.8.5] - 2026-09-26
 
 ### Why Upgrade

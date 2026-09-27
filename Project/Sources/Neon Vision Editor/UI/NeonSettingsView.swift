@@ -290,7 +290,7 @@ struct NeonSettingsView: View {
     @AppStorage("MarkdownPreviewBackgroundStyle") private var markdownPreviewBackgroundStyleRaw: String = "automatic"
     @AppStorage("MarkdownPreviewDialect") private var markdownPreviewDialectRaw: String = ContentView.MarkdownPreviewDialect.gfm.rawValue
 #if os(macOS)
-    @AppStorage(SettingsPreferenceKey.markdownPreviewDefaultMode) private var markdownPreviewDefaultModeRaw: String = MarkdownPreviewOpenMode.edit.rawValue
+    @AppStorage(SettingsPreferenceKey.markdownPreviewDefaultMode) private var markdownPreviewDefaultModeRaw: String = MarkdownPreviewOpenMode.defaultMode.rawValue
     @AppStorage("DetachedMarkdownPreviewUsesQuickLookTransparency") private var detachedMarkdownPreviewUsesQuickLookTransparency: Bool = false
 #endif
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewEnabled) private var markdownProjectPreviewEnabled: Bool = true
@@ -4247,7 +4247,7 @@ struct NeonSettingsView: View {
                 }
             }
             .accessibilityLabel("Default Markdown opening mode")
-            .accessibilityHint("Choose whether Markdown files open in the editor or rendered preview. Switch modes from the toolbar or with Command-Shift-P on Mac.")
+            .accessibilityHint("Choose editor only, side-by-side preview, or full-window reading. The preview button and Command-Shift-P use the selected layout on Mac.")
 #endif
 
             Toggle("Sync preview with editor scrolling", isOn: $markdownPreviewSynchronousScroll)

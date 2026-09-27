@@ -1059,7 +1059,7 @@ struct ContentView: View {
     @AppStorage("MarkdownPreviewBackgroundStyle") var markdownPreviewBackgroundStyleRaw: String = "automatic"
     @AppStorage("MarkdownPreviewDialect") var markdownPreviewDialectRaw: String = ContentView.MarkdownPreviewDialect.gfm.rawValue
 #if os(macOS)
-    @AppStorage(SettingsPreferenceKey.markdownPreviewDefaultMode) var markdownPreviewDefaultModeRaw: String = MarkdownPreviewOpenMode.edit.rawValue
+    @AppStorage(SettingsPreferenceKey.markdownPreviewDefaultMode) var markdownPreviewDefaultModeRaw: String = MarkdownPreviewOpenMode.defaultMode.rawValue
 #endif
     @AppStorage(SettingsPreferenceKey.markdownPreviewSynchronousScroll) var markdownPreviewSynchronousScroll: Bool = false
     @State var markdownPreviewEditorScrollFraction: CGFloat?
@@ -4943,7 +4943,23 @@ struct ContentView: View {
             // iOS text editor can install and display their complete contents.
             return .constant("")
         }()
-        return CustomTextEditor(
+        let handleMobileMutation: (EditorTextMutation) -> Void = { mutation in
+            if let viewport = mutation.viewport {
+                viewModel.applyTabContentEdit(
+                    tabID: mutation.documentID,
+                    viewport: viewport,
+                    range: mutation.range,
+                    replacement: mutation.replacement
+                )
+            } else {
+                viewModel.applyTabContentEdit(
+                    tabID: mutation.documentID,
+                    range: mutation.range,
+                    replacement: mutation.replacement
+                )
+            }
+        }
+        let standardEditor = CustomTextEditor(
             text: editorTextBinding,
             document: tab?.document,
 
@@ -4990,26 +5006,43 @@ struct ContentView: View {
             onFontSizeChange: { fontSize in
                 setEditorFontSize(Double(fontSize))
             },
-            onTextMutation: { mutation in
-                if let viewport = mutation.viewport {
-                    viewModel.applyTabContentEdit(
-                        tabID: mutation.documentID,
-                        viewport: viewport,
-                        range: mutation.range,
-                        replacement: mutation.replacement
-                    )
-                } else {
-                    viewModel.applyTabContentEdit(
-                        tabID: mutation.documentID,
-                        range: mutation.range,
-                        replacement: mutation.replacement
-                    )
-                }
-            },
+            onTextMutation: handleMobileMutation,
             onShortcutAction: { performConfiguredAppShortcut($0) }
         )
+#if os(iOS)
+        return Group {
+            if shouldUseMobileSafetyWrap(text: editorTextBinding.wrappedValue as NSString, requestedWrap: false) {
+                SegmentedLargeLineEditor(
+                    text: editorTextBinding,
+                    documentID: tabID,
+                    documentResourceID: documentResourceID(for: tabID),
+                    storedCaretLocation: storedCaretLocation(for: tabID),
+                    colorScheme: effectiveEditorColorScheme,
+                    formattingPreferences: EditorFormattingPreferences(
+                        boldKeywords: settingsThemeBoldKeywords,
+                        italicComments: settingsThemeItalicComments,
+                        underlineLinks: settingsThemeUnderlineLinks,
+                        boldMarkdownHeadings: settingsThemeBoldMarkdownHeadings
+                    ),
+                    ignoreBackgroundOverrides: visionOSSystemGlassEnabled,
+                    fontSize: editorFontSize,
+                    isReadOnly: isReadOnly,
+                    showKeyboardAccessoryBar: showKeyboardAccessoryBarIOS,
+                    softwareKeyboardVisible: isPhoneSoftwareKeyboardVisible,
+                    onTextMutation: handleMobileMutation,
+                    onShortcutAction: { performConfiguredAppShortcut($0) }
+                )
+            } else {
+                standardEditor
+            }
+        }
         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
+#else
+        return standardEditor
+            .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+#endif
 #endif
     }
 

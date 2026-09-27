@@ -138,7 +138,7 @@ enum EditorLargeTextFormatting {
     }
 }
 
-final class EditorInputTextView: UITextView {
+class EditorInputTextView: UITextView {
     static let keyboardToolbarHeight: CGFloat = 46
     var onConfiguredAppShortcut: ((EditorShortcutAction) -> Void)?
     private struct NoWrapWidthCache {
@@ -157,6 +157,7 @@ final class EditorInputTextView: UITextView {
     private var isVimInsertMode: Bool = true
     private var pendingDeleteCurrentLineCommand = false
     private var preferredShouldWrapText: Bool = true
+    private var preferredLineBreakMode: NSLineBreakMode = .byWordWrapping
     weak var editorContainer: LineNumberedTextViewContainer?
     private var preferredTextContainerWidth: CGFloat = 0
     private var textMetricsRevision = 0
@@ -979,14 +980,19 @@ final class EditorInputTextView: UITextView {
         }
     }
 
-    func rememberPreferredWrapLayout(shouldWrapText: Bool, containerWidth: CGFloat) {
+    func rememberPreferredWrapLayout(
+        shouldWrapText: Bool,
+        containerWidth: CGFloat,
+        lineBreakMode: NSLineBreakMode? = nil
+    ) {
         preferredShouldWrapText = shouldWrapText
+        preferredLineBreakMode = lineBreakMode ?? (shouldWrapText ? .byWordWrapping : .byClipping)
         preferredTextContainerWidth = containerWidth
         enforcePreferredWrapLayout()
     }
 
     private func enforcePreferredWrapLayout(preservingContentOffset: Bool = false) {
-        let desiredLineBreakMode: NSLineBreakMode = preferredShouldWrapText ? .byWordWrapping : .byClipping
+        let desiredLineBreakMode = preferredLineBreakMode
         let visibleWidth = max(1, editorViewport.width - textContainerInset.left - textContainerInset.right)
         let targetWidth = preferredShouldWrapText ? visibleWidth : max(preferredTextContainerWidth, visibleWidth)
         let priorOffset = preservingContentOffset ? contentOffset : nil
@@ -1401,7 +1407,7 @@ extension EditorInputTextView {
     }
 
     private func drawMatchingBracketHighlights() {
-        guard !matchingBracketHighlightRanges.isEmpty, textStorage.length <= 250_000 else { return }
+        guard textStorage.length <= 250_000, !matchingBracketHighlightRanges.isEmpty else { return }
         layoutManager.ensureLayout(for: textContainer)
         let textLength = textStorage.length
         let fillColor = UIColor.systemOrange.withAlphaComponent(0.24)
@@ -1814,7 +1820,7 @@ final class LineNumberGutterView: UIView {
 
 final class LineNumberedTextViewContainer: UIView, UIScrollViewDelegate {
     let lineNumberView = LineNumberGutterView()
-    let textView = EditorInputTextView()
+    let textView: EditorInputTextView
     let horizontalScrollView = UIScrollView()
     private var textCanvasWidthConstraint: NSLayoutConstraint?
     private var wrapsText = true
@@ -1834,13 +1840,27 @@ final class LineNumberedTextViewContainer: UIView, UIScrollViewDelegate {
 #endif
 
     override init(frame: CGRect) {
+        textView = EditorInputTextView()
         super.init(frame: frame)
         configureViews()
     }
 
+    init(textView: EditorInputTextView) {
+        self.textView = textView
+        super.init(frame: .zero)
+        configureViews()
+    }
+
     required init?(coder: NSCoder) {
+        textView = EditorInputTextView()
         super.init(coder: coder)
         configureViews()
+    }
+
+    func hideSyntheticLineGutter() {
+        lineNumberView.isHidden = true
+        divider.isHidden = true
+        lineNumberWidthConstraint?.constant = 0
     }
 
     private func configureViews() {
@@ -2244,7 +2264,12 @@ struct CustomTextEditor: UIViewRepresentable {
         recomputeNoWrapWidth: Bool = false,
         knownNoWrapVisualColumns: Int? = nil
     ) {
-        let desiredLineBreakMode: NSLineBreakMode = shouldWrapText ? .byWordWrapping : .byClipping
+        let desiredLineBreakMode: NSLineBreakMode = shouldWrapText
+            ? (isLineWrapEnabled ? .byWordWrapping : .byCharWrapping)
+            : .byClipping
+        textView.accessibilityHint = shouldWrapText && !isLineWrapEnabled
+            ? NSLocalizedString("Long lines wrap automatically to keep editing responsive.", comment: "Editor safety wrap accessibility hint")
+            : nil
         let visibleWidth = max(1, textView.editorViewport.width - textView.textContainerInset.left - textView.textContainerInset.right)
         let targetContainerWidth: CGFloat
         if shouldWrapText {
@@ -2290,7 +2315,8 @@ struct CustomTextEditor: UIViewRepresentable {
         guard needsUpdate else {
             (textView as? EditorInputTextView)?.rememberPreferredWrapLayout(
                 shouldWrapText: shouldWrapText,
-                containerWidth: targetContainerWidth
+                containerWidth: targetContainerWidth,
+                lineBreakMode: desiredLineBreakMode
             )
             return
         }
@@ -2301,7 +2327,8 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.textContainer.size = targetContainerSize
         (textView as? EditorInputTextView)?.rememberPreferredWrapLayout(
             shouldWrapText: shouldWrapText,
-            containerWidth: targetContainerWidth
+            containerWidth: targetContainerWidth,
+            lineBreakMode: desiredLineBreakMode
         )
         if textView.textStorage.length <= 300_000 {
             textView.layoutManager.ensureLayout(for: textView.textContainer)
@@ -2374,6 +2401,13 @@ struct CustomTextEditor: UIViewRepresentable {
         // canvas. Long lines expand the cached width from their measured glyph
         // advances as soon as they need more room.
         return visibleWidth
+    }
+
+    private func shouldWrapText(for source: String) -> Bool {
+        isLineWrapEnabled || shouldUseMobileSafetyWrap(
+            text: source as NSString,
+            requestedWrap: isLineWrapEnabled
+        )
     }
 
     func makeUIView(context: Context) -> LineNumberedTextViewContainer {
@@ -2455,10 +2489,9 @@ struct CustomTextEditor: UIViewRepresentable {
         textView.installPencilInputIfNeeded()
 #endif
         context.coordinator.installFontSizePinchRecognizer(on: textView)
-        // Performance mode may defer expensive secondary features, but it must
-        // not override the user's explicit editor layout preference. TextKit's
-        // noncontiguous layout keeps wrapping viewport-bounded for large text.
-        let shouldWrapText = isLineWrapEnabled
+        // A pathological logical line overrides No Wrap on mobile so TextKit
+        // cannot monopolize the main thread while shaping the entire line.
+        let shouldWrapText = shouldWrapText(for: text)
         applyWrapMode(shouldWrapText, textView: textView, preserveOffset: false, recomputeNoWrapWidth: true)
         context.coordinator.lastShouldWrapText = shouldWrapText
 
@@ -2476,7 +2509,9 @@ struct CustomTextEditor: UIViewRepresentable {
             language: language,
             text: text as NSString
         ) {
+            context.coordinator.largeTextInstallTarget = text
             DispatchQueue.main.async {
+                guard context.coordinator.largeTextInstallTarget == text else { return }
                 _ = context.coordinator.installLargeTextIfNeeded(
                     on: textView,
                     target: text,
@@ -2534,7 +2569,7 @@ struct CustomTextEditor: UIViewRepresentable {
             !didFinishTabLoad &&
             !didReceiveExternalEdit &&
             !context.coordinator.hasPendingBindingSync
-        if textView.text != text {
+        if textView.text != text && context.coordinator.largeTextInstallTarget != text {
             if !shouldSkipLargeFileResync {
                 let shouldPreferEditorBuffer =
                     textView.isFirstResponder &&
@@ -2642,8 +2677,12 @@ struct CustomTextEditor: UIViewRepresentable {
             uiView.setSoftwareKeyboardVisible(softwareKeyboardVisible)
         }
 #endif
-        let shouldWrapText = isLineWrapEnabled
-        let didChangeWrapMode = context.coordinator.lastShouldWrapText != shouldWrapText
+        let shouldWrapText = shouldWrapText(for: text)
+        let desiredLineBreakMode: NSLineBreakMode = shouldWrapText
+            ? (isLineWrapEnabled ? .byWordWrapping : .byCharWrapping)
+            : .byClipping
+        let didChangeWrapMode = context.coordinator.lastShouldWrapText != shouldWrapText ||
+            textView.textContainer.lineBreakMode != desiredLineBreakMode
         if !isInteractivePhoneEditing || didChangeWrapMode {
             applyWrapMode(
                 shouldWrapText,
@@ -2721,10 +2760,11 @@ struct CustomTextEditor: UIViewRepresentable {
         private var pendingTextMutation: (range: NSRange, replacement: String)?
         private var pendingEditedRange: NSRange?
         fileprivate var isInstallingLargeText = false
+        fileprivate var largeTextInstallTarget: String?
         private var largeTextInstallGeneration: Int = 0
         private var largeTextWidthTask: Task<Void, Never>?
         var hasPendingLargeTextWork: Bool {
-            isInstallingLargeText || largeTextWidthTask != nil
+            largeTextInstallTarget != nil || isInstallingLargeText || largeTextWidthTask != nil
         }
         private var lastHighlightedText: String = ""
         private var lastLanguage: String?
@@ -2858,6 +2898,7 @@ struct CustomTextEditor: UIViewRepresentable {
             selectionUpdateGeneration &+= 1
             largeTextInstallGeneration &+= 1
             isInstallingLargeText = false
+            largeTextInstallTarget = nil
         }
 
         private func currentViewportAnchor(textLength: Int, language: String) -> Int {
@@ -2916,8 +2957,6 @@ struct CustomTextEditor: UIViewRepresentable {
             preserveViewport: Bool = true,
             restoredCaretLocation: Int? = nil
         ) -> Bool {
-            let openMode = currentLargeFileOpenMode()
-            guard openMode != .standard else { return false }
             let targetLength = (target as NSString).length
             guard shouldUseChunkedLargeFileInstall(
                 isLargeFileMode: parent.isLargeFileMode,
@@ -2931,6 +2970,7 @@ struct CustomTextEditor: UIViewRepresentable {
             largeTextWidthTask?.cancel()
             largeTextWidthTask = nil
             isInstallingLargeText = true
+            largeTextInstallTarget = target
             cancelPendingHighlight()
 
             let previousSelection = textView.selectedRange
@@ -2957,15 +2997,17 @@ struct CustomTextEditor: UIViewRepresentable {
                       self.parent.documentResourceID == installDocumentResourceID else {
                     if generation == self.largeTextInstallGeneration {
                         self.isInstallingLargeText = false
+                        self.largeTextInstallTarget = nil
                     }
                     return
                 }
                 let remaining = targetLength - location
                 guard remaining > 0 else {
                     self.isInstallingLargeText = false
+                    self.largeTextInstallTarget = nil
                     textView.invalidateTextMetrics()
                     maximumVisualColumns = max(maximumVisualColumns, currentVisualColumn)
-                    if !parent.isLineWrapEnabled {
+                    if !parent.shouldWrapText(for: target) {
                         parent.applyWrapMode(
                             false,
                             textView: textView,
@@ -2991,7 +3033,7 @@ struct CustomTextEditor: UIViewRepresentable {
                     }
                     self.updateCaretStatus()
                     self.scheduleHighlightIfNeeded(currentText: target, immediate: true)
-                    guard !parent.isLineWrapEnabled else { return }
+                    guard !parent.shouldWrapText(for: target) else { return }
                     // Measuring a multi-megabyte unwrapped line is expensive too.
                     // Finish horizontal sizing off-thread after the text is usable.
                     let fontName = textView.font?.fontName ?? ""
@@ -3530,7 +3572,10 @@ struct CustomTextEditor: UIViewRepresentable {
             let selectionLocation = textView.selectedRange.location
             let textLength = (text as NSString).length
             let nsText = text as NSString
-            if shouldSuppressGeneratedFileSyntaxHighlighting(text: nsText, language: lang) {
+            // Styling any range in one enormous paragraph makes TextKit 1
+            // invalidate and synchronously lay out the whole paragraph.
+            if shouldUseMobileSafetyWrap(text: nsText, requestedWrap: false) ||
+                shouldSuppressGeneratedFileSyntaxHighlighting(text: nsText, language: lang) {
                 lastHighlightedText = text
                 lastLanguage = lang
                 lastColorScheme = scheme
@@ -3586,7 +3631,7 @@ struct CustomTextEditor: UIViewRepresentable {
             let selectionOnlyChange = text == lastHighlightedText &&
                 styleStateUnchanged &&
                 lastSelectionLocation != selectionLocation
-            if selectionOnlyChange && parent.isLineWrapEnabled {
+            if selectionOnlyChange && textView.textContainer.lineBreakMode != .byClipping {
                 cancelPendingHighlight()
                 updateMatchingBracketOverlay(textView: textView, text: nsText, selectionLocation: selectionLocation)
                 lastSelectionLocation = selectionLocation
@@ -3939,8 +3984,9 @@ struct CustomTextEditor: UIViewRepresentable {
                 let suppressLargeFileExtras = self.parent.isLargeFileMode
                 let scopeGuideVisualsSupported = supportsScopeGuideVisuals(language: self.parent.language)
                 let wantsBracketTokens = self.parent.highlightMatchingBrackets && !suppressLargeFileExtras
-                let wantsScopeBackground = self.parent.highlightScopeBackground && !suppressLargeFileExtras && !self.parent.isLineWrapEnabled && scopeGuideVisualsSupported
-                let wantsScopeGuides = self.parent.showScopeGuides && !suppressLargeFileExtras && !self.parent.isLineWrapEnabled && scopeGuideVisualsSupported
+                let usesWrapLayout = textView.textContainer.lineBreakMode != .byClipping
+                let wantsScopeBackground = self.parent.highlightScopeBackground && !suppressLargeFileExtras && !usesWrapLayout && scopeGuideVisualsSupported
+                let wantsScopeGuides = self.parent.showScopeGuides && !suppressLargeFileExtras && !usesWrapLayout && scopeGuideVisualsSupported
                 let needsScopeComputation = (wantsBracketTokens || wantsScopeBackground || wantsScopeGuides)
                     && fullRange.length < EditorRuntimeLimits.scopeComputationMaxUTF16Length
                 let bracketMatch = needsScopeComputation ? computeBracketScopeMatch(text: text, caretLocation: selectedRange.location) : nil

@@ -8,6 +8,10 @@ enum EditorRuntimeLimits {
     nonisolated static let maximumSyntaxPassUTF16Length = 16_384
     // Above this, keep editing responsive by skipping regex-heavy syntax passes.
     static let syntaxMinimalUTF16Length = 1_200_000
+    // Single-line generated text can block TextKit installation well before
+    // syntax highlighting reaches its own minimal-mode cutoff.
+    nonisolated static let generatedChunkInstallUTF16Length = 400_000
+    nonisolated static let mobileSafetyWrapLineUTF16Length = 65_536
     // HTML uses a bounded visible-range scanner, so it can keep structural
     // highlighting responsive well beyond the generic minimal-syntax cutoff.
     static let htmlResponsiveSyntaxUTF16Length = 8_000_000
@@ -298,9 +302,18 @@ func shouldUseChunkedLargeFileInstall(
     language: String? = nil,
     text: NSString? = nil
 ) -> Bool {
-    guard currentLargeFileOpenMode() != .standard,
-          textLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length else { return false }
-    if isLargeFileMode { return true }
+    // The safety path takes precedence over the user's ordinary open mode:
+    // a synchronous install of this line can block for tens of seconds.
+    if textLength >= EditorRuntimeLimits.generatedChunkInstallUTF16Length,
+       let text,
+       shouldUseMobileSafetyWrap(text: text, requestedWrap: false) {
+        return true
+    }
+    guard currentLargeFileOpenMode() != .standard else { return false }
+    if isLargeFileMode {
+        return textLength >= EditorRuntimeLimits.syntaxMinimalUTF16Length
+    }
+    guard textLength >= EditorRuntimeLimits.generatedChunkInstallUTF16Length else { return false }
     guard let language, let text else { return false }
     // Generated/minified documents can be multi-megabyte single-line payloads
     // without being classified as explicit large-file mode. They still need
@@ -308,6 +321,30 @@ func shouldUseChunkedLargeFileInstall(
     // measurement synchronously during the first frame.
     return shouldSuppressGeneratedFileSyntaxHighlighting(text: text, language: language)
         || isLikelyGeneratedOrMinifiedSyntaxText(text)
+}
+
+/// TextKit 1 lays out an entire unwrapped logical line even with noncontiguous
+/// layout enabled. A pathological line must use viewport-width wrapping on
+/// mobile so opening remains interactive without changing the document text.
+nonisolated func shouldUseMobileSafetyWrap(
+    text: NSString,
+    requestedWrap: Bool
+) -> Bool {
+    guard !requestedWrap,
+          text.length >= EditorRuntimeLimits.generatedChunkInstallUTF16Length else { return false }
+    var lineLength = 0
+    for codeUnit in (text as String).utf16 {
+        switch codeUnit {
+        case 10, 13:
+            lineLength = 0
+        default:
+            lineLength += 1
+            if lineLength >= EditorRuntimeLimits.mobileSafetyWrapLineUTF16Length {
+                return true
+            }
+        }
+    }
+    return false
 }
 
 func editorCaretLineColumn(in text: NSString, location rawLocation: Int) -> (line: Int, column: Int) {

@@ -79,6 +79,111 @@ final class MacNativeFileTabBarTests: XCTestCase {
         XCTAssertFalse(tabItem.mouseDownCanMoveWindow)
     }
 
+    func testMouseDownDoesNotActivateAnInactiveTabBeforeDragCanBegin() throws {
+        let selectedID = UUID()
+        let draggedID = UUID()
+        let view = MacNativeFileTabBarView(frame: NSRect(x: 0, y: 0, width: 600, height: 42))
+        view.apply(
+            tabs: [snapshot(id: selectedID, title: "Selected"), snapshot(id: draggedID, title: "Drag me")],
+            selectedTabID: selectedID
+        )
+        let draggedTab = try XCTUnwrap(view.descendants.first {
+            NSStringFromClass(type(of: $0)).contains("MacNativeFileTabItemView")
+                && $0.accessibilityLabel() == "Drag me, local document"
+        })
+        let down = try XCTUnwrap(NSEvent.mouseEvent(
+            with: .leftMouseDown, location: .zero, modifierFlags: [], timestamp: 0,
+            windowNumber: 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 1
+        ))
+        let up = try XCTUnwrap(NSEvent.mouseEvent(
+            with: .leftMouseUp, location: .zero, modifierFlags: [], timestamp: 0,
+            windowNumber: 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 1
+        ))
+        var selected: [UUID] = []
+        view.onSelect = {
+            selected.append($0)
+            Thread.sleep(forTimeInterval: 0.2) // Simulate an editor activation on a slow document.
+        }
+
+        let mouseDownStart = ProcessInfo.processInfo.systemUptime
+        draggedTab.mouseDown(with: down)
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime - mouseDownStart, 0.1)
+        XCTAssertTrue(selected.isEmpty, "Starting a drag must not synchronously activate another document")
+        draggedTab.mouseUp(with: up)
+        XCTAssertEqual(selected, [draggedID], "A completed click still selects the tab")
+    }
+
+    func testSelectedTabClickIsNotReloadedAndDoubleClickStillCloses() throws {
+        let selectedID = UUID()
+        let otherID = UUID()
+        let view = MacNativeFileTabBarView(frame: NSRect(x: 0, y: 0, width: 600, height: 42))
+        view.apply(
+            tabs: [snapshot(id: selectedID, title: "Selected"), snapshot(id: otherID, title: "Other")],
+            selectedTabID: selectedID
+        )
+        let selectedTab = try XCTUnwrap(view.descendants.first {
+            NSStringFromClass(type(of: $0)).contains("MacNativeFileTabItemView")
+                && $0.accessibilityLabel() == "Selected, local document"
+        })
+        let otherTab = try XCTUnwrap(view.descendants.first {
+            NSStringFromClass(type(of: $0)).contains("MacNativeFileTabItemView")
+                && $0.accessibilityLabel() == "Other, local document"
+        })
+        let down = try XCTUnwrap(NSEvent.mouseEvent(
+            with: .leftMouseDown, location: .zero, modifierFlags: [], timestamp: 0,
+            windowNumber: 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 1
+        ))
+        let up = try XCTUnwrap(NSEvent.mouseEvent(
+            with: .leftMouseUp, location: .zero, modifierFlags: [], timestamp: 0,
+            windowNumber: 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 1
+        ))
+        let doubleDown = try XCTUnwrap(NSEvent.mouseEvent(
+            with: .leftMouseDown, location: .zero, modifierFlags: [], timestamp: 0,
+            windowNumber: 0, context: nil, eventNumber: 0, clickCount: 2, pressure: 1
+        ))
+        var selections: [UUID] = []
+        var closed: [UUID] = []
+        view.onSelect = { selections.append($0) }
+        view.onClose = { closed.append($0) }
+
+        selectedTab.mouseDown(with: down)
+        selectedTab.mouseUp(with: up)
+        XCTAssertTrue(selections.isEmpty)
+        otherTab.mouseDown(with: doubleDown)
+        XCTAssertEqual(closed, [otherID])
+        XCTAssertTrue(selections.isEmpty)
+    }
+
+    func testWholeTabStripAcceptsDropsIncludingGapsAndTrailingSpace() throws {
+        let firstID = UUID()
+        let secondID = UUID()
+        let view = MacNativeFileTabBarView(frame: NSRect(x: 0, y: 0, width: 700, height: 42))
+        view.apply(
+            tabs: [snapshot(id: firstID, title: "One"), snapshot(id: secondID, title: "Two")],
+            selectedTabID: nil
+        )
+        let document = try XCTUnwrap(view.descendants.compactMap { ($0 as? NSScrollView)?.documentView }.first)
+        XCTAssertTrue(document.registeredDraggedTypes.contains(.string), "The strip, not just tab cells, must accept drops")
+        let first = try XCTUnwrap(view.tabFrameForTesting(firstID))
+        let second = try XCTUnwrap(view.tabFrameForTesting(secondID))
+        let gapTarget = try XCTUnwrap(view.dropTargetForTesting(atDocumentX: (first.maxX + second.minX) / 2))
+        XCTAssertEqual(gapTarget.id, secondID)
+        XCTAssertTrue(gapTarget.before)
+        let trailingTarget = try XCTUnwrap(view.dropTargetForTesting(atDocumentX: second.maxX + 20))
+        XCTAssertEqual(trailingTarget.id, secondID)
+        XCTAssertFalse(trailingTarget.before)
+        let leadingTarget = try XCTUnwrap(view.dropTargetForTesting(atDocumentX: -20))
+        XCTAssertEqual(leadingTarget.id, firstID)
+        XCTAssertTrue(leadingTarget.before)
+        var move: (source: UUID, destination: UUID, before: Bool)?
+        view.onMove = { move = ($0, $1, $2) }
+        XCTAssertTrue(view.performDropForTesting(secondID, atDocumentX: first.minX + 1))
+        XCTAssertEqual(move?.source, secondID)
+        XCTAssertEqual(move?.destination, firstID)
+        XCTAssertEqual(move?.before, true)
+        XCTAssertFalse(view.performDropForTesting(firstID, atDocumentX: first.minX + 1))
+    }
+
     func testKeyboardAdjacentSelectionUsesOrderedTabsAndStopsAtEdges() {
         let firstID = UUID()
         let secondID = UUID()

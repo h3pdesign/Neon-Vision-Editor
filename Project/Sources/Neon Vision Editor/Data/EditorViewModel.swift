@@ -781,6 +781,7 @@ class EditorViewModel {
         }
     }
     @ObservationIgnored private var tabIndexByID: [UUID: Int] = [:]
+    @ObservationIgnored private var tabFilePathKeyByID: [UUID: String] = [:]
     @ObservationIgnored private var tabIDByStandardizedFilePath: [String: UUID] = [:]
     private var tabStructureVersion: Int = 0
     private var tabContentVersion: Int = 0
@@ -829,12 +830,30 @@ class EditorViewModel {
 
     private func rebuildTabIndexes() {
         tabIndexByID.removeAll(keepingCapacity: true)
+        tabFilePathKeyByID.removeAll(keepingCapacity: true)
         tabIDByStandardizedFilePath.removeAll(keepingCapacity: true)
         tabIndexByID.reserveCapacity(tabs.count)
+        tabFilePathKeyByID.reserveCapacity(tabs.count)
         tabIDByStandardizedFilePath.reserveCapacity(tabs.count)
         for (index, tab) in tabs.enumerated() {
             tabIndexByID[tab.id] = index
-            if let key = Self.normalizedFilePathKey(for: tab.fileURL), tabIDByStandardizedFilePath[key] == nil {
+            if let key = Self.normalizedFilePathKey(for: tab.fileURL) {
+                tabFilePathKeyByID[tab.id] = key
+                if tabIDByStandardizedFilePath[key] == nil {
+                    tabIDByStandardizedFilePath[key] = tab.id
+                }
+            }
+        }
+    }
+
+    private func rebuildTabOrderIndex() {
+        tabIndexByID.removeAll(keepingCapacity: true)
+        tabIDByStandardizedFilePath.removeAll(keepingCapacity: true)
+        tabIndexByID.reserveCapacity(tabs.count)
+        tabIDByStandardizedFilePath.reserveCapacity(tabFilePathKeyByID.count)
+        for (index, tab) in tabs.enumerated() {
+            tabIndexByID[tab.id] = index
+            if let key = tabFilePathKeyByID[tab.id], tabIDByStandardizedFilePath[key] == nil {
                 tabIDByStandardizedFilePath[key] = tab.id
             }
         }
@@ -1215,7 +1234,8 @@ class EditorViewModel {
                 ? destinationIndex - 1
                 : destinationIndex
             tabs.insert(tab, at: adjustedDestinationIndex)
-            recordTabStateMutation(rebuildIndexes: true)
+            rebuildTabOrderIndex()
+            recordTabStateMutation(.structure)
             return TabCommandOutcome(index: adjustedDestinationIndex, tabID: tabID)
 
         case let .moveTabAfter(tabID, afterTabID):
@@ -1232,7 +1252,8 @@ class EditorViewModel {
                 ? destinationIndex
                 : destinationIndex + 1
             tabs.insert(tab, at: adjustedDestinationIndex)
-            recordTabStateMutation(rebuildIndexes: true)
+            rebuildTabOrderIndex()
+            recordTabStateMutation(.structure)
             return TabCommandOutcome(index: adjustedDestinationIndex, tabID: tabID)
 
         case .resetTabs:

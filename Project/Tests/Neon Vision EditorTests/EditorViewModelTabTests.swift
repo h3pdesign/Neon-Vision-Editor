@@ -383,6 +383,48 @@ final class EditorViewModelTabTests: XCTestCase {
         XCTAssertEqual(viewModel.tabsObservationToken, initialToken)
     }
 
+    func testMovingFileTabsUpdatesOrderAndKeepsFileLookupAndObservationChannels() {
+        let viewModel = EditorViewModel()
+        viewModel.resetTabsForSessionRestore()
+        let firstURL = URL(fileURLWithPath: "/tmp/nve-tab-move-first.txt")
+        let secondURL = URL(fileURLWithPath: "/tmp/nve-tab-move-second.txt")
+        let firstID = viewModel.addPDFNoteTab(name: "First", fileURL: firstURL, content: "one")
+        let secondID = viewModel.addPDFNoteTab(name: "Second", fileURL: secondURL, content: "two")
+        let initialStructure = viewModel.tabsObservationToken
+        let initialContent = viewModel.tabContentObservationToken
+        let initialMetadata = viewModel.tabMetadataObservationToken
+
+        viewModel.moveTab(tabID: secondID, beforeTabID: firstID)
+        XCTAssertEqual(viewModel.tabs.map(\.id), [secondID, firstID])
+        XCTAssertGreaterThan(viewModel.tabsObservationToken, initialStructure)
+        XCTAssertEqual(viewModel.tabContentObservationToken, initialContent)
+        XCTAssertEqual(viewModel.tabMetadataObservationToken, initialMetadata)
+        XCTAssertTrue(viewModel.hasOpenFile(url: firstURL))
+        XCTAssertTrue(viewModel.focusTabIfOpen(for: firstURL))
+        XCTAssertEqual(viewModel.selectedTabID, firstID)
+
+        viewModel.moveTab(tabID: secondID, afterTabID: firstID)
+        XCTAssertEqual(viewModel.tabs.map(\.id), [firstID, secondID])
+        XCTAssertTrue(viewModel.focusTabIfOpen(for: secondURL))
+        XCTAssertEqual(viewModel.selectedTabID, secondID)
+    }
+
+    func testMovingDuplicateFileTabsKeepsLookupOnFirstTabInCurrentOrder() {
+        let viewModel = EditorViewModel()
+        viewModel.resetTabsForSessionRestore()
+        let fileURL = URL(fileURLWithPath: "/tmp/nve-tab-move-duplicate.txt")
+        let firstID = viewModel.addPDFNoteTab(name: "First", fileURL: fileURL, content: "one")
+        let secondID = viewModel.addPDFNoteTab(name: "Second", fileURL: fileURL, content: "two")
+
+        viewModel.moveTab(tabID: secondID, beforeTabID: firstID)
+        XCTAssertTrue(viewModel.focusTabIfOpen(for: fileURL))
+        XCTAssertEqual(viewModel.selectedTabID, secondID)
+
+        viewModel.moveTab(tabID: secondID, afterTabID: firstID)
+        XCTAssertTrue(viewModel.focusTabIfOpen(for: fileURL))
+        XCTAssertEqual(viewModel.selectedTabID, firstID)
+    }
+
     func testTabContentMutationInvalidatesContentObservers() async throws {
         let viewModel = EditorViewModel()
         let tab = try XCTUnwrap(viewModel.selectedTab)

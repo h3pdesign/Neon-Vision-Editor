@@ -14,6 +14,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - Keeps pathological single-line files editable on iPhone and iPad with display-only segmented wrapping, including when No Wrap is selected. The saved text and copied selections retain their original bytes; ordinary formatted documents retain their chosen layout ([#595](https://github.com/h3pdesign/Neon-Vision-Editor/issues/595)).
 
+- Makes macOS document-tab dragging responsive by deferring editor activation until a click completes and accepting reorder drops across tab gaps and strip edges ([#632](https://github.com/h3pdesign/Neon-Vision-Editor/issues/632)). Native macOS window tabs remain a separate, future change ([#621](https://github.com/h3pdesign/Neon-Vision-Editor/issues/621)).
+
 ## [v1.8.5] - 2026-09-26
 
 ### Why Upgrade

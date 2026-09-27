@@ -70,6 +70,9 @@ final class MacNativeFileTabBarView: NSView {
         scrollView.verticalScrollElasticity = .none
         scrollView.scrollerStyle = .overlay
         scrollView.documentView = tabsView
+        tabsView.onMove = { [weak self] sourceID, destinationID, before in
+            self?.onMove?(sourceID, destinationID, before)
+        }
         scrollView.wantsLayer = true
         scrollView.contentView.postsBoundsChangedNotifications = true
         scrollEdgeMask.startPoint = CGPoint(x: 0, y: 0.5)
@@ -189,6 +192,22 @@ final class MacNativeFileTabBarView: NSView {
         onMove?(source, destination, before)
     }
 
+    func dropTargetForTesting(atDocumentX x: CGFloat) -> (id: UUID, before: Bool)? {
+        tabsView.dropTarget(at: x)
+    }
+
+    func performDropForTesting(_ sourceID: UUID, atDocumentX x: CGFloat) -> Bool {
+        tabsView.moveTab(sourceID, to: x)
+    }
+
+    func tabFrameForTesting(_ id: UUID) -> NSRect? {
+        tabViewsByID[id]?.frame
+    }
+
+    func endDrag() {
+        tabsView.endDrag()
+    }
+
     func selectionIndicatorFrameForTesting(_ id: UUID) -> NSRect? {
         tabViewsByID[id]?.selectionIndicatorFrameForTesting
     }
@@ -269,14 +288,92 @@ final class MacNativeFileTabBarView: NSView {
 @MainActor
 private final class MacNativeFileTabDocumentView: NSView {
     private var tabViews: [MacNativeFileTabItemView] = []
+    private var insertionTarget: (id: UUID, before: Bool)?
+    private var dragSourceID: UUID?
+    var onMove: ((UUID, UUID, Bool) -> Void)?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        registerForDraggedTypes([.string])
+    }
+
+    required init?(coder: NSCoder) { nil }
 
     override var isFlipped: Bool { true }
 
     func setTabViews(_ views: [MacNativeFileTabItemView]) {
         guard tabViews.map(\.tabID) != views.map(\.tabID) else { return }
+        clearDragInsertion()
         tabViews = views
         subviews = views
         needsLayout = true
+    }
+
+    func dropTarget(at x: CGFloat) -> (id: UUID, before: Bool)? {
+        guard let last = tabViews.last else { return nil }
+        for tabView in tabViews where x < tabView.frame.midX {
+            return (tabView.tabID, true)
+        }
+        return (last.tabID, false)
+    }
+
+    func clearDragInsertion() {
+        setInsertionTarget(nil)
+    }
+
+    func endDrag() {
+        dragSourceID = nil
+        clearDragInsertion()
+    }
+
+    private func setInsertionTarget(_ target: (id: UUID, before: Bool)?) {
+        guard insertionTarget?.id != target?.id || insertionTarget?.before != target?.before else { return }
+        if let previous = insertionTarget {
+            tabViews.first(where: { $0.tabID == previous.id })?.setInsertionBefore(nil)
+        }
+        insertionTarget = target
+        if let target {
+            tabViews.first(where: { $0.tabID == target.id })?.setInsertionBefore(target.before)
+        }
+    }
+
+    private func sourceID(for sender: NSDraggingInfo) -> UUID? {
+        guard let value = sender.draggingPasteboard.string(forType: .string),
+              let id = UUID(uuidString: value),
+              tabViews.contains(where: { $0.tabID == id }) else { return nil }
+        return id
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        dragSourceID = sourceID(for: sender)
+        return draggingUpdated(sender)
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard let dragSourceID, tabViews.contains(where: { $0.tabID == dragSourceID }) else {
+            clearDragInsertion()
+            return []
+        }
+        setInsertionTarget(dropTarget(at: convert(sender.draggingLocation, from: nil).x))
+        return .move
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        endDrag()
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        defer { endDrag() }
+        guard let sourceID = dragSourceID ?? sourceID(for: sender) else { return false }
+        return moveTab(sourceID, to: convert(sender.draggingLocation, from: nil).x)
+    }
+
+    func moveTab(_ sourceID: UUID, to x: CGFloat) -> Bool {
+        guard tabViews.contains(where: { $0.tabID == sourceID }),
+              let target = dropTarget(at: x),
+              sourceID != target.id else { return false }
+        onMove?(sourceID, target.id, target.before)
+        return true
     }
 
     func layoutTabs(viewportWidth: CGFloat) {
@@ -321,6 +418,7 @@ private final class MacNativeFileTabItemView: NSView, NSDraggingSource {
     private var isSelected = false
     private var isHovered = false
     private var isDragging = false
+    private var pendingMouseSelection = false
     private var insertionBefore: Bool?
     private var usesOpaqueEditorCanvas = false
 
@@ -359,8 +457,6 @@ private final class MacNativeFileTabItemView: NSView, NSDraggingSource {
         outlineLayer.zPosition = 10
         outlineLayer.needsDisplayOnBoundsChange = true
         layer?.addSublayer(outlineLayer)
-        registerForDraggedTypes([.string])
-
         titleLabel.lineBreakMode = .byTruncatingMiddle
         titleLabel.maximumNumberOfLines = 1
         titleLabel.font = .systemFont(ofSize: 12)
@@ -459,19 +555,27 @@ private final class MacNativeFileTabItemView: NSView, NSDraggingSource {
 
     override func mouseExited(with event: NSEvent) {
         isHovered = false
-        insertionBefore = nil
         updateAppearance()
     }
 
     override func mouseDown(with event: NSEvent) {
-        onSelect?(tabID)
         if event.clickCount == 2 {
+            pendingMouseSelection = false
             onClose?(tabID)
+        } else {
+            pendingMouseSelection = true
         }
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        guard pendingMouseSelection, !isDragging else { return }
+        pendingMouseSelection = false
+        if enclosingBar?.selectedTabID != tabID { onSelect?(tabID) }
     }
 
     override func mouseDragged(with event: NSEvent) {
         guard !isDragging else { return }
+        pendingMouseSelection = false
         isDragging = true
         let pasteboardItem = NSPasteboardItem()
         pasteboardItem.setString(tabID.uuidString, forType: .string)
@@ -486,40 +590,7 @@ private final class MacNativeFileTabItemView: NSView, NSDraggingSource {
 
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         isDragging = false
-    }
-
-    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        updateInsertion(for: sender)
-        return .move
-    }
-
-    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
-        updateInsertion(for: sender)
-        return .move
-    }
-
-    override func draggingExited(_ sender: NSDraggingInfo?) {
-        insertionBefore = nil
-        updateAppearance()
-    }
-
-    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        defer {
-            insertionBefore = nil
-            updateAppearance()
-        }
-        guard let value = sender.draggingPasteboard.string(forType: .string),
-              let sourceID = UUID(uuidString: value),
-              sourceID != tabID else { return false }
-        let before = insertionBefore ?? true
-        guard let bar = enclosingBar else { return false }
-        bar.onMove?(sourceID, tabID, before)
-        return true
-    }
-
-    override func draggingEnded(_ sender: NSDraggingInfo) {
-        insertionBefore = nil
-        updateAppearance()
+        enclosingBar?.endDrag()
     }
 
     override func layout() {
@@ -588,9 +659,9 @@ private final class MacNativeFileTabItemView: NSView, NSDraggingSource {
         return nil
     }
 
-    private func updateInsertion(for sender: NSDraggingInfo) {
-        let point = convert(sender.draggingLocation, from: nil)
-        insertionBefore = point.x < bounds.midX
+    func setInsertionBefore(_ before: Bool?) {
+        guard insertionBefore != before else { return }
+        insertionBefore = before
         updateAppearance()
     }
 

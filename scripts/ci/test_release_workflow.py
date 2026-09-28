@@ -438,6 +438,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         metrics = (ROOT / ".github/workflows/update-download-metrics.yml").read_text()
         self.assertIn("METRICS_MERGE_TOKEN: ${{ secrets.METRIC_TOKEN }}", metrics)
         self.assertNotIn("gh pr review", metrics)
+        self.assertIn('if ! GH_TOKEN="${METRICS_MERGE_TOKEN}" gh pr create', metrics)
         self.assertIn('GH_TOKEN="${METRICS_MERGE_TOKEN}" gh pr merge "${metrics_pr}"', metrics)
         self.assertNotIn('|| echo "Auto-merge is unavailable', metrics)
         docs_sync = (ROOT / ".github/workflows/post-release-documentation-sync.yml").read_text()

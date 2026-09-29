@@ -8,6 +8,7 @@ on:
     branches: [ "main", "develop" ]
     # Both jobs are required by branch protection. Workflow-level path filters
     # leave excluded PRs waiting forever for checks that are never created.
+    # The jobs themselves may skip documentation-only changes.
 
 concurrency:
   group: swift-${{ github.event.pull_request.number || github.ref }}
@@ -15,10 +16,35 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run_swift: ${{ steps.classify.outputs.run_swift }}
+    steps:
+      - name: Check whether Swift validation is needed
+        id: classify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${PR_NUMBER}" ]] &&
+             files="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files?per_page=100")" &&
+             jq -se 'add | length > 0 and all(.[];
+               .filename == "README.md" or .filename == "CHANGELOG.md" or
+               (.filename | startswith("docs/")) or (.filename | startswith("site/"))
+             )' <<< "${files}" >/dev/null; then
+            echo "run_swift=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_swift=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
-    if: ${{ !startsWith(github.head_ref, 'release/') }}
+    needs: changes
+    if: ${{ !cancelled() && !startsWith(github.head_ref, 'release/') && needs.changes.outputs.run_swift != 'false' }}
     # GitHub's xcode-27 image is currently a macOS 26 host with the complete
     # OS 27 SDK family. This job verifies the SDK-gated Agent Mode sources.
     runs-on: xcode-27
@@ -87,7 +113,8 @@ jobs:
         run: rm -rf -- "$GITHUB_WORKSPACE/.DerivedDataPR"
 
   macos_sequoia_syntax_regressions:
-    if: ${{ !startsWith(github.head_ref, 'release/') }}
+    needs: changes
+    if: ${{ !cancelled() && !startsWith(github.head_ref, 'release/') && needs.changes.outputs.run_swift != 'false' }}
     name: macOS Sequoia syntax regressions
     runs-on: macos-15
 

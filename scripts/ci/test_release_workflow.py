@@ -105,6 +105,18 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertNotIn("paths:", triggers)
         self.assertNotIn("paths-ignore:", workflow)
 
+    def test_swift_ci_skips_xcode_for_documentation_only_prs(self):
+        workflow = (ROOT / ".github/workflows/swift.yml").read_text()
+        self.assertIn("pull-requests: read", workflow)
+        self.assertIn("gh api --paginate", workflow)
+        self.assertIn("length > 0 and all(.[];", workflow)
+        for path in ('"README.md"', '"CHANGELOG.md"', 'startswith("docs/")', 'startswith("site/")'):
+            self.assertIn(path, workflow)
+        self.assertIn('echo "run_swift=true" >> "$GITHUB_OUTPUT"', workflow)
+        required_jobs = workflow.split("  build:", 1)[1]
+        self.assertEqual(required_jobs.count("    needs: changes"), 2)
+        self.assertEqual(required_jobs.count("needs.changes.outputs.run_swift != 'false'"), 2)
+
     def test_codeql_actions_scans_workflow_changes_only(self):
         workflow = (ROOT / ".github/workflows/codeql-actions.yml").read_text()
         self.assertEqual(workflow.count('".github/workflows/**"'), 2)

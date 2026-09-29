@@ -1521,8 +1521,8 @@
 "This theme archive uses an unsupported format version." = "此主题归档使用不支持的格式版本。";
 "This will permanently delete \"%@\"." = "这将永久删除“%@”。";
 "This will permanently delete \\\"%@\\\"." = "这将永久删除“%@”。";
-"This will remove %d characters across %d line in the current editor. You can undo this change." = "这将删除当前编辑器中%d行上的%d个字符。您可以撤销此更改。";
-"This will remove %d characters across %d lines in the current editor. You can undo this change." = "这将删除当前编辑器中%d行上的%d个字符。您可以撤销此更改。";
+"This will remove %d characters across %d line in the current editor. You can undo this change." = "这将从当前编辑器中删除%d个字符（涉及%d行）。您可以撤销此更改。";
+"This will remove %d characters across %d lines in the current editor. You can undo this change." = "这将从当前编辑器中删除%d个字符（涉及%d行）。您可以撤销此更改。";
 "This will remove all text in the current editor." = "此操作将删除当前编辑器中的所有文本。";
 "Time %@" = "时间 %@";
 "Tip: Enable only one startup mode to keep app launch behavior predictable." = "提示：仅启用一种启动模式可保持启动行为可预测。";

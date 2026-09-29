@@ -1518,7 +1518,7 @@
 "This file has unsaved changes." = "Denne fil har ikke gemte ændringer.";
 "This project folder does not contain a Git repository." = "Denne projektmappe indeholder ikke et Git-repository.";
 "This remote file type is not supported for remote editing" = "Denne fjernfiltype understøttes ikke til fjernredigering";
-"This theme archive uses an unsupported format version." = "Dette temaarkiv bruger en understøttet formatversion.";
+"This theme archive uses an unsupported format version." = "Dette temaarkiv bruger en formatversion, der ikke understøttes.";
 "This will permanently delete \"%@\"." = "Dette vil permanent slette \"%@\".";
 "This will permanently delete \\\"%@\\\"." = "Dette vil permanent slette \\\"%@\\\".";
 "This will remove %d characters across %d line in the current editor. You can undo this change." = "Dette vil fjerne %d tegn på tværs af %d linjer i den aktuelle editor. Du kan fortryde denne ændring.";

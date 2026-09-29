@@ -1521,8 +1521,8 @@
 "This theme archive uses an unsupported format version." = "このテーマアーカイブはサポートされていないフォーマットバージョンを使用しています";
 "This will permanently delete \"%@\"." = "\"%@\"は永久に削除されます。";
 "This will permanently delete \\\"%@\\\"." = "この操作で \\\"%@\\\" が永久に削除されます。";
-"This will remove %d characters across %d line in the current editor. You can undo this change." = "これにより、現在のエディタの%d行で%d文字が削除されます。この変更を元に戻すことができます。";
-"This will remove %d characters across %d lines in the current editor. You can undo this change." = "これにより、現在のエディタの%d行で%d文字が削除されます。この変更を元に戻すことができます。";
+"This will remove %d characters across %d line in the current editor. You can undo this change." = "現在のエディタから%d文字（%d行）を削除します。この変更は元に戻せます。";
+"This will remove %d characters across %d lines in the current editor. You can undo this change." = "現在のエディタから%d文字（%d行）を削除します。この変更は元に戻せます。";
 "This will remove all text in the current editor." = "現在のエディタのすべてのテキストが削除されます。";
 "Time %@" = "時間 %@";
 "Tip: Enable only one startup mode to keep app launch behavior predictable." = "ヒント：アプリの起動動作を予測しやすくするために、起動モードを1つだけ有効にします。";

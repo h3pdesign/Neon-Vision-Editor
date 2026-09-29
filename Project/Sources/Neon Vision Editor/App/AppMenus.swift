@@ -141,6 +141,15 @@ struct NeonVisionMacAppCommands: Commands {
         }
 
         CommandGroup(after: .newItem) {
+            Button("Send to Nearby Device…") {
+                NotificationCenter.default.post(name: .nearbyDocumentTransferRequested,
+                    object: activeEditorViewModel(), userInfo: ["mode": "send"])
+            }
+            .disabled(!hasSelectedTab)
+            Button("Receive Document…") {
+                NotificationCenter.default.post(name: .nearbyDocumentTransferRequested,
+                    object: activeEditorViewModel(), userInfo: ["mode": "receive"])
+            }
             Button("Open File…") {
                 activeEditorViewModel().openFile()
             }

@@ -124,19 +124,19 @@ extension ContentView {
         var title: String {
             switch self {
             case .automatic:
-                return "Automatic"
+                return NSLocalizedString("Automatic", comment: "Markdown preview background")
             case .template:
-                return "Template"
+                return NSLocalizedString("Template", comment: "Markdown preview background")
             case .translucent:
-                return "Translucent"
+                return NSLocalizedString("Translucent", comment: "Markdown preview background")
             case .neutral:
-                return "Neutral"
+                return NSLocalizedString("Neutral", comment: "Markdown preview background")
             case .paper:
-                return "Paper"
+                return NSLocalizedString("Paper", comment: "Markdown preview background")
             case .slate:
-                return "Slate"
+                return NSLocalizedString("Slate", comment: "Markdown preview background")
             case .ink:
-                return "Ink"
+                return NSLocalizedString("Ink", comment: "Markdown preview background")
             }
         }
     }
@@ -157,11 +157,11 @@ extension ContentView {
 
         var title: String {
             switch self {
-            case .systemGlass: return "System Glass"
-            case .dark: return "Dark"
-            case .paper: return "Paper"
-            case .slate: return "Slate"
-            case .ink: return "Ink"
+            case .systemGlass: return NSLocalizedString("System Glass", comment: "Vision Markdown reader style")
+            case .dark: return NSLocalizedString("Dark", comment: "Vision Markdown reader style")
+            case .paper: return NSLocalizedString("Paper", comment: "Vision Markdown reader style")
+            case .slate: return NSLocalizedString("Slate", comment: "Vision Markdown reader style")
+            case .ink: return NSLocalizedString("Ink", comment: "Vision Markdown reader style")
             }
         }
 
@@ -400,7 +400,7 @@ extension ContentView {
     @MainActor
     func saveMarkdownPreviewPDFOnMac(_ data: Data, suggestedFilename: String) throws {
         let panel = NSSavePanel()
-        panel.title = "Export Markdown Preview as PDF"
+        panel.title = NSLocalizedString("Export Markdown Preview as PDF", comment: "Markdown PDF export title")
         panel.nameFieldStringValue = suggestedFilename
         panel.canCreateDirectories = true
         panel.allowedContentTypes = [.pdf]

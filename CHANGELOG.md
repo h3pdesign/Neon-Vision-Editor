@@ -6,6 +6,14 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Added
+
+- Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including Settings, editor actions, accessibility text, and companion surfaces.
+
+### Improved
+
+- Expands localization coverage for dynamic search, toolbar, Git status, and share-import messages.
+
 ## [v1.8.6] - 2026-09-27
 
 ### Why Upgrade

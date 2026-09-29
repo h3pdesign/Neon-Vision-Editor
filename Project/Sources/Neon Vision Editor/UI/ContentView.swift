@@ -305,10 +305,10 @@ struct ContentView: View {
 
         var title: String {
             switch self {
-            case .writing: return "Writing"
-            case .code: return "Code"
-            case .markdown: return "Markdown"
-            case .review: return "Review"
+            case .writing: return NSLocalizedString("Writing", comment: "Editor layout preset")
+            case .code: return NSLocalizedString("Code", comment: "Editor layout preset")
+            case .markdown: return NSLocalizedString("Markdown", comment: "Editor layout preset")
+            case .review: return NSLocalizedString("Review", comment: "Editor layout preset")
             case .pyDev: return "PyDev"
             }
         }
@@ -325,21 +325,21 @@ struct ContentView: View {
 
         var summary: String {
             switch self {
-            case .writing: return "A clean, distraction-free canvas for prose."
-            case .code: return "Dense source editing with navigation and minimap support."
-            case .markdown: return "Wrapped Markdown editing with an optional rendered preview."
-            case .review: return "Source, project context, and preview together for review work."
-            case .pyDev: return "Python source, project files, tests, and terminal work in one layout."
+            case .writing: return NSLocalizedString("A clean, distraction-free canvas for prose.", comment: "Editor layout preset")
+            case .code: return NSLocalizedString("Dense source editing with navigation and minimap support.", comment: "Editor layout preset")
+            case .markdown: return NSLocalizedString("Wrapped Markdown editing with an optional rendered preview.", comment: "Editor layout preset")
+            case .review: return NSLocalizedString("Source, project context, and preview together for review work.", comment: "Editor layout preset")
+            case .pyDev: return NSLocalizedString("Python source, project files, tests, and terminal work in one layout.", comment: "Editor layout preset")
             }
         }
 
         var detailLines: [String] {
             switch self {
-            case .writing: return ["Wrapped lines", "Larger 16 pt editor", "Sidebars and previews hidden"]
-            case .code: return ["Unwrapped lines", "Line numbers and minimap", "Project navigation visible"]
-            case .markdown: return ["Wrapped lines", "Line numbers without minimap", "Markdown preview when supported"]
-            case .review: return ["Wrapped lines", "Line numbers and project navigation", "Keeps the current preview mode"]
-            case .pyDev: return ["Unwrapped lines", "Line numbers and minimap", "Project navigation for src/tests"]
+            case .writing: return [NSLocalizedString("Wrapped lines", comment: "Editor layout feature"), NSLocalizedString("Larger 16 pt editor", comment: "Editor layout feature"), NSLocalizedString("Sidebars and previews hidden", comment: "Editor layout feature")]
+            case .code: return [NSLocalizedString("Unwrapped lines", comment: "Editor layout feature"), NSLocalizedString("Line numbers and minimap", comment: "Editor layout feature"), NSLocalizedString("Project navigation visible", comment: "Editor layout feature")]
+            case .markdown: return [NSLocalizedString("Wrapped lines", comment: "Editor layout feature"), NSLocalizedString("Line numbers without minimap", comment: "Editor layout feature"), NSLocalizedString("Markdown preview when supported", comment: "Editor layout feature")]
+            case .review: return [NSLocalizedString("Wrapped lines", comment: "Editor layout feature"), NSLocalizedString("Line numbers and project navigation", comment: "Editor layout feature"), NSLocalizedString("Keeps the current preview mode", comment: "Editor layout feature")]
+            case .pyDev: return [NSLocalizedString("Unwrapped lines", comment: "Editor layout feature"), NSLocalizedString("Line numbers and minimap", comment: "Editor layout feature"), NSLocalizedString("Project navigation for src/tests", comment: "Editor layout feature")]
             }
         }
 
@@ -1776,9 +1776,9 @@ struct ContentView: View {
     private func windowCloseDialogMessage() -> String {
         let dirtyCount = viewModel.tabs.filter(\.isDirty).count
         if dirtyCount <= 1 {
-            return "You have unsaved changes in one tab."
+            return NSLocalizedString("You have unsaved changes in one tab.", comment: "Window close confirmation")
         }
-        return "You have unsaved changes in \(dirtyCount) tabs."
+        return String(format: NSLocalizedString("You have unsaved changes in %d tabs.", comment: "Window close confirmation"), dirtyCount)
     }
 
     private func installWindowCloseConfirmationDelegate(_ window: NSWindow?) {
@@ -4542,22 +4542,22 @@ struct ContentView: View {
         case "standard":
 #if os(iOS)
             if usesCompactIOSLayout {
-                return "Std"
+                return NSLocalizedString("Std", comment: "Compact large-file mode")
             }
 #endif
-            return "Standard"
+            return NSLocalizedString("Standard", comment: "Large-file mode")
         case "plainText":
-            return "Plain Text"
+            return NSLocalizedString("Plain Text", comment: "Large-file mode")
         default:
-            return "Responsive"
+            return NSLocalizedString("Responsive", comment: "Large-file mode")
         }
     }
 
     var currentLargeFileOpenModeAccessibilityLabel: String {
         switch largeFileOpenModeRaw {
-        case "standard": return "Standard"
-        case "plainText": return "Plain Text"
-        default: return "Responsive"
+        case "standard": return NSLocalizedString("Standard", comment: "Large-file mode")
+        case "plainText": return NSLocalizedString("Plain Text", comment: "Large-file mode")
+        default: return NSLocalizedString("Responsive", comment: "Large-file mode")
         }
     }
 
@@ -4568,59 +4568,59 @@ struct ContentView: View {
 
     var largeFileModeFeatureSummary: String {
         if viewModel.selectedTab?.isPartialFilePreview == true {
-            return "Only the first 4 MB are loaded. This partial preview is read-only."
+            return NSLocalizedString("Only the first 4 MB are loaded. This partial preview is read-only.", comment: "Large-file mode explanation")
         }
         switch largeFileOpenModeRaw {
         case "plainText":
-            return "Editing stays available without syntax coloring, previews, or a minimap."
+            return NSLocalizedString("Editing stays available without syntax coloring, previews, or a minimap.", comment: "Large-file mode explanation")
         case "standard":
-            return "Editing stays available; expensive analysis can be reduced for responsiveness."
+            return NSLocalizedString("Editing stays available; expensive analysis can be reduced for responsiveness.", comment: "Large-file mode explanation")
         default:
-            return "Editing stays available while loading, layout, and syntax work are deferred or limited."
+            return NSLocalizedString("Editing stays available while loading, layout, and syntax work are deferred or limited.", comment: "Large-file mode explanation")
         }
     }
 
     var largeFileModeFeatureDetails: String {
-        "\(largeFileModeFeatureSummary) Full-document syntax analysis, minimap, preview, symbols, word count, and diff can be deferred or unavailable."
+        String(format: NSLocalizedString("%@ Full-document syntax analysis, minimap, preview, symbols, word count, and diff can be deferred or unavailable.", comment: "Large-file mode details"), largeFileModeFeatureSummary)
     }
 
     var largeFileStatusBadgeText: String {
         guard viewModel.selectedTab?.isLargeFileCandidate == true else { return "" }
         if viewModel.selectedTab?.isPartialFilePreview == true {
-            return "Partial Open • \(currentDocumentFileSizeText) • Read-Only"
+            return String(format: NSLocalizedString("Partial Open • %@ • Read-Only", comment: "Large-file status badge"), currentDocumentFileSizeText)
         }
-        return "Large File • \(currentDocumentFileSizeText) • \(currentLargeFileOpenModeLabel)"
+        return String(format: NSLocalizedString("Large File • %@ • %@", comment: "Large-file status badge"), currentDocumentFileSizeText, currentLargeFileOpenModeLabel)
     }
 
     var remoteSessionStatusBadgeText: String {
         guard remoteSessionsEnabled else { return "" }
         if remoteSessionStore.runtimeState == .failed, remoteSessionStore.isBrokerClientAttached {
-            return "Local Workspace • Remote Broker Lost"
+            return NSLocalizedString("Local Workspace • Remote Broker Lost", comment: "Remote status badge")
         }
         if remoteSessionStore.runtimeState == .failed, remoteSessionStore.hasBrokerSession {
-            return "Local Workspace • Remote Broker Failed"
+            return NSLocalizedString("Local Workspace • Remote Broker Failed", comment: "Remote status badge")
         }
         if remoteSessionStore.runtimeState == .failed {
-            return "Local Workspace • Remote Failed"
+            return NSLocalizedString("Local Workspace • Remote Failed", comment: "Remote status badge")
         }
         if remoteSessionStore.isBrokerClientAttached {
-            return "Local Workspace • Remote Broker Attached"
+            return NSLocalizedString("Local Workspace • Remote Broker Attached", comment: "Remote status badge")
         }
         if remoteSessionStore.hasBrokerSession {
-            return "Local Workspace • Remote Broker Active"
+            return NSLocalizedString("Local Workspace • Remote Broker Active", comment: "Remote status badge")
         }
         if remoteSessionStore.isRemotePreviewConnecting {
-            return "Local Workspace • Remote Connecting"
+            return NSLocalizedString("Local Workspace • Remote Connecting", comment: "Remote status badge")
         }
         if remoteSessionStore.isRemotePreviewConnected {
-            return "Local Workspace • Remote Session Active"
+            return NSLocalizedString("Local Workspace • Remote Session Active", comment: "Remote status badge")
         }
         if remoteSessionStore.isRemotePreviewReady {
-            return "Local Workspace • Remote Selected"
+            return NSLocalizedString("Local Workspace • Remote Selected", comment: "Remote status badge")
         }
         return remotePreparedTarget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? "Local Workspace • Remote Enabled"
-            : "Local Workspace • Remote Ready"
+            ? NSLocalizedString("Local Workspace • Remote Enabled", comment: "Remote status badge")
+            : NSLocalizedString("Local Workspace • Remote Ready", comment: "Remote status badge")
     }
 
     var remoteSessionBadgeForegroundColor: Color {
@@ -4635,32 +4635,32 @@ struct ContentView: View {
 
     var remoteSessionBadgeAccessibilityValue: String {
         if remoteSessionStore.runtimeState == .failed, remoteSessionStore.isBrokerClientAttached {
-            return "Local workspace lost its attached remote broker session. Reattach from Settings using a fresh code."
+            return NSLocalizedString("Local workspace lost its attached remote broker session. Reattach from Settings using a fresh code.", comment: "Remote status accessibility")
         }
         if remoteSessionStore.runtimeState == .failed, remoteSessionStore.hasBrokerSession {
-            return "Local workspace lost the active macOS remote broker session. Restart the Mac session before attaching again."
+            return NSLocalizedString("Local workspace lost the active macOS remote broker session. Restart the Mac session before attaching again.", comment: "Remote status accessibility")
         }
         if remoteSessionStore.runtimeState == .failed {
-            return "Local workspace remote session failed."
+            return NSLocalizedString("Local workspace remote session failed.", comment: "Remote status accessibility")
         }
         return remoteSessionStore.isBrokerClientAttached
-            ? "Local workspace attached to a remote broker for read-only browsing"
+            ? NSLocalizedString("Local workspace attached to a remote broker for read-only browsing", comment: "Remote status accessibility")
             : (
             remoteSessionStore.hasBrokerSession
-            ? "Local workspace with an active remote broker session on macOS"
+            ? NSLocalizedString("Local workspace with an active remote broker session on macOS", comment: "Remote status accessibility")
             : (
             remoteSessionStore.isRemotePreviewConnecting
-            ? "Local workspace with a remote session connection in progress"
+            ? NSLocalizedString("Local workspace with a remote session connection in progress", comment: "Remote status accessibility")
             : (
                 remoteSessionStore.isRemotePreviewConnected
-                ? "Local workspace with an active remote session connection"
+                ? NSLocalizedString("Local workspace with an active remote session connection", comment: "Remote status accessibility")
                 : (
                     remoteSessionStore.isRemotePreviewReady
-                    ? "Local workspace with a selected remote preview target"
+                    ? NSLocalizedString("Local workspace with a selected remote preview target", comment: "Remote status accessibility")
                     : (
                         remotePreparedTarget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? "Local workspace with remote preview enabled"
-                        : "Local workspace with a prepared remote target"
+                        ? NSLocalizedString("Local workspace with remote preview enabled", comment: "Remote status accessibility")
+                        : NSLocalizedString("Local workspace with a prepared remote target", comment: "Remote status accessibility")
                     )
                 )
             )

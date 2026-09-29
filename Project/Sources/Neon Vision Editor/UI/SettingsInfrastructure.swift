@@ -205,11 +205,11 @@ enum EditorThemeArchiveError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidFile:
-            return "The selected file is not a Neon Vision Editor theme archive."
+            return NSLocalizedString("The selected file is not a Neon Vision Editor theme archive.", comment: "Theme import error")
         case .unsupportedVersion:
-            return "This theme archive uses an unsupported format version."
+            return NSLocalizedString("This theme archive uses an unsupported format version.", comment: "Theme import error")
         case .invalidTheme:
-            return "The archive contains an invalid theme name or color value."
+            return NSLocalizedString("The archive contains an invalid theme name or color value.", comment: "Theme import error")
         }
     }
 }

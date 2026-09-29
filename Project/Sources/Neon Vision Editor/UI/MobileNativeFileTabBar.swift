@@ -90,8 +90,8 @@ final class MobileNativeFileTabBarView: UIView, UIScrollViewDelegate {
         configuration.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
         configuration.contentInsets = .zero
         addButton.configuration = configuration
-        addButton.accessibilityLabel = "New Tab"
-        addButton.accessibilityHint = "Creates a new untitled tab"
+        addButton.accessibilityLabel = NSLocalizedString("New Tab", comment: "Add editor tab accessibility label")
+        addButton.accessibilityHint = NSLocalizedString("Creates a new untitled tab", comment: "Add editor tab accessibility hint")
         addButton.addTarget(self, action: #selector(addTab), for: .touchUpInside)
         addSubview(addButton)
 
@@ -362,7 +362,7 @@ private final class MobileNativeFileTabItemView: UIControl, UIDragInteractionDel
         accessibilityTraits = .button
         addTarget(self, action: #selector(selectTab), for: .touchUpInside)
 
-        remoteLabel.text = "Remote"
+        remoteLabel.text = NSLocalizedString("Remote", comment: "Remote file tab badge")
         remoteLabel.font = UIFontMetrics(forTextStyle: .caption2).scaledFont(
             for: .systemFont(ofSize: 9, weight: .semibold),
             maximumPointSize: 13
@@ -400,7 +400,7 @@ private final class MobileNativeFileTabItemView: UIControl, UIDragInteractionDel
         closeConfiguration.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
         closeConfiguration.contentInsets = .zero
         closeButton.configuration = closeConfiguration
-        closeButton.accessibilityHint = "Closes this editor tab"
+        closeButton.accessibilityHint = NSLocalizedString("Closes this editor tab", comment: "Close editor tab accessibility hint")
         closeButton.addTarget(self, action: #selector(closeTab), for: .touchUpInside)
         addSubview(closeButton)
 
@@ -480,7 +480,9 @@ private final class MobileNativeFileTabItemView: UIControl, UIDragInteractionDel
         remoteLabel.isHidden = !snapshot.isRemote
         lockImage.isHidden = !snapshot.isReadOnly
         dirtyIndicator.isHidden = !snapshot.isDirty
-        closeButton.accessibilityLabel = "Close \(snapshot.title)"
+        closeButton.accessibilityLabel = String.localizedStringWithFormat(
+            NSLocalizedString("Close %@", comment: "Close editor tab accessibility label"), snapshot.title
+        )
         accessibilityLabel = accessibilityLabel(for: snapshot)
         accessibilityValue = isSelected ? "Selected" : nil
         accessibilityHint = allowsReordering

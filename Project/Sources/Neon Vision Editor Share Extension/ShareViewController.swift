@@ -68,16 +68,16 @@ final class ShareViewController: PlatformShareViewController {
         titleLabel.font = .preferredFont(forTextStyle: .headline)
         titleLabel.adjustsFontForContentSizeCategory = true
 
-        statusLabel.text = "Preparing shared content..."
+        statusLabel.text = NSLocalizedString("Preparing shared content...", comment: "Share import status")
         statusLabel.font = .preferredFont(forTextStyle: .body)
         statusLabel.adjustsFontForContentSizeCategory = true
         statusLabel.numberOfLines = 0
         statusLabel.textColor = .secondaryLabel
 
-        doneButton.setTitle("Done", for: .normal)
+        doneButton.setTitle(NSLocalizedString("Done", comment: "Close share extension"), for: .normal)
         doneButton.titleLabel?.font = .preferredFont(forTextStyle: .body)
         doneButton.addTarget(self, action: #selector(ShareViewController.doneButtonTapped), for: .touchUpInside)
-        doneButton.accessibilityLabel = "Done"
+        doneButton.accessibilityLabel = NSLocalizedString("Done", comment: "Close share extension")
 
         let stack = UIStackView(arrangedSubviews: [titleLabel, statusLabel, doneButton])
         stack.axis = .vertical
@@ -97,8 +97,8 @@ final class ShareViewController: PlatformShareViewController {
     #endif
 
     #if canImport(AppKit) && !canImport(UIKit)
-    private let statusLabel = NSTextField(labelWithString: "Preparing shared content...")
-    private let doneButton = NSButton(title: "Done", target: nil, action: nil)
+    private let statusLabel = NSTextField(labelWithString: NSLocalizedString("Preparing shared content...", comment: "Share import status"))
+    private let doneButton = NSButton(title: NSLocalizedString("Done", comment: "Close share extension"), target: nil, action: nil)
 
     override func loadView() {
         let rootView = NSView(frame: NSRect(x: 0, y: 0, width: 360, height: 180))
@@ -145,7 +145,7 @@ final class ShareViewController: PlatformShareViewController {
     private func beginImportIfNeeded() {
         guard !didStartImport else { return }
         didStartImport = true
-        showStatus("Preparing shared content...", showsDoneButton: true)
+        showStatus(NSLocalizedString("Preparing shared content...", comment: "Share import status"), showsDoneButton: true)
         importSharedItems()
     }
 
@@ -610,18 +610,22 @@ final class ShareViewController: PlatformShareViewController {
 
     private func showNoSupportedContent() {
         showStatus(
-            "No supported shared text, URLs, or files were found.",
+            NSLocalizedString("No supported shared text, URLs, or files were found.", comment: "Share import error"),
             showsDoneButton: true
         )
     }
 
     private func showImportComplete(importedCount: Int) {
-        let itemText = importedCount == 1 ? "item" : "items"
         #if canImport(AppKit) && !canImport(UIKit)
-        let message = "Imported \(importedCount) shared \(itemText). You can close this share sheet."
+        let format = importedCount == 1
+            ? NSLocalizedString("Imported %lld shared item. You can close this share sheet.", comment: "Share import success")
+            : NSLocalizedString("Imported %lld shared items. You can close this share sheet.", comment: "Share import success")
         #else
-        let message = "Imported \(importedCount) shared \(itemText). Switch to Neon Vision Editor to choose where to place it."
+        let format = importedCount == 1
+            ? NSLocalizedString("Imported %lld shared item. Switch to Neon Vision Editor to choose where to place it.", comment: "Share import success")
+            : NSLocalizedString("Imported %lld shared items. Switch to Neon Vision Editor to choose where to place them.", comment: "Share import success")
         #endif
+        let message = String.localizedStringWithFormat(format, Int64(importedCount))
         showStatus(
             message,
             showsDoneButton: true

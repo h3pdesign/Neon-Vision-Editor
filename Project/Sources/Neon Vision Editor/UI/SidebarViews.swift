@@ -850,12 +850,12 @@ struct ProjectStructureSidebarView: View {
 
         var title: String {
             switch self {
-            case .all: return "All Files"
-            case .modified: return "Modified"
-            case .images: return "Images"
+            case .all: return NSLocalizedString("All Files", comment: "Sidebar file filter")
+            case .modified: return NSLocalizedString("Modified", comment: "Sidebar file filter")
+            case .images: return NSLocalizedString("Images", comment: "Sidebar file filter")
             case .png: return "PNG"
             case .pdf: return "PDF"
-            case .markdown: return "Markdown"
+            case .markdown: return NSLocalizedString("Markdown", comment: "Sidebar file filter")
             }
         }
     }
@@ -868,8 +868,8 @@ struct ProjectStructureSidebarView: View {
 
         var title: String {
             switch self {
-            case .name: return "Name"
-            case .type: return "File Type"
+            case .name: return NSLocalizedString("Name", comment: "Sidebar sort order")
+            case .type: return NSLocalizedString("File Type", comment: "Sidebar sort order")
             }
         }
     }
@@ -882,8 +882,8 @@ struct ProjectStructureSidebarView: View {
 
         var title: String {
             switch self {
-            case .none: return "No Grouping"
-            case .type: return "Group by Type"
+            case .none: return NSLocalizedString("No Grouping", comment: "Sidebar grouping")
+            case .type: return NSLocalizedString("Group by Type", comment: "Sidebar grouping")
             }
         }
     }
@@ -898,10 +898,10 @@ struct ProjectStructureSidebarView: View {
 
         var title: String {
             switch self {
-            case .chevron: return "Chevron"
-            case .triangle: return "Triangle"
-            case .caret: return "Caret"
-            case .plusMinus: return "Plus/Minus"
+            case .chevron: return NSLocalizedString("Chevron", comment: "Sidebar disclosure symbol")
+            case .triangle: return NSLocalizedString("Triangle", comment: "Sidebar disclosure symbol")
+            case .caret: return NSLocalizedString("Caret", comment: "Sidebar disclosure symbol")
+            case .plusMinus: return NSLocalizedString("Plus/Minus", comment: "Sidebar disclosure symbol")
             }
         }
 

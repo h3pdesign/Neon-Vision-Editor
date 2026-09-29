@@ -293,7 +293,7 @@ struct PythonProjectTemplateSheet: View {
 #if os(macOS)
     private func chooseDestination() {
         let panel = NSOpenPanel()
-        panel.title = "Choose Python Project Location"
+        panel.title = NSLocalizedString("Choose Python Project Location", comment: "Python project folder picker title")
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true

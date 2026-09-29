@@ -1,0 +1,14 @@
+"Contents" = "内容";
+"Go to %@" = "跳转到 %@";
+"Hide table of contents" = "隐藏目录表";
+"Markdown table of contents" = "Markdown 目录表";
+"NVE Quick Look" = "NVE 快速查看";
+"Neon Vision Editor Quick Look" = "Neon Vision 编辑器快速查看";
+"Preview" = "预览";
+"Preview provided by Neon Vision Editor Quick Look" = "Neon Vision 编辑器快速查看提供的预览";
+"Preview truncated" = "预览剪切";
+"Preview truncated because the file is large" = "预览剪切，因为文件很大";
+"Show Markdown source" = "显示 Markdown 源";
+"Show rendered Markdown preview" = "显示渲染后的 Markdown 预览";
+"Show table of contents" = "显示目录表";
+"Source" = "源文件";

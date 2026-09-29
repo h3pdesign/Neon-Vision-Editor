@@ -140,11 +140,12 @@ extension ContentView {
     private var aiChatConfigurationError: String {
         switch selectedModel {
         case .appleIntelligence:
-            return AppleFM.availabilityMessage ?? "Apple Intelligence is unavailable in this build or on this device."
+            return AppleFM.availabilityMessage ?? NSLocalizedString("Apple Intelligence is unavailable in this build or on this device.", comment: "AI chat availability")
         case .customProvider:
-            return "Configure a secure custom provider URL and model in AI Settings before starting a chat."
+            return NSLocalizedString("Configure a secure custom provider URL and model in AI Settings before starting a chat.", comment: "AI chat configuration")
         default:
-            return "Add a \(selectedModel.displayName) API key in AI Settings before starting a chat."
+            let format = NSLocalizedString("Add a %@ API key in AI Settings before starting a chat.", comment: "AI chat configuration")
+            return String.localizedStringWithFormat(format, selectedModel.displayName)
         }
     }
 

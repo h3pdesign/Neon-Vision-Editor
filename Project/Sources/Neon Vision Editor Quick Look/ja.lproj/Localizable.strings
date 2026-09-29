@@ -1,0 +1,14 @@
+"Contents" = "内容";
+"Go to %@" = "%@に移動";
+"Hide table of contents" = "目次非表示";
+"Markdown table of contents" = "Markdown 目次";
+"NVE Quick Look" = "NVE Quick Look";
+"Neon Vision Editor Quick Look" = "Neon Vision Editor Quick Look Quick Look";
+"Preview" = "プレビュー";
+"Preview provided by Neon Vision Editor Quick Look" = "Neon Vision Editor Quick Look Quick Lookが提供するプレビュー";
+"Preview truncated" = "プレビューが切り取られました";
+"Preview truncated because the file is large" = "ファイルが大きいためプレビューが切り取られました";
+"Show Markdown source" = "Markdownソースを表示";
+"Show rendered Markdown preview" = "レンダリングされたMarkdownプレビューを表示";
+"Show table of contents" = "目次を表示";
+"Source" = "ソース";

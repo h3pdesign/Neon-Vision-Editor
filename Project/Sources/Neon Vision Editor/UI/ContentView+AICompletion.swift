@@ -19,11 +19,11 @@ extension ContentView {
         if !grokAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
 #if os(macOS)
         let alert = NSAlert()
-        alert.messageText = "Grok API Token Required"
-        alert.informativeText = "Enter your Grok API token to enable suggestions. You can obtain this from your Grok account."
+        alert.messageText = NSLocalizedString("Grok API Token Required", comment: "AI token prompt title")
+        alert.informativeText = NSLocalizedString("Enter your Grok API token to enable suggestions. You can obtain this from your Grok account.", comment: "AI token prompt detail")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: NSLocalizedString("Save", comment: "AI token prompt"))
+        alert.addButton(withTitle: NSLocalizedString("Cancel", comment: "AI token prompt"))
         let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
         input.placeholderString = "sk-..."
         alert.accessoryView = input
@@ -43,11 +43,11 @@ extension ContentView {
         if !openAIAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
 #if os(macOS)
         let alert = NSAlert()
-        alert.messageText = "OpenAI API Token Required"
-        alert.informativeText = "Enter your OpenAI API token to enable suggestions."
+        alert.messageText = NSLocalizedString("OpenAI API Token Required", comment: "AI token prompt title")
+        alert.informativeText = NSLocalizedString("Enter your OpenAI API token to enable suggestions.", comment: "AI token prompt detail")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: NSLocalizedString("Save", comment: "AI token prompt"))
+        alert.addButton(withTitle: NSLocalizedString("Cancel", comment: "AI token prompt"))
         let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
         input.placeholderString = "sk-..."
         alert.accessoryView = input
@@ -67,11 +67,11 @@ extension ContentView {
         if !geminiAPIToken.isEmpty { return true }
 #if os(macOS)
         let alert = NSAlert()
-        alert.messageText = "Gemini API Key Required"
-        alert.informativeText = "Enter your Gemini API key to enable suggestions."
+        alert.messageText = NSLocalizedString("Gemini API Key Required", comment: "AI token prompt title")
+        alert.informativeText = NSLocalizedString("Enter your Gemini API key to enable suggestions.", comment: "AI token prompt detail")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: NSLocalizedString("Save", comment: "AI token prompt"))
+        alert.addButton(withTitle: NSLocalizedString("Cancel", comment: "AI token prompt"))
         let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
         input.placeholderString = "AIza..."
         alert.accessoryView = input
@@ -91,11 +91,11 @@ extension ContentView {
         if !anthropicAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
 #if os(macOS)
         let alert = NSAlert()
-        alert.messageText = "Anthropic API Token Required"
-        alert.informativeText = "Enter your Anthropic API token to enable suggestions."
+        alert.messageText = NSLocalizedString("Anthropic API Token Required", comment: "AI token prompt title")
+        alert.informativeText = NSLocalizedString("Enter your Anthropic API token to enable suggestions.", comment: "AI token prompt detail")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: NSLocalizedString("Save", comment: "AI token prompt"))
+        alert.addButton(withTitle: NSLocalizedString("Cancel", comment: "AI token prompt"))
         let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
         input.placeholderString = "sk-ant-..."
         alert.accessoryView = input
@@ -115,10 +115,10 @@ extension ContentView {
         if !openCodeGoAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
         #if os(macOS)
         let alert = NSAlert()
-        alert.messageText = "OpenCode Go API Token Required"
-        alert.informativeText = "Enter your OpenCode Go API token to enable suggestions."
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = NSLocalizedString("OpenCode Go API Token Required", comment: "AI token prompt title")
+        alert.informativeText = NSLocalizedString("Enter your OpenCode Go API token to enable suggestions.", comment: "AI token prompt detail")
+        alert.addButton(withTitle: NSLocalizedString("Save", comment: "AI token prompt"))
+        alert.addButton(withTitle: NSLocalizedString("Cancel", comment: "AI token prompt"))
         let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
         input.placeholderString = "sk-..."
         alert.accessoryView = input

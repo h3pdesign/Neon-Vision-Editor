@@ -223,33 +223,33 @@ enum ToolbarPreset: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .standard: return "Standard"
-        case .writing: return "Writing"
-        case .developer: return "Development"
-        case .review: return "Git Review"
-        case .focus: return "Focus"
-        case .all: return "All Actions"
-        case .custom: return "Custom"
+        case .standard: return NSLocalizedString("Standard", comment: "Toolbar preset")
+        case .writing: return NSLocalizedString("Writing", comment: "Toolbar preset")
+        case .developer: return NSLocalizedString("Development", comment: "Toolbar preset")
+        case .review: return NSLocalizedString("Git Review", comment: "Toolbar preset")
+        case .focus: return NSLocalizedString("Focus", comment: "Toolbar preset")
+        case .all: return NSLocalizedString("All Actions", comment: "Toolbar preset")
+        case .custom: return NSLocalizedString("Custom", comment: "Toolbar preset")
         }
     }
 
     var compactTitle: String {
         switch self {
-        case .standard: return "Std"
-        case .writing: return "Write"
-        case .developer: return "Dev"
-        case .review: return "Git"
-        case .focus: return "Focus"
-        case .all: return "All"
-        case .custom: return "Custom"
+        case .standard: return NSLocalizedString("Std", comment: "Compact toolbar preset")
+        case .writing: return NSLocalizedString("Write", comment: "Compact toolbar preset")
+        case .developer: return NSLocalizedString("Dev", comment: "Compact toolbar preset")
+        case .review: return NSLocalizedString("Git", comment: "Compact toolbar preset")
+        case .focus: return NSLocalizedString("Focus", comment: "Compact toolbar preset")
+        case .all: return NSLocalizedString("All", comment: "Compact toolbar preset")
+        case .custom: return NSLocalizedString("Custom", comment: "Compact toolbar preset")
         }
     }
 
     var toolbarLabel: String {
         switch self {
-        case .standard: return "Standard"
-        case .writing: return "Write"
-        case .developer: return "Dev"
+        case .standard: return NSLocalizedString("Standard", comment: "Toolbar label")
+        case .writing: return NSLocalizedString("Write", comment: "Toolbar label")
+        case .developer: return NSLocalizedString("Dev", comment: "Toolbar label")
         case .review: return "Review"
         case .focus: return "Focus"
         case .all: return "All"
@@ -406,6 +406,10 @@ enum ToolbarIconOption: String, CaseIterable, Identifiable {
         case .translucentWindow: return "Translucent Window"
         case .toolbarIconColor: return "Blue Icons"
         }
+    }
+
+    var localizedTitle: String {
+        NSLocalizedString(title, comment: "Toolbar action")
     }
 }
 
@@ -2336,7 +2340,7 @@ extension ContentView {
                 .frame(width: 44, height: 44)
                 .offset(y: showsLabel ? -4 : 0)
             if showsLabel {
-                Text(MobileToolbarPresentationPolicy.compactTitle(title))
+                Text(NSLocalizedString(MobileToolbarPresentationPolicy.compactTitle(title), comment: "Compact toolbar action"))
                     .font(.system(size: 9, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)

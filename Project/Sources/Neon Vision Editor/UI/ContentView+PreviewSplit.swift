@@ -27,9 +27,9 @@ enum MarkdownPreviewOpenMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .edit: return "Editor"
-        case .preview: return "Editor + Preview"
-        case .reading: return "Full-window Preview"
+        case .edit: return NSLocalizedString("Editor", comment: "Markdown opening mode")
+        case .preview: return NSLocalizedString("Editor + Preview", comment: "Markdown opening mode")
+        case .reading: return NSLocalizedString("Full-window Preview", comment: "Markdown opening mode")
         }
     }
 
@@ -296,13 +296,13 @@ extension ContentView {
     }
 
     var previewTitle: String {
-        if isJSONPreviewDocument { return "JSON Preview" }
-        if isYAMLPreviewDocument { return "YAML Preview" }
-        if isSVGDocument { return "SVG Preview" }
-        if isHTMLPreviewDocument { return "HTML Preview" }
-        if isPNGPreviewDocument { return "PNG Preview" }
-        if isPDFPreviewDocument { return "PDF Preview" }
-        return "Markdown Preview"
+        if isJSONPreviewDocument { return NSLocalizedString("JSON Preview", comment: "Preview title") }
+        if isYAMLPreviewDocument { return NSLocalizedString("YAML Preview", comment: "Preview title") }
+        if isSVGDocument { return NSLocalizedString("SVG Preview", comment: "Preview title") }
+        if isHTMLPreviewDocument { return NSLocalizedString("HTML Preview", comment: "Preview title") }
+        if isPNGPreviewDocument { return NSLocalizedString("PNG Preview", comment: "Preview title") }
+        if isPDFPreviewDocument { return NSLocalizedString("PDF Preview", comment: "Preview title") }
+        return NSLocalizedString("Markdown Preview", comment: "Preview title")
     }
 
     var previewToolbarIconName: String {

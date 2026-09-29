@@ -506,13 +506,13 @@ struct CodeMinimapView: View {
 
     private var accessibilityValue: String {
         if snapshot.isTruncated {
-            return "Large file preview"
+            return NSLocalizedString("Large file preview", comment: "Code minimap accessibility")
         }
         guard let marker = codeMinimapViewportMarker(viewport: viewport) else {
-            return "\(snapshot.totalLines) lines"
+            return String(format: NSLocalizedString("%d lines", comment: "Code minimap accessibility"), snapshot.totalLines)
         }
         let percent = Int((marker.yFraction * 100).rounded())
-        return "\(snapshot.totalLines) lines, viewport near \(percent)%"
+        return String(format: NSLocalizedString("%d lines, viewport near %d%%", comment: "Code minimap accessibility"), snapshot.totalLines, percent)
     }
 
     private var viewportMarkerOverlay: some View {

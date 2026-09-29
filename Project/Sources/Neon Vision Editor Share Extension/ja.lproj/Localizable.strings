@@ -1,0 +1,8 @@
+"Done" = "完了";
+"Imported %lld shared item. Switch to Neon Vision Editor to choose where to place it." = "%lldの共有アイテムをインポートしました。それをどこに置くかを選択するには、ネオンビジョンエディタに切り替えてください。";
+"Imported %lld shared item. You can close this share sheet." = "%lldの共有アイテムをインポートしました。この共有シートを閉じることができます。";
+"Imported %lld shared items. Switch to Neon Vision Editor to choose where to place them." = "%lldの共有アイテムをインポートしました。それらをどこに置くかを選択するには、ネオンビジョンエディタに切り替えてください。";
+"Imported %lld shared items. You can close this share sheet." = "%lldの共有アイテムをインポートしました。この共有シートを閉じることができます。";
+"Neon Vision Editor" = "ネオンビジョンエディタ";
+"No supported shared text, URLs, or files were found." = "サポートされていない共有テキスト、URL、またはファイルが見つかりませんでした。";
+"Preparing shared content..." = "共有コンテンツの準備中...";

@@ -115,22 +115,28 @@ struct NeonPulseWidgetView: View {
     }
 
     private var inlineLabel: String {
-        if entry.status.hasConflict { return "Sync needs attention" }
-        return entry.pendingCaptures == 0 ? "Ready" : "\(entry.pendingCaptures) pending"
+        if entry.status.hasConflict { return NSLocalizedString("Sync needs attention", comment: "Watch widget sync status") }
+        return entry.pendingCaptures == 0
+            ? NSLocalizedString("Ready", comment: "Watch widget delivery status")
+            : String.localizedStringWithFormat(NSLocalizedString("%lld pending", comment: "Watch widget pending count"), Int64(entry.pendingCaptures))
     }
 
     private var circularAccessibilityLabel: String {
         if entry.status.hasConflict {
-            return "Neon Pulse. Sync needs attention. \(entry.pendingCaptures) pending captures"
+            let format = NSLocalizedString("Neon Pulse. Sync needs attention. %lld pending captures", comment: "Watch widget accessibility status")
+            return String.localizedStringWithFormat(format, Int64(entry.pendingCaptures))
         }
-        return "Neon Pulse. \(entry.pendingCaptures) pending captures"
+        let format = NSLocalizedString("Neon Pulse. %lld pending captures", comment: "Watch widget accessibility status")
+        return String.localizedStringWithFormat(format, Int64(entry.pendingCaptures))
     }
 
     private var rectangularAccessibilityLabel: String {
         if entry.status.hasConflict {
-            return "Neon Pulse. Sync needs attention. \(entry.pendingCaptures) pending captures"
+            let format = NSLocalizedString("Neon Pulse. Sync needs attention. %lld pending captures", comment: "Watch widget accessibility status")
+            return String.localizedStringWithFormat(format, Int64(entry.pendingCaptures))
         }
-        return "Neon Pulse. Delivery target: \(NeonPulseConstants.inboxFilename). \(entry.pendingCaptures) pending captures"
+        let format = NSLocalizedString("Neon Pulse. Delivery target: %@. %lld pending captures", comment: "Watch widget accessibility status")
+        return String.localizedStringWithFormat(format, NeonPulseConstants.inboxFilename, Int64(entry.pendingCaptures))
     }
 }
 
@@ -185,14 +191,17 @@ struct NeonPulseInboxWidgetView: View {
     }
 
     private var inlineLabel: String {
-        entry.pendingCaptures == 0 ? "Inbox ready" : "\(entry.pendingCaptures) pending"
+        entry.pendingCaptures == 0
+            ? NSLocalizedString("Inbox ready", comment: "Watch inbox widget status")
+            : String.localizedStringWithFormat(NSLocalizedString("%lld pending", comment: "Watch widget pending count"), Int64(entry.pendingCaptures))
     }
 
     private var accessibilityLabel: String {
         if let latestCapture = entry.latestCapture {
-            return "Neon Inbox. \(entry.pendingCaptures) pending captures. Latest: \(latestCapture.text)"
+            let format = NSLocalizedString("Neon Inbox. %lld pending captures. Latest: %@", comment: "Watch inbox widget accessibility status")
+            return String.localizedStringWithFormat(format, Int64(entry.pendingCaptures), latestCapture.text)
         }
-        return "Neon Inbox. No captures yet"
+        return NSLocalizedString("Neon Inbox. No captures yet", comment: "Watch inbox widget accessibility status")
     }
 }
 

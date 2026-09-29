@@ -645,19 +645,19 @@ extension ContentView {
         case "yaml": return "YAML"
         case "toml": return "TOML"
         case "nix": return "Nix"
-        case "eml": return "Email Message"
+        case "eml": return NSLocalizedString("Email Message", comment: "File language")
         case "csv": return "CSV"
         case "ini": return "INI"
         case "sql": return "SQL"
         case "vim": return "Vim"
         case "log": return "Log"
-        case "crashlog": return "Apple Crash Report"
+        case "crashlog": return NSLocalizedString("Apple Crash Report", comment: "File language")
         case "ipynb": return "Jupyter Notebook"
         case "tex": return "TeX"
         case "html": return "HTML"
         case "expressionengine": return "ExpressionEngine"
         case "css": return "CSS"
-        case "standard": return "Standard"
+        case "standard": return NSLocalizedString("Standard", comment: "File language")
         default: return lang.capitalized
         }
     }
@@ -790,8 +790,8 @@ extension ContentView {
             case "typescript": return ".ts"
             case "json": return ".json"
             case "yaml": return ".yml / .yaml"
-            case "plain": return "No syntax highlighting"
-            default: return language == selectedLanguage ? "Current language" : ""
+            case "plain": return NSLocalizedString("No syntax highlighting", comment: "Plain text language hint")
+            default: return language == selectedLanguage ? NSLocalizedString("Current language", comment: "Selected file language hint") : ""
             }
         }
 

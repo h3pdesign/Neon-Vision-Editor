@@ -119,7 +119,9 @@ private final class VirtualEditorColorPickerViewController: NSViewController {
         super.init(nibName: nil, bundle: nil)
         colorWell.color = color
         colorWell.isEnabled = !isReadOnly
-        colorWell.toolTip = "Edit \(token)"
+        colorWell.toolTip = String.localizedStringWithFormat(
+            NSLocalizedString("Edit %@", comment: "Edit color token tooltip"), token
+        )
         colorWell.setAccessibilityLabel("Color for \(token)")
         colorWell.target = self
         colorWell.action = #selector(colorChanged(_:))
@@ -1006,14 +1008,14 @@ struct VirtualEditorAccessibilityContext: Equatable {
     let isReadOnly: Bool
     let selectionLength: Int
 
-    var label: String { "\(documentName), editor" }
+    var label: String { String(format: NSLocalizedString("%@, editor", comment: "Editor accessibility label"), documentName) }
 
     var help: String {
-        let editability = isReadOnly ? "read only" : "editable"
+        let editability = isReadOnly ? NSLocalizedString("read only", comment: "Editor accessibility status") : NSLocalizedString("editable", comment: "Editor accessibility status")
         let selectionStatus = selectionLength > 0
-            ? "\(selectionLength) characters selected"
-            : "no selection"
-        return "Line \(line), column \(column), \(editability), \(selectionStatus)."
+            ? String(format: NSLocalizedString("%d characters selected", comment: "Editor accessibility status"), selectionLength)
+            : NSLocalizedString("no selection", comment: "Editor accessibility status")
+        return String(format: NSLocalizedString("Line %d, column %d, %@, %@.", comment: "Editor accessibility help"), line, column, editability, selectionStatus)
     }
 }
 

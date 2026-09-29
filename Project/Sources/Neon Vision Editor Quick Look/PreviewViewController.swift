@@ -100,7 +100,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         badge.state = .active
         badge.wantsLayer = true
         badge.layer?.cornerRadius = 10
-        badge.setAccessibilityLabel("Preview provided by Neon Vision Editor Quick Look")
+        badge.setAccessibilityLabel(NSLocalizedString("Preview provided by Neon Vision Editor Quick Look", comment: "Quick Look branding accessibility label"))
 
         let icon = NSImageView()
         icon.image = NSImage(systemSymbolName: "eye", accessibilityDescription: "Neon Vision Editor Quick Look")

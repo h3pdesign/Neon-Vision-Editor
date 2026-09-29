@@ -114,8 +114,9 @@ jobs:
             done
 
             if [[ -z "${metrics_pr}" ]]; then
-              # The default GITHUB_TOKEN makes PR CI require manual approval.
-              if ! GH_TOKEN="${METRICS_MERGE_TOKEN}" gh pr create \
+              # Keep GitHub Actions as the PR author so pull_request CI starts
+              # automatically; reserve the trusted token for enabling auto-merge.
+              if ! gh pr create \
                 --repo "${GITHUB_REPOSITORY}" \
                 --base main \
                 --head "${METRICS_BRANCH}" \

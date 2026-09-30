@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.8.6",
-            subtitle: "Release highlights for v1.8.6.",
+            title: "What’s New in v1.9.0",
+            subtitle: "Release highlights for v1.9.0.",
             bullets: [
-                "Reliable Saves: Edit unusually long generated lines on iPhone and iPad without changing the saved text.",
-                "Workflow Refinements: Work with Markdown source and rendered preview side by side again.",
-                "Performance Updates: Rearrange macOS document tabs without opening the dragged document first.",
-                "Usability Updates: Restores side-by-side Markdown editing and preview as the default; full-window reading remains a Settings option.",
-                "Reliable Saves: Keeps pathological single-line files editable on iPhone and iPad with display-only segmented wrapping, including when No…",
-                "Workflow Refinements: Keeps the Markdown formatting toolbar with the editor instead of overlaying full-window reading."
+                "Editor Improvements: Use the app in seven languages, including Danish, French, Spanish, and Japanese.",
+                "Workflow Refinements: Close What’s New directly and see the current release highlights.",
+                "Performance Updates: Transfer a text-document copy to a nearby device through an explicit pairing and consent flow.",
+                "Accessible Controls: Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including…",
+                "Editor Improvements: Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB…",
+                "Workflow Refinements: Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4516,6 +4516,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "1.9.0", version: "1.9.0", date: "2026-09-30", highlights: [
+            "Use the app in seven languages, including Danish, French, Spanish, and Japanese.",
+            "Close What’s New directly and see the current release highlights.",
+            "Transfer a text-document copy to a nearby device through an explicit pairing and consent flow."
+        ]),
         Release(id: "1.8.6", version: "1.8.6", date: "2026-09-27", highlights: [
             "Edit unusually long generated lines on iPhone and iPad without changing the saved text.",
             "Work with Markdown source and rendered preview side by side again.",

@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.9.0] - 2026-09-30
+
 ### Why Upgrade
 
 - Use the app in seven languages, including Danish, French, Spanish, and Japanese.

@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-09-27 (v1.8.6 release-aligned architecture)
+Last updated: 2026-09-30 (v1.9.0 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -9,19 +9,20 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
+### v1.9.0 (2026-09-30)
+
+- Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including Settings, editor actions, accessibility text, and companion surfaces.
+- Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB payload limit, and independently staged received copies.
+- Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during release preparation ([#659](https://github.com/h3pdesign/Neon-Vision-Editor/issues/659)).
+- Expands localization coverage for dynamic search, toolbar, Git status, and share-import messages.
+- Processes macOS terminal output as a bounded primary screen, preserving fragmented UTF-8, progress-line rewrites, cursor movement, erase commands, and text styles while publishing coalesced changed-text patches.
+
 ### v1.8.6 (2026-09-27)
 
 - Restores side-by-side Markdown editing and preview as the default; full-window reading remains a Settings option.
 - Keeps pathological single-line files editable on iPhone and iPad with display-only segmented wrapping, including when No Wrap is selected. The saved text and copied selections retain their original bytes; ordinary formatted documents retain their chosen layout ([#595](https://github.com/h3pdesign/Neon-Vision-Editor/issues/595)).
 - Keeps the Markdown formatting toolbar with the editor instead of overlaying full-window reading.
 - Defers macOS document-tab activation until a click completes, allowing a drag to start without switching editors; accepts reorder drops across tab gaps and strip edges ([#632](https://github.com/h3pdesign/Neon-Vision-Editor/issues/632)). Native macOS window tabs remain a separate, future change ([#621](https://github.com/h3pdesign/Neon-Vision-Editor/issues/621)).
-
-### v1.8.5 (2026-09-26)
-
-- Adds a default Markdown opening mode for editing or full-window reading, with toolbar or Command-Shift-P switching ([#617](https://github.com/h3pdesign/Neon-Vision-Editor/issues/617)).
-- Makes configured app shortcuts available while the mobile editor has hardware-keyboard focus; restores the documented Save As, Line Wrap, and Language Search keys, reserves editor-owned editing keys, resolves a macOS shortcut collision, and removes duplicate mobile Settings and Help bindings.
-- Fixes the custom iPhone and iPad toolbar icon limit so it matches the selected action count, and lets users reorder their chosen icons ([#615](https://github.com/h3pdesign/Neon-Vision-Editor/issues/615)).
-- Restores the standard macOS Command-arrow and Command-Shift-arrow navigation for line and document boundaries ([#622](https://github.com/h3pdesign/Neon-Vision-Editor/issues/622)).
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

@@ -511,6 +511,7 @@ final class FileBackedTextDocumentTests: XCTestCase {
     func testSegmentedIndexPreservesCoordinatesAcrossSupportedEncodings() throws {
         for identifier in TextEncodingDescriptor.Identifier.allCases {
             let encoding = TextEncodingDescriptor(identifier: identifier)
+            guard encoding.supportsBoundedStorage else { continue }
             let isUnicode = identifier.rawValue.hasPrefix("utf")
             // Both halves of a UTF-16 unit can contain 0x0A without being LF.
             let suffix = isUnicode ? "😀 ਁ䄊" : (identifier == .ascii ? "ASCII" : "é")

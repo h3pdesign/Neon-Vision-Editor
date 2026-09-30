@@ -217,19 +217,21 @@ enum IOSFloatingStatusPolicy {
 }
 
 #if os(iOS) || os(visionOS)
-private struct MobileFloatingStatusOverlayModifier: ViewModifier {
+struct MobileFloatingStatusOverlayModifier: ViewModifier {
     let showsStatus: Bool
     let centered: Bool
     let bottomInset: CGFloat
     let status: AnyView
+    var bottomToolbar: AnyView? = nil
 
     func body(content: Content) -> some View {
         content.overlay(alignment: centered ? .bottom : .bottomTrailing) {
-            if showsStatus {
-                status
-                    .padding(.trailing, centered ? 0 : 12)
-                    .padding(.bottom, 12 + bottomInset)
+            VStack(spacing: 12) {
+                if showsStatus { status }
+                if let bottomToolbar { bottomToolbar }
             }
+            .padding(.trailing, centered ? 0 : 12)
+            .padding(.bottom, (centered ? 8 : 12) + bottomInset)
         }
     }
 }
@@ -5796,27 +5798,6 @@ struct ContentView: View {
             editorToolbarContent
         }
 #if os(iOS)
-        .overlay(alignment: .bottom) {
-            if usesIOSBottomToolbar && !showFindReplace && !isPhoneSoftwareKeyboardVisible {
-                GeometryReader { proxy in
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        if usesIPhoneBottomToolbar {
-                            iPhoneScrollableBottomToolbar
-                                .frame(width: IPhoneBottomToolbarWidthPolicy.width(
-                                    availableWidth: proxy.size.width
-                                ))
-                                .frame(maxWidth: .infinity)
-                                .padding(.bottom, 8)
-                        } else {
-                            iPadUnifiedToolbarRow(availableWidth: proxy.size.width)
-                                .frame(maxWidth: .infinity)
-                                .padding(.bottom, 8)
-                        }
-                    }
-                }
-            }
-        }
         .toolbarBackground(.hidden, for: .bottomBar)
         .sheet(
             isPresented: Binding(
@@ -5857,10 +5838,9 @@ struct ContentView: View {
                     phoneToolbarMinimized: usesIOSBottomToolbar && isPhoneBottomToolbarMinimized
                 ),
                 centered: usesIOSBottomToolbar,
-                bottomInset: usesIOSBottomToolbar && isPhoneSoftwareKeyboardVisible
-                    ? EditorInputTextView.keyboardToolbarHeight
-                    : (usesIOSBottomToolbar ? 64 : 0),
-                status: AnyView(floatingStatusPill)
+                bottomInset: 0,
+                status: AnyView(floatingStatusPill),
+                bottomToolbar: mobileBottomToolbarOverlay
             )
         )
 #endif

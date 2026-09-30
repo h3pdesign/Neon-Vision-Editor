@@ -1,7 +1,76 @@
 import XCTest
+import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 @testable import Neon_Vision_Editor
 
 final class ContentViewLayoutTests: XCTestCase {
+#if os(iOS)
+    @MainActor
+    func testBottomChromeMeasuresToolbarHeightInsteadOfTouchingStatus() async {
+        for toolbarHeight: CGFloat in [52, 68] {
+            let frames = await bottomChromeFrames(toolbarHeight: toolbarHeight)
+            XCTAssertEqual(frames.toolbar.minY - frames.status.maxY, 12, accuracy: 0.5)
+            XCTAssertEqual(frames.container.maxY - frames.toolbar.maxY, 8, accuracy: 0.5)
+        }
+    }
+
+    @MainActor
+    func testKeyboardChromeDoesNotAddAccessoryHeightTwice() async {
+        let frames = await bottomChromeFrames(toolbarHeight: nil)
+        XCTAssertEqual(frames.container.maxY - frames.status.maxY, 8, accuracy: 0.5)
+    }
+
+    @MainActor
+    private func bottomChromeFrames(toolbarHeight: CGFloat?) async -> (container: CGRect, status: CGRect, toolbar: CGRect) {
+        let measured = expectation(description: "Bottom chrome measured")
+        var statusFrame = CGRect.zero
+        var toolbarFrame = CGRect.zero
+        var containerFrame = CGRect.zero
+        var fulfilled = false
+        func finishIfReady() {
+            if !fulfilled, containerFrame.height > 0, statusFrame.height > 0, toolbarHeight == nil || toolbarFrame.height > 0 {
+                fulfilled = true
+                measured.fulfill()
+            }
+        }
+        let status = Color.red.frame(width: 120, height: 30)
+            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
+                statusFrame = $0
+                finishIfReady()
+            }
+        let toolbar = toolbarHeight.map { height in
+            AnyView(Color.blue.frame(width: 300, height: height)
+                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
+                    toolbarFrame = $0
+                    finishIfReady()
+                })
+        }
+        let view = Color.clear.frame(width: 500, height: 500)
+            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
+                containerFrame = $0
+                finishIfReady()
+            }
+            .modifier(MobileFloatingStatusOverlayModifier(showsStatus: true, centered: true, bottomInset: 0, status: AnyView(status), bottomToolbar: toolbar))
+        let controller = UIHostingController(rootView: view)
+        let window: UIWindow
+        if let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
+            window = UIWindow(windowScene: scene)
+        } else {
+            window = UIWindow(frame: CGRect(x: 0, y: 0, width: 500, height: 500))
+        }
+        window.frame = CGRect(x: 0, y: 0, width: 500, height: 500)
+        window.rootViewController = controller
+        window.isHidden = false
+        defer { window.isHidden = true }
+        controller.view.frame = CGRect(x: 0, y: 0, width: 500, height: 500)
+        controller.view.layoutIfNeeded()
+        await fulfillment(of: [measured], timeout: 3)
+        withExtendedLifetime(controller) {}
+        return (containerFrame, statusFrame, toolbarFrame)
+    }
+#endif
     @MainActor
     func testSecondaryContentRequestInvalidatesForSeparatorChangeWithoutAnEdit() {
         let id = UUID()
@@ -155,12 +224,21 @@ final class ContentViewLayoutTests: XCTestCase {
 
     func testIPadBottomToolbarWidthAdaptsToWindowSize() {
 #if os(iOS)
-        let width = ContentView.IPadBottomToolbarWidthPolicy.width
+        let width: (CGFloat, Bool) -> CGFloat = { ContentView.IPadBottomToolbarWidthPolicy.width(availableWidth: $0, minimized: $1) }
         XCTAssertEqual(width(768, false), 522.24, accuracy: 0.01)
         XCTAssertEqual(width(1_024, false), 696.32, accuracy: 0.01)
         XCTAssertEqual(width(1_366, false), 760)
         XCTAssertEqual(width(400, false), 336)
         XCTAssertEqual(width(768, true), 176)
+#endif
+    }
+
+    func testIPadBottomToolbarDoesNotReserveUnusedActionSpace() {
+#if os(iOS)
+        XCTAssertEqual(ContentView.IPadBottomToolbarWidthPolicy.width(availableWidth: 1_024, minimized: false, contentWidth: 442), 442)
+        XCTAssertEqual(ContentView.IPadBottomToolbarWidthPolicy.width(availableWidth: 400, minimized: false, contentWidth: 442), 336)
+        XCTAssertEqual(ContentView.IPadBottomToolbarWidthPolicy.width(availableWidth: 0, minimized: false, contentWidth: 442), 0)
+        XCTAssertEqual(ContentView.IPadBottomToolbarWidthPolicy.width(availableWidth: 1_024, minimized: true, contentWidth: 442), 176)
 #endif
     }
 

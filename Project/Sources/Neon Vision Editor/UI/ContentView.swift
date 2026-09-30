@@ -3930,7 +3930,9 @@ struct ContentView: View {
                     }
                 }
                 .sheet(isPresented: contentView.$showInAppChangelog) {
-                    InAppChangelogView()
+                    InAppChangelogView {
+                        contentView.$showInAppChangelog.wrappedValue = false
+                    }
                 }
 #if os(macOS)
                 .background(

@@ -49,6 +49,36 @@ def fixture(root):
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_in_app_changelog_is_current_idempotent_and_keeps_history(self):
+        source = (ROOT / "Project/Sources/Neon Vision Editor/UI/PanelsAndHelpers.swift").read_text()
+        changelog = (ROOT / "CHANGELOG.md").read_text()
+        updated = docs.update_in_app_changelog(source, changelog, "v1.8.6")
+        entries = updated.split("private let releases: [Release] = [", 1)[1]
+        self.assertTrue(entries.lstrip().startswith('Release(id: "1.8.6"'))
+        self.assertEqual(entries.count('Release(id: "1.8.6"'), 1)
+        self.assertIn('date: "2026-09-27"', entries)
+        self.assertIn('Release(id: "1.0"', entries)
+        self.assertEqual(docs.update_in_app_changelog(updated, changelog, "v1.8.6"), updated)
+        escaped = changelog.replace("Edit unusually long generated lines", 'Edit "quoted" \\ generated lines')
+        updated = docs.update_in_app_changelog(updated, escaped, "v1.8.6")
+        self.assertIn('Edit \\"quoted\\" \\\\ generated lines', updated)
+        with self.assertRaises(ValueError):
+            docs.update_in_app_changelog("missing release list", changelog, "v1.8.6")
+        with self.assertRaises(ValueError):
+            docs.update_in_app_changelog(source, changelog, "v9.9.9")
+
+    def test_in_app_changelog_has_visible_close_and_escape_binding(self):
+        source = (ROOT / "Project/Sources/Neon Vision Editor/UI/PanelsAndHelpers.swift").read_text()
+        view = source.split("struct InAppChangelogView: View", 1)[1].split("extension NSRange", 1)[0]
+        self.assertIn("let onClose: () -> Void", view)
+        self.assertIn('Button("Close", action: onClose)', view)
+        self.assertIn("ToolbarItem(placement: .cancellationAction)", view)
+        self.assertIn(".keyboardShortcut(.cancelAction)", view)
+        self.assertIn('.accessibilityIdentifier("whats-new-close")', view)
+        content = (ROOT / "Project/Sources/Neon Vision Editor/UI/ContentView.swift").read_text()
+        self.assertIn("InAppChangelogView {", content)
+        self.assertIn("contentView.$showInAppChangelog.wrappedValue = false", content)
+
     def test_release_gate_reuses_mac_build_and_fails_without_whole_matrix_retry(self):
         gate = (ROOT / "scripts/ci/release_gate.sh").read_text()
         preflight = (ROOT / "scripts/ci/release_preflight.sh").read_text()
@@ -380,6 +410,10 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 self.assertNotIn("releases/tag/v1.6.2", (root / name).read_text(), name)
             self.assertIn("Prepared release: **v1.6.2**", (root / "README.md").read_text())
             self.assertIn("What’s New in v1.6.2", (root / "Project/Sources/Neon Vision Editor/UI/PanelsAndHelpers.swift").read_text())
+            app_source = (root / docs.WELCOME_TOUR_SWIFT.relative_to(ROOT)).read_text()
+            release_cards = app_source.split("struct InAppChangelogView: View", 1)[1]
+            self.assertEqual(re.findall(r'Release\(id: "([^"]+)"', release_cards)[0], "1.6.2")
+            self.assertEqual(release_cards.count('Release(id: "1.6.2"'), 1)
             self.assertEqual(prep.project_build((root / prep.PROJECT).read_text()), 1018)
             prep.run("python3", "scripts/prepare_release_docs.py", "v1.6.2", "--published", cwd=root)
             prep.run("python3", "scripts/prepare_release_docs.py", "v1.6.2", "--check", cwd=root)

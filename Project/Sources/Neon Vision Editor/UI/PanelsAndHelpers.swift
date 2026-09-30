@@ -4506,6 +4506,8 @@ extension Notification.Name {
 }
 
 struct InAppChangelogView: View {
+    let onClose: () -> Void
+
     private struct Release: Identifiable {
         let id: String
         let version: String
@@ -4514,6 +4516,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "1.8.6", version: "1.8.6", date: "2026-09-27", highlights: [
+            "Edit unusually long generated lines on iPhone and iPad without changing the saved text.",
+            "Work with Markdown source and rendered preview side by side again.",
+            "Rearrange macOS document tabs without opening the dragged document first."
+        ]),
         Release(id: "1.7.0", version: "1.7.0", date: "2026-09-09", highlights: [
             "Replaces remaining legacy tab-bar paths with native platform tabs and preserves borders, spacing, and translucent surfaces during appearance changes.",
             "Keeps macOS, iOS, and iPadOS editor surfaces consistent in opaque and translucent window modes.",
@@ -4594,6 +4601,13 @@ struct InAppChangelogView: View {
                 .padding(20)
             }
             .navigationTitle("What's New")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close", action: onClose)
+                        .keyboardShortcut(.cancelAction)
+                        .accessibilityIdentifier("whats-new-close")
+                }
+            }
         }
         .frame(minWidth: 420, minHeight: 360)
         .accessibilityElement(children: .contain)

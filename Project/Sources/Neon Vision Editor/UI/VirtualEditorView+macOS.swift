@@ -3259,8 +3259,18 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     private func ensureCaretVisible() {
+        if absoluteCaret < viewportLineOriginStartUTF16 ||
+            absoluteCaret > viewportLineOriginStartUTF16 + viewportText.utf16.count {
+            reloadViewport(anchorLine: lineForAbsoluteOffset(absoluteCaret))
+        }
         let local = absoluteCaret - viewportLineOriginStartUTF16
         guard local >= 0, local <= viewportText.utf16.count else { return }
+        // Bounded visual rows follow the visible scroll region. Bring a distant
+        // logical line into that region before asking for its exact caret point;
+        // caretPoint intentionally falls back to the top for an unrendered row.
+        if visualRow(containing: local, in: visualRows()) == nil {
+            ensureLineVisible(lineForAbsoluteOffset(absoluteCaret))
+        }
         scrollToVisible(NSRect(origin: caretPoint(localLocation: local), size: NSSize(width: 4, height: lineHeight)))
     }
 

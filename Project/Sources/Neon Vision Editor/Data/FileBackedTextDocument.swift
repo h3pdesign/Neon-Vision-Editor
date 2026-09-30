@@ -211,6 +211,12 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         let byteCount = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? prefix.count
         let prefixDescriptor = Self.boundedEncoding(from: prefix, allowsIncompleteUTF8Sequence: byteCount > prefix.count)
         if let prefixDescriptor {
+            if !prefixDescriptor.supportsBoundedStorage {
+                // The byte-indexed editor supports UTF-8, UTF-16 and the
+                // established single-byte encodings, not arbitrary native
+                // multibyte/stateful codecs. The regular editor handles these.
+                throw Error.unsupportedEncoding
+            }
             let values = try url.resourceValues(forKeys: [.fileSizeKey])
             guard let byteCount = values.fileSize, byteCount >= 0 else { throw Error.invalidRange }
             try self.init(lazyURL: url, encoding: prefixDescriptor, byteCount: byteCount)
@@ -255,6 +261,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
 
 
     private init(lazyURL url: URL, encoding: TextEncodingDescriptor, byteCount: Int) throws {
+        guard encoding.supportsBoundedStorage else { throw Error.unsupportedEncoding }
         let handle = try FileHandle(forReadingFrom: url)
         let prefixByteCount = min(byteCount, 256 * 1024)
         let rawPrefix = try handle.read(upToCount: prefixByteCount) ?? Data()
@@ -306,6 +313,9 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
     }
 
     init(content: String, encoding: TextEncodingDescriptor = .utf8) {
+        // Editing coordinates use our supported byte-indexed representation;
+        // TabData retains the original native encoding separately for saving.
+        let encoding = encoding.supportsBoundedStorage ? encoding : .utf8
         let data = encoding.encodedData(for: content) ?? Data(content.utf8)
         self.url = nil
         self.originalData = data
@@ -890,6 +900,9 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
 
 
     private static func detectEncoding(in data: Data) -> TextEncodingDescriptor {
+        if data.starts(with: [0xFF, 0xFE, 0x00, 0x00]) || data.starts(with: [0x00, 0x00, 0xFE, 0xFF]) {
+            return TextEncodingDescriptor.detected(in: data) ?? .utf8
+        }
         if data.starts(with: [0xFF, 0xFE]) {
             return TextEncodingDescriptor(identifier: .utf16LittleEndianWithBOM)
         }
@@ -914,20 +927,15 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
             }
         }
 
-        let legacyCandidates: [TextEncodingDescriptor] = [
-            TextEncodingDescriptor(identifier: .windowsCP1251),
-            TextEncodingDescriptor(identifier: .windowsCP1252),
-            TextEncodingDescriptor(identifier: .isoLatin1),
-            TextEncodingDescriptor(identifier: .isoLatin5),
-            TextEncodingDescriptor(identifier: .macOSRoman),
-            TextEncodingDescriptor(identifier: .ascii)
-        ]
-        return legacyCandidates.first(where: { $0.decode(data) != nil }) ?? .utf8
+        return TextEncodingDescriptor.detected(in: data) ?? .utf8
     }
 
     /// Performs encoding detection using only a bounded prefix. UTF-8 and
     /// UTF-16 BOM encodings are eligible for the bounded editor path.
     nonisolated static func boundedEncoding(from prefix: Data, allowsIncompleteUTF8Sequence: Bool = false) -> TextEncodingDescriptor? {
+        if prefix.starts(with: [0xFF, 0xFE, 0x00, 0x00]) || prefix.starts(with: [0x00, 0x00, 0xFE, 0xFF]) {
+            return TextEncodingDescriptor.detected(in: prefix)
+        }
         if prefix.starts(with: [0xEF, 0xBB, 0xBF]) {
             return TextEncodingDescriptor(identifier: .utf8WithBOM)
         }
@@ -942,15 +950,13 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
             (allowsIncompleteUTF8Sequence && hasIncompleteUTF8Suffix(prefix))) {
             return .utf8
         }
-        let legacyCandidates: [TextEncodingDescriptor] = [
-            TextEncodingDescriptor(identifier: .windowsCP1251),
-            TextEncodingDescriptor(identifier: .windowsCP1252),
-            TextEncodingDescriptor(identifier: .isoLatin1),
-            TextEncodingDescriptor(identifier: .isoLatin5),
-            TextEncodingDescriptor(identifier: .macOSRoman),
-            TextEncodingDescriptor(identifier: .ascii)
-        ]
-        return legacyCandidates.first(where: { $0.decode(prefix) != nil })
+        if allowsIncompleteUTF8Sequence, let lastByte = prefix.last,
+           (0x81...0x9F).contains(lastByte) || (0xE0...0xFC).contains(lastByte),
+           let complete = TextEncodingDescriptor.detected(in: Data(prefix.dropLast())),
+           complete.encoding == .shiftJIS {
+            return complete
+        }
+        return TextEncodingDescriptor.detected(in: prefix)
     }
 
     private static func validUTF8UTF16Length(in data: Data, skipsBOM: Bool) -> Int? {

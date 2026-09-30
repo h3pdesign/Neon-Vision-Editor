@@ -39,11 +39,54 @@ final class TextEncodingAndMarkdownConversionTests: XCTestCase {
         XCTAssertNil(encoding.encodedData(for: "Price: €10"))
     }
 
+    func testNativeEncodingPickerAndIdentifiersPreserveExistingSessions() throws {
+        XCTAssertEqual(Set(TextEncodingDescriptor.all.map(\.id)).count, TextEncodingDescriptor.all.count)
+        for encoding in String.availableStringEncodings {
+            let descriptor = TextEncodingDescriptor.descriptor(forRawValue: encoding.rawValue)
+            XCTAssertEqual(descriptor.encoding, encoding)
+            XCTAssertTrue(TextEncodingDescriptor.all.contains(descriptor))
+            let stored = try JSONEncoder().encode(descriptor.identifier)
+            XCTAssertEqual(try JSONDecoder().decode(TextEncodingDescriptor.Identifier.self, from: stored), descriptor.identifier)
+            XCTAssertEqual(TextEncodingDescriptor.Identifier(rawValue: descriptor.id), descriptor.identifier)
+        }
+        XCTAssertEqual(try JSONEncoder().encode(TextEncodingDescriptor.Identifier.windowsCP1251), Data("\"windowsCP1251\"".utf8))
+        XCTAssertNil(TextEncodingDescriptor.Identifier(rawValue: "foundation:0"))
+        XCTAssertNil(TextEncodingDescriptor.Identifier(rawValue: "unknown"))
+        XCTAssertEqual(TextEncodingDescriptor.descriptor(forRawValue: UInt.max), .utf8)
+    }
+
+    func testShiftJISAutoDetectionPreservesKiriKiriPunctuationAndJapanese() throws {
+        let descriptor = TextEncodingDescriptor.descriptor(forRawValue: String.Encoding.shiftJIS.rawValue)
+        for text in ["What's your given name？", "こんにちは。名前は何ですか？\n", "[name]名前\nWhat's your given name？"] {
+            let data = try XCTUnwrap(descriptor.encodedData(for: text))
+            XCTAssertEqual(TextEncodingDescriptor.detected(in: data), descriptor)
+            XCTAssertEqual(FileBackedTextDocument.boundedEncoding(from: data), descriptor)
+            let decoded = EditorLoadHelper.decodeFileText(data, fileURL: URL(fileURLWithPath: "/tmp/script.ks"), preferredLanguageHint: "plain", isLargeCandidate: false)
+            XCTAssertEqual(decoded.text, text)
+            XCTAssertEqual(decoded.encoding, descriptor)
+            XCTAssertEqual(decoded.encoding.encodedData(for: decoded.text), data)
+            XCTAssertTrue(CoordinatedDocumentAccess.isText(data))
+        }
+        XCTAssertFalse(EditorViewModel.isFileBackedEligible(url: URL(fileURLWithPath: "/tmp/script.ks"), encoding: descriptor, isRemote: false, isPartialPreview: false))
+    }
+
+    func testAutomaticEncodingDoesNotReinterpretCyrillicAsHalfWidthKana() throws {
+        for text in ["ПРИВЕТ", "Привет мир"] {
+            let descriptor = TextEncodingDescriptor(identifier: .windowsCP1251)
+            let data = try XCTUnwrap(descriptor.encodedData(for: text))
+            XCTAssertEqual(TextEncodingDescriptor.detected(in: data), descriptor)
+        }
+        let western = TextEncodingDescriptor(identifier: .windowsCP1252)
+        XCTAssertEqual(TextEncodingDescriptor.detected(in: try XCTUnwrap(western.encodedData(for: "Résumé — €10"))), western)
+    }
+
     func testEncodingDescriptorsPreserveBOMAndEndianVariants() throws {
         let samples: [(TextEncodingDescriptor.Identifier, [UInt8])] = [
             (.utf8WithBOM, [0xEF, 0xBB, 0xBF]),
             (.utf16LittleEndianWithBOM, [0xFF, 0xFE]),
-            (.utf16BigEndianWithBOM, [0xFE, 0xFF])
+            (.utf16BigEndianWithBOM, [0xFE, 0xFF]),
+            (.utf32LittleEndianWithBOM, [0xFF, 0xFE, 0x00, 0x00]),
+            (.utf32BigEndianWithBOM, [0x00, 0x00, 0xFE, 0xFF])
         ]
         for (identifier, bom) in samples {
             let descriptor = TextEncodingDescriptor(identifier: identifier)
@@ -51,6 +94,46 @@ final class TextEncodingAndMarkdownConversionTests: XCTestCase {
             XCTAssertTrue(data.starts(with: bom))
             XCTAssertEqual(descriptor.decode(data), "Türkçe Русский")
             XCTAssertEqual(TextEncodingDescriptor.detected(in: data)?.identifier, identifier)
+            XCTAssertEqual(FileBackedTextDocument.boundedEncoding(from: data)?.identifier, identifier)
+            XCTAssertEqual(EditorLoadHelper.decodeFileText(data, fileURL: URL(fileURLWithPath: "/tmp/encoding.txt"), preferredLanguageHint: nil, isLargeCandidate: false).encoding.identifier, identifier)
+        }
+    }
+
+    func testNativeEncodingUsesSafeInternalEditingCoordinates() throws {
+        let encoding = TextEncodingDescriptor.descriptor(forRawValue: String.Encoding.shiftJIS.rawValue)
+        let tab = TabData(name: "script.ks", content: "こんにちは\n名前", language: "plain", fileURL: nil, fileEncoding: encoding)
+        XCTAssertEqual(tab.fileEncoding, encoding)
+        XCTAssertTrue(tab.replaceContent(in: NSRange(location: 1, length: 1), with: "さ"))
+        let edited = tab.document.string()
+        XCTAssertEqual(edited, "こさにちは\n名前")
+        let saved = try XCTUnwrap(tab.fileEncoding.encodedData(for: edited))
+        XCTAssertEqual(encoding.decode(saved), edited)
+        XCTAssertNil(encoding.encodedData(for: edited + "😀"))
+    }
+
+    func testUTF32BOMChoiceDoesNotDiscardTextFromAnUnmarkedFile() throws {
+        for identifier: TextEncodingDescriptor.Identifier in [.utf32LittleEndianWithBOM, .utf32BigEndianWithBOM] {
+            let encoding = TextEncodingDescriptor(identifier: identifier)
+            let data = try XCTUnwrap("first 😀".data(using: encoding.encoding))
+            XCTAssertEqual(encoding.decode(data), "first 😀")
+        }
+    }
+
+    func testBoundedShiftJISProbeDoesNotFallBackToSingleByteStorage() throws {
+        let encoding = TextEncodingDescriptor.descriptor(forRawValue: String.Encoding.shiftJIS.rawValue)
+        let data = try XCTUnwrap(encoding.encodedData(for: "こんにちは。名前"))
+        let incomplete = Data(data.dropLast())
+        XCTAssertNil(encoding.decode(incomplete))
+        XCTAssertEqual(FileBackedTextDocument.boundedEncoding(from: incomplete, allowsIncompleteUTF8Sequence: true), encoding)
+        XCTAssertTrue(CoordinatedDocumentAccess.isText(incomplete))
+        XCTAssertFalse(CoordinatedDocumentAccess.isText(Data([0x81]), encoding: encoding))
+        let malformed = data + Data([0x81, 0x20]) + data
+        XCTAssertFalse(CoordinatedDocumentAccess.isText(malformed, encoding: encoding))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try data.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        XCTAssertThrowsError(try FileBackedTextDocument(url: url, knownEncoding: encoding)) {
+            XCTAssertEqual($0 as? FileBackedTextDocument.Error, .unsupportedEncoding)
         }
     }
 

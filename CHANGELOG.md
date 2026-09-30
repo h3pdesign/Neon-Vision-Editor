@@ -6,6 +6,17 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Added
+
+- Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding choices and non-lossy saving (#674).
+- Allows the always-available Settings action to be reordered in custom mobile toolbars (#676).
+
+### Fixed
+
+- Arranges the mobile status pill and bottom toolbar in one measured stack instead of independent fixed offsets, avoiding touching bars and double keyboard-accessory spacing (#672, #673).
+- Fits the iPad bottom toolbar to its visible controls while retaining its window-width limit and horizontal scrolling (#675).
+- Detects Shift-JIS KiriKiri text without the CP1251 punctuation corruption, preserving Cyrillic and Western fixtures (#674).
+
 ## [v1.9.0] - 2026-09-30
 
 ### Why Upgrade

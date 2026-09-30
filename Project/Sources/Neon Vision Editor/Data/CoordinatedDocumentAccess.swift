@@ -86,6 +86,17 @@ nonisolated enum CoordinatedDocumentAccess {
             text = String(decoding: data, as: UTF8.self)
         } else {
             text = descriptor.decode(data)
+            if text == nil, !descriptor.supportsBoundedStorage {
+                // A bounded probe can end inside a native multibyte character
+                // or escape sequence. Only accept a strictly decodable prefix;
+                // interior invalid bytes still fail validation.
+                for suffixCount in 1...min(8, data.count) {
+                    if let prefix = descriptor.decode(Data(data.dropLast(suffixCount))), !prefix.isEmpty {
+                        text = prefix
+                        break
+                    }
+                }
+            }
             // A bounded probe may end between a UTF-16 surrogate pair.
             // Omit only the incomplete suffix, never an interior invalid unit.
             if text == nil, data.count >= 2,

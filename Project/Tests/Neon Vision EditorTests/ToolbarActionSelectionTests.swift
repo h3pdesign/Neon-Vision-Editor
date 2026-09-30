@@ -3,6 +3,11 @@ import XCTest
 
 @MainActor
 final class ToolbarActionSelectionTests: XCTestCase {
+    func testSettingsCanMoveBetweenCustomActionsWhileRemainingAvailable() {
+        let actions = ["openFile", "findReplace", "settings", "help"]
+        XCTAssertEqual(ToolbarActionSelection.orderedActions(actions, customIDsRawValue: "settings,findReplace,openFile", id: { $0 }), ["settings", "findReplace", "openFile", "help"])
+        XCTAssertEqual(ToolbarActionSelection.orderedActions(actions, customIDsRawValue: "findReplace,settings,openFile", id: { $0 }), ["findReplace", "settings", "openFile", "help"])
+    }
     private enum TestAction: String, CaseIterable {
         case openFile
         case undo

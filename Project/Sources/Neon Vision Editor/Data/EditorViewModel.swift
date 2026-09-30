@@ -91,7 +91,7 @@ struct DecodedFileText: Sendable {
     nonisolated var encodingRawValue: UInt { encoding.encodingRawValue }
 }
 
-private enum EditorLoadHelper {
+enum EditorLoadHelper {
     nonisolated static let supportedTextFilenames: Set<String> = [
         "package.resolved", "dockerfile", "makefile", "gnumakefile"
     ]
@@ -168,6 +168,12 @@ private enum EditorLoadHelper {
            let decoded = preferredEncoding.decode(data) {
             return DecodedFileText(text: decoded, encoding: preferredEncoding)
         }
+        if data.starts(with: [0xFF, 0xFE]) || data.starts(with: [0xFE, 0xFF]) ||
+           data.starts(with: [0x00, 0x00, 0xFE, 0xFF]) || data.starts(with: [0xEF, 0xBB, 0xBF]),
+           let encoding = TextEncodingDescriptor.detected(in: data),
+           let decoded = encoding.decode(data) {
+            return DecodedFileText(text: decoded, encoding: encoding)
+        }
         let lowerHint = preferredLanguageHint?.lowercased() ?? ""
         let prefersJSONFastDecode = isLargeCandidate &&
             (lowerHint == "json" || lowerHint == "jsonc" || lowerHint == "json5" || lowerHint == "ipynb")
@@ -203,18 +209,9 @@ private enum EditorLoadHelper {
             }
         }
 
-        let legacyCandidates: [TextEncodingDescriptor] = [
-            TextEncodingDescriptor(identifier: .windowsCP1251),
-            TextEncodingDescriptor(identifier: .windowsCP1252),
-            TextEncodingDescriptor(identifier: .isoLatin1),
-            TextEncodingDescriptor(identifier: .isoLatin5),
-            TextEncodingDescriptor(identifier: .macOSRoman),
-            TextEncodingDescriptor(identifier: .ascii)
-        ]
-        for encoding in legacyCandidates {
-            if let decoded = encoding.decode(data) {
-                return DecodedFileText(text: decoded, encoding: encoding)
-            }
+        if let encoding = TextEncodingDescriptor.detected(in: data),
+           let decoded = encoding.decode(data) {
+            return DecodedFileText(text: decoded, encoding: encoding)
         }
 
         if allowsFullFileFallback,
@@ -3098,18 +3095,7 @@ class EditorViewModel {
               url.isFileURL,
               !isRemote,
               !isPartialPreview,
-              encoding.identifier == .utf8 ||
-              encoding.identifier == .utf8WithBOM ||
-              encoding.identifier == .utf16LittleEndian ||
-              encoding.identifier == .utf16LittleEndianWithBOM ||
-              encoding.identifier == .utf16BigEndian ||
-              encoding.identifier == .utf16BigEndianWithBOM ||
-              encoding.identifier == .isoLatin1 ||
-              encoding.identifier == .isoLatin5 ||
-              encoding.identifier == .windowsCP1252 ||
-              encoding.identifier == .windowsCP1251 ||
-              encoding.identifier == .macOSRoman ||
-              encoding.identifier == .ascii else { return false }
+              encoding.supportsBoundedStorage else { return false }
         return true
     }
 

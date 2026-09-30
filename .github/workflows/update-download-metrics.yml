@@ -78,7 +78,9 @@ jobs:
 
       - name: Commit and update metrics pull request
         env:
-          GH_TOKEN: ${{ github.token }}
+          # Bot-created PRs put their initial CI runs behind manual approval.
+          # Use the existing trusted identity for PR creation as well as push.
+          GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
           METRICS_MERGE_TOKEN: ${{ secrets.METRIC_TOKEN }}
           METRICS_BRANCH: automation/daily-metrics
         run: |
@@ -98,7 +100,6 @@ jobs:
           git commit -S -m "docs: refresh download metrics chart"
           git push --force-with-lease origin "HEAD:${METRICS_BRANCH}"
 
-          metrics_pr_created=false
           metrics_pr="$(gh pr list --repo "${GITHUB_REPOSITORY}" --state open --base main --head "${METRICS_BRANCH}" \
             --json number --jq '.[0].number // empty')"
           if [[ -n "${metrics_pr}" ]]; then
@@ -115,16 +116,12 @@ jobs:
             done
 
             if [[ -z "${metrics_pr}" ]]; then
-              # Keep GitHub Actions as the PR author; the trusted token triggers
-              # PR checks after creation and enables auto-merge below.
-              if gh pr create \
+              if ! gh pr create \
                 --repo "${GITHUB_REPOSITORY}" \
                 --base main \
                 --head "${METRICS_BRANCH}" \
                 --title "docs: refresh daily download metrics" \
                 --body "Automated refresh of README download and traffic metrics."; then
-                metrics_pr_created=true
-              else
                 echo "PR creation raced another metrics workflow; resolving the existing PR." >&2
               fi
 
@@ -140,14 +137,6 @@ jobs:
           if [[ -z "${metrics_pr}" ]]; then
             echo "Could not resolve the open metrics PR for ${METRICS_BRANCH}." >&2
             exit 1
-          fi
-
-          if [[ "${metrics_pr_created}" == "true" ]]; then
-            # Events created by GITHUB_TOKEN do not start other workflows.
-            # Re-sign and push the same tree through METRIC_TOKEN after the PR
-            # exists so its synchronize event starts the required PR checks.
-            git commit --amend -S --no-edit
-            git push --force-with-lease origin "HEAD:${METRICS_BRANCH}"
           fi
 
           GH_TOKEN="${METRICS_MERGE_TOKEN}" gh pr merge "${metrics_pr}" \

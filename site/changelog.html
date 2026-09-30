@@ -118,7 +118,18 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.8.6</h2><span class="date">27 September 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.9.0</h2><span class="date">30 September 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including Settings, editor actions, accessibility text, and companion surfaces.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB payload limit, and independently staged received copies.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during release preparation (<a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/659">#659</a>).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Expands localization coverage for dynamic search, toolbar, Git status, and share-import messages.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Processes macOS terminal output as a bounded primary screen, preserving fragmented UTF-8, progress-line rewrites, cursor movement, erase commands, and text styles while publishing coalesced changed-text patches.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.8.6</h2><span class="date">27 September 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Restores side-by-side Markdown editing and preview as the default; full-window reading remains a Settings option.</p></div>
           <div class="item"><span class="badge fixed">Fixed</span><p>Keeps pathological single-line files editable on iPhone and iPad with display-only segmented wrapping, including when No Wrap is selected. The saved text and copied selections retain their original bytes; ordinary formatted documents retain their chosen layout (<a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/595">#595</a>).</p></div>

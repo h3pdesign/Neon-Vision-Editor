@@ -1,3 +1,18 @@
+// v1.9.0 release highlights
+"What’s New in v1.9.0" = "What’s New in v1.9.0";
+"Release highlights for v1.9.0." = "Release highlights for v1.9.0.";
+"Use the app in seven languages, including Danish, French, Spanish, and Japanese." = "Use the app in seven languages, including Danish, French, Spanish, and Japanese.";
+"Close What’s New directly and see the current release highlights." = "Close What’s New directly and see the current release highlights.";
+"Transfer a text-document copy to a nearby device through an explicit pairing and consent flow." = "Transfer a text-document copy to a nearby device through an explicit pairing and consent flow.";
+"Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including…" = "Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including…";
+"Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB…" = "Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB…";
+"Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during…" = "Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during…";
+"Editor Improvements: Use the app in seven languages, including Danish, French, Spanish, and Japanese." = "Editor Improvements: Use the app in seven languages, including Danish, French, Spanish, and Japanese.";
+"Workflow Refinements: Close What’s New directly and see the current release highlights." = "Workflow Refinements: Close What’s New directly and see the current release highlights.";
+"Performance Updates: Transfer a text-document copy to a nearby device through an explicit pairing and consent flow." = "Performance Updates: Transfer a text-document copy to a nearby device through an explicit pairing and consent flow.";
+"Accessible Controls: Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including…" = "Accessible Controls: Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including…";
+"Editor Improvements: Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB…" = "Editor Improvements: Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB…";
+"Workflow Refinements: Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during…" = "Workflow Refinements: Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during…";
 "    let sum = values.reduce(0, +)" = "    let sum = values.reduce(0, +)";
 "    return sum + 42" = "    return sum + 42";
 "\"%@\" changed on disk at %@." = "\"%@\" changed on disk at %@.";

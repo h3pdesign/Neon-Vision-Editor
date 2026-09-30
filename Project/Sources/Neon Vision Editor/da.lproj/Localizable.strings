@@ -1,3 +1,18 @@
+// v1.9.0 release highlights
+"What’s New in v1.9.0" = "Hvad er nyt i v1.9.0";
+"Release highlights for v1.9.0." = "Højdepunkter i v1.9.0.";
+"Use the app in seven languages, including Danish, French, Spanish, and Japanese." = "Brug appen på syv sprog, herunder dansk, fransk, spansk og japansk.";
+"Close What’s New directly and see the current release highlights." = "Luk Nyheder direkte, og se de aktuelle versionshøjdepunkter.";
+"Transfer a text-document copy to a nearby device through an explicit pairing and consent flow." = "Overfør en tekstkopi til en enhed i nærheden med eksplicit parring og samtykke.";
+"Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including…" = "Tilføjer dansk, fransk, spansk og japansk sammen med engelsk, tysk og forenklet kinesisk, herunder…";
+"Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB…" = "Tilføjer valgfri tekstoverførsel til enheder i nærheden med midlertidig parringskode, kryptering, modtagersamtykke og 4 MB…";
+"Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during…" = "Tilføjer en synlig Luk-knap i Nyheder, bevarer Escape og opdaterer den seneste version under…";
+"Editor Improvements: Use the app in seven languages, including Danish, French, Spanish, and Japanese." = "Editorforbedringer: Brug appen på syv sprog, herunder dansk, fransk, spansk og japansk.";
+"Workflow Refinements: Close What’s New directly and see the current release highlights." = "Forbedringer af arbejdsgange: Luk Nyheder direkte, og se de aktuelle versionshøjdepunkter.";
+"Performance Updates: Transfer a text-document copy to a nearby device through an explicit pairing and consent flow." = "Ydelsesopdateringer: Overfør en tekstkopi til en enhed i nærheden med eksplicit parring og samtykke.";
+"Accessible Controls: Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including…" = "Tilgængelige kontroller: Tilføjer dansk, fransk, spansk og japansk sammen med engelsk, tysk og forenklet kinesisk, herunder…";
+"Editor Improvements: Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB…" = "Editorforbedringer: Tilføjer valgfri tekstoverførsel til enheder i nærheden med midlertidig parringskode, kryptering, modtagersamtykke og 4 MB…";
+"Workflow Refinements: Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during…" = "Forbedringer af arbejdsgange: Tilføjer en synlig Luk-knap i Nyheder, bevarer Escape og opdaterer den seneste version under…";
 "    let sum = values.reduce(0, +)" = "    let sum = values.reduce(0, +)";
 "    return sum + 42" = "    return sum + 42";
 "\"%@\" changed on disk at %@." = "\"%@\" ændret på disk ved %@.";

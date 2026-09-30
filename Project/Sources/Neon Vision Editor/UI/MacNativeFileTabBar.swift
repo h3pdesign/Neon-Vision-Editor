@@ -92,7 +92,7 @@ final class MacNativeFileTabBarView: NSView {
         addButton.controlSize = .small
         addButton.target = self
         addButton.action = #selector(addTab)
-        addButton.toolTip = "New Tab"
+        addButton.toolTip = NSLocalizedString("New Tab", comment: "Add editor tab tooltip")
         addButton.setAccessibilityLabel("New Tab")
         addButton.setAccessibilityHelp("Creates a new untitled tab")
         addSubview(addButton)
@@ -641,7 +641,9 @@ private final class MacNativeFileTabItemView: NSView, NSDraggingSource {
         titleLabel.textColor = isSelected ? .labelColor : .secondaryLabelColor
         remoteLabel.isHidden = !snapshot.isRemote
         lockImage.isHidden = !snapshot.isReadOnly
-        closeButton.toolTip = "Close \(snapshot.title)"
+        closeButton.toolTip = String.localizedStringWithFormat(
+            NSLocalizedString("Close %@", comment: "Close editor tab tooltip"), snapshot.title
+        )
         closeButton.setAccessibilityLabel("Close \(snapshot.title)")
         setAccessibilityLabel(accessibilityLabel(for: snapshot))
         setAccessibilityValue(isSelected ? "Selected" : "Not selected")

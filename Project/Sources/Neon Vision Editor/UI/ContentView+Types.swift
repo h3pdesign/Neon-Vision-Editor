@@ -107,9 +107,9 @@ extension ContentView {
 
         var title: String {
             switch self {
-            case .currentFile: return "Current File"
-            case .openTabs: return "Open Tabs"
-            case .project: return "Project"
+            case .currentFile: return NSLocalizedString("Current File", comment: "Search scope")
+            case .openTabs: return NSLocalizedString("Open Tabs", comment: "Search scope")
+            case .project: return NSLocalizedString("Project", comment: "Search scope")
             }
         }
     }

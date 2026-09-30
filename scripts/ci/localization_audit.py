@@ -9,13 +9,22 @@ import sys
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-LOCALE_ROOT = ROOT / "Project" / "Sources" / "Neon Vision Editor"
+SOURCE_ROOT = ROOT / "Project" / "Sources"
+TARGETS = (
+    "Neon Vision Editor",
+    "Neon Pulse Watch App",
+    "Neon Pulse Widget",
+    "Neon Vision Editor Share Extension",
+    "Neon Vision Editor App Clip",
+    "Neon Vision Editor Quick Look",
+)
+EXPECTED_LOCALES = {"en.lproj", "de.lproj", "da.lproj", "fr.lproj", "es.lproj", "ja.lproj", "zh-Hans.lproj"}
 ENTRY_RE = re.compile(r'^\s*"((?:\\.|[^"\\])*)"\s*=\s*"((?:\\.|[^"\\])*)"\s*;\s*$')
-PLACEHOLDER_RE = re.compile(r"%(?:\d+\$)?[@dfiuqxXsScCpPeEgGaA]|%%")
+PLACEHOLDER_RE = re.compile(r"%(?:\d+\$)?(?:lld|ld|[@dfiuqxXsScCpPeEgGaA%])")
 
 
-def strings_files() -> dict[str, pathlib.Path]:
-    return {path.parent.name: path for path in sorted(LOCALE_ROOT.glob("*.lproj/Localizable.strings"))}
+def strings_files(root: pathlib.Path) -> dict[str, pathlib.Path]:
+    return {path.parent.name: path for path in sorted(root.glob("*.lproj/Localizable.strings"))}
 
 
 def parse_strings(path: pathlib.Path) -> tuple[dict[str, str], list[tuple[int, str]], list[tuple[int, str]]]:
@@ -41,14 +50,35 @@ def placeholders(value: str) -> list[str]:
     return [item for item in PLACEHOLDER_RE.findall(value) if item != "%%"]
 
 
-def main() -> int:
-    files = strings_files()
+def welcome_tour_keys() -> set[str]:
+    source = (SOURCE_ROOT / "Neon Vision Editor/UI/PanelsAndHelpers.swift").read_text(encoding="utf-8")
+    pages = source.split("private let pages: [TourPage] = [", 1)[1].split("\n    var body:", 1)[0]
+    keys: set[str] = set()
+    for line in pages.splitlines():
+        match = re.match(r'\s*(?:title: |subtitle: )?"((?:\\.|[^"\\])*)"[, ]*$', line)
+        if match:
+            keys.add(match.group(1))
+            if ": " in match.group(1):
+                title, detail = match.group(1).split(": ", 1)
+                keys.update((title, detail))
+    titles = source.split("private func whatsNewTitle(", 1)[1].split("private func whatsNewDescription(", 1)[0]
+    keys.update(re.findall(r'return "((?:\\.|[^"\\])*)"', titles))
+    support = source.split("struct SupportPromptSheetView:", 1)[1].split("private let bulletIcons:", 1)[0]
+    keys.update(re.findall(r'^\s*"((?:\\.|[^"\\])*)",?$', support, re.MULTILINE))
+    return keys
+
+
+def audit_target(target: str) -> bool:
+    files = strings_files(SOURCE_ROOT / target)
     if not files:
-        print("No Localizable.strings files found.", file=sys.stderr)
-        return 1
+        print(f"{target}: no Localizable.strings files found.", file=sys.stderr)
+        return False
 
     parsed: dict[str, dict[str, str]] = {}
     failed = False
+    for locale in sorted(EXPECTED_LOCALES - set(files)):
+        print(f"{target}: missing {locale}/Localizable.strings", file=sys.stderr)
+        failed = True
     for locale, path in files.items():
         entries, duplicates, malformed = parse_strings(path)
         parsed[locale] = entries
@@ -72,6 +102,18 @@ def main() -> int:
 
     reference_locale = "en.lproj" if "en.lproj" in parsed else sorted(parsed)[0]
     reference = parsed[reference_locale]
+    source_pattern = re.compile(r'NSLocalizedString\(\s*"((?:\\.|[^"\\])*)"')
+    source_keys = set()
+    for source in (SOURCE_ROOT / target).rglob("*.swift"):
+        source_keys.update(source_pattern.findall(source.read_text(encoding="utf-8")))
+    if target == "Neon Vision Editor":
+        source_keys.update(welcome_tour_keys())
+    untranslated_source_keys = sorted(source_keys - set(reference))
+    if untranslated_source_keys:
+        failed = True
+        print(f"{target}: {len(untranslated_source_keys)} NSLocalizedString keys missing from English catalog", file=sys.stderr)
+        for key in untranslated_source_keys:
+            print(f"  - {key}", file=sys.stderr)
     for locale, entries in parsed.items():
         for key in sorted(set(reference) & set(entries)):
             expected = placeholders(reference[key])
@@ -84,11 +126,14 @@ def main() -> int:
                     file=sys.stderr,
                 )
 
-    if failed:
-        return 1
+    if not failed:
+        print(f"{target}: {len(files)} locales and {len(all_keys)} keys passed.")
+    return not failed
 
-    print(f"Localization audit passed for {len(files)} locales and {len(all_keys)} keys.")
-    return 0
+
+def main() -> int:
+    results = [audit_target(target) for target in TARGETS]
+    return 0 if all(results) else 1
 
 
 if __name__ == "__main__":

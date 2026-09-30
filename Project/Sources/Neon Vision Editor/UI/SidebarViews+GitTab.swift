@@ -190,7 +190,14 @@ struct GitChangesEditorView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Working Copy Changes")
                     .font(.headline.weight(.semibold))
-                Text(gitViewModel.entries.isEmpty ? "Clean working tree" : "\(gitViewModel.entries.count) changed file\(gitViewModel.entries.count == 1 ? "" : "s")")
+                Text(gitViewModel.entries.isEmpty
+                     ? NSLocalizedString("Clean working tree", comment: "Git working copy status")
+                     : String.localizedStringWithFormat(
+                        gitViewModel.entries.count == 1
+                            ? NSLocalizedString("%lld changed file", comment: "Git working copy status")
+                            : NSLocalizedString("%lld changed files", comment: "Git working copy status"),
+                        Int64(gitViewModel.entries.count)
+                     ))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -1091,7 +1098,12 @@ struct InlineDiffView: View {
                     .font(.headline.weight(.semibold))
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Text("\(presentation.diff.hunks.count) change\(presentation.diff.hunks.count == 1 ? "" : "s")")
+                Text(String.localizedStringWithFormat(
+                    presentation.diff.hunks.count == 1
+                        ? NSLocalizedString("%lld change", comment: "Git diff change count")
+                        : NSLocalizedString("%lld changes", comment: "Git diff change count"),
+                    Int64(presentation.diff.hunks.count)
+                ))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }

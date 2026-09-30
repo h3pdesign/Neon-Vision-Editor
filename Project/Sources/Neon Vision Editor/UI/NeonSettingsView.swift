@@ -618,6 +618,10 @@ struct NeonSettingsView: View {
         "system",
         "en",
         "de",
+        "da",
+        "fr",
+        "es",
+        "ja",
         "zh-Hans"
     ]
     
@@ -777,11 +781,11 @@ struct NeonSettingsView: View {
 
         var title: String {
             switch self {
-            case .frosted: return "Strong Frosted"
-            case .subtle: return "Frosted"
-            case .balanced: return "Balanced"
-            case .light: return "Light Glass"
-            case .vibrant: return "Transparent"
+            case .frosted: return NSLocalizedString("Strong Frosted", comment: "Window translucency option")
+            case .subtle: return NSLocalizedString("Frosted", comment: "Window translucency option")
+            case .balanced: return NSLocalizedString("Balanced", comment: "Window translucency option")
+            case .light: return NSLocalizedString("Light Glass", comment: "Window translucency option")
+            case .vibrant: return NSLocalizedString("Transparent", comment: "Window translucency option")
             }
         }
 
@@ -808,10 +812,10 @@ struct NeonSettingsView: View {
 
         var title: String {
             switch self {
-            case .chevron: return "Chevron"
-            case .triangle: return "Triangle"
-            case .caret: return "Caret"
-            case .plusMinus: return "Plus/Minus"
+            case .chevron: return NSLocalizedString("Chevron", comment: "Sidebar disclosure symbol")
+            case .triangle: return NSLocalizedString("Triangle", comment: "Sidebar disclosure symbol")
+            case .caret: return NSLocalizedString("Caret", comment: "Sidebar disclosure symbol")
+            case .plusMinus: return NSLocalizedString("Plus/Minus", comment: "Sidebar disclosure symbol")
             }
         }
     }
@@ -1221,6 +1225,14 @@ struct NeonSettingsView: View {
             return localized("Follow System")
         case "de":
             return "Deutsch"
+        case "da":
+            return "Dansk"
+        case "fr":
+            return "Français"
+        case "es":
+            return "Español"
+        case "ja":
+            return "日本語"
         case "zh-Hans":
             return "简体中文"
         default:
@@ -1794,7 +1806,7 @@ struct NeonSettingsView: View {
 
     private func choosePythonInterpreter() {
         let panel = NSOpenPanel()
-        panel.title = "Choose Python Interpreter"
+        panel.title = NSLocalizedString("Choose Python Interpreter", comment: "Python interpreter picker title")
         panel.message = "Select an executable Python interpreter."
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
@@ -2681,7 +2693,7 @@ struct NeonSettingsView: View {
                     ForEach(toolbarIconChooserOptions) { option in
                         Button(action: { toggleToolbarCustomIcon(option.rawValue) }) {
                             HStack {
-                                Text(option.title)
+                                Text(option.localizedTitle)
                                 Spacer()
                                 if toolbarCustomSelectedIDs.contains(option.rawValue) {
                                     Image(systemName: "checkmark.circle.fill")
@@ -2996,7 +3008,7 @@ struct NeonSettingsView: View {
     private func macToolbarPresetCard(_ preset: ToolbarPreset) -> some View {
         let isSelected = toolbarPresetMacRaw == preset.rawValue
             && (preset == .custom ? toolbarUseCustomMac : !toolbarUseCustomMac)
-        let actions = preset.macOSIDs.compactMap { ToolbarIconOption(rawValue: $0)?.title }
+        let actions = preset.macOSIDs.compactMap { ToolbarIconOption(rawValue: $0)?.localizedTitle }
         let actionSummary = actions.isEmpty
             ? localized("Choose individual actions from the custom icon list.")
             : actions.joined(separator: " · ")
@@ -3097,14 +3109,14 @@ struct NeonSettingsView: View {
                             )
                         } label: {
                             HStack {
-                                Text(option?.title ?? rawValue)
+                                Text(option?.localizedTitle ?? rawValue)
                                 Spacer()
                                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                                     .foregroundStyle(isSelected ? .blue : .secondary)
                             }
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(option?.title ?? rawValue)
+                        .accessibilityLabel(option?.localizedTitle ?? rawValue)
                         .accessibilityValue(isSelected ? "Selected" : "Not selected")
                     }
                 }
@@ -4752,38 +4764,38 @@ struct NeonSettingsView: View {
 
     private var remoteStatusSummary: String {
         if !remoteSessionsEnabled {
-            return "Local workspace only. Remote modules stay inactive until you enable this preview."
+            return NSLocalizedString("Local workspace only. Remote modules stay inactive until you enable this preview.", comment: "Remote session status")
         }
         if remoteSessionStore.runtimeState == .failed,
            let attachedBroker = remoteSessionStore.attachedBrokerDescriptor {
-            return "The broker session from \(attachedBroker.hostDisplayName) is no longer reachable for \(attachedBroker.targetSummary). Detach this device, then attach again using a fresh code from the active Mac session."
+            return String(format: NSLocalizedString("The broker session from %@ is no longer reachable for %@. Detach this device, then attach again using a fresh code from the active Mac session.", comment: "Remote session status"), attachedBroker.hostDisplayName, attachedBroker.targetSummary)
         }
         if remoteSessionStore.runtimeState == .failed,
            let broker = remoteSessionStore.brokerSessionDescriptor {
-            return "The Mac-hosted broker session for \(broker.targetSummary) is no longer active. Start Session again on the Mac before sharing a new attach code."
+            return String(format: NSLocalizedString("The Mac-hosted broker session for %@ is no longer active. Start Session again on the Mac before sharing a new attach code.", comment: "Remote session status"), broker.targetSummary)
         }
         if let attachedBroker = remoteSessionStore.attachedBrokerDescriptor {
-            return "Attached to the Mac broker on \(attachedBroker.hostDisplayName) for \(attachedBroker.targetSummary). This device now browses, opens, edits, and explicitly saves supported remote text files through the Mac-hosted session."
+            return String(format: NSLocalizedString("Attached to the Mac broker on %@ for %@. This device now browses, opens, edits, and explicitly saves supported remote text files through the Mac-hosted session.", comment: "Remote session status"), attachedBroker.hostDisplayName, attachedBroker.targetSummary)
         }
         if let broker = remoteSessionStore.brokerSessionDescriptor {
-            return "Broker session active on \(broker.hostDisplayName) for \(broker.targetSummary). The Mac is the SSH owner for this session. Share the attach code with iPhone or iPad so they can browse, open, edit, and explicitly save supported remote text files through the Mac."
+            return String(format: NSLocalizedString("Broker session active on %@ for %@. The Mac is the SSH owner for this session. Share the attach code with iPhone or iPad so they can browse, open, edit, and explicitly save supported remote text files through the Mac.", comment: "Remote session status"), broker.hostDisplayName, broker.targetSummary)
         }
         if remoteSessionStore.isRemotePreviewConnecting, let activeTarget = remoteSessionStore.activeTarget {
-            return "Connecting to \(activeTarget.connectionSummary). This login is always user-triggered."
+            return String(format: NSLocalizedString("Connecting to %@. This login is always user-triggered.", comment: "Remote session status"), activeTarget.connectionSummary)
         }
         if remoteSessionStore.isRemotePreviewConnected, let activeTarget = remoteSessionStore.activeTarget {
-            return "Remote session active for \(activeTarget.connectionSummary). Browse, open, edit, and explicitly save supported remote text files."
+            return String(format: NSLocalizedString("Remote session active for %@. Browse, open, edit, and explicitly save supported remote text files.", comment: "Remote session status"), activeTarget.connectionSummary)
         }
         if let activeTarget = remoteSessionStore.activeTarget {
-            return "Active target: \(activeTarget.connectionSummary). On macOS, Start Session performs the real SSH login from the Mac when a key is selected, or a TCP connection test otherwise. iPhone and iPad do not start SSH directly."
+            return String(format: NSLocalizedString("Active target: %@. On macOS, Start Session performs the real SSH login from the Mac when a key is selected, or a TCP connection test otherwise. iPhone and iPad do not start SSH directly.", comment: "Remote session status"), activeTarget.connectionSummary)
         }
         if !remoteSessionStore.savedTargets.isEmpty {
-            return "Remote preview is enabled. Choose a saved target or create a new local preview target when ready."
+            return NSLocalizedString("Remote preview is enabled. Choose a saved target or create a new local preview target when ready.", comment: "Remote session status")
         }
         if !remotePreparedTarget.isEmpty {
-            return "Saved target: \(remotePreparedTarget). Open Connect to convert it into a reusable local target."
+            return String(format: NSLocalizedString("Saved target: %@. Open Connect to convert it into a reusable local target.", comment: "Remote session status"), remotePreparedTarget)
         }
-        return "Remote preview is enabled, but no target is selected yet."
+        return NSLocalizedString("Remote preview is enabled, but no target is selected yet.", comment: "Remote session status")
     }
 
     private func presentRemoteConnectSheet() {
@@ -4926,13 +4938,13 @@ struct NeonSettingsView: View {
     private var remoteRuntimeBadgeTitle: String {
         switch remoteSessionStore.runtimeState {
         case .connecting:
-            return "Connecting"
+            return NSLocalizedString("Connecting", comment: "Remote session badge")
         case .active:
-            return "Session Active"
+            return NSLocalizedString("Session Active", comment: "Remote session badge")
         case .failed:
-            return "Failed"
+            return NSLocalizedString("Failed", comment: "Remote session badge")
         default:
-            return "Ready"
+            return NSLocalizedString("Ready", comment: "Remote session badge")
         }
     }
 
@@ -5271,7 +5283,7 @@ struct NeonSettingsView: View {
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = false
         panel.showsHiddenFiles = true
-        panel.title = "Select SSH Private Key"
+        panel.title = NSLocalizedString("Select SSH Private Key", comment: "SSH key picker title")
         panel.prompt = "Use Key"
 
         guard panel.runModal() == .OK, let keyURL = panel.url else { return }
@@ -7063,13 +7075,13 @@ struct NeonSettingsView: View {
             let raw = shortcutDrafts[action] ?? ShortcutPreferences.rawShortcut(for: action)
             guard let descriptor = ShortcutPreferences.parseShortcut(raw) else { continue }
             if ShortcutPreferences.reservedMobileCommandShortcuts.contains(descriptor) {
-                return "Conflict: \(action.title) uses a reserved app shortcut."
+                return String(format: NSLocalizedString("Conflict: %@ uses a reserved app shortcut.", comment: "Keyboard shortcut conflict"), action.title)
             }
             collisionMap[descriptor, default: []].append(action.title)
         }
         let collisions = collisionMap.values.filter { $0.count > 1 }
         guard let first = collisions.first else { return "" }
-        return "Conflict: " + first.joined(separator: ", ") + " share the same shortcut."
+        return String(format: NSLocalizedString("Conflict: %@ share the same shortcut.", comment: "Keyboard shortcut conflict"), first.joined(separator: ", "))
     }
 
     private func loadShortcutDraftsIfNeeded() {
@@ -7304,7 +7316,7 @@ private enum DefaultFileAssociation {
 
     static func currentStatus() -> String {
         guard canSetDefault else {
-            return "Install Neon Vision Editor in Applications to make it the default app."
+            return NSLocalizedString("Install Neon Vision Editor in Applications to make it the default app.", comment: "Default app status")
         }
         let matchingTypeCount = contentTypes.reduce(into: 0) { count, contentType in
             if defaultApplicationURL(for: contentType) == applicationURL {
@@ -7312,9 +7324,9 @@ private enum DefaultFileAssociation {
             }
         }
         if matchingTypeCount == contentTypes.count {
-            return "Neon Vision Editor is the default for its supported text and source-code types."
+            return NSLocalizedString("Neon Vision Editor is the default for its supported text and source-code types.", comment: "Default app status")
         }
-        return "Neon Vision Editor is the default for \(matchingTypeCount) of \(contentTypes.count) text and source-code types."
+        return String(format: NSLocalizedString("Neon Vision Editor is the default for %d of %d text and source-code types.", comment: "Default app status"), matchingTypeCount, contentTypes.count)
     }
 
     static func setAsDefault() async -> String {
@@ -7330,7 +7342,7 @@ private enum DefaultFileAssociation {
         if failedTypes.isEmpty {
             return currentStatus()
         }
-        return "macOS set Neon Vision Editor for \(contentTypes.count - failedTypes.count) of \(contentTypes.count) types. You can change individual file types in Finder’s Get Info panel."
+        return String(format: NSLocalizedString("macOS set Neon Vision Editor for %d of %d types. You can change individual file types in Finder’s Get Info panel.", comment: "Default app status"), contentTypes.count - failedTypes.count, contentTypes.count)
     }
 
     private static func defaultApplicationURL(for contentType: UTType) -> URL? {

@@ -1200,9 +1200,9 @@ private struct DelimitedTableCellEditor: View {
 
     private var accessibilityLabel: String {
         if isHeader {
-            return "CSV header column \(columnIndex + 1)"
+            return String(format: NSLocalizedString("CSV header column %d", comment: "CSV column accessibility label"), columnIndex + 1)
         }
-        return "CSV row \((rowIndex ?? 0) + 1) column \(columnIndex + 1)"
+        return String(format: NSLocalizedString("CSV row %d column %d", comment: "CSV cell accessibility label"), (rowIndex ?? 0) + 1, columnIndex + 1)
     }
 
     private func commitIfNeeded() {

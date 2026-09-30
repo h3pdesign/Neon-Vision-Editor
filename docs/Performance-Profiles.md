@@ -34,7 +34,7 @@ The v1.4.0 large-file path is file-backed rather than a full-document compatibil
 
 - `FileBackedTextDocument` keeps the source representation on disk, records UTF-16 edits, preserves the detected encoding and line endings, and streams an atomic replacement on save.
 - `FileBackedTextViewportAdapter` supplies bounded text windows to the native editor. Viewport generations reject edits against stale windows, while caret and selection state are translated when a window is replaced.
-- The macOS virtual text renderer keeps `NSTextView` attached to the active bounded window, requests replacement windows around the scroll anchor, and limits syntax highlighting/minimap work to the visible range. Measure viewport installation and replacement as rendering operations, not as full-document open operations.
+- The macOS virtual text renderer draws visible lines with Core Text in `VirtualEditorCanvas`, an `NSView` implementing `NSTextInputClient`. It requests bounded viewport replacements around the scroll anchor and limits syntax highlighting/minimap work to the visible range. Measure viewport installation and replacement as rendering operations, not as full-document open operations.
 - Large editable documents remain editable below the 100 MB partial-open boundary. The 100 MB-and-above path is intentionally read-only and exposes only the first 4 MB for safe inspection.
 - Performance investigations must measure viewport replacement, scrolling, typing, save, and external-change handling separately; a full-document allocation in the per-edit path is a regression.
 
@@ -54,3 +54,9 @@ The optimized Release-GitHub build was exercised on a MacBook Pro M5 Pro with ma
 Automated tab switching covered HTML, CSV, Markdown, Swift, and Ada documents. Full accessibility-tree capture itself produced main-thread stalls while serializing very large editor and WebKit accessibility values, so those stalls are automation overhead and are not accepted as tab-switch latency measurements. Use the deterministic tab-switch and virtual-editor XCTest benchmarks plus the existing `TabSwitch` signposts for regression decisions.
 
 No OS 26 runtime is installed on this machine, so an OS 26 versus OS 27 timing comparison remains unmeasured. Record that comparison on identical hardware before attributing a performance change to OS 27 Foundation or Swift runtime behavior.
+
+## Primary-screen terminal follow-up
+
+The development terminal now incrementally decodes UTF-8 bytes and parses cursor/erase controls on its output worker. The native text bridge applies immutable changed-suffix patches at the existing 33 ms cadence; retained screen text remains capped at 240,000 UTF-16 units. Alternate-screen applications remain unsupported. The high-volume PTY regression checks completion and bounded output, but is not a substitute for Instruments timing or memory evidence. Re-capture the terminal profile after this screen-rendering change; the v1.8.0 trace above describes the previous append-only implementation.
+
+The full three-run macOS/iPhone/iPad workload matrix remains required before issue #318 is complete. Build success and unit-test results do not supply those profiling measurements.

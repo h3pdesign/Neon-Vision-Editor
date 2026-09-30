@@ -418,6 +418,32 @@ def update_welcome_tour_release_page(swift_source: str, tag: str, bullets: list[
     return pattern.sub(new_block, swift_source, count=1)
 
 
+def update_in_app_changelog(swift_source: str, changelog: str, tag: str) -> str:
+    """Refresh the app's separate Help sheet without removing older release cards."""
+    date, section = extract_changelog_section_meta(changelog, tag)
+    version = tag.removeprefix("v")
+    highlights = [bullet.removeprefix(f"- {tag}: ")
+                  for bullet in release_card_bullets(tag, section, limit=3)]
+    entry = (
+        f'        Release(id: "{swift_string(version)}", version: "{swift_string(version)}", '
+        f'date: "{date}", highlights: [\n'
+        + ",\n".join(f'            "{swift_string(item)}"' for item in highlights)
+        + "\n        ]),\n"
+    )
+    pattern = re.compile(
+        r"(struct InAppChangelogView: View \{.*?    private let releases: \[Release\] = \[\n)"
+        r"(.*?)(\n    \])", re.S)
+    match = pattern.search(swift_source)
+    if not match:
+        raise ValueError("Could not find in-app changelog release list to update.")
+    existing = re.compile(
+        rf'        Release\(id: "{re.escape(version)}", version: "[^"]+", date: "[^"]+", highlights: \[\n'
+        r".*?        \]\),?\n?", re.S)
+    history = existing.sub("", match.group(2)).lstrip("\n")
+    return pattern.sub(lambda found: found.group(1) + entry + history + found.group(3),
+                       swift_source, count=1)
+
+
 def extract_heading_bullets(section_body: str, heading: str, limit: int = 5) -> list[str]:
     bullets: list[str] = []
     in_heading = False
@@ -609,6 +635,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v1.9.0": ("Sieben Sprachen und aktuelle Neuigkeiten", "Ergänzt vier App-Sprachen, einen Schließen-Knopf und aktuelle Versionshinweise unter Neuigkeiten sowie eine optionale Übertragung von Textkopien an Geräte in der Nähe mit Kopplung und Zustimmung.", ["Sprachen", "Neuigkeiten", "Übertragung"]),
         "v1.8.6": ("Markdown nebeneinander und lange Zeilen bearbeiten", "Markdown-Quelltext und Vorschau erscheinen wieder standardmäßig nebeneinander. Sehr lange Einzelzeilen bleiben auf iPhone und iPad bearbeitbar; macOS-Tabs lassen sich verschieben, ohne zuvor das Dokument zu öffnen.", ["Markdown", "Editor", "Tabs"]),
         "v1.8.5": ("Markdown-Lesemodus und verlässliche Tastenkürzel", "Wählt beim Öffnen von Markdown zwischen Bearbeiten und Vollbild-Lesemodus, ordnet mobile Symbolleistenaktionen neu und stellt Tastenkürzel sowie die macOS-Navigation mit Befehlspfeilen wieder her.", ["Markdown", "Tastatur", "Editor"]),
         "v1.8.4": ("Strukturierte Vorschauen und flexible Fenster", "Ergänzt JSON- und YAML-Vorschauen, Optionen für macOS-Schreibtische und leere Fenster sowie Platz unter dem Cursor auf iPhone und iPad.", ["Vorschau", "macOS", "Editor"]),
@@ -645,6 +672,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v1.9.0": ("Syv sprog og opdaterede nyheder", "Tilføjer fire appsprog, en Luk-knap og aktuelle versionsnoter i Nyheder samt valgfri overførsel af tekstkopier til enheder i nærheden med parring og samtykke.", ["Sprog", "Nyheder", "Overførsel"]),
         "v1.8.6": ("Markdown side om side og lange linjer", "Markdown-kilde og forhåndsvisning vises igen side om side som standard. Meget lange enkeltlinjer kan redigeres på iPhone og iPad, og macOS-faner kan flyttes uden først at åbne dokumentet.", ["Markdown", "Editor", "Faner"]),
         "v1.8.5": ("Markdown-læsetilstand og pålidelige genveje", "Vælg redigering eller fuldskærmslæsning, når Markdown åbnes, omarranger mobile værktøjslinjehandlinger, og få genveje samt macOS-navigation med Command-piletaster tilbage.", ["Markdown", "Tastatur", "Editor"]),
         "v1.8.4": ("Strukturerede forhåndsvisninger og fleksible vinduer", "Tilføjer JSON- og YAML-forhåndsvisninger, indstillinger for macOS-skriveborde og tomme vinduer samt plads under markøren på iPhone og iPad.", ["Forhåndsvisning", "macOS", "Editor"]),
@@ -681,6 +709,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v1.9.0": ("Sept langues et nouveautés à jour", "Ajoute quatre langues, un bouton Fermer et les notes de version actuelles dans les nouveautés, ainsi qu’un transfert facultatif de copies de texte vers les appareils proches avec appairage et consentement.", ["Langues", "Nouveautés", "Transfert"]),
         "v1.8.6": ("Markdown côte à côte et longues lignes", "La source Markdown et son aperçu s’affichent de nouveau côte à côte par défaut. Les très longues lignes restent modifiables sur iPhone et iPad, et les onglets macOS se déplacent sans ouvrir d’abord le document.", ["Markdown", "Éditeur", "Onglets"]),
         "v1.8.5": ("Lecture Markdown et raccourcis fiables", "Choisissez l’édition ou la lecture plein écran à l’ouverture d’un fichier Markdown, réorganisez les actions de la barre d’outils mobile et retrouvez les raccourcis ainsi que la navigation Commande-flèche sur macOS.", ["Markdown", "Clavier", "Éditeur"]),
         "v1.8.4": ("Aperçus structurés et fenêtres flexibles", "Ajoute des aperçus JSON et YAML, des options pour les bureaux et fenêtres vides sur macOS, et de l’espace sous le curseur sur iPhone et iPad.", ["Aperçu", "macOS", "Éditeur"]),
@@ -717,6 +746,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v1.9.0": ("Siete idiomas y novedades actualizadas", "Añade cuatro idiomas, un botón Cerrar y las notas de la versión actual en las novedades, además de una transferencia opcional de copias de texto a dispositivos cercanos con emparejamiento y consentimiento.", ["Idiomas", "Novedades", "Transferencia"]),
         "v1.8.6": ("Markdown en paralelo y líneas largas", "El código Markdown y su vista previa vuelven a mostrarse en paralelo de forma predeterminada. Las líneas muy largas siguen siendo editables en iPhone y iPad, y las pestañas de macOS se pueden mover sin abrir antes el documento.", ["Markdown", "Editor", "Pestañas"]),
         "v1.8.5": ("Lectura Markdown y atajos fiables", "Elige edición o lectura a pantalla completa al abrir Markdown, reordena las acciones de la barra móvil y recupera los atajos y la navegación con Comando y las flechas en macOS.", ["Markdown", "Teclado", "Editor"]),
         "v1.8.4": ("Vistas previas estructuradas y ventanas flexibles", "Añade vistas previas de JSON y YAML, opciones para escritorios y ventanas vacías de macOS y espacio bajo el cursor en iPhone y iPad.", ["Vista previa", "macOS", "Editor"]),
@@ -753,6 +783,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v1.9.0": ("7言語と最新の更新情報", "4つのアプリ言語を追加し、更新情報に閉じるボタンと最新のリリース内容を表示します。ペアリングと受信側の同意により、近くのデバイスへテキストのコピーを任意で転送できます。", ["言語", "更新情報", "転送"]),
         "v1.8.6": ("Markdown の並列表示と長い行の編集", "Markdown のソースとプレビューを既定で再び並べて表示します。iPhone と iPad では非常に長い単一行も編集でき、macOS のタブは文書を先に開かずに移動できます。", ["Markdown", "エディタ", "タブ"]),
         "v1.8.5": ("Markdown の閲覧モードと確実なショートカット", "Markdown を開くときに編集または全画面閲覧を選べます。モバイルのツールバー操作を並べ替え、ショートカットと macOS の Command＋矢印キーによる移動を復元しました。", ["Markdown", "キーボード", "エディタ"]),
         "v1.8.4": ("構造化プレビューと柔軟なウインドウ", "JSON と YAML のプレビュー、macOS のデスクトップと空のウインドウに関する設定、iPhone と iPad でカーソルの下に余白を表示する改善を追加しました。", ["プレビュー", "macOS", "エディタ"]),
@@ -789,6 +820,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v1.9.0": ("七种语言与最新更新信息", "新增四种应用语言，为更新信息添加关闭按钮并显示当前版本说明，还可通过配对和接收方同意，将文本副本按需传送到附近设备。", ["语言", "更新信息", "传送"]),
         "v1.8.6": ("并排 Markdown 预览与长行编辑", "Markdown 源码和预览再次默认并排显示。iPhone 和 iPad 上的超长单行文本仍可编辑；移动 macOS 标签页时无需先打开对应文稿。", ["Markdown", "编辑器", "标签页"]),
         "v1.8.5": ("Markdown 阅读模式与可靠的快捷键", "打开 Markdown 时可选择编辑或全屏阅读；可重新排列移动端工具栏操作，并恢复快捷键及 macOS 上的 Command 加方向键导航。", ["Markdown", "键盘", "编辑器"]),
         "v1.8.4": ("结构化预览与灵活的窗口", "新增 JSON 和 YAML 预览、macOS 桌面和空窗口选项，并改善 iPhone 和 iPad 上光标下方的留白。", ["预览", "macOS", "编辑器"]),
@@ -1478,6 +1510,7 @@ def main() -> int:
 
     original_welcome_src = read_text(WELCOME_TOUR_SWIFT)
     welcome_src = update_welcome_tour_release_page(original_welcome_src, candidate_tag, bullets)
+    welcome_src = update_in_app_changelog(welcome_src, candidate_changelog, candidate_tag)
 
     original_website = read_text(WEBSITE)
     website = rebuild_website_release_timeline(original_website, changelog, tag)

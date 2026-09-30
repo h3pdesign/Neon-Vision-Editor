@@ -71,8 +71,8 @@ struct DiffComparisonView<Footer: View>: View {
     }
 
     private var currentHunkLabel: String {
-        guard !diff.hunks.isEmpty else { return "No changes" }
-        return "Change \(selectedHunkIndex + 1) of \(diff.hunks.count)"
+        guard !diff.hunks.isEmpty else { return NSLocalizedString("No changes", comment: "Diff navigation status") }
+        return String(format: NSLocalizedString("Change %d of %d", comment: "Diff navigation status"), selectedHunkIndex + 1, diff.hunks.count)
     }
 
     private var editorThemeBackground: Color {

@@ -179,21 +179,22 @@ extension ContentView {
     }
 
     var quickSwitcherStatusMessage: String {
-        guard projectRootFolderURL != nil else { return "No project folder is open." }
+        guard projectRootFolderURL != nil else { return NSLocalizedString("No project folder is open.", comment: "Quick Open status") }
         if isProjectFileIndexing {
             if projectFileIndexSnapshot.entries.isEmpty {
-                return "Indexing project files for Quick Open…"
+                return NSLocalizedString("Indexing project files for Quick Open…", comment: "Quick Open status")
             }
-            return "Refreshing indexed project files…"
+            return NSLocalizedString("Refreshing indexed project files…", comment: "Quick Open status")
         }
         if !projectFileIndexSnapshot.entries.isEmpty {
             let fileCount = projectFileIndexSnapshot.entries.count
-            return "Using indexed project files (\(fileCount))."
+            let format = NSLocalizedString("Using indexed project files (%lld).", comment: "Quick Open status")
+            return String.localizedStringWithFormat(format, Int64(fileCount))
         }
         if !quickSwitcherProjectFileURLs.isEmpty {
-            return "Using the current project tree until indexing is available."
+            return NSLocalizedString("Using the current project tree until indexing is available.", comment: "Quick Open status")
         }
-        return "Project files will appear here after the folder is indexed."
+        return NSLocalizedString("Project files will appear here after the folder is indexed.", comment: "Quick Open status")
     }
 
     var comparableOpenTabs: [TabData] {
@@ -299,7 +300,7 @@ extension ContentView {
             if isPlistDocument {
                 plistViewMode = .structure
             } else {
-                findStatusMessage = "Open a plist document to use structured plist mode."
+                findStatusMessage = NSLocalizedString("Open a plist document to use structured plist mode.", comment: "Find status")
             }
         case "cmd:duplicate_line":
             duplicateCurrentLine()
@@ -592,7 +593,7 @@ extension ContentView {
         guard let root = projectRootFolderURL else {
             findInFilesResults = []
             findInFilesSelectedMatchIDs = []
-            findInFilesStatusMessage = "Open a project folder first."
+            findInFilesStatusMessage = NSLocalizedString("Open a project folder first.", comment: "Find in Files status")
             findInFilesSourceMessage = ""
             return
         }
@@ -600,7 +601,7 @@ extension ContentView {
         guard !query.isEmpty else {
             findInFilesResults = []
             findInFilesSelectedMatchIDs = []
-            findInFilesStatusMessage = "Enter a search query."
+            findInFilesStatusMessage = NSLocalizedString("Enter a search query.", comment: "Find in Files status")
             findInFilesSourceMessage = ""
             return
         }
@@ -612,8 +613,8 @@ extension ContentView {
         // Sidebar indexes may omit unknown extensions or reflect older ignore rules.
         // Search the live tree off the main actor with current folder exclusions.
         let candidateFiles: [URL]? = nil
-        let searchSourceMessage = "Searching the live project tree with .gitignore and Ignored Folders exclusions."
-        findInFilesStatusMessage = "Searching…"
+        let searchSourceMessage = NSLocalizedString("Searching the live project tree with .gitignore and Ignored Folders exclusions.", comment: "Find in Files source")
+        findInFilesStatusMessage = NSLocalizedString("Searching…", comment: "Find in Files status")
         findInFilesSourceMessage = searchSourceMessage
 
         let caseSensitive = findInFilesCaseSensitive
@@ -631,7 +632,7 @@ extension ContentView {
             findInFilesResults = results
             findInFilesSelectedMatchIDs = []
             if results.isEmpty {
-                findInFilesStatusMessage = "No matches found."
+                findInFilesStatusMessage = NSLocalizedString("No matches found.", comment: "Find in Files status")
             } else {
                 findInFilesStatusMessage = String.localizedStringWithFormat(
                     NSLocalizedString("%lld matches", comment: ""),
@@ -672,7 +673,7 @@ extension ContentView {
 
     func cancelProjectWideReplaceFromFindInFiles() {
         findInFilesReplaceTask?.cancel()
-        findInFilesStatusMessage = "Canceling replace…"
+        findInFilesStatusMessage = NSLocalizedString("Canceling replace…", comment: "Find in Files status")
     }
 
     private struct FindInFilesReplaceOutcome {
@@ -818,13 +819,13 @@ extension ContentView {
         guard !isApplyingFindInFilesReplace else { return }
         let query = findInFilesQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
-            findInFilesStatusMessage = "Enter a search query first."
+            findInFilesStatusMessage = NSLocalizedString("Enter a search query first.", comment: "Find in Files status")
             return
         }
 
         let selectedMatches = findInFilesResults.filter { findInFilesSelectedMatchIDs.contains($0.id) }
         guard !selectedMatches.isEmpty else {
-            findInFilesStatusMessage = "Select at least one match to replace."
+            findInFilesStatusMessage = NSLocalizedString("Select at least one match to replace.", comment: "Find in Files status")
             return
         }
 
@@ -839,7 +840,7 @@ extension ContentView {
     func applyProjectWideReplace(_ preview: FindInFilesReplacementPreview) {
         guard !isApplyingFindInFilesReplace else { return }
         isApplyingFindInFilesReplace = true
-        findInFilesStatusMessage = "Applying replace to selected matches…"
+        findInFilesStatusMessage = NSLocalizedString("Applying replace to selected matches…", comment: "Find in Files status")
 
         findInFilesReplaceTask?.cancel()
         findInFilesReplaceTask = Task {

@@ -16,7 +16,11 @@ enum MarkdownProjectPreviewMode: String, CaseIterable, Identifiable {
     case stack
 
     var id: String { rawValue }
-    var title: String { rawValue.capitalized }
+    var title: String {
+        self == .grid
+            ? NSLocalizedString("Grid", comment: "Markdown project preview layout")
+            : NSLocalizedString("Stack", comment: "Markdown project preview layout")
+    }
 }
 
 enum MarkdownProjectPreviewContentFilter: String, CaseIterable, Identifiable {
@@ -28,9 +32,9 @@ enum MarkdownProjectPreviewContentFilter: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .markdown: return "Markdown"
+        case .markdown: return NSLocalizedString("Markdown", comment: "Project preview content filter")
         case .pdf: return "PDF"
-        case .both: return "Markdown + PDF"
+        case .both: return NSLocalizedString("Markdown + PDF", comment: "Project preview content filter")
         }
     }
 
@@ -51,8 +55,8 @@ enum MarkdownProjectPreviewSortOrder: String, CaseIterable, Identifiable, Sendab
 
     var title: String {
         switch self {
-        case .name: return "Name"
-        case .lastEdited: return "Last Edited"
+        case .name: return NSLocalizedString("Name", comment: "Project preview sort order")
+        case .lastEdited: return NSLocalizedString("Last Edited", comment: "Project preview sort order")
         }
     }
 }
@@ -62,7 +66,11 @@ enum MarkdownProjectPreviewPlacement: String, CaseIterable, Identifiable {
     case trailing
 
     var id: String { rawValue }
-    var title: String { self == .leading ? "Left of Markdown Preview" : "Right of Markdown Preview" }
+    var title: String {
+        self == .leading
+            ? NSLocalizedString("Left of Markdown Preview", comment: "Project preview position")
+            : NSLocalizedString("Right of Markdown Preview", comment: "Project preview position")
+    }
 }
 
 struct MarkdownProjectPreviewCardData: Identifiable, Sendable, Hashable {
@@ -81,14 +89,22 @@ struct MarkdownProjectPreviewCardData: Identifiable, Sendable, Hashable {
 
     var displayTitle: String { title?.isEmpty == false ? title! : url.deletingPathExtension().lastPathComponent }
     var sizeLabel: String {
-        guard let fileSize else { return "Size unavailable" }
+        guard let fileSize else { return NSLocalizedString("Size unavailable", comment: "Project card file size") }
         return ByteCountFormatter.string(fromByteCount: fileSize, countStyle: .file)
     }
 
     var metricLabel: String {
-        if let pageCount, fileKind == .pdf { return "\(pageCount) pages" }
+        if let pageCount, fileKind == .pdf {
+            let format = pageCount == 1
+                ? NSLocalizedString("%lld page", comment: "PDF page count")
+                : NSLocalizedString("%lld pages", comment: "PDF page count")
+            return String.localizedStringWithFormat(format, Int64(pageCount))
+        }
         if fileKind == .pdf { return "PDF" }
-        return "\(headingCount) headings"
+        let format = headingCount == 1
+            ? NSLocalizedString("%lld heading", comment: "Markdown heading count")
+            : NSLocalizedString("%lld headings", comment: "Markdown heading count")
+        return String.localizedStringWithFormat(format, Int64(headingCount))
     }
 
     var typeLabel: String { fileKind == .pdf ? "PDF" : "MD" }

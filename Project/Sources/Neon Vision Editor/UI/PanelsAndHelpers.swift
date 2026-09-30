@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.8.6",
-            subtitle: "Release highlights for v1.8.6.",
+            title: "What’s New in v1.9.0",
+            subtitle: "Release highlights for v1.9.0.",
             bullets: [
-                "Reliable Saves: Edit unusually long generated lines on iPhone and iPad without changing the saved text.",
-                "Workflow Refinements: Work with Markdown source and rendered preview side by side again.",
-                "Performance Updates: Rearrange macOS document tabs without opening the dragged document first.",
-                "Usability Updates: Restores side-by-side Markdown editing and preview as the default; full-window reading remains a Settings option.",
-                "Reliable Saves: Keeps pathological single-line files editable on iPhone and iPad with display-only segmented wrapping, including when No…",
-                "Workflow Refinements: Keeps the Markdown formatting toolbar with the editor instead of overlaying full-window reading."
+                "Editor Improvements: Use the app in seven languages, including Danish, French, Spanish, and Japanese.",
+                "Workflow Refinements: Close What’s New directly and see the current release highlights.",
+                "Performance Updates: Transfer a text-document copy to a nearby device through an explicit pairing and consent flow.",
+                "Accessible Controls: Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including…",
+                "Editor Improvements: Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB…",
+                "Workflow Refinements: Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -3246,10 +3246,10 @@ struct WelcomeTourView: View {
                 .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(page.title)
+                    Text(NSLocalizedString(page.title, comment: "Welcome tour page title"))
                         .font(.system(size: 27, weight: .bold))
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(page.subtitle)
+                    Text(NSLocalizedString(page.subtitle, comment: "Welcome tour page subtitle"))
                         .font(.system(size: 15))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -3417,8 +3417,8 @@ struct WelcomeTourView: View {
                     ForEach(rowStart..<min(rowStart + columns, bullets.count), id: \.self) { idx in
                         featureRow(
                             icon: whatsNewSymbol(for: bullets[idx], index: idx),
-                            title: whatsNewTitle(for: bullets[idx], index: idx),
-                            description: whatsNewDescription(for: bullets[idx]),
+                            title: NSLocalizedString(whatsNewTitle(for: bullets[idx], index: idx), comment: "What's New feature title"),
+                            description: NSLocalizedString(whatsNewDescription(for: bullets[idx]), comment: "What's New feature description"),
                             compactLayout: compactLayout
                         )
                     }
@@ -3828,7 +3828,7 @@ struct WelcomeTourView: View {
                 .frame(width: 24, height: 24, alignment: .center)
                 .padding(.top, 1)
                 .accessibilityHidden(true)
-            Text(text)
+            Text(NSLocalizedString(text, comment: "Welcome tour bullet"))
                 .font(.system(size: 15))
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -3962,7 +3962,7 @@ struct SupportPromptSheetView: View {
                                         .foregroundStyle(Color.accentColor.opacity(0.9))
                                         .padding(.top, 2)
                                         .accessibilityHidden(true)
-                                    Text(bullet)
+                                    Text(NSLocalizedString(bullet, comment: "Support prompt bullet"))
                                         .font(.system(size: compact ? 14 : 16))
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
@@ -4111,7 +4111,8 @@ struct EditorHelpView: View {
 
     private static func presetActionNames(_ ids: [String]) -> String {
         let names = ids.map { id in
-            ToolbarIconOption(rawValue: id)?.title ?? (id == "newWindow" ? "New Window" : id)
+            ToolbarIconOption(rawValue: id)?.localizedTitle
+                ?? (id == "newWindow" ? NSLocalizedString("New Window", comment: "Toolbar action") : id)
         }
         return names.joined(separator: ", ")
     }
@@ -4505,6 +4506,8 @@ extension Notification.Name {
 }
 
 struct InAppChangelogView: View {
+    let onClose: () -> Void
+
     private struct Release: Identifiable {
         let id: String
         let version: String
@@ -4513,6 +4516,16 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "1.9.0", version: "1.9.0", date: "2026-09-30", highlights: [
+            "Use the app in seven languages, including Danish, French, Spanish, and Japanese.",
+            "Close What’s New directly and see the current release highlights.",
+            "Transfer a text-document copy to a nearby device through an explicit pairing and consent flow."
+        ]),
+        Release(id: "1.8.6", version: "1.8.6", date: "2026-09-27", highlights: [
+            "Edit unusually long generated lines on iPhone and iPad without changing the saved text.",
+            "Work with Markdown source and rendered preview side by side again.",
+            "Rearrange macOS document tabs without opening the dragged document first."
+        ]),
         Release(id: "1.7.0", version: "1.7.0", date: "2026-09-09", highlights: [
             "Replaces remaining legacy tab-bar paths with native platform tabs and preserves borders, spacing, and translucent surfaces during appearance changes.",
             "Keeps macOS, iOS, and iPadOS editor surfaces consistent in opaque and translucent window modes.",
@@ -4593,6 +4606,13 @@ struct InAppChangelogView: View {
                 .padding(20)
             }
             .navigationTitle("What's New")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close", action: onClose)
+                        .keyboardShortcut(.cancelAction)
+                        .accessibilityIdentifier("whats-new-close")
+                }
+            }
         }
         .frame(minWidth: 420, minHeight: 360)
         .accessibilityElement(children: .contain)
@@ -4896,7 +4916,7 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
 
             let controller = NSHostingController(rootView: parent.makeContent())
             let window = NSWindow(contentViewController: controller)
-            window.title = "What\u{2019}s New"
+            window.title = NSLocalizedString("What’s New", comment: "Release notes window title")
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             window.isReleasedWhenClosed = false
             window.tabbingMode = .disallowed

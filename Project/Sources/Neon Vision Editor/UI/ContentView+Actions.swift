@@ -611,11 +611,11 @@ extension ContentView {
         if nsError.domain == NSCocoaErrorDomain {
             switch nsError.code {
             case NSUserCancelledError:
-                return "Cancelled."
+                return NSLocalizedString("Cancelled.", comment: "File operation error")
             case NSFileWriteNoPermissionError, NSFileReadNoPermissionError:
-                return "No permission for this location."
+                return NSLocalizedString("No permission for this location.", comment: "File operation error")
             case NSFileWriteOutOfSpaceError:
-                return "Not enough storage space."
+                return NSLocalizedString("Not enough storage space.", comment: "File operation error")
             default:
                 break
             }
@@ -715,7 +715,10 @@ extension ContentView {
         let lineCount = max(1, content.reduce(into: 1) { count, character in
             if character == "\n" { count += 1 }
         })
-        return "This will remove \(content.count) characters across \(lineCount) line\(lineCount == 1 ? "" : "s") in the current editor. You can undo this change."
+        let key = lineCount == 1
+            ? NSLocalizedString("This will remove %d characters across %d line in the current editor. You can undo this change.", comment: "Delete confirmation")
+            : NSLocalizedString("This will remove %d characters across %d lines in the current editor. You can undo this change.", comment: "Delete confirmation")
+        return String(format: key, content.count, lineCount)
     }
 
     // MARK: - Sidebar and Tab Commands
@@ -1150,8 +1153,10 @@ extension ContentView {
     }
 
     func replaceAllConfirmationMessage(for preview: FindReplaceAllPreview) -> String {
-        let matchNoun = preview.matchCount == 1 ? "match" : "matches"
-        return "Replace \(preview.matchCount) \(matchNoun) in the current document. You can undo this change."
+        let key = preview.matchCount == 1
+            ? NSLocalizedString("Replace %d match in the current document. You can undo this change.", comment: "Replace All confirmation")
+            : NSLocalizedString("Replace %d matches in the current document. You can undo this change.", comment: "Replace All confirmation")
+        return String(format: key, preview.matchCount)
     }
 
     func remoteSaveIssueMessage(for issue: EditorViewModel.RemoteSaveIssueState) -> String {
@@ -1159,13 +1164,22 @@ extension ContentView {
     }
 
     func aiReplacementConfirmationMessage(for preview: AIChatReplacementPreview) -> String {
-        "Replace \(preview.sourceCharacterCount) selected characters with \(preview.replacementCharacterCount) AI-proposed characters. You can undo this change."
+        String(format: NSLocalizedString("Replace %d selected characters with %d AI-proposed characters. You can undo this change.", comment: "AI replacement confirmation"), preview.sourceCharacterCount, preview.replacementCharacterCount)
     }
 
     func projectReplacementConfirmationMessage(for preview: FindInFilesReplacementPreview) -> String {
-        let matchNoun = preview.matchCount == 1 ? "match" : "matches"
-        let fileNoun = preview.fileCount == 1 ? "file" : "files"
-        return "Replace \(preview.matchCount) selected \(matchNoun) across \(preview.fileCount) \(fileNoun). Open the selected results to inspect each affected location before applying."
+        let key: String
+        switch (preview.matchCount == 1, preview.fileCount == 1) {
+        case (true, true):
+            key = NSLocalizedString("Replace %d selected match across %d file. Open the selected results to inspect each affected location before applying.", comment: "Project replacement confirmation")
+        case (true, false):
+            key = NSLocalizedString("Replace %d selected match across %d files. Open the selected results to inspect each affected location before applying.", comment: "Project replacement confirmation")
+        case (false, true):
+            key = NSLocalizedString("Replace %d selected matches across %d file. Open the selected results to inspect each affected location before applying.", comment: "Project replacement confirmation")
+        case (false, false):
+            key = NSLocalizedString("Replace %d selected matches across %d files. Open the selected results to inspect each affected location before applying.", comment: "Project replacement confirmation")
+        }
+        return String(format: key, preview.matchCount, preview.fileCount)
     }
 
     func clearRemoteConflictComparison() {

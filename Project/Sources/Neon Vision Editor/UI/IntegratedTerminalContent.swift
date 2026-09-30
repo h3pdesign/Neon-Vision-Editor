@@ -5,19 +5,23 @@ import Darwin
 
 #if os(macOS) && !APP_STORE_BUILD
 nonisolated struct TerminalProcessedOutput: @unchecked Sendable {
-    let displayText: String
+    let range: NSRange
     let styledText: NSAttributedString
 }
 
 nonisolated enum TerminalOutputCommand: Sendable {
+    case begin(generation: Int, outputLength: Int)
     case reset
-    case chunk(String, generation: Int)
+    case resize(columns: Int, rows: Int)
+    case chunk(Data, generation: Int)
+    case flush(generation: Int)
 }
 
 struct TerminalRenderUpdate {
     enum Kind {
         case reset
         case append(NSAttributedString)
+        case replace(NSRange, NSAttributedString)
     }
 
     let revision: Int
@@ -26,7 +30,7 @@ struct TerminalRenderUpdate {
 
 @MainActor
 final class IntegratedTerminalSession: ObservableObject {
-    static let maxOutputUTF16Length = 240_000
+    nonisolated static let maxOutputUTF16Length = 240_000
     nonisolated static let shellArguments = ["zsh", "-d", "-l", "-o", "NO_MONITOR", "-o", "NO_ZLE"]
     nonisolated private static let processGroupTerminationGracePeriod: TimeInterval = 0.5
 
@@ -45,8 +49,6 @@ final class IntegratedTerminalSession: ObservableObject {
     private var generation: Int = 0
     private let outputBuffer = NSMutableString()
     private let renderedStyledOutput = NSMutableAttributedString()
-    private let pendingStyledOutput = NSMutableAttributedString()
-    private var outputPublishWorkItem: DispatchWorkItem?
     private var renderRevision = 0
     private let outputContinuation: AsyncStream<TerminalOutputCommand>.Continuation
     private var outputProcessingTask: Task<Void, Never>?
@@ -55,20 +57,41 @@ final class IntegratedTerminalSession: ObservableObject {
         let (stream, continuation) = AsyncStream.makeStream(of: TerminalOutputCommand.self)
         outputContinuation = continuation
         outputProcessingTask = Task.detached(priority: .userInitiated) { [weak self] in
-            let displaySanitizer = TerminalDisplaySanitizer()
-            let ansiFormatter = TerminalANSIFormatter()
+            let screen = TerminalScreenBuffer(maximumUTF16Length: Self.maxOutputUTF16Length)
+            var workerGeneration = 0
+            var flushScheduled = false
             for await command in stream {
                 guard !Task.isCancelled else { break }
                 switch command {
+                case .begin(let generation, let outputLength):
+                    workerGeneration = generation
+                    screen.resetParser()
+                    screen.rebasePublishedState(length: outputLength)
+                    flushScheduled = false
                 case .reset:
-                    displaySanitizer.reset()
-                    ansiFormatter.reset()
-                case .chunk(let text, let generation):
-                    let processed = TerminalProcessedOutput(
-                        displayText: displaySanitizer.displayText(from: text),
-                        styledText: ansiFormatter.attributedText(from: text)
-                    )
-                    await self?.appendProcessedOutput(processed, generation: generation)
+                    screen.reset()
+                    await self?.resetOutput()
+                case .resize(let columns, let rows):
+                    screen.resize(columns: columns, rows: rows)
+                case .chunk(let data, let generation):
+                    guard generation == workerGeneration else { continue }
+                    screen.consume(data)
+                    if !flushScheduled {
+                        flushScheduled = true
+                        Task.detached {
+                            try? await Task.sleep(for: .milliseconds(33))
+                            continuation.yield(.flush(generation: generation))
+                        }
+                    }
+                case .flush(let generation):
+                    guard generation == workerGeneration else { continue }
+                    flushScheduled = false
+                    if let patch = screen.takePatch() {
+                        await self?.appendProcessedOutput(
+                            TerminalProcessedOutput(range: patch.range, styledText: patch.text),
+                            generation: generation
+                        )
+                    }
                 }
             }
         }
@@ -90,6 +113,7 @@ final class IntegratedTerminalSession: ObservableObject {
 
         generation += 1
         let currentGeneration = generation
+        outputContinuation.yield(.begin(generation: currentGeneration, outputLength: outputBuffer.length))
         let commandSearchPath = Self.commandSearchPath(
             inheritedPath: ProcessInfo.processInfo.environment["PATH"]
         )
@@ -123,12 +147,11 @@ final class IntegratedTerminalSession: ObservableObject {
 
         let masterHandle = FileHandle(fileDescriptor: masterFileDescriptor, closeOnDealloc: true)
 
-        outputContinuation.yield(.reset)
         let outputContinuation = outputContinuation
         masterHandle.readabilityHandler = { handle in
             let data = handle.availableData
-            guard !data.isEmpty, let text = String(data: data, encoding: .utf8), !text.isEmpty else { return }
-            outputContinuation.yield(.chunk(text, generation: currentGeneration))
+            guard !data.isEmpty else { return }
+            outputContinuation.yield(.chunk(data, generation: currentGeneration))
         }
         shellProcessID = processID
         masterTerminalHandle = masterHandle
@@ -176,6 +199,7 @@ final class IntegratedTerminalSession: ObservableObject {
     }
 
     func resize(columns: Int, rows: Int) {
+        outputContinuation.yield(.resize(columns: columns, rows: rows))
         guard masterTerminalFileDescriptor >= 0 else { return }
         var size = winsize(
             ws_row: UInt16(clamping: rows),
@@ -187,7 +211,6 @@ final class IntegratedTerminalSession: ObservableObject {
     }
 
     func clear() {
-        resetOutput()
         outputContinuation.yield(.reset)
     }
 
@@ -250,56 +273,27 @@ final class IntegratedTerminalSession: ObservableObject {
     }
 
     private func enqueueOutput(_ chunk: String, generation: Int) {
-        outputContinuation.yield(.chunk(chunk, generation: generation))
+        outputContinuation.yield(.chunk(Data(chunk.utf8), generation: generation))
     }
 
     private func appendProcessedOutput(_ processed: TerminalProcessedOutput, generation: Int) {
         guard self.generation == generation else { return }
-        outputBuffer.append(processed.displayText)
-        pendingStyledOutput.append(processed.styledText)
-        if outputBuffer.length > Self.maxOutputUTF16Length {
-            let trimTarget = outputBuffer.length - Self.maxOutputUTF16Length
-            outputBuffer.deleteCharacters(in: NSRange(location: 0, length: trimTarget))
-            outputBuffer.insert("[terminal output truncated]\n", at: 0)
-        }
-        if pendingStyledOutput.length > Self.maxOutputUTF16Length {
-            let trimTarget = pendingStyledOutput.length - Self.maxOutputUTF16Length
-            pendingStyledOutput.deleteCharacters(in: NSRange(location: 0, length: trimTarget))
-        }
+        guard NSMaxRange(processed.range) <= outputBuffer.length else { return }
+        let wasAppend = processed.range.location == outputBuffer.length && processed.range.length == 0
+        outputBuffer.replaceCharacters(in: processed.range, with: processed.styledText.string)
+        renderedStyledOutput.replaceCharacters(in: processed.range, with: processed.styledText)
         if isOutputEmpty != (outputBuffer.length == 0) {
             isOutputEmpty = outputBuffer.length == 0
         }
-        scheduleOutputPublication()
-    }
-
-    private func scheduleOutputPublication() {
-        outputPublishWorkItem?.cancel()
-        let workItem = DispatchWorkItem { [weak self] in
-            guard let self else { return }
-            guard self.pendingStyledOutput.length > 0 else {
-                self.outputPublishWorkItem = nil
-                return
-            }
-            let appended = NSAttributedString(attributedString: self.pendingStyledOutput)
-            self.pendingStyledOutput.setAttributedString(NSAttributedString(string: ""))
-            self.renderedStyledOutput.append(appended)
-            if self.renderedStyledOutput.length > Self.maxOutputUTF16Length {
-                let trimTarget = self.renderedStyledOutput.length - Self.maxOutputUTF16Length
-                self.renderedStyledOutput.deleteCharacters(in: NSRange(location: 0, length: trimTarget))
-            }
-            self.renderRevision += 1
-            self.renderUpdate = TerminalRenderUpdate(revision: self.renderRevision, kind: .append(appended))
-            self.outputPublishWorkItem = nil
-        }
-        outputPublishWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.033, execute: workItem)
+        renderRevision += 1
+        renderUpdate = TerminalRenderUpdate(
+            revision: renderRevision,
+            kind: wasAppend ? .append(processed.styledText) : .replace(processed.range, processed.styledText)
+        )
     }
 
     private func resetOutput() {
-        outputPublishWorkItem?.cancel()
-        outputPublishWorkItem = nil
         outputBuffer.setString("")
-        pendingStyledOutput.setAttributedString(NSAttributedString(string: ""))
         renderedStyledOutput.setAttributedString(NSAttributedString(string: ""))
         isOutputEmpty = true
         renderRevision += 1
@@ -661,7 +655,22 @@ struct TerminalOutputTextView: NSViewRepresentable {
                 replaceContents(with: fallbackSnapshot(), in: textView)
             case .append(let chunk) where update.revision == appliedRevision + 1:
                 append(chunk, in: textView)
-            case .append:
+            case .replace(let range, let text) where update.revision == appliedRevision + 1:
+                if let storage = textView.textStorage, NSMaxRange(range) <= storage.length {
+                    let selectedRange = textView.selectedRange()
+                    let wasNearBottom = NSMaxY(textView.visibleRect) >= textView.bounds.height - 24
+                    storage.replaceCharacters(in: range, with: text)
+                    textView.setSelectedRange(NSRange(
+                        location: min(selectedRange.location, storage.length),
+                        length: min(selectedRange.length, max(0, storage.length - selectedRange.location))
+                    ))
+                    if wasNearBottom, storage.length > 0 {
+                        textView.scrollRangeToVisible(NSRange(location: storage.length - 1, length: 1))
+                    }
+                } else {
+                    replaceContents(with: fallbackSnapshot(), in: textView)
+                }
+            case .append, .replace:
                 // SwiftUI can coalesce observable updates. Rebuild only when an
                 // intermediate append was skipped, never for the normal path.
                 replaceContents(with: fallbackSnapshot(), in: textView)

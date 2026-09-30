@@ -803,9 +803,11 @@ struct AIChatSidebarView: View {
     private var processingDescription: String {
         if let result = conversation.latestAgentResult { return result.processingLocation.title }
         if isAgentModeEnabled && allowsAgentCloudProcessing && selectedAgentMode != .explore {
-            return "Private Cloud Compute allowed"
+            return NSLocalizedString("Private Cloud Compute allowed", comment: "AI processing location")
         }
-        return isOnDeviceProvider ? "On-device" : "External provider"
+        return isOnDeviceProvider
+            ? NSLocalizedString("On-device", comment: "AI processing location")
+            : NSLocalizedString("External provider", comment: "AI processing location")
     }
 
     private var savedChatsMenu: some View {

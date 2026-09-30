@@ -6,6 +6,38 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.9.0] - 2026-09-30
+
+### Why Upgrade
+
+- Use the app in seven languages, including Danish, French, Spanish, and Japanese.
+- Close What’s New directly and see the current release highlights.
+- Transfer a text-document copy to a nearby device through an explicit pairing and consent flow.
+
+### Highlights
+
+- Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including Settings, editor actions, accessibility text, and companion surfaces.
+- Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB payload limit, and independently staged received copies.
+
+### Fixes
+
+- Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during release preparation ([#659](https://github.com/h3pdesign/Neon-Vision-Editor/issues/659)).
+
+- Expands localization coverage for dynamic search, toolbar, Git status, and share-import messages.
+- Processes macOS terminal output as a bounded primary screen, preserving fragmented UTF-8, progress-line rewrites, cursor movement, erase commands, and text styles while publishing coalesced changed-text patches.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No document migration is required. Nearby transfers create independent copies rather than synchronizing documents. Physical-device transfer acceptance remains tracked in #164; terminal, UI-test, and profiling acceptance remains tracked in #318.
+
+### Maintenance
+
+- Keeps the Help-sheet release cards aligned with the changelog during release preparation.
+
 ## [v1.8.6] - 2026-09-27
 
 ### Why Upgrade

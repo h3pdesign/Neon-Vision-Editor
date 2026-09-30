@@ -349,17 +349,23 @@ extension ContentView {
     }
 
     private var indentationStatusText: String {
-        let label = indentStyle == "tabs" ? "Tabs" : "Spaces"
-        return "\(label): \(indentWidth)"
+        let label = indentStyle == "tabs"
+            ? NSLocalizedString("Tabs", comment: "Indentation status")
+            : NSLocalizedString("Spaces", comment: "Indentation status")
+        return String.localizedStringWithFormat(NSLocalizedString("%@: %lld", comment: "Indentation status"), label, Int64(indentWidth))
     }
 
     private var selectionStatusText: String? {
         guard !currentSelectionSnapshotText.isEmpty else { return nil }
         let lines = selectionLineCount(for: currentSelectionSnapshotText)
         if lines > 1 {
-            return "Sel: \(lines) lines"
+            return String.localizedStringWithFormat(NSLocalizedString("Sel: %lld lines", comment: "Selection status"), Int64(lines))
         }
-        return "Sel: \(currentSelectionSnapshotText.count) chars"
+        let count = currentSelectionSnapshotText.count
+        let format = count == 1
+            ? NSLocalizedString("Sel: %lld char", comment: "Selection status")
+            : NSLocalizedString("Sel: %lld chars", comment: "Selection status")
+        return String.localizedStringWithFormat(format, Int64(count))
     }
 
     private func selectionLineCount(for text: String) -> Int {

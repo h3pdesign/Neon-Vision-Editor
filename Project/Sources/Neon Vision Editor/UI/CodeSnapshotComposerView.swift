@@ -28,8 +28,8 @@ enum CodeSnapshotAppearance: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .dark: return "Dark"
-        case .light: return "Light"
+        case .dark: return NSLocalizedString("Dark", comment: "Code snapshot appearance")
+        case .light: return NSLocalizedString("Light", comment: "Code snapshot appearance")
         }
     }
 
@@ -57,11 +57,11 @@ enum CodeSnapshotTheme: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .midnight: return "Midnight"
+        case .midnight: return NSLocalizedString("Midnight", comment: "Code snapshot theme")
         case .nord: return "Nord"
         case .solarized: return "Solarized"
-        case .paper: return "Paper"
-        case .rose: return "Rose"
+        case .paper: return NSLocalizedString("Paper", comment: "Code snapshot theme")
+        case .rose: return NSLocalizedString("Rose", comment: "Code snapshot theme")
         case .dracula: return "Dracula"
         case .tokyoNight: return "Tokyo Night"
         case .monokai: return "Monokai"
@@ -168,11 +168,11 @@ enum CodeSnapshotBackgroundPreset: String, CaseIterable, Identifiable, Hashable 
 
     var title: String {
         switch self {
-        case .aurora: return "Aurora"
-        case .sunrise: return "Sunrise"
-        case .ocean: return "Ocean"
-        case .graphite: return "Graphite"
-        case .transparent: return "Transparent"
+        case .aurora: return NSLocalizedString("Aurora", comment: "Code snapshot background")
+        case .sunrise: return NSLocalizedString("Sunrise", comment: "Code snapshot background")
+        case .ocean: return NSLocalizedString("Ocean", comment: "Code snapshot background")
+        case .graphite: return NSLocalizedString("Graphite", comment: "Code snapshot background")
+        case .transparent: return NSLocalizedString("Transparent", comment: "Code snapshot background")
         }
     }
 
@@ -217,9 +217,9 @@ enum CodeSnapshotFrameStyle: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .macWindow: return "Window"
-        case .clean: return "Clean"
-        case .glow: return "Glow"
+        case .macWindow: return NSLocalizedString("Window", comment: "Code snapshot frame")
+        case .clean: return NSLocalizedString("Clean", comment: "Code snapshot frame")
+        case .glow: return NSLocalizedString("Glow", comment: "Code snapshot frame")
         }
     }
 }
@@ -236,12 +236,12 @@ enum CodeSnapshotSizePreset: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .fit: return "Fit Content"
-        case .square: return "1:1 Square"
-        case .classic: return "4:3 Classic"
-        case .widescreen: return "16:9 Wide"
-        case .portrait: return "9:16 Story"
-        case .custom: return "Custom"
+        case .fit: return NSLocalizedString("Fit Content", comment: "Code snapshot size")
+        case .square: return NSLocalizedString("1:1 Square", comment: "Code snapshot size")
+        case .classic: return NSLocalizedString("4:3 Classic", comment: "Code snapshot size")
+        case .widescreen: return NSLocalizedString("16:9 Wide", comment: "Code snapshot size")
+        case .portrait: return NSLocalizedString("9:16 Story", comment: "Code snapshot size")
+        case .custom: return NSLocalizedString("Custom", comment: "Code snapshot size")
         }
     }
 }

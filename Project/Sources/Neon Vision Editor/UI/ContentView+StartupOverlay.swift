@@ -14,13 +14,15 @@ extension ContentView {
     var sharedImportDestinationMessage: String {
         let count = pendingSharedImportURLs.count
         if count == 1, let name = pendingSharedImportURLs.first?.lastPathComponent {
-            return "Choose where to open \(name)."
+            return String(format: NSLocalizedString("Choose where to open %@.", comment: "Share import destination"), name)
         }
-        return "Choose where to open \(count) shared items."
+        return String(format: NSLocalizedString("Choose where to open %d shared items.", comment: "Share import destination"), count)
     }
 
     var sharedImportOpenNewTabsTitle: String {
-        pendingSharedImportURLs.count == 1 ? "Open in New Tab" : "Open in New Tabs"
+        pendingSharedImportURLs.count == 1
+            ? NSLocalizedString("Open in New Tab", comment: "Share import action")
+            : NSLocalizedString("Open in New Tabs", comment: "Share import action")
     }
 
     var canReplaceCurrentTabWithPendingSharedImport: Bool {

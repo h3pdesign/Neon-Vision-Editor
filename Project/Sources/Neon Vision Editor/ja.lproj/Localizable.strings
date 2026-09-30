@@ -1,3 +1,18 @@
+// v1.9.0 release highlights
+"What’s New in v1.9.0" = "v1.9.0の新機能";
+"Release highlights for v1.9.0." = "v1.9.0の主な変更点。";
+"Use the app in seven languages, including Danish, French, Spanish, and Japanese." = "デンマーク語、フランス語、スペイン語、日本語を含む7言語でアプリを使用できます。";
+"Close What’s New directly and see the current release highlights." = "更新情報を直接閉じて、最新リリースの主な変更を確認できます。";
+"Transfer a text-document copy to a nearby device through an explicit pairing and consent flow." = "明示的なペアリングと同意により、近くのデバイスへテキストのコピーを転送できます。";
+"Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including…" = "英語、ドイツ語、簡体字中国語に加え、デンマーク語、フランス語、スペイン語、日本語の翻訳を追加し…";
+"Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB…" = "一時的なペアリングコード、暗号化、受信側の同意、4 MBの制限による近くのデバイスへの任意のテキスト転送を追加し…";
+"Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during…" = "更新情報に閉じるボタンを追加し、Escapeで閉じる操作を維持して、リリース準備時に最新の内容を…";
+"Editor Improvements: Use the app in seven languages, including Danish, French, Spanish, and Japanese." = "エディタの改善: デンマーク語、フランス語、スペイン語、日本語を含む7言語でアプリを使用できます。";
+"Workflow Refinements: Close What’s New directly and see the current release highlights." = "ワークフローの改善: 更新情報を直接閉じて、最新リリースの主な変更を確認できます。";
+"Performance Updates: Transfer a text-document copy to a nearby device through an explicit pairing and consent flow." = "パフォーマンスの更新: 明示的なペアリングと同意により、近くのデバイスへテキストのコピーを転送できます。";
+"Accessible Controls: Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including…" = "アクセシブルな操作: 英語、ドイツ語、簡体字中国語に加え、デンマーク語、フランス語、スペイン語、日本語の翻訳を追加し…";
+"Editor Improvements: Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB…" = "エディタの改善: 一時的なペアリングコード、暗号化、受信側の同意、4 MBの制限による近くのデバイスへの任意のテキスト転送を追加し…";
+"Workflow Refinements: Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during…" = "ワークフローの改善: 更新情報に閉じるボタンを追加し、Escapeで閉じる操作を維持して、リリース準備時に最新の内容を…";
 "    let sum = values.reduce(0, +)" = "    let sum = values.reduce(0, +)";
 "    return sum + 42" = "    return sum + 42";
 "\"%@\" changed on disk at %@." = "%@がディスクで%@に変更されました。";

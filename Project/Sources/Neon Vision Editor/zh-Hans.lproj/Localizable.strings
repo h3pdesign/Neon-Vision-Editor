@@ -1,3 +1,18 @@
+// v1.9.0 release highlights
+"What’s New in v1.9.0" = "v1.9.0 的新功能";
+"Release highlights for v1.9.0." = "v1.9.0 的主要更新。";
+"Use the app in seven languages, including Danish, French, Spanish, and Japanese." = "以七种语言使用应用，包括丹麦语、法语、西班牙语和日语。";
+"Close What’s New directly and see the current release highlights." = "直接关闭更新信息，查看当前版本的主要变化。";
+"Transfer a text-document copy to a nearby device through an explicit pairing and consent flow." = "通过明确配对和同意，将文本副本传送到附近设备。";
+"Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including…" = "在英语、德语和简体中文之外新增丹麦语、法语、西班牙语和日语本地化，包括…";
+"Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB…" = "新增按需向附近设备传送文本的功能，提供临时配对码、加密传输、接收方同意和 4 MB…";
+"Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during…" = "为更新信息添加可见的关闭按钮，保留 Escape 关闭操作，并在发布准备时刷新最新版本…";
+"Editor Improvements: Use the app in seven languages, including Danish, French, Spanish, and Japanese." = "编辑器改进: 以七种语言使用应用，包括丹麦语、法语、西班牙语和日语。";
+"Workflow Refinements: Close What’s New directly and see the current release highlights." = "工作流程优化: 直接关闭更新信息，查看当前版本的主要变化。";
+"Performance Updates: Transfer a text-document copy to a nearby device through an explicit pairing and consent flow." = "性能更新: 通过明确配对和同意，将文本副本传送到附近设备。";
+"Accessible Controls: Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including…" = "无障碍控件: 在英语、德语和简体中文之外新增丹麦语、法语、西班牙语和日语本地化，包括…";
+"Editor Improvements: Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB…" = "编辑器改进: 新增按需向附近设备传送文本的功能，提供临时配对码、加密传输、接收方同意和 4 MB…";
+"Workflow Refinements: Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during…" = "工作流程优化: 为更新信息添加可见的关闭按钮，保留 Escape 关闭操作，并在发布准备时刷新最新版本…";
 "    let sum = values.reduce(0, +)" = "    let sum = values.reduce(0, +)";
 "    return sum + 42" = "    return sum + 42";
 "\"%@\" changed on disk at %@." = "%@ 已在磁盘上更改 %@。";

@@ -135,6 +135,18 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertNotIn("paths:", triggers)
         self.assertNotIn("paths-ignore:", workflow)
 
+    def test_swift_ci_skips_xcode_for_documentation_only_prs(self):
+        workflow = (ROOT / ".github/workflows/swift.yml").read_text()
+        self.assertIn("pull-requests: read", workflow)
+        self.assertIn("gh api --paginate", workflow)
+        self.assertIn("length > 0 and all(.[];", workflow)
+        for path in ('"README.md"', '"CHANGELOG.md"', 'startswith("docs/")', 'startswith("site/")'):
+            self.assertIn(path, workflow)
+        self.assertIn('echo "run_swift=true" >> "$GITHUB_OUTPUT"', workflow)
+        required_jobs = workflow.split("  build:", 1)[1]
+        self.assertEqual(required_jobs.count("    needs: changes"), 2)
+        self.assertEqual(required_jobs.count("needs.changes.outputs.run_swift != 'false'"), 2)
+
     def test_codeql_actions_scans_workflow_changes_only(self):
         workflow = (ROOT / ".github/workflows/codeql-actions.yml").read_text()
         self.assertEqual(workflow.count('".github/workflows/**"'), 2)
@@ -470,9 +482,16 @@ class ReleaseWorkflowTests(unittest.TestCase):
             self.assertIn("queue: max", workflow)
             self.assertNotIn("run: sleep", workflow)
         metrics = (ROOT / ".github/workflows/update-download-metrics.yml").read_text()
-        self.assertIn("METRICS_REVIEW_TOKEN: ${{ secrets.METRIC_TOKEN }}", metrics)
-        self.assertIn('GH_TOKEN="${METRICS_REVIEW_TOKEN}" gh pr review "${metrics_pr}"', metrics)
-        self.assertLess(metrics.index("gh pr review"), metrics.index('gh pr merge "${metrics_pr}"'))
+        self.assertIn("METRICS_MERGE_TOKEN: ${{ secrets.METRIC_TOKEN }}", metrics)
+        commit_step = metrics.split("- name: Commit and update metrics pull request", 1)[1]
+        self.assertIn("GH_TOKEN: ${{ secrets.METRIC_TOKEN }}", commit_step)
+        self.assertNotIn("GH_TOKEN: ${{ github.token }}", commit_step)
+        self.assertNotIn("gh pr review", metrics)
+        self.assertIn("if ! gh pr create", commit_step)
+        self.assertNotIn("metrics_pr_created", metrics)
+        self.assertNotIn("git commit --amend", metrics)
+        self.assertIn('GH_TOKEN="${METRICS_MERGE_TOKEN}" gh pr merge "${metrics_pr}"', metrics)
+        self.assertNotIn('|| echo "Auto-merge is unavailable', metrics)
         docs_sync = (ROOT / ".github/workflows/post-release-documentation-sync.yml").read_text()
         self.assertIn("checks_ready=false", docs_sync)
         self.assertIn("--json name --jq 'length'", docs_sync)

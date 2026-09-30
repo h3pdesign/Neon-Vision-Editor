@@ -9,10 +9,12 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Added
 
 - Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including Settings, editor actions, accessibility text, and companion surfaces.
+- Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB payload limit, and independently staged received copies.
 
 ### Improved
 
 - Expands localization coverage for dynamic search, toolbar, Git status, and share-import messages.
+- Processes macOS terminal output as a bounded primary screen, preserving fragmented UTF-8, progress-line rewrites, cursor movement, erase commands, and text styles while publishing coalesced changed-text patches.
 
 ## [v1.8.6] - 2026-09-27
 

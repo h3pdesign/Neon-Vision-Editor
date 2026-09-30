@@ -7,6 +7,99 @@ import AppKit
 
 @MainActor
 final class IntegratedTerminalSessionTests: XCTestCase {
+    func testScreenPreservesUTF8AtEveryByteBoundaryAndRepairsMalformedBytes() {
+        let text = "e\u{301} 中文 👩‍💻 🇩🇰\r\n"
+        let bytes = Data(text.utf8)
+        for split in 0...bytes.count {
+            let screen = TerminalScreenBuffer()
+            let output = NSMutableAttributedString()
+            for chunk in [Data(bytes.prefix(split)), Data(bytes.dropFirst(split))] {
+                screen.consume(chunk)
+                if let patch = screen.takePatch() {
+                    output.replaceCharacters(in: patch.range, with: patch.text)
+                }
+            }
+            XCTAssertEqual(output.string, text.replacingOccurrences(of: "\r", with: ""), "split \(split)")
+        }
+        let decoder = TerminalUTF8Decoder()
+        XCTAssertEqual(decoder.decode(Data([0xE2])), "")
+        XCTAssertEqual(decoder.decode(Data([0x41, 0xFF])), "\u{FFFD}A\u{FFFD}")
+        decoder.reset()
+        XCTAssertEqual(decoder.decode(Data("ready".utf8)), "ready")
+    }
+
+    func testScreenRewritesProgressAndHandlesCursorEraseAndTabCommands() {
+        XCTAssertEqual(screenText(["Downloading 10%", "\rDownloading 100%\u{1B}[K"]), "Downloading 100%")
+        XCTAssertEqual(screenText(["abcdef", "\u{8}\u{8}XY"]), "abcdXY")
+        XCTAssertEqual(screenText(["abc\r\nsecond", "\u{1B}[1A\u{1B}[2GZ"]), "aZc\nsecond")
+        XCTAssertEqual(screenText(["abcdef", "\u{1B}[3G\u{1B}[0KQ"]), "abQ")
+        XCTAssertEqual(screenText(["abcdef", "\u{1B}[3G\u{1B}[1K"]), "   def")
+        XCTAssertEqual(screenText(["abc\r\nsecond", "\u{1B}[2J\u{1B}[1;1Hnew"]), "new\n")
+        XCTAssertEqual(screenText(["a\tb"]), "a       b")
+    }
+
+    func testScreenWideCharactersCombiningMarksAndResizeKeepColumnSemantics() {
+        XCTAssertEqual(screenText(["中x\r\u{1B}[2Gy"]), " yx")
+        XCTAssertEqual(screenText(["e", "\u{301}\rZ"]), "Z")
+        let screen = TerminalScreenBuffer()
+        screen.resize(columns: 4, rows: 2)
+        screen.consume(Data("abcdEF".utf8))
+        XCTAssertEqual(screen.takePatch()?.text.string, "abcd\nEF")
+        screen.resize(columns: 8, rows: 4)
+        screen.consume(Data("GH".utf8))
+        let patch = screen.takePatch()
+        XCTAssertEqual(patch?.text.string, "EFGH")
+    }
+
+    func testScreenSuppressesFragmentedOSCAndUnsupportedControlsAndBoundsCSI() {
+        XCTAssertEqual(screenText(["a\u{1B}]0;private", " title\u{1B}", "\\b"]), "ab")
+        XCTAssertEqual(screenText(["a\u{1B}Pdiscard", "\u{1B}\\b\u{1B}[?1049hc"]), "abc")
+        XCTAssertEqual(screenText(["a\u{1B}[" + String(repeating: "1", count: 10_000), "mb"]), "ab")
+        XCTAssertEqual(screenText(["\u{1B}[31", "mred\u{1B}[0m plain"]), "red plain")
+    }
+
+    func testScreenPreservesSGRAndPublishesOnlyTheRewrittenSuffix() {
+        let screen = TerminalScreenBuffer()
+        screen.consume(Data("history\r\n\u{1B}[31mred".utf8))
+        let first = screen.takePatch()!
+        let redColor = first.text.attribute(.foregroundColor, at: 8, effectiveRange: nil) as? NSColor
+        XCTAssertNotEqual(redColor, .textColor)
+        screen.consume(Data("\r\u{1B}[0mnew\u{1B}[K".utf8))
+        let second = screen.takePatch()!
+        XCTAssertEqual(second.range, NSRange(location: 8, length: 3))
+        XCTAssertEqual(second.text.string, "new")
+        XCTAssertEqual(second.text.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor, .textColor)
+        XCTAssertNil(screen.takePatch())
+    }
+
+    func testScreenBoundsHistoryAndNeverSplitsRetainedGraphemes() {
+        let screen = TerminalScreenBuffer(maximumUTF16Length: 2_048)
+        screen.resize(columns: 80, rows: 4)
+        let output = NSMutableAttributedString()
+        for _ in 0..<100 {
+            screen.consume(Data((String(repeating: "👩‍💻e\u{301}", count: 10) + "\r\n").utf8))
+            if let patch = screen.takePatch() { output.replaceCharacters(in: patch.range, with: patch.text) }
+        }
+        XCTAssertLessThanOrEqual(output.length, 2_048)
+        XCTAssertFalse(output.string.contains("\u{FFFD}"))
+        screen.consume(Data(("a" + String(repeating: "\u{301}", count: 10_000)).utf8))
+        if let patch = screen.takePatch() { output.replaceCharacters(in: patch.range, with: patch.text) }
+        XCTAssertLessThanOrEqual(output.length, 2_048)
+        screen.reset()
+        screen.consume(Data("clean".utf8))
+        XCTAssertEqual(screen.takePatch()?.text.string, "clean")
+    }
+
+    private func screenText(_ chunks: [String]) -> String {
+        let screen = TerminalScreenBuffer()
+        let output = NSMutableAttributedString()
+        for chunk in chunks {
+            screen.consume(Data(chunk.utf8))
+            if let patch = screen.takePatch() { output.replaceCharacters(in: patch.range, with: patch.text) }
+        }
+        return output.string
+    }
+
     func testTerminalDisplaySanitizerRemovesANSIControlSequencesAcrossChunks() {
         let sanitizer = TerminalDisplaySanitizer()
 
@@ -162,8 +255,9 @@ final class IntegratedTerminalSessionTests: XCTestCase {
         let marker = markerPrefix + markerSuffix
         var appendLengths: [Int] = []
         let observation = session.$renderUpdate.dropFirst().sink { update in
-            if case .append(let chunk) = update.kind {
-                appendLengths.append(chunk.length)
+            switch update.kind {
+            case .append(let chunk), .replace(_, let chunk): appendLengths.append(chunk.length)
+            case .reset: break
             }
         }
 
@@ -213,7 +307,14 @@ final class IntegratedTerminalSessionTests: XCTestCase {
         XCTAssertEqual(textView.string, "first")
 
         coordinator.apply(
-            TerminalRenderUpdate(revision: 3, kind: .append(NSAttributedString(string: "third"))),
+            TerminalRenderUpdate(revision: 2, kind: .replace(NSRange(location: 0, length: 5), NSAttributedString(string: "rewritten"))),
+            fallbackSnapshot: { NSAttributedString(string: "unused") },
+            in: textView
+        )
+        XCTAssertEqual(textView.string, "rewritten")
+
+        coordinator.apply(
+            TerminalRenderUpdate(revision: 4, kind: .append(NSAttributedString(string: "third"))),
             fallbackSnapshot: { NSAttributedString(string: "recovered") },
             in: textView
         )

@@ -1796,6 +1796,7 @@ extension ContentView {
     @ViewBuilder
     private func iPadOverflowMenuControl(actions: [IPadToolbarAction]) -> some View {
         Menu {
+                nearbyDocumentTransferMenu
                 if usesIPadBottomToolbar && isPhoneBottomToolbarMinimized {
                     Menu {
                         ForEach(ToolbarPreset.allCases) { preset in
@@ -2243,6 +2244,7 @@ extension ContentView {
                 Label("Brain Dump Mode", systemImage: "note.text")
             } }
             
+            nearbyDocumentTransferMenu
             iOSOverflowItem("welcomeTour") { Button(action: {
                 showWelcomeTour = true
             }) {

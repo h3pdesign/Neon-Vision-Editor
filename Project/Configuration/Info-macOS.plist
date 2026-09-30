@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Send or receive a document with a nearby device only when you start a transfer.</string>
+	<key>NSBonjourServices</key>
+	<array><string>_nve-transfer._tcp</string></array>
 	<key>CFBundleDisplayName</key>
 	<string>Neon Vision Editor</string>
 	<key>CFBundleDocumentTypes</key>

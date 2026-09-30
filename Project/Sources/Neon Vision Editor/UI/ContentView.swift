@@ -2603,6 +2603,7 @@ struct ContentView: View {
             }
 
         let viewWithPanelTriggers = viewWithEditorActions
+            .modifier(NearbyDocumentTransferPresentation(viewModel: viewModel))
             .onReceive(NotificationCenter.default.publisher(for: .showFindReplaceRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 showFindReplace = true

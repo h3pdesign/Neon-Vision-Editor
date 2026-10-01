@@ -1,3 +1,19 @@
+// v1.9.1 release highlights
+"What’s New in v1.9.1" = "Nyt i v1.9.1";
+"Release highlights for v1.9.1." = "Højdepunkter i v1.9.1.";
+"Open and save Japanese Shift-JIS files using Apple's native text encodings." = "Åbn og gem japanske Shift-JIS-filer med Apples indbyggede tekstkodninger.";
+"Keep the iPad status bar and toolbar separated, with less unused toolbar space." = "Hold statuslinjen og værktøjslinjen på iPad adskilt med mindre uudnyttet plads.";
+"Jump to the beginning or end of long macOS documents with Command-Up/Down." = "Spring til starten eller slutningen af lange macOS-dokumenter med Kommando-op/ned.";
+"Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding…" = "Brug Apples tilgængelige tekstkodninger, herunder Shift-JIS, i den eksisterende kodningsvælger med gemte kodningsvalg…";
+"Allows the always-available Settings action to be reordered in custom mobile toolbars (#676)." = "Omarranger den altid tilgængelige handling Indstillinger i tilpassede mobile værktøjslinjer (#676).";
+"Reveals the destination of macOS Command-Up/Down document navigation even when it lies outside the loaded editor viewport…" = "Vis destinationen for dokumentnavigation med Kommando-op/ned på macOS, også uden for det indlæste editorområde…";
+"Reliable Saves: Open and save Japanese Shift-JIS files using Apple's native text encodings." = "Pålidelig lagring: Åbn og gem japanske Shift-JIS-filer med Apples indbyggede tekstkodninger.";
+"Workflow Refinements: Keep the iPad status bar and toolbar separated, with less unused toolbar space." = "Forbedrede arbejdsgange: Hold statuslinjen og værktøjslinjen på iPad adskilt med mindre uudnyttet plads.";
+"Performance Updates: Jump to the beginning or end of long macOS documents with Command-Up/Down." = "Ydeevneforbedringer: Spring til starten eller slutningen af lange macOS-dokumenter med Kommando-op/ned.";
+"Usability Updates: Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding…" = "Brugervenlighed: Brug Apples tilgængelige tekstkodninger, herunder Shift-JIS, i den eksisterende kodningsvælger med gemte kodningsvalg…";
+"Editor Improvements: Allows the always-available Settings action to be reordered in custom mobile toolbars (#676)." = "Editorforbedringer: Omarranger den altid tilgængelige handling Indstillinger i tilpassede mobile værktøjslinjer (#676).";
+"Editor Navigation: Reveals the destination of macOS Command-Up/Down document navigation even when it lies outside the loaded editor viewport…" = "Editornavigation: Vis destinationen for dokumentnavigation med Kommando-op/ned på macOS, også uden for det indlæste editorområde…";
+
 // v1.9.0 release highlights
 "What’s New in v1.9.0" = "Hvad er nyt i v1.9.0";
 "Release highlights for v1.9.0." = "Højdepunkter i v1.9.0.";

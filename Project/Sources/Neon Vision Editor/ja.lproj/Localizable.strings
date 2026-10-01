@@ -1,3 +1,19 @@
+// v1.9.1 release highlights
+"What’s New in v1.9.1" = "v1.9.1の新機能";
+"Release highlights for v1.9.1." = "v1.9.1の主な変更点。";
+"Open and save Japanese Shift-JIS files using Apple's native text encodings." = "Apple標準のテキストエンコーディングで日本語のShift-JISファイルを開いて保存できます。";
+"Keep the iPad status bar and toolbar separated, with less unused toolbar space." = "iPadのステータスバーとツールバーを離して配置し、ツールバーの余白を減らしました。";
+"Jump to the beginning or end of long macOS documents with Command-Up/Down." = "Command＋上／下矢印で、長いmacOS文書の先頭や末尾に移動できます。";
+"Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding…" = "既存のエンコーディング選択でShift-JISを含むApple標準の文字コードを利用でき、選択した設定も保持されます…";
+"Allows the always-available Settings action to be reordered in custom mobile toolbars (#676)." = "常に利用できる「設定」アクションを、カスタムのモバイルツールバーで並べ替えられます（#676）。";
+"Reveals the destination of macOS Command-Up/Down document navigation even when it lies outside the loaded editor viewport…" = "macOSのCommand＋上／下矢印による移動先を、読み込み済みの編集領域の外でも表示します…";
+"Reliable Saves: Open and save Japanese Shift-JIS files using Apple's native text encodings." = "確実な保存: Apple標準のテキストエンコーディングで日本語のShift-JISファイルを開いて保存できます。";
+"Workflow Refinements: Keep the iPad status bar and toolbar separated, with less unused toolbar space." = "作業手順の改善: iPadのステータスバーとツールバーを離して配置し、ツールバーの余白を減らしました。";
+"Performance Updates: Jump to the beginning or end of long macOS documents with Command-Up/Down." = "パフォーマンスの改善: Command＋上／下矢印で、長いmacOS文書の先頭や末尾に移動できます。";
+"Usability Updates: Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding…" = "使いやすさの改善: 既存のエンコーディング選択でShift-JISを含むApple標準の文字コードを利用でき、選択した設定も保持されます…";
+"Editor Improvements: Allows the always-available Settings action to be reordered in custom mobile toolbars (#676)." = "エディタの改善: 常に利用できる「設定」アクションを、カスタムのモバイルツールバーで並べ替えられます（#676）。";
+"Editor Navigation: Reveals the destination of macOS Command-Up/Down document navigation even when it lies outside the loaded editor viewport…" = "エディタの移動: macOSのCommand＋上／下矢印による移動先を、読み込み済みの編集領域の外でも表示します…";
+
 // v1.9.0 release highlights
 "What’s New in v1.9.0" = "v1.9.0の新機能";
 "Release highlights for v1.9.0." = "v1.9.0の主な変更点。";

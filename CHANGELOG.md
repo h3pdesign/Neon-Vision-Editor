@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.9.1] - 2026-10-01
+
 ### Why Upgrade
 
 - Open and save Japanese Shift-JIS files using Apple's native text encodings.

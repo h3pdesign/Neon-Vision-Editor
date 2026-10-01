@@ -1,3 +1,19 @@
+// v1.9.1 release highlights
+"What’s New in v1.9.1" = "v1.9.1 新功能";
+"Release highlights for v1.9.1." = "v1.9.1 版本亮点。";
+"Open and save Japanese Shift-JIS files using Apple's native text encodings." = "使用 Apple 原生文本编码打开和保存日文 Shift-JIS 文件。";
+"Keep the iPad status bar and toolbar separated, with less unused toolbar space." = "将 iPad 状态栏与工具栏分开显示，并减少工具栏中的空白。";
+"Jump to the beginning or end of long macOS documents with Command-Up/Down." = "使用 Command＋上／下箭头跳转到 macOS 长文档的开头或结尾。";
+"Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding…" = "在现有编码选择器中使用包括 Shift-JIS 在内的 Apple 文本编码，并保留所选编码设置…";
+"Allows the always-available Settings action to be reordered in custom mobile toolbars (#676)." = "在自定义移动工具栏中重新排列始终可用的“设置”操作（#676）。";
+"Reveals the destination of macOS Command-Up/Down document navigation even when it lies outside the loaded editor viewport…" = "显示 macOS 中 Command＋上／下箭头的文档导航目标，即使它位于已加载的编辑区域之外…";
+"Reliable Saves: Open and save Japanese Shift-JIS files using Apple's native text encodings." = "可靠保存: 使用 Apple 原生文本编码打开和保存日文 Shift-JIS 文件。";
+"Workflow Refinements: Keep the iPad status bar and toolbar separated, with less unused toolbar space." = "工作流程优化: 将 iPad 状态栏与工具栏分开显示，并减少工具栏中的空白。";
+"Performance Updates: Jump to the beginning or end of long macOS documents with Command-Up/Down." = "性能改进: 使用 Command＋上／下箭头跳转到 macOS 长文档的开头或结尾。";
+"Usability Updates: Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding…" = "易用性改进: 在现有编码选择器中使用包括 Shift-JIS 在内的 Apple 文本编码，并保留所选编码设置…";
+"Editor Improvements: Allows the always-available Settings action to be reordered in custom mobile toolbars (#676)." = "编辑器改进: 在自定义移动工具栏中重新排列始终可用的“设置”操作（#676）。";
+"Editor Navigation: Reveals the destination of macOS Command-Up/Down document navigation even when it lies outside the loaded editor viewport…" = "编辑器导航: 显示 macOS 中 Command＋上／下箭头的文档导航目标，即使它位于已加载的编辑区域之外…";
+
 // v1.9.0 release highlights
 "What’s New in v1.9.0" = "v1.9.0 的新功能";
 "Release highlights for v1.9.0." = "v1.9.0 的主要更新。";

@@ -1,3 +1,19 @@
+// v1.9.1 release highlights
+"What’s New in v1.9.1" = "Neu in v1.9.1";
+"Release highlights for v1.9.1." = "Highlights der Version v1.9.1.";
+"Open and save Japanese Shift-JIS files using Apple's native text encodings." = "Japanische Shift-JIS-Dateien mit Apples nativen Textkodierungen öffnen und sichern.";
+"Keep the iPad status bar and toolbar separated, with less unused toolbar space." = "Statusleiste und Werkzeugleiste auf dem iPad bleiben getrennt, mit weniger ungenutztem Platz.";
+"Jump to the beginning or end of long macOS documents with Command-Up/Down." = "Mit Befehl-Auf/Ab zum Anfang oder Ende langer macOS-Dokumente springen.";
+"Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding…" = "Apples verfügbare Textkodierungen einschließlich Shift-JIS im vorhandenen Auswahlmenü nutzen, mit gespeicherten Kodierungsoptionen…";
+"Allows the always-available Settings action to be reordered in custom mobile toolbars (#676)." = "Die stets verfügbare Aktion „Einstellungen“ in benutzerdefinierten mobilen Werkzeugleisten neu anordnen (#676).";
+"Reveals the destination of macOS Command-Up/Down document navigation even when it lies outside the loaded editor viewport…" = "Das Ziel der Dokumentnavigation mit Befehl-Auf/Ab unter macOS anzeigen, auch außerhalb des geladenen Editorbereichs…";
+"Reliable Saves: Open and save Japanese Shift-JIS files using Apple's native text encodings." = "Zuverlässiges Sichern: Japanische Shift-JIS-Dateien mit Apples nativen Textkodierungen öffnen und sichern.";
+"Workflow Refinements: Keep the iPad status bar and toolbar separated, with less unused toolbar space." = "Verbesserte Arbeitsabläufe: Statusleiste und Werkzeugleiste auf dem iPad bleiben getrennt, mit weniger ungenutztem Platz.";
+"Performance Updates: Jump to the beginning or end of long macOS documents with Command-Up/Down." = "Leistungsverbesserungen: Mit Befehl-Auf/Ab zum Anfang oder Ende langer macOS-Dokumente springen.";
+"Usability Updates: Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding…" = "Bedienungsverbesserungen: Apples verfügbare Textkodierungen einschließlich Shift-JIS im vorhandenen Auswahlmenü nutzen, mit gespeicherten Kodierungsoptionen…";
+"Editor Improvements: Allows the always-available Settings action to be reordered in custom mobile toolbars (#676)." = "Editorverbesserungen: Die stets verfügbare Aktion „Einstellungen“ in benutzerdefinierten mobilen Werkzeugleisten neu anordnen (#676).";
+"Editor Navigation: Reveals the destination of macOS Command-Up/Down document navigation even when it lies outside the loaded editor viewport…" = "Editornavigation: Das Ziel der Dokumentnavigation mit Befehl-Auf/Ab unter macOS anzeigen, auch außerhalb des geladenen Editorbereichs…";
+
 // v1.9.0 release highlights
 "What’s New in v1.9.0" = "Neu in v1.9.0";
 "Release highlights for v1.9.0." = "Highlights der Version v1.9.0.";

@@ -1557,6 +1557,16 @@ final class VirtualEditorLayoutTests: XCTestCase {
         }
         try assertCommandUpDownNavigation(source: "", wraps: true, readOnly: false)
         try assertCommandUpDownNavigation(source: "日本語 😀", wraps: false, readOnly: true)
+        for wraps in [true, false] {
+            try assertCommandUpDownNavigation(
+                source: String(repeating: "x", count: 300_000) + "END_OF_MINIFIED_FILE",
+                wraps: wraps, readOnly: false
+            )
+            try assertCommandUpDownNavigation(
+                source: "LARGE_LINE_FIXTURE" + String(repeating: "x", count: 400_000) + "\r\nnext",
+                wraps: wraps, readOnly: true
+            )
+        }
     }
 
     private func assertCommandUpDownNavigation(source: String, wraps: Bool, readOnly: Bool) throws {
@@ -1592,6 +1602,11 @@ final class VirtualEditorLayoutTests: XCTestCase {
         }
         try press(125, "\u{F701}")
         XCTAssertEqual(canvas.selectedRange(), NSRange(location: document.utf16Length, length: 0))
+        if source.hasSuffix("END_OF_MINIFIED_FILE") {
+            XCTAssertTrue((canvas.accessibilityValue() as? String)?.hasSuffix("END_OF_MINIFIED_FILE") == true,
+                          "The loaded viewport must contain the destination within an oversized logical line")
+            XCTAssertTrue(canvas.accessibilityHelp()?.contains("column \(document.utf16Length + 1)") == true)
+        }
         if document.lineCount > 512 {
             XCTAssertGreaterThan(scrollView.contentView.bounds.minY, 0, "Document-end navigation must reveal the caret, not just move it offscreen")
         }
@@ -1610,6 +1625,18 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(document.viewportCallCount, readsAtEnd, "Repeated boundary movement must not reload the viewport")
         XCTAssertLessThanOrEqual(document.viewportCallCount - initialViewportReads, 3)
         XCTAssertEqual(document.stringCallCount, 0, "Navigation must not materialize the full document")
+        if source.hasSuffix("END_OF_MINIFIED_FILE") {
+            canvas.doCommand(by: #selector(NSResponder.moveToBeginningOfLine(_:)))
+            XCTAssertEqual(canvas.selectedRange(), NSRange(location: 0, length: 0))
+        }
+        if source.hasPrefix("LARGE_LINE_FIXTURE") {
+            canvas.setAccessibilitySelectedTextRange(NSRange(location: 300_000, length: 0))
+            XCTAssertTrue(canvas.accessibilityHelp()?.contains("column 300001") == true)
+            canvas.doCommand(by: #selector(NSResponder.moveToEndOfLine(_:)))
+            XCTAssertEqual(canvas.selectedRange(), NSRange(location: source.utf16.count - "\r\nnext".utf16.count, length: 0))
+            canvas.doCommand(by: #selector(NSResponder.moveToBeginningOfLine(_:)))
+            XCTAssertEqual(canvas.selectedRange(), NSRange(location: 0, length: 0))
+        }
         XCTAssertEqual(try document.text(inUTF16Range: NSRange(location: 0, length: document.utf16Length)), source)
     }
 
@@ -1792,6 +1819,10 @@ private final class CountingEditorDocument: EditorDocument {
     func viewport(aroundLine line: Int, maximumByteCount: Int, maximumLineCount: Int) throws -> EditorDocumentViewport {
         viewportCallCount += 1
         return try backing.viewport(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
+    }
+    func viewport(containingUTF16Offset offset: Int, maximumByteCount: Int, maximumLineCount: Int) throws -> EditorDocumentViewport {
+        viewportCallCount += 1
+        return try backing.viewport(containingUTF16Offset: offset, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
     }
     func replace(in viewport: EditorDocumentViewport, utf16Range: NSRange, with replacement: String) throws {
         try backing.replace(in: viewport, utf16Range: utf16Range, with: replacement)

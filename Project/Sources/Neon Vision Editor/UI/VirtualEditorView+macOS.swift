@@ -1345,7 +1345,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         return VirtualEditorAccessibilityContext(
             documentName: documentDisplayName,
             line: viewportLineOrigin + localLine + 1,
-            column: localCaret - lineStart + 1,
+            column: localCaret - lineStart + 1 + (localLine == 0 ? viewport?.startColumnUTF16 ?? 0 : 0),
             isReadOnly: isReadOnly,
             selectionLength: selection.length
         )
@@ -2566,6 +2566,26 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     private func moveToLineBoundary(end: Bool, extending: Bool = false) {
+        if let viewport, viewport.startColumnUTF16 > 0,
+           let document, let position = try? document.position(atUTF16Offset: absoluteCaret) {
+            if !end {
+                moveCaret(to: absoluteCaret - position.column, extending: extending)
+                return
+            }
+            if position.line == document.lineCount - 1 {
+                moveCaret(to: document.utf16Length, extending: extending)
+                return
+            }
+            if let nextLine = try? document.viewport(aroundLine: position.line + 1, maximumByteCount: 8, maximumLineCount: 1) {
+                var target = max(0, nextLine.startUTF16Offset - 1)
+                if let tail = try? document.viewport(containingUTF16Offset: target, maximumByteCount: 16, maximumLineCount: 1) {
+                    let local = target - tail.startUTF16Offset
+                    if local > 0, (tail.text as NSString).character(at: local - 1) == 13 { target -= 1 }
+                }
+                moveCaret(to: target, extending: extending)
+                return
+            }
+        }
         let local = max(0, min(viewportText.utf16.count, absoluteCaret - viewportLineOriginStartUTF16))
         let source = viewportText as NSString
         let lineRange = source.lineRange(for: NSRange(location: local, length: 0))
@@ -3261,7 +3281,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private func ensureCaretVisible() {
         if absoluteCaret < viewportLineOriginStartUTF16 ||
             absoluteCaret > viewportLineOriginStartUTF16 + viewportText.utf16.count {
-            reloadViewport(anchorLine: lineForAbsoluteOffset(absoluteCaret))
+            if let document, let next = try? document.viewport(
+                containingUTF16Offset: absoluteCaret, maximumByteCount: viewportMaximumByteCount, maximumLineCount: 512
+            ) {
+                installViewport(next, deferExpensiveWork: false)
+            }
         }
         let local = absoluteCaret - viewportLineOriginStartUTF16
         guard local >= 0, local <= viewportText.utf16.count else { return }
@@ -3686,7 +3710,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                   NSMaxRange(selection) <= viewportLineOriginStartUTF16 + viewportText.utf16.count else { return "" }
             return (viewportText as NSString).substring(with: NSRange(location: selection.location - viewportLineOriginStartUTF16, length: selection.length))
         }()
-        NotificationCenter.default.post(name: .caretPositionDidChange, object: nil, userInfo: [EditorCommandUserInfo.documentID: documentID.uuidString, "location": absoluteCaret, "line": viewportLineOrigin + localLine + 1, "column": localCaret - lineStart + 1])
+        NotificationCenter.default.post(name: .caretPositionDidChange, object: nil, userInfo: [EditorCommandUserInfo.documentID: documentID.uuidString, "location": absoluteCaret, "line": viewportLineOrigin + localLine + 1, "column": localCaret - lineStart + 1 + (localLine == 0 ? viewport?.startColumnUTF16 ?? 0 : 0)])
         NotificationCenter.default.post(
             name: .editorSelectionDidChange,
             object: selectedText,

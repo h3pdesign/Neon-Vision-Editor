@@ -54,12 +54,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.9.0**
+> Latest release: **v1.9.1**
 > Next release target: **v1.9.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: supported
 > Direct GitHub release: **v1.9.0** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-09-30** for latest release **v1.9.0**
+> Last updated (README): **2026-10-01** for latest release **v1.9.1**
 
 ## What's New Since v1.8.6
 
@@ -153,7 +153,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=13739&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=13750&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -172,8 +172,8 @@
   <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=203&color=0EA5E9&style=for-the-badge">
 </p>
 <p align="center">
-  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-09-30&color=334155&style=flat-square">
-  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-09-30&color=334155&style=flat-square">
+  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-10-01&color=334155&style=flat-square">
+  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-10-01&color=334155&style=flat-square">
 </p>
 
 ## Project Documentation
@@ -773,7 +773,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.8.5`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.8.5) | **A more deliberate workflow** — Choose whether Markdown opens for editing or full-window reading, and switch modes from the toolbar or keyboard. | Makes configured app shortcuts available while the mobile editor has hardware-keyboard focus; restores the documented Save As, Line Wrap, and… |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.9.0**
+- Latest release: **v1.9.1**
 - Compare recent changes: [v1.8.6...v1.9.0](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.8.6...v1.9.0)
 
 ## Known Limitations

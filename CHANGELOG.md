@@ -20,6 +20,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Fixes
 
 - Reveals the destination of macOS Command-Up/Down document navigation even when it lies outside the loaded editor viewport, including Shift-selection (#660).
+- Loads the destination inside oversized single-line files using a bounded offset-aware window, preserving edit offsets, column reporting and repeated boundary navigation.
 - Arranges the mobile status pill and bottom toolbar in one measured stack instead of independent fixed offsets, avoiding touching bars and double keyboard-accessory spacing (#672, #673).
 - Fits the iPad bottom toolbar to its visible controls while retaining its window-width limit and horizontal scrolling (#675).
 - Detects Shift-JIS KiriKiri text without the CP1251 punctuation corruption, preserving Cyrillic and Western fixtures (#674).

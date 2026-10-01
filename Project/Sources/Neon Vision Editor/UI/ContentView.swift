@@ -222,16 +222,19 @@ struct MobileFloatingStatusOverlayModifier: ViewModifier {
     let centered: Bool
     let bottomInset: CGFloat
     let status: AnyView
-    var bottomToolbar: AnyView? = nil
+    var bottomToolbar: ((CGFloat) -> AnyView?)? = nil
 
     func body(content: Content) -> some View {
-        content.overlay(alignment: centered ? .bottom : .bottomTrailing) {
-            VStack(spacing: 12) {
-                if showsStatus { status }
-                if let bottomToolbar { bottomToolbar }
+        content.overlay {
+            GeometryReader { proxy in
+                VStack(spacing: 12) {
+                    if showsStatus { status }
+                    if let toolbar = bottomToolbar?(proxy.size.width) { toolbar }
+                }
+                .padding(.trailing, centered ? 0 : 12)
+                .padding(.bottom, (centered ? 8 : 12) + bottomInset)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: centered ? .bottom : .bottomTrailing)
             }
-            .padding(.trailing, centered ? 0 : 12)
-            .padding(.bottom, (centered ? 8 : 12) + bottomInset)
         }
     }
 }
@@ -771,6 +774,7 @@ struct ContentView: View {
     @State var findScope: SearchScope = .currentFile
     @State var findInFilesScope: SearchScope = .project
     @State var showProjectStructureSidebar: Bool = false
+    @AppStorage(JevContextRankingConfig.enabledDefaultsKey) var jevContextRankingEnabled = false
     @State var aiChatConversation = AIChatConversation()
     @State var showCompactSidebarSheet: Bool = false
     @State var showCompactProjectSidebarSheet: Bool = false
@@ -5840,7 +5844,7 @@ struct ContentView: View {
                 centered: usesIOSBottomToolbar,
                 bottomInset: 0,
                 status: AnyView(floatingStatusPill),
-                bottomToolbar: mobileBottomToolbarOverlay
+                bottomToolbar: { width in mobileBottomToolbarOverlay(availableWidth: width) }
             )
         )
 #endif

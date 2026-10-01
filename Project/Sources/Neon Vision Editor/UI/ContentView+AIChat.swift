@@ -29,6 +29,7 @@ extension ContentView {
             projectStructureCharacterCount: aiChatProjectStructure?.count ?? 0,
             containsPotentialSensitiveContent: AIChatSensitiveContentDetector.containsPotentialSecret(aiChatSelection ?? ""),
             isOnDeviceProvider: selectedModel == .appleIntelligence,
+            isJevContextRankingEnabled: jevContextRankingEnabled,
             hasSelection: aiChatSelection != nil,
             hasCurrentFile: viewModel.selectedTab != nil || !singleContent.isEmpty,
             hasProjectStructure: aiChatProjectStructure != nil,
@@ -36,8 +37,8 @@ extension ContentView {
             allowsAgentCloudProcessing: editorAgentAllowPrivateCloudCompute,
             supportsAgentVerification: EditorAgentVerificationRunner.executionIsSupported,
             isAgentVerificationRunning: isEditorAgentVerificationRunning,
-            onSend: { prompt, scopes, agentMode in
-                sendAIChat(prompt: prompt, scopes: scopes, agentMode: agentMode)
+            onSend: { prompt, scopes, agentMode, rankOptionalContext in
+                sendAIChat(prompt: prompt, scopes: scopes, agentMode: agentMode, rankOptionalContext: rankOptionalContext)
             },
             onInsert: { response in
                 insertAIChatResponse(response)
@@ -85,7 +86,8 @@ extension ContentView {
     private func sendAIChat(
         prompt: String,
         scopes requestedScopes: Set<AIChatContextScope>,
-        agentMode: EditorAgentMode?
+        agentMode: EditorAgentMode?,
+        rankOptionalContext: Bool
     ) {
         var scopes = requestedScopes
         if agentMode == .edit {
@@ -118,11 +120,19 @@ extension ContentView {
                 : nil,
             projectStructure: scopes.contains(.projectStructure) ? aiChatProjectStructure : nil
         )
+        var contextRanker: AIChatContextRanking?
+        if rankOptionalContext, JevContextRankingConfig.isEligible(
+            enabled: jevContextRankingEnabled, isOnDevice: selectedModel == .appleIntelligence,
+            isAgent: agentMode != nil, hasOptionalContext: context.documentText != nil || context.projectStructure != nil
+        ) {
+            contextRanker = JevContextRanker(apiKey: SecureTokenStore.token(for: .typeSafe))
+        }
         aiChatConversation.start(
             prompt: prompt,
             context: context,
             providerName: selectedModel.displayName,
-            client: client
+            client: client,
+            contextRanker: contextRanker
         )
     }
 

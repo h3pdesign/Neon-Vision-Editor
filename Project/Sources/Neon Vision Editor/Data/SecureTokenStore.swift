@@ -10,6 +10,7 @@ enum APITokenKey: String, CaseIterable {
     case anthropic
     case openCodeGo
     case customProvider
+    case typeSafe
 
     var account: String {
         switch self {
@@ -19,6 +20,7 @@ enum APITokenKey: String, CaseIterable {
         case .anthropic: return "AnthropicAPIToken"
         case .openCodeGo: return "OpenCodeGoAPIToken"
         case .customProvider: return "CustomProviderAPIToken"
+        case .typeSafe: return "TypeSafeAPIToken"
         }
     }
 }

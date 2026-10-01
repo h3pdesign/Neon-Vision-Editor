@@ -23,7 +23,16 @@ final class ContentViewLayoutTests: XCTestCase {
     }
 
     @MainActor
-    private func bottomChromeFrames(toolbarHeight: CGFloat?) async -> (container: CGRect, status: CGRect, toolbar: CGRect) {
+    func testBottomToolbarUsesMeasuredContainerWidthOnFirstLayout() async {
+        for width: CGFloat in [320, 402, 500] {
+            let frames = await bottomChromeFrames(toolbarHeight: 52, containerWidth: width)
+            XCTAssertEqual(frames.container.width, width, accuracy: 0.5)
+            XCTAssertEqual(frames.toolbar.width, ContentView.IPhoneBottomToolbarWidthPolicy.width(availableWidth: width), accuracy: 0.5)
+        }
+    }
+
+    @MainActor
+    private func bottomChromeFrames(toolbarHeight: CGFloat?, containerWidth: CGFloat = 500) async -> (container: CGRect, status: CGRect, toolbar: CGRect) {
         let measured = expectation(description: "Bottom chrome measured")
         var statusFrame = CGRect.zero
         var toolbarFrame = CGRect.zero
@@ -40,14 +49,16 @@ final class ContentViewLayoutTests: XCTestCase {
                 statusFrame = $0
                 finishIfReady()
             }
-        let toolbar = toolbarHeight.map { height in
-            AnyView(Color.blue.frame(width: 300, height: height)
-                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
-                    toolbarFrame = $0
-                    finishIfReady()
-                })
+        let toolbar: (CGFloat) -> AnyView? = { width in
+            toolbarHeight.map { height in
+                AnyView(Color.blue.frame(width: ContentView.IPhoneBottomToolbarWidthPolicy.width(availableWidth: width), height: height)
+                    .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
+                        toolbarFrame = $0
+                        finishIfReady()
+                    })
+            }
         }
-        let view = Color.clear.frame(width: 500, height: 500)
+        let view = Color.clear.frame(width: containerWidth, height: 500)
             .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
                 containerFrame = $0
                 finishIfReady()
@@ -58,13 +69,13 @@ final class ContentViewLayoutTests: XCTestCase {
         if let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
             window = UIWindow(windowScene: scene)
         } else {
-            window = UIWindow(frame: CGRect(x: 0, y: 0, width: 500, height: 500))
+            window = UIWindow(frame: CGRect(x: 0, y: 0, width: containerWidth, height: 500))
         }
-        window.frame = CGRect(x: 0, y: 0, width: 500, height: 500)
+        window.frame = CGRect(x: 0, y: 0, width: containerWidth, height: 500)
         window.rootViewController = controller
         window.isHidden = false
         defer { window.isHidden = true }
-        controller.view.frame = CGRect(x: 0, y: 0, width: 500, height: 500)
+        controller.view.frame = CGRect(x: 0, y: 0, width: containerWidth, height: 500)
         controller.view.layoutIfNeeded()
         await fulfillment(of: [measured], timeout: 3)
         withExtendedLifetime(controller) {}

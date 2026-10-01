@@ -281,6 +281,7 @@ final class AIChatConversation {
     private(set) var isSending = false
     private(set) var errorMessage: String?
     private(set) var latestAgentResult: EditorAgentRunResult?
+    private(set) var contextRankingSummary: String?
 
     private var requestTask: Task<Void, Never>?
     private var activeRequestID: UUID?
@@ -303,7 +304,7 @@ final class AIChatConversation {
         lastRequest != nil && !isSending
     }
 
-    func start(prompt: String, context: AIChatContext, providerName: String, client: AIClient) {
+    func start(prompt: String, context: AIChatContext, providerName: String, client: AIClient, contextRanker: AIChatContextRanking? = nil) {
         let trimmedPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPrompt.isEmpty, !isSending else { return }
 
@@ -313,7 +314,8 @@ final class AIChatConversation {
             context: context,
             providerName: providerName,
             client: client,
-            appendUserMessage: true
+            appendUserMessage: true,
+            contextRanker: contextRanker
         )
     }
 
@@ -339,10 +341,12 @@ final class AIChatConversation {
         context: AIChatContext,
         providerName: String,
         client: AIClient,
-        appendUserMessage: Bool
+        appendUserMessage: Bool,
+        contextRanker: AIChatContextRanking? = nil
     ) {
         errorMessage = nil
         latestAgentResult = nil
+        contextRankingSummary = nil
         if appendUserMessage {
             messages.append(.init(role: .user, content: prompt, contextSummary: context.summary))
             trimStoredMessages()
@@ -355,23 +359,30 @@ final class AIChatConversation {
         let requestID = UUID()
         activeRequestID = requestID
         isSending = true
-        let request: String
-        if client.usesEditorAgentPrompt {
-            request = Self.agentRequestPrompt(
-                userPrompt: prompt,
-                context: context,
-                history: messages.dropLast(2)
-            )
-        } else {
-            request = Self.requestPrompt(
-                userPrompt: prompt,
-                context: context,
-                history: messages.dropLast(2),
-                contextCharacterBudget: providerName == "Apple" ? 5_000 : nil
-            )
-        }
-
+        // Capture history before suspension; cancelled ranking must not start a provider.
+        let history = Array(messages.dropLast(2))
         requestTask = Task { @MainActor [weak self] in
+            var effectiveContext = context
+            if let contextRanker, !client.usesEditorAgentPrompt {
+                if history.isEmpty {
+                    let ranked = await contextRanker.rank(prompt: prompt, context: context)
+                    guard !Task.isCancelled, self?.activeRequestID == requestID else { return }
+                    effectiveContext = ranked.context
+                    self?.contextRankingSummary = ranked.summary
+                } else {
+                    // A standalone classifier cannot resolve implicit references to earlier turns.
+                    self?.contextRankingSummary = "Jev skipped for a follow-up; original context retained."
+                }
+            }
+            guard !Task.isCancelled, self?.activeRequestID == requestID else { return }
+            // Retry the same captured, filtered request without another TypeSafe transmission.
+            self?.lastRequest = LastRequest(prompt: prompt, context: effectiveContext, providerName: providerName, client: client)
+            let request = client.usesEditorAgentPrompt
+                ? Self.agentRequestPrompt(userPrompt: prompt, context: effectiveContext, history: history[...])
+                : Self.requestPrompt(
+                    userPrompt: prompt, context: effectiveContext, history: history[...],
+                    contextCharacterBudget: providerName == "Apple" ? 5_000 : nil
+                )
             var didReceiveContent = false
             for await chunk in client.streamSuggestions(prompt: request) {
                 guard !Task.isCancelled, self?.activeRequestID == requestID else { return }
@@ -411,6 +422,7 @@ final class AIChatConversation {
             saveCurrentSession()
         }
         messages.removeAll()
+        contextRankingSummary = nil
         errorMessage = nil
         latestAgentResult = nil
         lastRequest = nil
@@ -420,6 +432,7 @@ final class AIChatConversation {
     func restore(_ session: AIChatSavedSession) {
         cancel()
         messages = session.messages
+        contextRankingSummary = nil
         errorMessage = nil
         latestAgentResult = nil
         lastRequest = nil
@@ -639,6 +652,7 @@ struct AIChatSidebarView: View {
     let projectStructureCharacterCount: Int
     let containsPotentialSensitiveContent: Bool
     let isOnDeviceProvider: Bool
+    let isJevContextRankingEnabled: Bool
     let hasSelection: Bool
     let hasCurrentFile: Bool
     let hasProjectStructure: Bool
@@ -646,7 +660,7 @@ struct AIChatSidebarView: View {
     let allowsAgentCloudProcessing: Bool
     let supportsAgentVerification: Bool
     let isAgentVerificationRunning: Bool
-    let onSend: (_ prompt: String, _ scopes: Set<AIChatContextScope>, _ agentMode: EditorAgentMode?) -> Void
+    let onSend: (_ prompt: String, _ scopes: Set<AIChatContextScope>, _ agentMode: EditorAgentMode?, _ rankOptionalContext: Bool) -> Void
     let onInsert: (_ response: String) -> Void
     let onReplaceSelection: (_ response: String) -> Void
     let onReviewReplacement: (_ response: String) -> Void
@@ -663,6 +677,7 @@ struct AIChatSidebarView: View {
     @State private var pendingPrompt = ""
     @State private var pendingScopes: Set<AIChatContextScope> = []
     @State private var pendingAgentMode: EditorAgentMode?
+    @State private var pendingContextRanking = false
     @State private var isAgentModeEnabled = false
     @State private var selectedAgentMode: EditorAgentMode = .explore
     @State private var isCloudContextDisclosurePresented = false
@@ -674,6 +689,14 @@ struct AIChatSidebarView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
+            if let summary = conversation.contextRankingSummary {
+                Text(summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 12)
+                    .accessibilityLabel("Context ranking")
+                    .accessibilityValue(summary)
+            }
             Divider()
                 .padding(.horizontal, 12)
             messageList
@@ -699,7 +722,7 @@ struct AIChatSidebarView: View {
         .onChange(of: supportsAgentMode) { _, isSupported in
             if !isSupported { isAgentModeEnabled = false }
         }
-        .alert("Send editor context to \(providerName)?", isPresented: $isCloudContextDisclosurePresented) {
+        .alert("Send editor context to \(pendingContextRanking ? providerName + " and TypeSafe" : providerName)?", isPresented: $isCloudContextDisclosurePresented) {
             Button("Continue") {
                 submitAfterCloudDisclosure()
             }
@@ -707,21 +730,26 @@ struct AIChatSidebarView: View {
                 pendingPrompt = ""
                 pendingScopes = []
                 pendingAgentMode = nil
+                pendingContextRanking = false
             }
         } message: {
-            Text("The selected editor context will leave this device and be sent to \(providerName). Review the provider's privacy and retention policies before continuing.")
+            Text(pendingContextRanking
+                ? "Your prompt and bounded Current File and Project Structure excerpts will be sent to TypeSafe for Jev ranking. Selection and chat history are excluded from that request. Retained editor context will then be sent to \(providerName). Review both providers' privacy and retention policies before continuing."
+                : "The selected editor context will leave this device and be sent to \(providerName). Review the provider's privacy and retention policies before continuing.")
         }
         .alert("Potential secrets in editor context", isPresented: $isSensitiveContextDisclosurePresented) {
             Button("Send Anyway") {
-                onSend(pendingPrompt, pendingScopes, pendingAgentMode)
+                onSend(pendingPrompt, pendingScopes, pendingAgentMode, pendingContextRanking)
                 pendingPrompt = ""
                 pendingScopes = []
                 pendingAgentMode = nil
+                pendingContextRanking = false
             }
             Button("Cancel", role: .cancel) {
                 pendingPrompt = ""
                 pendingScopes = []
                 pendingAgentMode = nil
+                pendingContextRanking = false
             }
         } message: {
             Text("The selected context appears to contain a key, password, token, or private key. Review or remove it before sending to \(providerName).")
@@ -1476,37 +1504,45 @@ struct AIChatSidebarView: View {
     private func submit(prompt: String, scopes: Set<AIChatContextScope>) {
         guard !prompt.isEmpty else { return }
         let agentMode = isAgentModeEnabled && supportsAgentMode ? selectedAgentMode : nil
+        let rankOptionalContext = JevContextRankingConfig.isEligible(
+            enabled: isJevContextRankingEnabled, isOnDevice: isOnDeviceProvider, isAgent: agentMode != nil,
+            hasOptionalContext: scopes.contains(.currentFile) || scopes.contains(.projectStructure)
+        )
         if !isOnDeviceProvider, !scopes.isEmpty {
             pendingPrompt = prompt
             pendingScopes = scopes
             pendingAgentMode = agentMode
+            pendingContextRanking = rankOptionalContext
             isCloudContextDisclosurePresented = true
             return
         }
-        submitAfterCloudDisclosure(prompt: prompt, scopes: scopes, agentMode: agentMode)
+        submitAfterCloudDisclosure(prompt: prompt, scopes: scopes, agentMode: agentMode, rankOptionalContext: false)
     }
 
     private func submitAfterCloudDisclosure() {
         let prompt = pendingPrompt
         let scopes = pendingScopes
         let agentMode = pendingAgentMode
+        let rankOptionalContext = pendingContextRanking
         pendingPrompt = ""
         pendingScopes = []
         pendingAgentMode = nil
-        submitAfterCloudDisclosure(prompt: prompt, scopes: scopes, agentMode: agentMode)
+        pendingContextRanking = false
+        submitAfterCloudDisclosure(prompt: prompt, scopes: scopes, agentMode: agentMode, rankOptionalContext: rankOptionalContext)
     }
 
-    private func submitAfterCloudDisclosure(prompt: String, scopes: Set<AIChatContextScope>, agentMode: EditorAgentMode?) {
+    private func submitAfterCloudDisclosure(prompt: String, scopes: Set<AIChatContextScope>, agentMode: EditorAgentMode?, rankOptionalContext: Bool) {
         guard !prompt.isEmpty else { return }
         let sendsFileContent = scopes.contains(.selection) || scopes.contains(.currentFile)
         if !isOnDeviceProvider, sendsFileContent, containsPotentialSensitiveContent {
             pendingPrompt = prompt
             pendingScopes = scopes
             pendingAgentMode = agentMode
+            pendingContextRanking = rankOptionalContext
             isSensitiveContextDisclosurePresented = true
             return
         }
-        onSend(prompt, scopes, agentMode)
+        onSend(prompt, scopes, agentMode, rankOptionalContext)
     }
 
     private func copy(_ string: String) {

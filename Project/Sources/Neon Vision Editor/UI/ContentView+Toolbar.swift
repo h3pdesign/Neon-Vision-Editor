@@ -827,13 +827,13 @@ extension ContentView {
         }
     }
 
-    var mobileBottomToolbarOverlay: AnyView? {
+    func mobileBottomToolbarOverlay(availableWidth: CGFloat) -> AnyView? {
 #if os(iOS)
         guard usesIOSBottomToolbar, !showFindReplace, !isPhoneSoftwareKeyboardVisible else { return nil }
         if usesIPhoneBottomToolbar {
-            return AnyView(iPhoneScrollableBottomToolbar.frame(width: IPhoneBottomToolbarWidthPolicy.width(availableWidth: liveContainerWidth)))
+            return AnyView(iPhoneScrollableBottomToolbar.frame(width: IPhoneBottomToolbarWidthPolicy.width(availableWidth: availableWidth)))
         }
-        return AnyView(iPadUnifiedToolbarRow(availableWidth: liveContainerWidth))
+        return AnyView(iPadUnifiedToolbarRow(availableWidth: availableWidth))
 #else
         return nil
 #endif

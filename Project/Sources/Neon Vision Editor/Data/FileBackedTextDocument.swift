@@ -105,6 +105,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
     private var lazyIndexedUTF16Length: Int = 0
     private var lazyLineStarts: [Int] = [0]
     private var lazyLineUTF16Starts: [Int] = [0]
+    private var lazyOffsetCheckpoints: [(byte: Int, utf16: Int)] = [(0, 0)]
     private var lazyEstimatedLineCount = 1
     private var lazyIndexComplete = false
 
@@ -211,6 +212,12 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         let byteCount = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? prefix.count
         let prefixDescriptor = Self.boundedEncoding(from: prefix, allowsIncompleteUTF8Sequence: byteCount > prefix.count)
         if let prefixDescriptor {
+            if !prefixDescriptor.supportsBoundedStorage {
+                // The byte-indexed editor supports UTF-8, UTF-16 and the
+                // established single-byte encodings, not arbitrary native
+                // multibyte/stateful codecs. The regular editor handles these.
+                throw Error.unsupportedEncoding
+            }
             let values = try url.resourceValues(forKeys: [.fileSizeKey])
             guard let byteCount = values.fileSize, byteCount >= 0 else { throw Error.invalidRange }
             try self.init(lazyURL: url, encoding: prefixDescriptor, byteCount: byteCount)
@@ -255,6 +262,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
 
 
     private init(lazyURL url: URL, encoding: TextEncodingDescriptor, byteCount: Int) throws {
+        guard encoding.supportsBoundedStorage else { throw Error.unsupportedEncoding }
         let handle = try FileHandle(forReadingFrom: url)
         let prefixByteCount = min(byteCount, 256 * 1024)
         let rawPrefix = try handle.read(upToCount: prefixByteCount) ?? Data()
@@ -272,6 +280,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         self.lazyFileByteCount = byteCount
         self.lazyIndexedByteOffset = prefixData.count
         self.lazyIndexedUTF16Length = prefixIndex.utf16Length
+        self.lazyOffsetCheckpoints.append((prefixData.count, prefixIndex.utf16Length))
         self.lazyLineStarts = prefixIndex.lineStarts
         self.lazyLineUTF16Starts = prefixIndex.lineUTF16Starts
         self.lazyEstimatedLineCount = max(1, Int(Double(prefixIndex.lineStarts.count) * Double(byteCount) / Double(max(1, prefixData.count))))
@@ -306,6 +315,9 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
     }
 
     init(content: String, encoding: TextEncodingDescriptor = .utf8) {
+        // Editing coordinates use our supported byte-indexed representation;
+        // TabData retains the original native encoding separately for saving.
+        let encoding = encoding.supportsBoundedStorage ? encoding : .utf8
         let data = encoding.encodedData(for: content) ?? Data(content.utf8)
         self.url = nil
         self.originalData = data
@@ -388,12 +400,52 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         return result
     }
 
+    /// Retains line-based windows normally, but includes offsets inside lines
+    /// larger than the byte budget without materializing the complete line.
+    func viewport(containingUTF16Offset offset: Int, maximumByteCount: Int, maximumLineCount: Int) throws -> EditorDocumentViewport {
+        guard maximumByteCount >= 8, maximumLineCount > 0 else { throw Error.invalidRange }
+        let position = try position(atUTF16Offset: offset)
+        let normal = try viewport(aroundLine: position.line, maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
+        if offset >= normal.startUTF16Offset && offset <= normal.startUTF16Offset + normal.text.utf16.count {
+            return normal
+        }
+        // Four bytes per UTF-16 unit is a conservative bound for every
+        // supported storage encoding. Offsets are rounded to scalar boundaries.
+        let units = maximumByteCount / 4
+        let requestedStart = max(offset - position.column, offset - units / 2)
+        let requestedEnd = min(utf16Length, requestedStart + units)
+        func byteOffset(_ target: Int) throws -> Int {
+            if lazyFileHandle != nil { return try lazyByteOffset(forUTF16Offset: target) }
+            guard let byte = self.byteOffset(forUTF16Offset: target) else { throw Error.invalidRange }
+            return byte
+        }
+        let start = try byteOffset(requestedStart)
+        let starts = lazyFileHandle == nil ? lineStarts : lazyLineStarts
+        let lineEnd = position.line + 1 < starts.count ? starts[position.line + 1] : byteCount
+        let end = min(try byteOffset(requestedEnd), lineEnd)
+        // A split surrogate maps to the same byte as its preceding UTF-16
+        // unit. Correct that one-unit rounding without decoding the long prefix.
+        let splitsSurrogate = try requestedStart > 0 && byteOffset(requestedStart - 1) == start
+        let startUTF16 = requestedStart - (splitsSurrogate ? 1 : 0)
+        let raw = try lazyFileHandle == nil
+            ? data(inByteRange: NSRange(location: start, length: end - start))
+            : lazyRead(NSRange(location: start, length: end - start))
+        guard let text = decode(raw, beginsAtDocumentStart: start == 0),
+              offset >= startUTF16, offset <= startUTF16 + text.utf16.count else { throw Error.invalidRange }
+        let firstColumn = position.column - (offset - startUTF16)
+        return EditorDocumentViewport(text: text, startByteOffset: start, startUTF16Offset: startUTF16,
+                                      lineRange: position.line...position.line, generation: viewportGeneration,
+                                      startColumnUTF16: firstColumn)
+    }
+
     /// Completes the lazy line index before this document reaches the editor.
     /// Viewport reloads then only perform their bounded read/decode work.
     func prepareViewportIndex() throws {
         guard lazyFileHandle != nil else { return }
         viewportIndexPreparedOnMainThread = Thread.isMainThread
-        try extendLazyIndex(throughByte: lazyFileByteCount)
+        while !lazyIndexComplete {
+            try extendLazyIndex(throughByte: min(lazyFileByteCount, lazyIndexedByteOffset + 256 * 1024))
+        }
     }
 
     func replace(
@@ -663,6 +715,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         for offset in index.lineUTF16Starts.dropFirst() { lazyLineUTF16Starts.append(lazyIndexedUTF16Length + offset) }
         lazyIndexedUTF16Length += index.utf16Length
         lazyIndexedByteOffset = base + validData.count
+        lazyOffsetCheckpoints.append((lazyIndexedByteOffset, lazyIndexedUTF16Length))
         lazyIndexComplete = lazyIndexedByteOffset >= lazyFileByteCount
         if lazyIndexComplete { cachedUTF16Length = lazyIndexedUTF16Length }
     }
@@ -676,22 +729,31 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
 
     private func lazyUTF16Offset(atByteOffset target: Int) -> Int {
         if target <= 0 { return 0 }
+        let checkpoint = lazyCheckpoint { $0.byte <= target }
+        guard target > checkpoint.byte else { return checkpoint.utf16 }
+        guard let data = try? lazyRead(NSRange(location: checkpoint.byte, length: target - checkpoint.byte)),
+              let text = decode(data, beginsAtDocumentStart: checkpoint.byte == 0) else { return checkpoint.utf16 }
+        return checkpoint.utf16 + text.utf16.count
+    }
+
+    private func lazyCheckpoint(_ precedes: ((byte: Int, utf16: Int)) -> Bool) -> (byte: Int, utf16: Int) {
         var low = 0
-        var high = lazyLineStarts.count
+        var high = lazyOffsetCheckpoints.count
         while low < high {
             let middle = (low + high) / 2
-            if lazyLineStarts[middle] <= target { low = middle + 1 } else { high = middle }
+            if precedes(lazyOffsetCheckpoints[middle]) { low = middle + 1 } else { high = middle }
         }
-        let index = max(0, low - 1)
-        if index < lazyLineUTF16Starts.count {
-            let lineByteStart = lazyLineStarts[index]
-            let lineUTF16Start = lazyLineUTF16Starts[index]
-            guard target > lineByteStart,
-                  let data = try? lazyRead(NSRange(location: lineByteStart, length: target - lineByteStart)),
-                  let text = decode(data, beginsAtDocumentStart: lineByteStart == 0) else { return lineUTF16Start }
-            return lineUTF16Start + text.utf16.count
-        }
-        return lazyIndexedUTF16Length
+        return lazyOffsetCheckpoints[max(0, low - 1)]
+    }
+
+    private func lazyByteOffset(forUTF16Offset target: Int) throws -> Int {
+        guard lazyIndexComplete, target >= 0, target <= lazyIndexedUTF16Length else { throw Error.invalidRange }
+        let checkpoint = lazyCheckpoint { $0.utf16 <= target }
+        if target == checkpoint.utf16 { return checkpoint.byte }
+        let nextByte = lazyOffsetCheckpoints.first { $0.byte > checkpoint.byte }?.byte ?? lazyFileByteCount
+        let data = try lazyRead(NSRange(location: checkpoint.byte, length: nextByte - checkpoint.byte))
+        return checkpoint.byte + Self.byteOffset(forUTF16Offset: target - checkpoint.utf16, in: data,
+                                                 encoding: encodingDescriptor, includesByteOrderMark: checkpoint.byte == 0)
     }
 
     private func lazyLineIndex(forUTF16Offset target: Int) -> Int {
@@ -890,6 +952,9 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
 
 
     private static func detectEncoding(in data: Data) -> TextEncodingDescriptor {
+        if data.starts(with: [0xFF, 0xFE, 0x00, 0x00]) || data.starts(with: [0x00, 0x00, 0xFE, 0xFF]) {
+            return TextEncodingDescriptor.detected(in: data) ?? .utf8
+        }
         if data.starts(with: [0xFF, 0xFE]) {
             return TextEncodingDescriptor(identifier: .utf16LittleEndianWithBOM)
         }
@@ -914,20 +979,15 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
             }
         }
 
-        let legacyCandidates: [TextEncodingDescriptor] = [
-            TextEncodingDescriptor(identifier: .windowsCP1251),
-            TextEncodingDescriptor(identifier: .windowsCP1252),
-            TextEncodingDescriptor(identifier: .isoLatin1),
-            TextEncodingDescriptor(identifier: .isoLatin5),
-            TextEncodingDescriptor(identifier: .macOSRoman),
-            TextEncodingDescriptor(identifier: .ascii)
-        ]
-        return legacyCandidates.first(where: { $0.decode(data) != nil }) ?? .utf8
+        return TextEncodingDescriptor.detected(in: data) ?? .utf8
     }
 
     /// Performs encoding detection using only a bounded prefix. UTF-8 and
     /// UTF-16 BOM encodings are eligible for the bounded editor path.
     nonisolated static func boundedEncoding(from prefix: Data, allowsIncompleteUTF8Sequence: Bool = false) -> TextEncodingDescriptor? {
+        if prefix.starts(with: [0xFF, 0xFE, 0x00, 0x00]) || prefix.starts(with: [0x00, 0x00, 0xFE, 0xFF]) {
+            return TextEncodingDescriptor.detected(in: prefix)
+        }
         if prefix.starts(with: [0xEF, 0xBB, 0xBF]) {
             return TextEncodingDescriptor(identifier: .utf8WithBOM)
         }
@@ -942,15 +1002,13 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
             (allowsIncompleteUTF8Sequence && hasIncompleteUTF8Suffix(prefix))) {
             return .utf8
         }
-        let legacyCandidates: [TextEncodingDescriptor] = [
-            TextEncodingDescriptor(identifier: .windowsCP1251),
-            TextEncodingDescriptor(identifier: .windowsCP1252),
-            TextEncodingDescriptor(identifier: .isoLatin1),
-            TextEncodingDescriptor(identifier: .isoLatin5),
-            TextEncodingDescriptor(identifier: .macOSRoman),
-            TextEncodingDescriptor(identifier: .ascii)
-        ]
-        return legacyCandidates.first(where: { $0.decode(prefix) != nil })
+        if allowsIncompleteUTF8Sequence, let lastByte = prefix.last,
+           (0x81...0x9F).contains(lastByte) || (0xE0...0xFC).contains(lastByte),
+           let complete = TextEncodingDescriptor.detected(in: Data(prefix.dropLast())),
+           complete.encoding == .shiftJIS {
+            return complete
+        }
+        return TextEncodingDescriptor.detected(in: prefix)
     }
 
     private static func validUTF8UTF16Length(in data: Data, skipsBOM: Bool) -> Int? {
@@ -1249,6 +1307,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         lazyIndexedUTF16Length = 0
         lazyLineStarts = [0]
         lazyLineUTF16Starts = [0]
+        lazyOffsetCheckpoints = [(0, 0)]
         lazyEstimatedLineCount = 1
         lazyIndexComplete = true
     }

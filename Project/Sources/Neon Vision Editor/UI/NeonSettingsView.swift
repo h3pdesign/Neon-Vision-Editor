@@ -2675,7 +2675,7 @@ struct NeonSettingsView: View {
     private var toolbarIconChooserOptions: [ToolbarIconOption] {
         let available = ToolbarIconOption.allCases.filter {
             ToolbarPreset.mobileSelectableIDs.contains($0.rawValue)
-                && !ToolbarActionSelection.universallyAvailableMobileActionIDs.contains($0.rawValue)
+                && $0.rawValue != "help"
         }
         let selected = ToolbarActionSelection.orderedIDs(from: toolbarCustomFiveIDsIOS, fallback: [])
             .filter { selectedID in available.contains { $0.rawValue == selectedID } }
@@ -2695,7 +2695,7 @@ struct NeonSettingsView: View {
                             HStack {
                                 Text(option.localizedTitle)
                                 Spacer()
-                                if toolbarCustomSelectedIDs.contains(option.rawValue) {
+                                if toolbarCustomSelectedIDs.contains(option.rawValue) || option.rawValue == "settings" {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundStyle(.blue)
                                 } else {
@@ -2705,6 +2705,7 @@ struct NeonSettingsView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        .accessibilityValue(toolbarCustomSelectedIDs.contains(option.rawValue) || option.rawValue == "settings" ? "Selected" : "Not selected")
                     }
                     .onMove(perform: moveToolbarCustomIcons)
                 }
@@ -2732,22 +2733,29 @@ struct NeonSettingsView: View {
         reorderedIDs.move(fromOffsets: source, toOffset: destination)
         let selectedIDs = toolbarCustomSelectedIDs
         toolbarCustomFiveIDsIOS = reorderedIDs
-            .filter(selectedIDs.contains)
+            .filter { selectedIDs.contains($0) || $0 == "settings" }
             .joined(separator: ",")
     }
 
     private func toggleToolbarCustomIcon(_ rawValue: String) {
+        guard rawValue != "settings" else { return } // Always available, but reorderable.
+        let previousOrder = toolbarCustomFiveIDsIOS
         let configurableIDs = ToolbarActionSelection.orderedIDs(
             from: toolbarCustomFiveIDsIOS,
             fallback: []
         )
         .filter { !ToolbarActionSelection.universallyAvailableMobileActionIDs.contains($0) }
-        toolbarCustomFiveIDsIOS = ToolbarActionSelection.toggledSelectionRawValue(
+        let updatedSelection = ToolbarActionSelection.toggledSelectionRawValue(
             toggledID: rawValue,
             currentRawValue: configurableIDs.joined(separator: ","),
             orderedIDs: ToolbarPreset.mobileSelectableIDs,
             limit: toolbarCustomIconLimit
         )
+        toolbarCustomFiveIDsIOS = ToolbarActionSelection.orderedActions(
+            ToolbarActionSelection.orderedIDs(from: updatedSelection, fallback: ["settings"]),
+            customIDsRawValue: previousOrder,
+            id: { $0 }
+        ).joined(separator: ",")
     }
 
     private var iOSSettingsLabelWidth: CGFloat {

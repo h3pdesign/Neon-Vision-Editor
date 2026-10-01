@@ -820,10 +820,23 @@ extension ContentView {
     }
 
     enum IPadBottomToolbarWidthPolicy {
-        nonisolated static func width(availableWidth: CGFloat, minimized: Bool) -> CGFloat {
+        nonisolated static func width(availableWidth: CGFloat, minimized: Bool, contentWidth: CGFloat = .infinity) -> CGFloat {
             let usableWidth = max(0, availableWidth - 64)
-            return min(usableWidth, minimized ? 176 : min(max(availableWidth * 0.68, 400), 760))
+            let maximumWidth = min(usableWidth, minimized ? 176 : min(max(availableWidth * 0.68, 400), 760))
+            return minimized ? maximumWidth : min(maximumWidth, max(0, contentWidth))
         }
+    }
+
+    var mobileBottomToolbarOverlay: AnyView? {
+#if os(iOS)
+        guard usesIOSBottomToolbar, !showFindReplace, !isPhoneSoftwareKeyboardVisible else { return nil }
+        if usesIPhoneBottomToolbar {
+            return AnyView(iPhoneScrollableBottomToolbar.frame(width: IPhoneBottomToolbarWidthPolicy.width(availableWidth: liveContainerWidth)))
+        }
+        return AnyView(iPadUnifiedToolbarRow(availableWidth: liveContainerWidth))
+#else
+        return nil
+#endif
     }
 
     private var iOSToolbarChromeStyle: GlassChromeStyle { .single }
@@ -2541,7 +2554,8 @@ extension ContentView {
         }
         .frame(width: IPadBottomToolbarWidthPolicy.width(
             availableWidth: availableWidth,
-            minimized: isPhoneBottomToolbarMinimized
+            minimized: isPhoneBottomToolbarMinimized,
+            contentWidth: iPadBottomToolbarContentWidth
         ))
         .background {
             IOSAdaptiveChromeBackground(enabled: shouldUseLiquidGlass)
@@ -2569,6 +2583,17 @@ extension ContentView {
         .tint(iOSToolbarTintColor)
 #endif
     }
+
+#if os(iOS)
+    private var iPadBottomToolbarContentWidth: CGFloat {
+        let itemWidth = toolbarButtonLabelsIOS ? MobileToolbarPresentationPolicy.labeledItemWidth : 44
+        let scrollingCount = visibleIPadToolbarActions.count + 2 // Preset and language.
+        let scrollingWidth = CGFloat(scrollingCount) * itemWidth + CGFloat(max(0, scrollingCount - 1)) * 6 + 32
+        let contentsWidth = itemWidth + 8
+        let overflowWidth: CGFloat = iPadOverflowActions.isEmpty ? 0 : itemWidth + 16
+        return contentsWidth + 8 + scrollingWidth + overflowWidth
+    }
+#endif
 
 #if os(visionOS)
     @ViewBuilder

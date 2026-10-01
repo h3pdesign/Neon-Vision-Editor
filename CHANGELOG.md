@@ -6,6 +6,35 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.9.1] - 2026-10-01
+
+### Why Upgrade
+
+- Open and save Japanese Shift-JIS files using Apple's native text encodings.
+- Keep the iPad status bar and toolbar separated, with less unused toolbar space.
+- Jump to the beginning or end of long macOS documents with Command-Up/Down.
+
+### Highlights
+
+- Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding choices and non-lossy saving (#674).
+- Allows the always-available Settings action to be reordered in custom mobile toolbars (#676).
+
+### Fixes
+
+- Reveals the destination of macOS Command-Up/Down document navigation even when it lies outside the loaded editor viewport, including Shift-selection (#660).
+- Loads the destination inside oversized single-line files using a bounded offset-aware window, preserving edit offsets, column reporting and repeated boundary navigation.
+- Arranges the mobile status pill and bottom toolbar in one measured stack instead of independent fixed offsets, avoiding touching bars and double keyboard-accessory spacing (#672, #673).
+- Fits the iPad bottom toolbar to its visible controls while retaining its window-width limit and horizontal scrolling (#675).
+- Detects Shift-JIS KiriKiri text without the CP1251 punctuation corruption, preserving Cyrillic and Western fixtures (#674).
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing encoding choices remain compatible; ambiguous files can be reopened with an explicit encoding.
+
 ## [v1.9.0] - 2026-09-30
 
 ### Why Upgrade

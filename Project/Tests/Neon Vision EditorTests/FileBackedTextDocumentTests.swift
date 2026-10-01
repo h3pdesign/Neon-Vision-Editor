@@ -3,6 +3,39 @@ import XCTest
 
 @MainActor
 final class FileBackedTextDocumentTests: XCTestCase {
+    func testOffsetViewportContainsOversizedLineTailAcrossStorageAndEncodings() throws {
+        let source = String(repeating: "é😀", count: 100_001) + "TAIL"
+        for identifier in [TextEncodingDescriptor.Identifier.utf8, .utf8WithBOM,
+                           .utf16LittleEndianWithBOM, .utf16BigEndianWithBOM] {
+            let encoding = TextEncodingDescriptor(identifier: identifier)
+            let url = directory.appendingPathComponent(identifier.rawValue + ".txt")
+            try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
+            let lazy = try FileBackedTextDocument(url: url, knownEncoding: encoding)
+            try lazy.prepareViewportIndex()
+            for document in [FileBackedTextDocument(content: source, encoding: encoding), lazy] {
+                let viewport = try document.viewport(containingUTF16Offset: document.utf16Length,
+                                                     maximumByteCount: 256_000, maximumLineCount: 1)
+                XCTAssertGreaterThan(viewport.startUTF16Offset, 0)
+                XCTAssertEqual(viewport.startUTF16Offset + viewport.text.utf16.count, document.utf16Length)
+                XCTAssertTrue(viewport.text.hasSuffix("TAIL"))
+                XCTAssertLessThanOrEqual(try XCTUnwrap(encoding.encodedData(for: viewport.text)).count, 256_000)
+                XCTAssertEqual(viewport.startColumnUTF16, viewport.startUTF16Offset)
+                XCTAssertEqual(viewport.lineRange, 0...0)
+                XCTAssertEqual(viewport.text, (source as NSString).substring(from: viewport.startUTF16Offset))
+                XCTAssertThrowsError(try document.viewport(containingUTF16Offset: -1, maximumByteCount: 256_000, maximumLineCount: 1))
+                XCTAssertThrowsError(try document.viewport(containingUTF16Offset: document.utf16Length + 1, maximumByteCount: 256_000, maximumLineCount: 1))
+                XCTAssertThrowsError(try document.viewport(containingUTF16Offset: 0, maximumByteCount: 0, maximumLineCount: 1))
+            }
+            let editable = FileBackedTextDocument(content: source, encoding: encoding)
+            let viewport = try editable.viewport(containingUTF16Offset: editable.utf16Length,
+                                                 maximumByteCount: 256_000, maximumLineCount: 1)
+            try editable.replace(in: viewport, utf16Range: NSRange(location: viewport.text.utf16.count - 4, length: 4), with: "EDIT")
+            XCTAssertTrue(editable.string().hasSuffix("EDIT"))
+            XCTAssertEqual(editable.string().utf16.count, source.utf16.count)
+            XCTAssertThrowsError(try editable.replace(in: viewport, utf16Range: NSRange(location: 0, length: 1), with: "X"))
+        }
+    }
+
     func testRepeatedEditsAtPieceBoundariesPreserveEncodingAndCachedText() throws {
         let identifiers: [TextEncodingDescriptor.Identifier] = [
             .utf8, .utf8WithBOM, .utf16LittleEndian, .utf16LittleEndianWithBOM,
@@ -511,6 +544,7 @@ final class FileBackedTextDocumentTests: XCTestCase {
     func testSegmentedIndexPreservesCoordinatesAcrossSupportedEncodings() throws {
         for identifier in TextEncodingDescriptor.Identifier.allCases {
             let encoding = TextEncodingDescriptor(identifier: identifier)
+            guard encoding.supportsBoundedStorage else { continue }
             let isUnicode = identifier.rawValue.hasPrefix("utf")
             // Both halves of a UTF-16 unit can contain 0x0A without being LF.
             let suffix = isUnicode ? "😀 ਁ䄊" : (identifier == .ascii ? "ASCII" : "é")

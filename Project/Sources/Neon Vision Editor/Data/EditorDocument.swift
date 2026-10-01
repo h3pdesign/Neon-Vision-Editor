@@ -16,6 +16,17 @@ struct EditorDocumentViewport: Equatable, Sendable {
     let startUTF16Offset: Int
     let lineRange: ClosedRange<Int>
     let generation: UInt64
+    let startColumnUTF16: Int
+
+    init(text: String, startByteOffset: Int, startUTF16Offset: Int, lineRange: ClosedRange<Int>,
+         generation: UInt64, startColumnUTF16: Int = 0) {
+        self.text = text
+        self.startByteOffset = startByteOffset
+        self.startUTF16Offset = startUTF16Offset
+        self.lineRange = lineRange
+        self.generation = generation
+        self.startColumnUTF16 = startColumnUTF16
+    }
 }
 
 protocol EditorDocument: AnyObject {
@@ -42,10 +53,15 @@ protocol EditorDocument: AnyObject {
     func replaceAll(with text: String) throws
     func markClean()
     func viewport(aroundLine line: Int, maximumByteCount: Int, maximumLineCount: Int) throws -> EditorDocumentViewport
+    func viewport(containingUTF16Offset offset: Int, maximumByteCount: Int, maximumLineCount: Int) throws -> EditorDocumentViewport
     func replace(in viewport: EditorDocumentViewport, utf16Range: NSRange, with replacement: String) throws
 }
 
 extension EditorDocument {
+    func viewport(containingUTF16Offset offset: Int, maximumByteCount: Int, maximumLineCount: Int) throws -> EditorDocumentViewport {
+        try viewport(aroundLine: position(atUTF16Offset: offset).line,
+                     maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
+    }
     func viewport(aroundLine line: Int, maximumByteCount: Int) throws -> EditorDocumentViewport {
         try viewport(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: .max)
     }

@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.9.0",
-            subtitle: "Release highlights for v1.9.0.",
+            title: "What’s New in v1.9.1",
+            subtitle: "Release highlights for v1.9.1.",
             bullets: [
-                "Editor Improvements: Use the app in seven languages, including Danish, French, Spanish, and Japanese.",
-                "Workflow Refinements: Close What’s New directly and see the current release highlights.",
-                "Performance Updates: Transfer a text-document copy to a nearby device through an explicit pairing and consent flow.",
-                "Accessible Controls: Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including…",
-                "Editor Improvements: Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB…",
-                "Workflow Refinements: Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during…"
+                "Reliable Saves: Open and save Japanese Shift-JIS files using Apple's native text encodings.",
+                "Workflow Refinements: Keep the iPad status bar and toolbar separated, with less unused toolbar space.",
+                "Performance Updates: Jump to the beginning or end of long macOS documents with Command-Up/Down.",
+                "Usability Updates: Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding…",
+                "Editor Improvements: Allows the always-available Settings action to be reordered in custom mobile toolbars (#676).",
+                "Editor Navigation: Reveals the destination of macOS Command-Up/Down document navigation even when it lies outside the loaded editor viewport…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4516,6 +4516,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "1.9.1", version: "1.9.1", date: "2026-10-01", highlights: [
+            "Open and save Japanese Shift-JIS files using Apple's native text encodings.",
+            "Keep the iPad status bar and toolbar separated, with less unused toolbar space.",
+            "Jump to the beginning or end of long macOS documents with Command-Up/Down."
+        ]),
         Release(id: "1.9.0", version: "1.9.0", date: "2026-09-30", highlights: [
             "Use the app in seven languages, including Danish, French, Spanish, and Japanese.",
             "Close What’s New directly and see the current release highlights.",

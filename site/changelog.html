@@ -118,7 +118,20 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.9.0</h2><span class="date">30 September 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.9.1</h2><span class="date">1 October 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding choices and non-lossy saving (#674).</p></div>
+          <div class="item"><span class="badge new">New</span><p>Allows the always-available Settings action to be reordered in custom mobile toolbars (#676).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Reveals the destination of macOS Command-Up/Down document navigation even when it lies outside the loaded editor viewport, including Shift-selection (#660).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Loads the destination inside oversized single-line files using a bounded offset-aware window, preserving edit offsets, column reporting and repeated boundary navigation.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Arranges the mobile status pill and bottom toolbar in one measured stack instead of independent fixed offsets, avoiding touching bars and double keyboard-accessory spacing (#672, #673).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Fits the iPad bottom toolbar to its visible controls while retaining its window-width limit and horizontal scrolling (#675).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Detects Shift-JIS KiriKiri text without the CP1251 punctuation corruption, preserving Cyrillic and Western fixtures (#674).</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.9.0</h2><span class="date">30 September 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including Settings, editor actions, accessibility text, and companion surfaces.</p></div>
           <div class="item"><span class="badge new">New</span><p>Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB payload limit, and independently staged received copies.</p></div>

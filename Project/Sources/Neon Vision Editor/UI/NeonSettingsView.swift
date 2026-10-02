@@ -186,6 +186,8 @@ struct NeonSettingsView: View {
     @State private var anthropicAPIToken: String = ""
     @State private var openCodeGoAPIToken: String = ""
     @State private var customProviderAPIToken: String = ""
+    @State private var typeSafeAPIToken: String = ""
+    @AppStorage(JevContextRankingConfig.enabledDefaultsKey) private var jevContextRankingEnabled = false
     @AppStorage(CustomProviderConfig.baseURLDefaultsKey) private var customProviderBaseURL: String = ""
     @AppStorage(CustomProviderConfig.modelDefaultsKey) private var customProviderModel: String = ""
     @AppStorage(CustomProviderConfig.timeoutDefaultsKey) private var customProviderTimeoutSeconds: Double = CustomProviderConfig.defaultTimeout
@@ -193,6 +195,7 @@ struct NeonSettingsView: View {
     @State private var isTestingCustomProviderConnection = false
     @State private var showSupportPurchaseDialog: Bool = false
     @State private var showDataDisclosureDialog: Bool = false
+    @State private var showJevContextRankingDialog = false
 #if os(macOS)
     @State private var showDefaultFileAssociationDialog: Bool = false
     @State private var defaultFileAssociationStatus: String = ""
@@ -1519,6 +1522,9 @@ struct NeonSettingsView: View {
         .sheet(isPresented: $showDataDisclosureDialog) {
             dataDisclosureDialog
         }
+        .sheet(isPresented: $showJevContextRankingDialog) {
+            jevContextRankingDialog
+        }
         .sheet(isPresented: $showRemoteConnectSheet) {
             remoteConnectSheet
         }
@@ -1552,6 +1558,7 @@ struct NeonSettingsView: View {
         if anthropicAPIToken.isEmpty { anthropicAPIToken = SecureTokenStore.token(for: .anthropic) }
         if openCodeGoAPIToken.isEmpty { openCodeGoAPIToken = SecureTokenStore.token(for: .openCodeGo) }
         if customProviderAPIToken.isEmpty { customProviderAPIToken = SecureTokenStore.token(for: .customProvider) }
+        if typeSafeAPIToken.isEmpty { typeSafeAPIToken = SecureTokenStore.token(for: .typeSafe) }
     }
 
     private var preferredColorSchemeOverride: ColorScheme? {
@@ -1592,6 +1599,13 @@ struct NeonSettingsView: View {
             Divider()
                 .padding(.vertical, UI.space6)
             templateSettingsSection
+            Divider()
+                .padding(.vertical, UI.space6)
+            DisclosureGroup("AI Settings") {
+                aiSection
+                    .padding(.top, UI.space12)
+                    .onAppear(perform: loadAPITokensIfNeeded)
+            }
         }
     }
 #endif
@@ -5737,8 +5751,9 @@ struct NeonSettingsView: View {
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
 
-                Button("Data Disclosure") {
-                    showDataDisclosureDialog = true
+                HStack {
+                    Button("Data Disclosure") { showDataDisclosureDialog = true }
+                    Button("Jev Context Ranking…") { showJevContextRankingDialog = true }
                 }
                 .buttonStyle(.bordered)
             }
@@ -5805,8 +5820,9 @@ struct NeonSettingsView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    Button("Data Disclosure") {
-                        showDataDisclosureDialog = true
+                    HStack {
+                        Button("Data Disclosure") { showDataDisclosureDialog = true }
+                        Button("Jev Context Ranking…") { showJevContextRankingDialog = true }
                     }
                     .buttonStyle(.bordered)
                 }
@@ -5844,7 +5860,40 @@ struct NeonSettingsView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 #endif
+
         }
+    }
+
+    private var jevContextRankingDialog: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: UI.space12) {
+                    Text("Jev Context Ranking (Experimental)")
+                        .font(Typography.sectionTitle)
+                    Toggle("Rank optional AI chat context with Jev", isOn: $jevContextRankingEnabled)
+                        .accessibilityHint("Requires a TypeSafe key and confirmation before sending context. Only used for external AI chat providers.")
+                    Text("Sends your prompt and bounded Current File and Project Structure excerpts to TypeSafe before external AI chat. Selection is preserved and is not sent to Jev. Uncertain results retain the original context. Follow-up messages and Apple Intelligence skip ranking. Jev adds a separate API charge; savings depend on your requests.")
+                        .font(Typography.footnote)
+                    aiKeyRow(title: "TypeSafe", placeholder: "API key", value: $typeSafeAPIToken, provider: .typeSafe)
+                        .accessibilityLabel("TypeSafe API key")
+                    HStack {
+                        Spacer()
+                        Button("Done") { showJevContextRankingDialog = false }
+                            .keyboardShortcut(.cancelAction)
+                            .buttonStyle(.bordered)
+                            .tint(.primary)
+                    }
+                }
+                .padding(UI.space20)
+            }
+            .navigationTitle("Jev Context Ranking")
+#if os(iOS) || os(visionOS)
+            .navigationBarTitleDisplayMode(.inline)
+#endif
+        }
+#if os(macOS)
+        .frame(minWidth: 560, idealHeight: 320)
+#endif
     }
 
     private var customProviderTimeoutControls: some View {
@@ -6487,11 +6536,12 @@ struct NeonSettingsView: View {
                         .font(.title3.weight(.semibold))
 
                     Text("The application does not collect analytics data, usage telemetry, advertising identifiers, device fingerprints, or background behavioral metrics. No automatic data transmission to developer-controlled servers occurs.")
-                    Text("AI-assisted code completion is an optional feature. External network communication only occurs when a user explicitly enables AI completion and selects an external AI provider within the application settings.")
+                    Text("AI-assisted code completion and AI chat are optional. External AI requests send the prompt and selected context to the configured provider. Editor context is sent after confirmation.")
                     Text("When AI completion is triggered, the application transmits only the minimal contextual text necessary to generate a completion suggestion. This typically includes the code immediately surrounding the cursor position or the active selection.")
                     Text("The application does not automatically transmit full project folders, unrelated files, entire file system contents, contact data, location data, or device-specific identifiers.")
-                    Text("Authentication credentials (API keys) for external AI providers are stored securely in the system keychain and are transmitted only to the user-selected provider for the purpose of completing the AI request.")
-                    Text("All external communication is performed over encrypted HTTPS connections. If AI completion is disabled, the application performs no external AI-related network requests.")
+                    Text("Authentication credentials (API keys) are stored securely in the system Keychain and are transmitted only to their respective providers for the purpose of completing the AI request.")
+                    Text("Experimental Jev context ranking is disabled by default. When enabled and confirmed for external AI chat, your prompt and bounded Current File and Project Structure excerpts are also sent to TypeSafe. Selection and chat history are excluded from the Jev request. Apple Intelligence and Agent Mode never use Jev. No ranking runs in the background.")
+                    Text("Jev communication uses encrypted HTTPS. External AI requests occur only when a user triggers AI completion or sends an AI chat request.")
 
                     HStack {
                         Spacer()

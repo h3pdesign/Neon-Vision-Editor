@@ -1,14 +1,16 @@
 import Foundation
 
-private enum AIClientNetwork {
+enum AIClientNetwork {
     nonisolated static func configure(_ request: inout URLRequest) {
         request.timeoutInterval = 45
         request.httpShouldHandleCookies = false
         request.cachePolicy = .reloadIgnoringLocalCacheData
     }
 
-    nonisolated static func makeSession() -> URLSession {
-        URLSession(configuration: .ephemeral, delegate: SameHostRedirectDelegate(), delegateQueue: nil)
+    nonisolated static func makeSession(resourceTimeout: TimeInterval? = nil) -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        if let resourceTimeout { configuration.timeoutIntervalForResource = resourceTimeout }
+        return URLSession(configuration: configuration, delegate: SameHostRedirectDelegate(), delegateQueue: nil)
     }
 }
 

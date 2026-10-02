@@ -6,6 +6,15 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Added
+
+- Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage, conservative fallback, and per-request usage information. Apple Intelligence, Agent Mode, selections, and follow-up context remain outside classification.
+
+### Fixed
+
+- Restore access to AI provider and Jev settings on iPhone and iPad, and improve Jev disclosure text and Done button contrast.
+- Sizes the mobile bottom toolbar from its actual container on first layout, keeping editor actions and Settings visible when the observed editor width has not been populated.
+
 ## [v1.9.1] - 2026-10-01
 
 ### Why Upgrade

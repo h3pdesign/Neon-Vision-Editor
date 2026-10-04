@@ -1546,6 +1546,57 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(canvas.selectedRange(), NSRange(location: 0, length: (source as NSString).length))
     }
 
+    func testOptionDeleteRemovesWordToLeftOfInsertionPoint() {
+        let source = "first second third"
+        let document = FileBackedTextDocument(content: source)
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        canvas.configure(
+            document: document,
+            documentID: UUID(),
+            resourceID: "option-delete-word",
+            displayName: "Shortcuts.txt",
+            contentRevision: 0,
+            externalContentRevision: 0,
+            caret: 12,
+            language: "plain",
+            colorScheme: .light,
+            fontSize: 14,
+            fontName: "",
+            lineHeightMultiplier: 1,
+            isReadOnly: false,
+            translucentBackgroundEnabled: false,
+            showsLineNumbers: true,
+            highlightCurrentLine: false,
+            lineWrapEnabled: true,
+            showsInvisibleCharacters: false,
+            showsIndentationGuides: false,
+            showsScopeGuides: false,
+            highlightsScopeBackground: false,
+            highlightsMatchingBrackets: false,
+            autoIndentEnabled: true,
+            autoCloseBracketsEnabled: false,
+            onFontSizeChange: nil,
+            onTextMutation: { mutation in
+                do {
+                    if let viewport = mutation.viewport {
+                        try document.replace(in: viewport, utf16Range: mutation.range, with: mutation.replacement)
+                    } else {
+                        try document.replace(utf16Range: mutation.range, with: mutation.replacement)
+                    }
+                    return true
+                } catch {
+                    return false
+                }
+            }
+        )
+
+        canvas.doCommand(by: #selector(NSResponder.deleteWordBackward(_:)))
+
+        XCTAssertEqual(canvas.selectedRange(), NSRange(location: 6, length: 0))
+        XCTAssertEqual(try? document.text(inUTF16Range: NSRange(location: 0, length: document.utf16Length)), "first  third")
+    }
+
     func testCommandUpDownKeyEventsNavigateDocumentBoundaries() throws {
         for wraps in [true, false] {
             for readOnly in [true, false] {

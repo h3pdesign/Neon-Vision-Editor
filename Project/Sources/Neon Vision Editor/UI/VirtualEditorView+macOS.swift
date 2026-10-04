@@ -2657,6 +2657,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     override func doCommand(by selector: Selector) {
         switch selector {
         case #selector(deleteBackward(_:)): deleteBackward()
+        case #selector(deleteWordBackward(_:)): deleteWordBackward()
         case #selector(deleteForward(_:)): deleteForward()
         case #selector(insertNewline(_:)): insertNewline()
         case #selector(insertTab(_:)):
@@ -3053,6 +3054,19 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         guard selection.length > 0 || absoluteCaret > 0 else { return }
         if selection.length == 0, let range = utf16DeletionRange(at: absoluteCaret, direction: -1) {
             selection = range
+        }
+        replaceSelection(with: "")
+    }
+
+    private func deleteWordBackward() {
+        guard selection.length > 0 || absoluteCaret > 0 else { return }
+        if selection.length == 0 {
+            let boundary = wordBoundary(from: absoluteCaret, direction: -1)
+            guard boundary < absoluteCaret else {
+                deleteBackward()
+                return
+            }
+            selection = NSRange(location: boundary, length: absoluteCaret - boundary)
         }
         replaceSelection(with: "")
     }

@@ -1547,7 +1547,16 @@ final class VirtualEditorLayoutTests: XCTestCase {
     }
 
     func testOptionDeleteRemovesWordToLeftOfInsertionPoint() {
-        let source = "first second third"
+        let cases: [(String, Int, Int, String)] = [
+            ("first second third", 12, 6, "first  third"),
+            ("你好 世界", 5, 3, "你好 "),
+            ("café résumé", 11, 5, "café "),
+            ("one re\u{301}sume\u{301}", 12, 4, "one "),
+            ("one 𐐀𐐁", 8, 4, "one "),
+            ("", 0, 0, "")
+        ]
+        for (source, caret, expectedCaret, expectedText) in cases {
+        for readOnly in [false, true] {
         let document = FileBackedTextDocument(content: source)
         let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
         _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
@@ -1558,13 +1567,13 @@ final class VirtualEditorLayoutTests: XCTestCase {
             displayName: "Shortcuts.txt",
             contentRevision: 0,
             externalContentRevision: 0,
-            caret: 12,
+            caret: caret,
             language: "plain",
             colorScheme: .light,
             fontSize: 14,
             fontName: "",
             lineHeightMultiplier: 1,
-            isReadOnly: false,
+            isReadOnly: readOnly,
             translucentBackgroundEnabled: false,
             showsLineNumbers: true,
             highlightCurrentLine: false,
@@ -1593,8 +1602,10 @@ final class VirtualEditorLayoutTests: XCTestCase {
 
         canvas.doCommand(by: #selector(NSResponder.deleteWordBackward(_:)))
 
-        XCTAssertEqual(canvas.selectedRange(), NSRange(location: 6, length: 0))
-        XCTAssertEqual(try? document.text(inUTF16Range: NSRange(location: 0, length: document.utf16Length)), "first  third")
+        XCTAssertEqual(canvas.selectedRange(), NSRange(location: readOnly ? caret : expectedCaret, length: 0), source)
+        XCTAssertEqual(try? document.text(inUTF16Range: NSRange(location: 0, length: document.utf16Length)), readOnly ? source : expectedText, source)
+        }
+        }
     }
 
     func testCommandUpDownKeyEventsNavigateDocumentBoundaries() throws {

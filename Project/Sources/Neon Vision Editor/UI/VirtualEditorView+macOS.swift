@@ -2611,18 +2611,19 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     private func wordBoundary(from position: Int, direction: Int) -> Int {
         let local = max(0, min(viewportText.utf16.count, position - viewportLineOriginStartUTF16))
-        let units = Array(viewportText.utf16)
-        guard !units.isEmpty else { return position }
-        var cursor = local
-        let isWord: (UInt16) -> Bool = { unit in
-            (48...57).contains(unit) || (65...90).contains(unit) || (97...122).contains(unit) || unit == 95
+        let wordUnits = viewportText.unicodeScalars.flatMap { scalar in
+            let isWord = CharacterSet.alphanumerics.contains(scalar)
+                || CharacterSet.nonBaseCharacters.contains(scalar) || scalar == "_"
+            return Array(repeating: isWord, count: scalar.utf16.count)
         }
+        guard !wordUnits.isEmpty else { return position }
+        var cursor = local
         if direction < 0 {
-            while cursor > 0 && !isWord(units[cursor - 1]) { cursor -= 1 }
-            while cursor > 0 && isWord(units[cursor - 1]) { cursor -= 1 }
+            while cursor > 0 && !wordUnits[cursor - 1] { cursor -= 1 }
+            while cursor > 0 && wordUnits[cursor - 1] { cursor -= 1 }
         } else {
-            while cursor < units.count && !isWord(units[cursor]) { cursor += 1 }
-            while cursor < units.count && isWord(units[cursor]) { cursor += 1 }
+            while cursor < wordUnits.count && !wordUnits[cursor] { cursor += 1 }
+            while cursor < wordUnits.count && wordUnits[cursor] { cursor += 1 }
         }
         return viewportLineOriginStartUTF16 + cursor
     }
@@ -3059,6 +3060,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     private func deleteWordBackward() {
+        guard !isReadOnly else { return }
         guard selection.length > 0 || absoluteCaret > 0 else { return }
         if selection.length == 0 {
             let boundary = wordBoundary(from: absoluteCaret, direction: -1)

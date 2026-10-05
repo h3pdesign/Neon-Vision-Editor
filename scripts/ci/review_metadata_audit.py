@@ -95,9 +95,11 @@ def main() -> None:
     require_text(
         SETTINGS_VIEW,
         {
-            "in-app AI disclosure": "AI-assisted code completion is an optional feature.",
+            "in-app AI disclosure": "AI-assisted code completion and AI chat are optional.",
             "minimal context disclosure": "minimal contextual text necessary",
-            "HTTPS disclosure": "encrypted HTTPS connections",
+            "HTTPS disclosure": "encrypted HTTPS",
+            "TypeSafe disclosure": "also sent to TypeSafe",
+            "ranking optionality": "Experimental Jev context ranking is disabled by default.",
         },
     )
 

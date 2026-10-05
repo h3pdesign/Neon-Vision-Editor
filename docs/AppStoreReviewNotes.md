@@ -24,7 +24,9 @@
 
 ## AI Data Disclosure
 - The in-app Settings -> AI disclosure explains external provider behavior before users configure provider credentials.
-- No external AI request is made while AI completion is disabled.
+- External requests occur only when the user triggers configured AI completion or sends an AI chat request.
+- Jev context ranking is experimental and disabled by default. It requires a separate TypeSafe key in Keychain and confirmation naming both TypeSafe and the answering provider. Only the prompt and bounded Current File/Project Structure excerpts go to TypeSafe; selection and history are excluded. Apple Intelligence, Agent Mode, completion, and follow-up messages skip ranking. Uncertain results retain the original context; no background ranking occurs.
+- Review Jev under Settings -> AI -> Jev Context Ranking on macOS, or Settings -> Tools -> AI Settings on iPhone/iPad. The sheet discloses the separate API charge and contains the TypeSafe key field.
 - Apple Intelligence remains the local/default fallback when no external provider credentials are configured.
 
 ## macOS Sandbox / Files

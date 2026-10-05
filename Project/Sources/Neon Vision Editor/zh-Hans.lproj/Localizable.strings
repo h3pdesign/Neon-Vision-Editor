@@ -1,3 +1,19 @@
+// v1.9.2 release highlights
+"What’s New in v1.9.2" = "v1.9.2 新功能";
+"Release highlights for v1.9.2." = "v1.9.2 主要更新。";
+"Delete the previous word with Option-Delete on macOS, including Unicode text." = "在 macOS 上使用 Option-Delete 删除前一个单词，包括 Unicode 文本。";
+"Keep mobile editor actions and AI settings accessible from the first layout." = "首次布局时即可访问移动端编辑操作和 AI 设置。";
+"Optionally rank external AI chat context with explicit TypeSafe consent and conservative fallback." = "明确同意向 TypeSafe 发送数据后，可选择筛选外部 AI 聊天上下文，并在不确定时保留原内容。";
+"Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "新增实验性的可选 Jev 外部 AI 聊天上下文筛选，包含 TypeSafe 提示和钥匙串存储…";
+"Handles macOS Option-Delete through the existing document edit path, recognizes Unicode letters and combining marks, and…" = "通过现有编辑流程处理 Option-Delete，识别 Unicode 字母和组合字符…";
+"Restore access to AI provider and Jev settings on iPhone and iPad, and improve Jev disclosure text and Done button contrast." = "恢复 iPhone 和 iPad 上的 AI 提供商和 Jev 设置，并改善说明文字和完成按钮的对比度。";
+"Editor Improvements: Delete the previous word with Option-Delete on macOS, including Unicode text." = "编辑器改进: 在 macOS 上使用 Option-Delete 删除前一个单词，包括 Unicode 文本。";
+"Workflow Refinements: Keep mobile editor actions and AI settings accessible from the first layout." = "工作流程优化: 首次布局时即可访问移动端编辑操作和 AI 设置。";
+"Performance Updates: Optionally rank external AI chat context with explicit TypeSafe consent and conservative fallback." = "性能更新: 明确同意向 TypeSafe 发送数据后，可选择筛选外部 AI 聊天上下文，并在不确定时保留原内容。";
+"Usability Updates: Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "易用性改进: 新增实验性的可选 Jev 外部 AI 聊天上下文筛选，包含 TypeSafe 提示和钥匙串存储…";
+"Editor Improvements: Handles macOS Option-Delete through the existing document edit path, recognizes Unicode letters and combining marks, and…" = "编辑器改进: 通过现有编辑流程处理 Option-Delete，识别 Unicode 字母和组合字符…";
+"AI Timeouts: Restore access to AI provider and Jev settings on iPhone and iPad, and improve Jev disclosure text and Done button contrast." = "AI超时: 恢复 iPhone 和 iPad 上的 AI 提供商和 Jev 设置，并改善说明文字和完成按钮的对比度。";
+
 // v1.9.1 release highlights
 "What’s New in v1.9.1" = "v1.9.1 新功能";
 "Release highlights for v1.9.1." = "v1.9.1 版本亮点。";

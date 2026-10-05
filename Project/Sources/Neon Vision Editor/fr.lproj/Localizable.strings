@@ -1,3 +1,19 @@
+// v1.9.2 release highlights
+"What’s New in v1.9.2" = "Nouveautés de v1.9.2";
+"Release highlights for v1.9.2." = "Principales nouveautés de v1.9.2.";
+"Delete the previous word with Option-Delete on macOS, including Unicode text." = "Supprimez le mot précédent avec Option-Supprimer sur macOS, y compris dans le texte Unicode.";
+"Keep mobile editor actions and AI settings accessible from the first layout." = "Les actions de l’éditeur mobile et les réglages IA sont accessibles dès le premier affichage.";
+"Optionally rank external AI chat context with explicit TypeSafe consent and conservative fallback." = "Classez facultativement le contexte du chat IA externe avec consentement TypeSafe explicite et repli prudent.";
+"Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "Ajoute le classement Jev expérimental et facultatif pour le chat IA externe, avec information TypeSafe et stockage dans le Trousseau…";
+"Handles macOS Option-Delete through the existing document edit path, recognizes Unicode letters and combining marks, and…" = "Traite Option-Supprimer via le chemin d’édition existant et reconnaît les lettres Unicode et les signes combinatoires…";
+"Restore access to AI provider and Jev settings on iPhone and iPad, and improve Jev disclosure text and Done button contrast." = "Rétablit les réglages des fournisseurs IA et de Jev sur iPhone et iPad et améliore les informations et le contraste du bouton Terminé.";
+"Editor Improvements: Delete the previous word with Option-Delete on macOS, including Unicode text." = "Améliorations de l’éditeur: Supprimez le mot précédent avec Option-Supprimer sur macOS, y compris dans le texte Unicode.";
+"Workflow Refinements: Keep mobile editor actions and AI settings accessible from the first layout." = "Améliorations du flux de travail: Les actions de l’éditeur mobile et les réglages IA sont accessibles dès le premier affichage.";
+"Performance Updates: Optionally rank external AI chat context with explicit TypeSafe consent and conservative fallback." = "Mises à jour des performances: Classez facultativement le contexte du chat IA externe avec consentement TypeSafe explicite et repli prudent.";
+"Usability Updates: Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "Améliorations de l’utilisation: Ajoute le classement Jev expérimental et facultatif pour le chat IA externe, avec information TypeSafe et stockage dans le Trousseau…";
+"Editor Improvements: Handles macOS Option-Delete through the existing document edit path, recognizes Unicode letters and combining marks, and…" = "Améliorations de l’éditeur: Traite Option-Supprimer via le chemin d’édition existant et reconnaît les lettres Unicode et les signes combinatoires…";
+"AI Timeouts: Restore access to AI provider and Jev settings on iPhone and iPad, and improve Jev disclosure text and Done button contrast." = "Délais IA: Rétablit les réglages des fournisseurs IA et de Jev sur iPhone et iPad et améliore les informations et le contraste du bouton Terminé.";
+
 // v1.9.1 release highlights
 "What’s New in v1.9.1" = "Nouveautés de v1.9.1";
 "Release highlights for v1.9.1." = "Points forts de v1.9.1.";

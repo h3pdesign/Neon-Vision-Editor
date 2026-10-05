@@ -1546,6 +1546,68 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(canvas.selectedRange(), NSRange(location: 0, length: (source as NSString).length))
     }
 
+    func testOptionDeleteRemovesWordToLeftOfInsertionPoint() {
+        let cases: [(String, Int, Int, String)] = [
+            ("first second third", 12, 6, "first  third"),
+            ("你好 世界", 5, 3, "你好 "),
+            ("café résumé", 11, 5, "café "),
+            ("one re\u{301}sume\u{301}", 12, 4, "one "),
+            ("one 𐐀𐐁", 8, 4, "one "),
+            ("", 0, 0, "")
+        ]
+        for (source, caret, expectedCaret, expectedText) in cases {
+        for readOnly in [false, true] {
+        let document = FileBackedTextDocument(content: source)
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        canvas.configure(
+            document: document,
+            documentID: UUID(),
+            resourceID: "option-delete-word",
+            displayName: "Shortcuts.txt",
+            contentRevision: 0,
+            externalContentRevision: 0,
+            caret: caret,
+            language: "plain",
+            colorScheme: .light,
+            fontSize: 14,
+            fontName: "",
+            lineHeightMultiplier: 1,
+            isReadOnly: readOnly,
+            translucentBackgroundEnabled: false,
+            showsLineNumbers: true,
+            highlightCurrentLine: false,
+            lineWrapEnabled: true,
+            showsInvisibleCharacters: false,
+            showsIndentationGuides: false,
+            showsScopeGuides: false,
+            highlightsScopeBackground: false,
+            highlightsMatchingBrackets: false,
+            autoIndentEnabled: true,
+            autoCloseBracketsEnabled: false,
+            onFontSizeChange: nil,
+            onTextMutation: { mutation in
+                do {
+                    if let viewport = mutation.viewport {
+                        try document.replace(in: viewport, utf16Range: mutation.range, with: mutation.replacement)
+                    } else {
+                        try document.replace(utf16Range: mutation.range, with: mutation.replacement)
+                    }
+                    return true
+                } catch {
+                    return false
+                }
+            }
+        )
+
+        canvas.doCommand(by: #selector(NSResponder.deleteWordBackward(_:)))
+
+        XCTAssertEqual(canvas.selectedRange(), NSRange(location: readOnly ? caret : expectedCaret, length: 0), source)
+        XCTAssertEqual(try? document.text(inUTF16Range: NSRange(location: 0, length: document.utf16Length)), readOnly ? source : expectedText, source)
+        }
+        }
+    }
+
     func testCommandUpDownKeyEventsNavigateDocumentBoundaries() throws {
         for wraps in [true, false] {
             for readOnly in [true, false] {

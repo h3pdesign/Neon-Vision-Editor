@@ -10,6 +10,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - Delete the previous word with Option-Delete on macOS, including Unicode text.
 - Keep mobile editor actions and AI settings accessible from the first layout.
+- Optionally rank external AI chat context with explicit TypeSafe consent and conservative fallback.
 
 ### Highlights
 

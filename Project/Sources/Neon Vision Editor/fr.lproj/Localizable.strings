@@ -1741,3 +1741,8 @@
 "• %lld ms" = "• %lld ms";
 "−%lld" = "−%lld";
 "Join Lines" = "Joindre les lignes";
+"Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713)." = "Ajoute des raccourcis configurables pour joindre les lignes (Command-J) et formater le JSON (Command-Option-J) sur les claviers physiques compatibles (#713).";
+"Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715)." = "Permet de réorganiser les actions personnalisées de la barre d’outils macOS, y compris les commandes facultatives de préréglage et de fournisseur d’IA (#715).";
+"Usability Updates: Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713)." = "Ergonomie : raccourcis configurables pour joindre les lignes (Command-J) et formater le JSON (Command-Option-J) sur les claviers physiques compatibles (#713).";
+"Editor Improvements: Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715)." = "Éditeur : réorganisation des actions personnalisées de la barre d’outils macOS, y compris les commandes facultatives de préréglage et de fournisseur d’IA (#715).";
+"Workflow Refinements: Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "Flux de travail : classement Jev expérimental et facultatif du contexte pour le chat IA externe, avec informations TypeSafe et stockage dans le trousseau…";

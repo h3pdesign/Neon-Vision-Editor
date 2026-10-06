@@ -1741,3 +1741,8 @@
 "• %lld ms" = "• %lld ms";
 "−%lld" = "−%lld";
 "Join Lines" = "行を結合";
+"Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713)." = "対応するハードウェアキーボードで、行を結合（Command-J）とJSONを整形（Command-Option-J）のショートカットを設定できるようになりました（#713）。";
+"Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715)." = "macOSのカスタムツールバーの操作を選択画面で並べ替えられます。任意のプリセットとAIプロバイダーの操作も対象です（#715）。";
+"Usability Updates: Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713)." = "操作性：対応するハードウェアキーボードで、行を結合（Command-J）とJSONを整形（Command-Option-J）のショートカットを設定できます（#713）。";
+"Editor Improvements: Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715)." = "エディタ：macOSのカスタムツールバーの操作を並べ替えられます。任意のプリセットとAIプロバイダーの操作も対象です（#715）。";
+"Workflow Refinements: Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "ワークフロー：外部AIチャットの任意コンテキストを順位付けする実験的なJev機能を追加。利用は任意で、TypeSafeの説明とキーチェーン保存に対応…";

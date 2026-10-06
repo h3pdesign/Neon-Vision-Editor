@@ -22,6 +22,8 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
     let onQuickOpen: () -> Void
     let onToggleSidebar: () -> Void
     let onToggleProjectSidebar: () -> Void
+    let onJoinLines: () -> Void
+    let onFormatJSON: () -> Void
 
     func makeUIView(context: Context) -> KeyboardCommandView {
         let view = KeyboardCommandView()
@@ -40,6 +42,8 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
         view.onQuickOpen = onQuickOpen
         view.onToggleSidebar = onToggleSidebar
         view.onToggleProjectSidebar = onToggleProjectSidebar
+        view.onJoinLines = onJoinLines
+        view.onFormatJSON = onFormatJSON
         return view
     }
 
@@ -59,6 +63,8 @@ struct IPadKeyboardShortcutBridge: UIViewRepresentable {
         uiView.onQuickOpen = onQuickOpen
         uiView.onToggleSidebar = onToggleSidebar
         uiView.onToggleProjectSidebar = onToggleProjectSidebar
+        uiView.onJoinLines = onJoinLines
+        uiView.onFormatJSON = onFormatJSON
         uiView.refreshFirstResponderStatus()
     }
 }
@@ -79,6 +85,8 @@ final class KeyboardCommandView: UIView {
     var onQuickOpen: (() -> Void)?
     var onToggleSidebar: (() -> Void)?
     var onToggleProjectSidebar: (() -> Void)?
+    var onJoinLines: (() -> Void)?
+    var onFormatJSON: (() -> Void)?
 
     override var canBecomeFirstResponder: Bool { true }
 
@@ -191,6 +199,8 @@ final class KeyboardCommandView: UIView {
         case .quickOpen: onQuickOpen?()
         case .toggleSidebar: onToggleSidebar?()
         case .toggleProjectSidebar: onToggleProjectSidebar?()
+        case .joinLines: onJoinLines?()
+        case .formatJSON: onFormatJSON?()
         }
     }
     @objc private func undo() { onUndo?() }

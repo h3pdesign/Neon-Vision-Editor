@@ -2688,6 +2688,10 @@ struct ContentView: View {
             }
 
         let viewWithJSONTools = viewWithSharedImportRequests
+            .onReceive(NotificationCenter.default.publisher(for: .joinLinesRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                joinSelectedLines()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .formatJSONDocumentRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 formatJSONDocument()
@@ -3065,7 +3069,9 @@ struct ContentView: View {
                     onGoToSymbol: { performConfiguredAppShortcut(.goToSymbol) },
                     onQuickOpen: { performConfiguredAppShortcut(.quickOpen) },
                     onToggleSidebar: { performConfiguredAppShortcut(.toggleSidebar) },
-                    onToggleProjectSidebar: { performConfiguredAppShortcut(.toggleProjectSidebar) }
+                    onToggleProjectSidebar: { performConfiguredAppShortcut(.toggleProjectSidebar) },
+                    onJoinLines: { performConfiguredAppShortcut(.joinLines) },
+                    onFormatJSON: { performConfiguredAppShortcut(.formatJSON) }
                 )
                 .frame(width: 0, height: 0)
             )

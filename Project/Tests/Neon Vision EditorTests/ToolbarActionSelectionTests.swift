@@ -3,6 +3,18 @@ import XCTest
 
 @MainActor
 final class ToolbarActionSelectionTests: XCTestCase {
+    func testMacChooserIncludesPreviouslyMandatoryControlsAndPreservesSavedOrder() {
+        let catalog = ToolbarActionSelection.customizableMacActionIDs
+        XCTAssertTrue(catalog.contains("toolbarPreset"))
+        XCTAssertTrue(catalog.contains("providerBadge"))
+        XCTAssertEqual(Set(catalog).count, catalog.count)
+        XCTAssertTrue(catalog.allSatisfy { ToolbarIconOption(rawValue: $0) != nil || ["newWindow", "toolbarPreset", "providerBadge"].contains($0) })
+        XCTAssertEqual(ToolbarActionSelection.orderedIDs(from: "providerBadge,previewActions,toolbarPreset", fallback: []),
+                       ["providerBadge", "previewActions", "toolbarPreset"])
+        XCTAssertEqual(ToolbarActionSelection.toggledSelectionRawValue(toggledID: "toolbarPreset",
+                       currentRawValue: "providerBadge,previewActions,toolbarPreset", orderedIDs: catalog, limit: catalog.count),
+                       "providerBadge,previewActions")
+    }
     func testSettingsCanMoveBetweenCustomActionsWhileRemainingAvailable() {
         let actions = ["openFile", "findReplace", "settings", "help"]
         XCTAssertEqual(ToolbarActionSelection.orderedActions(actions, customIDsRawValue: "settings,findReplace,openFile", id: { $0 }), ["settings", "findReplace", "openFile", "help"])

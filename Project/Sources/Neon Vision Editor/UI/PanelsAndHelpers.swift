@@ -4490,6 +4490,7 @@ extension Notification.Name {
     static let neonPulseInboxDidReceive = Notification.Name("neonPulseInboxDidReceive")
     static let sharedImportURLRequested = Notification.Name("sharedImportURLRequested")
     static let formatJSONDocumentRequested = Notification.Name("formatJSONDocumentRequested")
+    static let joinLinesRequested = Notification.Name("joinLinesRequested")
     static let combineJSONLinesRequested = Notification.Name("combineJSONLinesRequested")
     static let convertTextToMarkdownRequested = Notification.Name("convertTextToMarkdownRequested")
     static let structureTextAsJSONRequested = Notification.Name("structureTextAsJSONRequested")

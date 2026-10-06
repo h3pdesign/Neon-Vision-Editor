@@ -387,6 +387,12 @@ struct NeonVisionMacAppCommands: Commands {
     @CommandsBuilder
     private var editorCommands: some Commands {
         CommandMenu("Editor") {
+            Button("Join Lines") {
+                post(.joinLinesRequested)
+            }
+            .modifier(dynamicShortcut(.joinLines))
+            .disabled(!hasSavableSelectedTab)
+
             Button("Quick Open…") {
                 post(.showQuickSwitcherRequested)
             }
@@ -471,6 +477,7 @@ struct NeonVisionMacAppCommands: Commands {
             Button("Format JSON") {
                 post(.formatJSONDocumentRequested)
             }
+            .modifier(dynamicShortcut(.formatJSON))
             .disabled(!selectedTabIsJSON)
 
             Button("Combine JSON Lines") {

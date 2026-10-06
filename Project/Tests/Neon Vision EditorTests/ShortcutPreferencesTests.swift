@@ -3,6 +3,19 @@ import XCTest
 
 @MainActor
 final class ShortcutPreferencesTests: XCTestCase {
+    func testTextToolShortcutsHaveDistinctDefaultsAndAcceptCustomization() {
+        XCTAssertEqual(EditorShortcutAction.joinLines.defaultShortcut.normalizedStorageValue, "cmd+j")
+        XCTAssertEqual(EditorShortcutAction.formatJSON.defaultShortcut.normalizedStorageValue, "cmd+alt+j")
+        let suite = "ShortcutPreferencesTests.TextTools"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        for action in [EditorShortcutAction.joinLines, .formatJSON] {
+            ShortcutPreferences.setRawShortcut("cmd+ctrl+k", for: action, defaults: defaults)
+            XCTAssertEqual(ShortcutPreferences.shortcut(for: action, defaults: defaults).normalizedStorageValue, "cmd+ctrl+k")
+            defaults.set("invalid", forKey: ShortcutPreferences.storageKey(for: action))
+            XCTAssertEqual(ShortcutPreferences.shortcut(for: action, defaults: defaults), action.defaultShortcut)
+        }
+    }
     func testParseShortcutAcceptsCommonFormat() {
         let parsed = ShortcutPreferences.parseShortcut("cmd+shift+f")
         XCTAssertEqual(parsed?.key, "f")

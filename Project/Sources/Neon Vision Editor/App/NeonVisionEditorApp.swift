@@ -1047,9 +1047,14 @@ struct NeonVisionEditorApp: App {
             }
 
             CommandMenu("Tools") {
+                Button("Join Lines") {
+                    NotificationCenter.default.post(name: .joinLinesRequested, object: nil)
+                }
+                .editorShortcut(.joinLines)
                 Button("Format JSON") {
                     NotificationCenter.default.post(name: .formatJSONDocumentRequested, object: nil)
                 }
+                .editorShortcut(.formatJSON)
 
                 Button("Combine JSON Lines") {
                     NotificationCenter.default.post(name: .combineJSONLinesRequested, object: nil)

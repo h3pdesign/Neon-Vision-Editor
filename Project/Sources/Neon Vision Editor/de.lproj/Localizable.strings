@@ -1741,3 +1741,8 @@
 "• %lld ms" = "• %lld ms";
 "−%lld" = "−%lld";
 "Join Lines" = "Zeilen verbinden";
+"Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713)." = "Ergänzt konfigurierbare Kurzbefehle für Zeilen verbinden (Command-J) und JSON formatieren (Command-Option-J) auf unterstützten Hardwaretastaturen (#713).";
+"Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715)." = "Ermöglicht das Umordnen benutzerdefinierter macOS-Symbolleistenaktionen in der Auswahl, einschließlich optionaler Vorgaben und KI-Anbieter (#715).";
+"Usability Updates: Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713)." = "Bedienung: Konfigurierbare Kurzbefehle für Zeilen verbinden (Command-J) und JSON formatieren (Command-Option-J) auf unterstützten Hardwaretastaturen (#713).";
+"Editor Improvements: Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715)." = "Editor: Benutzerdefinierte macOS-Symbolleistenaktionen lassen sich in der Auswahl umordnen, einschließlich optionaler Vorgaben und KI-Anbieter (#715).";
+"Workflow Refinements: Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "Arbeitsabläufe: Experimentelle, freiwillige Jev-Rangfolge für optionalen Kontext externer KI-Chats, mit TypeSafe-Hinweisen und Schlüsselbundspeicherung…";

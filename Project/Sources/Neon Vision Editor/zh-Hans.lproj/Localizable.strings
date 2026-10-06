@@ -1741,3 +1741,8 @@
 "• %lld ms" = "• %lld ms";
 "−%lld" = "−%lld";
 "Join Lines" = "合并行";
+"Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713)." = "在支持的实体键盘上新增可配置的合并行（Command-J）和格式化JSON（Command-Option-J）快捷键（#713）。";
+"Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715)." = "允许在选择器中重新排列macOS自定义工具栏操作，包括可选的预设和AI提供商控件（#715）。";
+"Usability Updates: Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713)." = "易用性更新：在支持的实体键盘上新增可配置的合并行（Command-J）和格式化JSON（Command-Option-J）快捷键（#713）。";
+"Editor Improvements: Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715)." = "编辑器改进：允许重新排列macOS自定义工具栏操作，包括可选的预设和AI提供商控件（#715）。";
+"Workflow Refinements: Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "工作流程改进：新增实验性、可选启用的Jev功能，为外部AI聊天的可选上下文排序，并提供TypeSafe说明和钥匙串存储…";

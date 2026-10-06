@@ -54,12 +54,12 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v1.9.1**
+> Latest release: **v1.9.2**
 > Next release target: **v1.9.2**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: supported
 > Direct GitHub release: **v1.9.1** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-10-06** for latest release **v1.9.1**
+> Last updated (README): **2026-10-06** for latest release **v1.9.2**
 
 ## What's New in v1.9.0 and v1.9.1
 
@@ -164,7 +164,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=14209&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=14204&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -784,7 +784,7 @@ The recent release arc is about continuity: files that change outside the app, w
 | [`v1.8.6`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.8.6) | **A more deliberate workflow** — Edit unusually long generated lines on iPhone and iPad without changing the saved text. | Keeps pathological single-line files editable on iPhone and iPad with display-only segmented wrapping, including when No Wrap is selected. The… |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v1.9.1**
+- Latest release: **v1.9.2**
 - Compare recent changes: [v1.9.0...v1.9.1](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.9.0...v1.9.1)
 
 ## Known Limitations

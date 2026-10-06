@@ -320,6 +320,8 @@ extension ContentView {
             showQuickSwitcher = true
         case .toggleSidebar: toggleSidebarFromToolbar()
         case .toggleProjectSidebar: toggleProjectSidebarFromToolbar()
+        case .joinLines: joinSelectedLines()
+        case .formatJSON: formatJSONDocument()
         }
     }
 

@@ -1,3 +1,19 @@
+// v1.9.2 release highlights
+"What’s New in v1.9.2" = "Nyheder i v1.9.2";
+"Release highlights for v1.9.2." = "De vigtigste nyheder i v1.9.2.";
+"Delete the previous word with Option-Delete on macOS, including Unicode text." = "Slet det foregående ord med Option-Delete på macOS, også i Unicode-tekst.";
+"Keep mobile editor actions and AI settings accessible from the first layout." = "Mobile editorhandlinger og AI-indstillinger er tilgængelige fra første layout.";
+"Optionally rank external AI chat context with explicit TypeSafe consent and conservative fallback." = "Sortér valgfrit ekstern AI-chatkontekst med udtrykkeligt TypeSafe-samtykke og forsigtig tilbagefaldsadfærd.";
+"Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "Tilføjer eksperimentel, valgfri Jev-sortering til ekstern AI-chat med TypeSafe-oplysning og lagring i Nøglering…";
+"Handles macOS Option-Delete through the existing document edit path, recognizes Unicode letters and combining marks, and…" = "Håndterer Option-Delete via den eksisterende redigeringssti og genkender Unicode-bogstaver og kombinerende tegn…";
+"Restore access to AI provider and Jev settings on iPhone and iPad, and improve Jev disclosure text and Done button contrast." = "Gendanner AI-udbyder- og Jev-indstillinger på iPhone og iPad og forbedrer oplysninger og kontrasten på knappen Færdig.";
+"Editor Improvements: Delete the previous word with Option-Delete on macOS, including Unicode text." = "Editorforbedringer: Slet det foregående ord med Option-Delete på macOS, også i Unicode-tekst.";
+"Workflow Refinements: Keep mobile editor actions and AI settings accessible from the first layout." = "Arbejdsgangsforbedringer: Mobile editorhandlinger og AI-indstillinger er tilgængelige fra første layout.";
+"Performance Updates: Optionally rank external AI chat context with explicit TypeSafe consent and conservative fallback." = "Ydelsesopdateringer: Sortér valgfrit ekstern AI-chatkontekst med udtrykkeligt TypeSafe-samtykke og forsigtig tilbagefaldsadfærd.";
+"Usability Updates: Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "Brugervenlighedsopdateringer: Tilføjer eksperimentel, valgfri Jev-sortering til ekstern AI-chat med TypeSafe-oplysning og lagring i Nøglering…";
+"Editor Improvements: Handles macOS Option-Delete through the existing document edit path, recognizes Unicode letters and combining marks, and…" = "Editorforbedringer: Håndterer Option-Delete via den eksisterende redigeringssti og genkender Unicode-bogstaver og kombinerende tegn…";
+"AI Timeouts: Restore access to AI provider and Jev settings on iPhone and iPad, and improve Jev disclosure text and Done button contrast." = "AI-pause: Gendanner AI-udbyder- og Jev-indstillinger på iPhone og iPad og forbedrer oplysninger og kontrasten på knappen Færdig.";
+
 // v1.9.1 release highlights
 "What’s New in v1.9.1" = "Nyt i v1.9.1";
 "Release highlights for v1.9.1." = "Højdepunkter i v1.9.1.";
@@ -1724,3 +1740,9 @@
 "•" = "•";
 "• %lld ms" = "• %lld ms";
 "−%lld" = "−%lld";
+"Join Lines" = "Sammenføj linjer";
+"Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713)." = "Tilføjer konfigurerbare genveje til Sammenføj linjer (Command-J) og Formatér JSON (Command-Option-J) på understøttede fysiske tastaturer (#713).";
+"Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715)." = "Gør det muligt at ændre rækkefølgen af tilpassede macOS-værktøjslinjehandlinger, inklusive valgfrie forudindstillinger og AI-udbyderkontroller (#715).";
+"Usability Updates: Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713)." = "Brugervenlighed: Konfigurerbare genveje til Sammenføj linjer (Command-J) og Formatér JSON (Command-Option-J) på understøttede fysiske tastaturer (#713).";
+"Editor Improvements: Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715)." = "Editorforbedringer: Tilpassede macOS-værktøjslinjehandlinger kan omarrangeres, inklusive valgfrie forudindstillinger og AI-udbyderkontroller (#715).";
+"Workflow Refinements: Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "Arbejdsgange: Eksperimentel, frivillig Jev-rangering af valgfri kontekst til ekstern AI-chat med TypeSafe-oplysninger og lagring i nøgleringen…";

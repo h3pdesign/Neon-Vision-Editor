@@ -26,6 +26,8 @@ enum EditorShortcutAction: String, CaseIterable, Identifiable {
     case quickOpen
     case toggleSidebar
     case toggleProjectSidebar
+    case joinLines
+    case formatJSON
 
     var id: String { rawValue }
 
@@ -45,6 +47,8 @@ enum EditorShortcutAction: String, CaseIterable, Identifiable {
         case .quickOpen: return "Quick Open"
         case .toggleSidebar: return "Toggle Sidebar"
         case .toggleProjectSidebar: return "Toggle Project Sidebar"
+        case .joinLines: return "Join Lines"
+        case .formatJSON: return "Format JSON"
         }
     }
 
@@ -64,6 +68,8 @@ enum EditorShortcutAction: String, CaseIterable, Identifiable {
         case .quickOpen: return .init(key: "p", modifiers: [.command])
         case .toggleSidebar: return .init(key: "s", modifiers: [.command, .alternate])
         case .toggleProjectSidebar: return .init(key: "p", modifiers: [.command, .alternate])
+        case .joinLines: return .init(key: "j", modifiers: [.command])
+        case .formatJSON: return .init(key: "j", modifiers: [.command, .alternate])
         }
     }
 }

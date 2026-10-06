@@ -1,3 +1,19 @@
+// v1.9.2 release highlights
+"What’s New in v1.9.2" = "Neu in v1.9.2";
+"Release highlights for v1.9.2." = "Die wichtigsten Neuerungen in v1.9.2.";
+"Delete the previous word with Option-Delete on macOS, including Unicode text." = "Löschen Sie das vorherige Wort unter macOS mit Wahltaste-Rücktaste, auch in Unicode-Text.";
+"Keep mobile editor actions and AI settings accessible from the first layout." = "Mobile Editoraktionen und KI-Einstellungen sind schon beim ersten Layout erreichbar.";
+"Optionally rank external AI chat context with explicit TypeSafe consent and conservative fallback." = "Optionaler KI-Chat-Kontext wird mit ausdrücklicher TypeSafe-Zustimmung und konservativem Rückfall bewertet.";
+"Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "Ergänzt experimentelle, optionale Jev-Bewertung für externen KI-Chat mit TypeSafe-Hinweis und Schlüsselbundspeicherung…";
+"Handles macOS Option-Delete through the existing document edit path, recognizes Unicode letters and combining marks, and…" = "Verarbeitet Wahltaste-Rücktaste über den bestehenden Bearbeitungspfad und erkennt Unicode-Buchstaben und kombinierende Zeichen…";
+"Restore access to AI provider and Jev settings on iPhone and iPad, and improve Jev disclosure text and Done button contrast." = "Stellt KI-Anbieter- und Jev-Einstellungen auf iPhone und iPad wieder her und verbessert Hinweise und den Kontrast der Fertig-Schaltfläche.";
+"Editor Improvements: Delete the previous word with Option-Delete on macOS, including Unicode text." = "Editorverbesserungen: Löschen Sie das vorherige Wort unter macOS mit Wahltaste-Rücktaste, auch in Unicode-Text.";
+"Workflow Refinements: Keep mobile editor actions and AI settings accessible from the first layout." = "Arbeitsablaufverbesserungen: Mobile Editoraktionen und KI-Einstellungen sind schon beim ersten Layout erreichbar.";
+"Performance Updates: Optionally rank external AI chat context with explicit TypeSafe consent and conservative fallback." = "Leistungsaktualisierungen: Optionaler KI-Chat-Kontext wird mit ausdrücklicher TypeSafe-Zustimmung und konservativem Rückfall bewertet.";
+"Usability Updates: Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "Bedienungsverbesserungen: Ergänzt experimentelle, optionale Jev-Bewertung für externen KI-Chat mit TypeSafe-Hinweis und Schlüsselbundspeicherung…";
+"Editor Improvements: Handles macOS Option-Delete through the existing document edit path, recognizes Unicode letters and combining marks, and…" = "Editorverbesserungen: Verarbeitet Wahltaste-Rücktaste über den bestehenden Bearbeitungspfad und erkennt Unicode-Buchstaben und kombinierende Zeichen…";
+"AI Timeouts: Restore access to AI provider and Jev settings on iPhone and iPad, and improve Jev disclosure text and Done button contrast." = "KI-Zeitüberschreitungen: Stellt KI-Anbieter- und Jev-Einstellungen auf iPhone und iPad wieder her und verbessert Hinweise und den Kontrast der Fertig-Schaltfläche.";
+
 // v1.9.1 release highlights
 "What’s New in v1.9.1" = "Neu in v1.9.1";
 "Release highlights for v1.9.1." = "Highlights der Version v1.9.1.";
@@ -1724,3 +1740,9 @@
 "•" = "•";
 "• %lld ms" = "• %lld ms";
 "−%lld" = "−%lld";
+"Join Lines" = "Zeilen verbinden";
+"Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713)." = "Ergänzt konfigurierbare Kurzbefehle für Zeilen verbinden (Command-J) und JSON formatieren (Command-Option-J) auf unterstützten Hardwaretastaturen (#713).";
+"Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715)." = "Ermöglicht das Umordnen benutzerdefinierter macOS-Symbolleistenaktionen in der Auswahl, einschließlich optionaler Vorgaben und KI-Anbieter (#715).";
+"Usability Updates: Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713)." = "Bedienung: Konfigurierbare Kurzbefehle für Zeilen verbinden (Command-J) und JSON formatieren (Command-Option-J) auf unterstützten Hardwaretastaturen (#713).";
+"Editor Improvements: Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715)." = "Editor: Benutzerdefinierte macOS-Symbolleistenaktionen lassen sich in der Auswahl umordnen, einschließlich optionaler Vorgaben und KI-Anbieter (#715).";
+"Workflow Refinements: Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "Arbeitsabläufe: Experimentelle, freiwillige Jev-Rangfolge für optionalen Kontext externer KI-Chats, mit TypeSafe-Hinweisen und Schlüsselbundspeicherung…";

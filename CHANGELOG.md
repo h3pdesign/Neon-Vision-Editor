@@ -6,6 +6,39 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.9.2] - 2026-10-06
+
+### Why Upgrade
+
+- Delete the previous word with Option-Delete on macOS, including Unicode text.
+- Keep mobile editor actions and AI settings accessible from the first layout.
+- Optionally rank external AI chat context with explicit TypeSafe consent and conservative fallback.
+
+### Highlights
+
+- Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713).
+- Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715).
+- Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage, conservative fallback, and per-request usage information. Apple Intelligence, Agent Mode, selections, and follow-up context remain outside classification.
+
+### Fixes
+
+- Handles macOS Option-Delete through the existing document edit path, recognizes Unicode letters and combining marks, and leaves read-only preview selections unchanged (#696).
+
+- Restore access to AI provider and Jev settings on iPhone and iPad, and improve Jev disclosure text and Done button contrast.
+- Sizes the mobile bottom toolbar from its actual container on first layout, keeping editor actions and Settings visible when the observed editor width has not been populated.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Jev ranking remains disabled unless explicitly enabled and configured.
+
+### Maintenance
+
+- Aligns App Store review audits and privacy/reviewer documentation with optional AI chat and TypeSafe ranking, and corrects the support tip description to consumable.
+
 ## [v1.9.1] - 2026-10-01
 
 ### Why Upgrade

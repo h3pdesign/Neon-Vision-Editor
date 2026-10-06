@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.9.2] - 2026-10-06
+
 ### Why Upgrade
 
 - Delete the previous word with Option-Delete on macOS, including Unicode text.

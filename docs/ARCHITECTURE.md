@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-10-01 (v1.9.1 release-aligned architecture)
+Last updated: 2026-10-06 (v1.9.2 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -8,6 +8,15 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v1.9.2 (2026-10-06)
+
+- Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713).
+- Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715).
+- Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage, conservative fallback, and per-request usage information. Apple Intelligence, Agent Mode, selections, and follow-up context remain outside classification.
+- Handles macOS Option-Delete through the existing document edit path, recognizes Unicode letters and combining marks, and leaves read-only preview selections unchanged (#696).
+- Restore access to AI provider and Jev settings on iPhone and iPad, and improve Jev disclosure text and Done button contrast.
+- Sizes the mobile bottom toolbar from its actual container on first layout, keeping editor actions and Settings visible when the observed editor width has not been populated.
 
 ### v1.9.1 (2026-10-01)
 
@@ -17,14 +26,6 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 - Loads the destination inside oversized single-line files using a bounded offset-aware window, preserving edit offsets, column reporting and repeated boundary navigation.
 - Arranges the mobile status pill and bottom toolbar in one measured stack instead of independent fixed offsets, avoiding touching bars and double keyboard-accessory spacing (#672, #673).
 - Fits the iPad bottom toolbar to its visible controls while retaining its window-width limit and horizontal scrolling (#675).
-
-### v1.9.0 (2026-09-30)
-
-- Adds Danish, French, Spanish, and Japanese app localization alongside English, German, and Simplified Chinese, including Settings, editor actions, accessibility text, and companion surfaces.
-- Adds opt-in nearby text-document transfer with an ephemeral pairing code, encrypted transport, receiver consent, a 4 MB payload limit, and independently staged received copies.
-- Adds a visible Close control to What’s New, preserves Escape dismissal, and refreshes its latest release card during release preparation ([#659](https://github.com/h3pdesign/Neon-Vision-Editor/issues/659)).
-- Expands localization coverage for dynamic search, toolbar, Git status, and share-import messages.
-- Processes macOS terminal output as a bounded primary screen, preserving fragmented UTF-8, progress-line rewrites, cursor movement, erase commands, and text styles while publishing coalesced changed-text patches.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

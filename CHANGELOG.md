@@ -14,6 +14,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Highlights
 
+- Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713).
+- Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715).
 - Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage, conservative fallback, and per-request usage information. Apple Intelligence, Agent Mode, selections, and follow-up context remain outside classification.
 
 ### Fixes

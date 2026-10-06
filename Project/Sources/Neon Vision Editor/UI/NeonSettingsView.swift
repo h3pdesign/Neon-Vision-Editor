@@ -3015,11 +3015,21 @@ struct NeonSettingsView: View {
 #endif
 
 #if os(macOS)
-    private let macToolbarSelectableIDs: [String] = [
-        "openFile", "undo", "newTab", "closeAllTabs", "saveFile", "saveFileAs", "newWindow", "codeSnapshot", "editorLayout",
-        "markdownPreview", "markdownProjectPreview", "previewActions", "findReplace", "findInFiles", "compare", "splitEditor", "gitChanges",
-        "codeMinimap", "toggleSidebar", "toggleProjectSidebar", "brainDump", "languageIndicator"
-    ]
+    private let macToolbarSelectableIDs = ToolbarActionSelection.customizableMacActionIDs
+
+    private var orderedMacToolbarChooserIDs: [String] {
+        ToolbarActionSelection.orderedIDs(from: toolbarCustomIDsMac, fallback: macToolbarSelectableIDs)
+            .filter { macToolbarSelectableIDs.contains($0) }
+    }
+
+    private func macToolbarChooserTitle(_ id: String) -> String {
+        switch id {
+        case "toolbarPreset": return localized("Toolbar Preset")
+        case "providerBadge": return localized("Code completion provider")
+        case "newWindow": return localized("New Window")
+        default: return ToolbarIconOption(rawValue: id)?.localizedTitle ?? id
+        }
+    }
 
     private var macToolbarSelectionSummaryText: String {
         let selected = ToolbarActionSelection.selectedIDs(from: toolbarCustomIDsMac)
@@ -3119,8 +3129,7 @@ struct NeonSettingsView: View {
         NavigationStack {
             List {
                 Section("Choose toolbar controls") {
-                    ForEach(macToolbarSelectableIDs, id: \.self) { rawValue in
-                        let option = ToolbarIconOption(rawValue: rawValue)
+                    ForEach(orderedMacToolbarChooserIDs, id: \.self) { rawValue in
                         let isSelected = ToolbarActionSelection.selectedIDs(from: toolbarCustomIDsMac).contains(rawValue)
                         Button {
                             toolbarCustomIDsMac = ToolbarActionSelection.toggledSelectionRawValue(
@@ -3131,15 +3140,21 @@ struct NeonSettingsView: View {
                             )
                         } label: {
                             HStack {
-                                Text(option?.localizedTitle ?? rawValue)
+                                Text(macToolbarChooserTitle(rawValue))
                                 Spacer()
                                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                                     .foregroundStyle(isSelected ? .blue : .secondary)
                             }
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(option?.localizedTitle ?? rawValue)
+                        .accessibilityLabel(macToolbarChooserTitle(rawValue))
                         .accessibilityValue(isSelected ? "Selected" : "Not selected")
+                    }
+                    .onMove { offsets, destination in
+                        var ordered = orderedMacToolbarChooserIDs
+                        ordered.move(fromOffsets: offsets, toOffset: destination)
+                        let selected = ToolbarActionSelection.selectedIDs(from: toolbarCustomIDsMac)
+                        toolbarCustomIDsMac = ordered.filter(selected.contains).joined(separator: ",")
                     }
                 }
             }

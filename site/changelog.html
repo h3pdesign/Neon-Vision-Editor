@@ -118,7 +118,19 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.9.1</h2><span class="date">1 October 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.9.2</h2><span class="date">6 October 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713).</p></div>
+          <div class="item"><span class="badge new">New</span><p>Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715).</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage, conservative fallback, and per-request usage information. Apple Intelligence, Agent Mode, selections, and follow-up context remain outside classification.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Handles macOS Option-Delete through the existing document edit path, recognizes Unicode letters and combining marks, and leaves read-only preview selections unchanged (#696).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Restore access to AI provider and Jev settings on iPhone and iPad, and improve Jev disclosure text and Done button contrast.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Sizes the mobile bottom toolbar from its actual container on first layout, keeping editor actions and Settings visible when the observed editor width has not been populated.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.9.1</h2><span class="date">1 October 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding choices and non-lossy saving (#674).</p></div>
           <div class="item"><span class="badge new">New</span><p>Allows the always-available Settings action to be reordered in custom mobile toolbars (#676).</p></div>

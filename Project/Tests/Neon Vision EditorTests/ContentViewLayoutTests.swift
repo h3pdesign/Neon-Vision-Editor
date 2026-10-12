@@ -87,12 +87,12 @@ final class ContentViewLayoutTests: XCTestCase {
         let id = UUID()
         let csv = ContentView.SecondaryContentRequest(
             context: .init(tabID: id, fileURL: nil, language: "csv"),
-            revision: 1, delimitedMode: .table, plistMode: .text,
+            revision: 1, delimitedMode: .table, delimitedTableEnabled: true, plistMode: .text,
             crashMode: .text, logMode: .text
         )
         let tsv = ContentView.SecondaryContentRequest(
             context: .init(tabID: id, fileURL: nil, language: "tsv"),
-            revision: 1, delimitedMode: .table, plistMode: .text,
+            revision: 1, delimitedMode: .table, delimitedTableEnabled: true, plistMode: .text,
             crashMode: .text, logMode: .text
         )
         XCTAssertNotEqual(csv, tsv, "Changing the delimiter must replace the parse task even without editing text.")
@@ -102,13 +102,25 @@ final class ContentViewLayoutTests: XCTestCase {
     func testSecondaryContentRequestDistinguishesTabsWithIdenticalRevisions() {
         func request(_ id: UUID, revision: Int = 0) -> ContentView.SecondaryContentRequest {
             .init(context: .init(tabID: id, fileURL: nil, language: "csv"),
-                  revision: revision, delimitedMode: .table, plistMode: .text,
+                  revision: revision, delimitedMode: .table, delimitedTableEnabled: true, plistMode: .text,
                   crashMode: .text, logMode: .text)
         }
         let id = UUID()
         XCTAssertEqual(request(id), request(id), "An unchanged request must not restart parsing.")
         XCTAssertNotEqual(request(id), request(UUID()), "New tabs commonly have the same content revision.")
         XCTAssertNotEqual(request(id), request(id, revision: 1), "Edits must replace the parse task.")
+    }
+
+    @MainActor
+    func testDisablingTableViewInvalidatesSecondaryContentRequest() {
+        let context = ContentView.SecondaryContentContext(tabID: UUID(), fileURL: nil, language: "csv")
+        let enabled = ContentView.SecondaryContentRequest(context: context, revision: 1,
+            delimitedMode: .table, delimitedTableEnabled: true, plistMode: .text,
+            crashMode: .text, logMode: .text)
+        let disabled = ContentView.SecondaryContentRequest(context: context, revision: 1,
+            delimitedMode: .table, delimitedTableEnabled: false, plistMode: .text,
+            crashMode: .text, logMode: .text)
+        XCTAssertNotEqual(enabled, disabled, "Changing the preference must cancel obsolete table parsing.")
     }
 
     func testRegularWidthSplitUsesAppOwnedChrome() {

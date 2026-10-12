@@ -6,6 +6,15 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Changed
+
+- Moves macOS project Markdown preview options to their own section under Settings → Editor → Markdown Preview.
+- Splits macOS AI settings into sections for model and provider keys, and custom-provider configuration.
+
+### Fixed
+
+- Prevents ordinary multiline notes containing a comma from opening as CSV tables (#738).
+
 ## [v1.9.2] - 2026-10-06
 
 ### Why Upgrade

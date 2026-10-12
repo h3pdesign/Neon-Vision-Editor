@@ -7,6 +7,29 @@ import XCTest
 
 @MainActor
 final class LanguageDetectorTests: XCTestCase {
+    func testDelimitedDetectionCanBeDisabledWithoutLosingExtensionHints() {
+        let csv = "name,count\napples,2\npears,3"
+        XCTAssertEqual(LanguageDetector.shared.detect(text: csv, name: nil, fileURL: nil,
+            allowsDelimitedTextDetection: true).lang, "csv")
+        XCTAssertNotEqual(LanguageDetector.shared.detect(text: csv, name: nil, fileURL: nil,
+            allowsDelimitedTextDetection: false).lang, "csv")
+        for name in ["data.csv", "data.tsv"] {
+            XCTAssertEqual(LanguageDetector.shared.detect(text: csv, name: name,
+                fileURL: nil, allowsDelimitedTextDetection: false).lang,
+                "csv")
+        }
+        XCTAssertEqual(LanguageDetector.shared.detect(text: "", name: nil, fileURL: nil,
+            allowsDelimitedTextDetection: false).lang, "plain")
+    }
+
+    func testOrdinaryNoteWithOneCommaIsNotCSV() {
+        let result = LanguageDetector.shared.detect(
+            text: "Remember apples, pears\nTake the shopping bag\nLeave before noon",
+            name: nil, fileURL: nil
+        )
+        XCTAssertNotEqual(result.lang, "csv")
+    }
+
     func testPreferredLanguageForExtensions() {
         let cases: [(String, String)] = [
             ("main.swift", "swift"),

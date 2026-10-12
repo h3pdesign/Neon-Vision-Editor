@@ -206,6 +206,9 @@ struct NeonSettingsView: View {
     @State private var availableEditorFonts: [String] = []
     @State private var moreSectionTab: String = "support"
     @State private var editorSectionTab: String = "basics"
+#if os(macOS)
+    @State private var aiSectionTab: String = "providers"
+#endif
     @State private var generalSectionTab: String = "window"
     @State private var toolbarSettingsSectionTab: String = "presets"
     @State private var themeSettingsSectionTab: String = "selection"
@@ -3358,7 +3361,15 @@ struct NeonSettingsView: View {
                 } else if editorSectionTab == "behavior" {
                     editorBehaviorSettings
                 } else {
+#if os(macOS)
+                    if editorSectionTab == "markdownPreview" {
+                        markdownProjectPreviewSettingsCard
+                    } else {
+                        editorStatusBarSettings
+                    }
+#else
                     editorStatusBarSettings
+#endif
                 }
         }
     }
@@ -3374,6 +3385,7 @@ struct NeonSettingsView: View {
                 Text("Behavior").tag("behavior")
 #if os(macOS)
                 Text("Layout & Status").tag("statusBar")
+                Text("Markdown Preview").tag("markdownPreview")
 #endif
             }
             .pickerStyle(.segmented)
@@ -3505,8 +3517,6 @@ struct NeonSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-
-                markdownProjectPreviewSettingsCard
 
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -5745,6 +5755,19 @@ struct NeonSettingsView: View {
 
     private var aiSection: some View {
         VStack(spacing: UI.space20) {
+#if os(macOS)
+            VStack(alignment: .leading, spacing: UI.space8) {
+                Text("Section")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                Picker("Section", selection: $aiSectionTab) {
+                    Text("AI Provider API Keys").tag("providers")
+                    Text("Custom Provider").tag("customProvider")
+                }
+                .pickerStyle(.segmented)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+#endif
 #if os(iOS) || os(visionOS)
             settingsCardSection(
                 title: "AI Model",
@@ -5808,72 +5831,75 @@ struct NeonSettingsView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 #else
-            GroupBox("AI Model") {
-                VStack(alignment: .leading, spacing: UI.space12) {
-                    Picker("Model", selection: selectedAIModelBinding) {
-                        Text("Apple Intelligence").tag(AIModel.appleIntelligence)
-                        Text("Grok").tag(AIModel.grok)
-                        Text("OpenAI").tag(AIModel.openAI)
-                        Text("Gemini").tag(AIModel.gemini)
-                        Text("Anthropic").tag(AIModel.anthropic)
-                        Text("OpenCode Go").tag(AIModel.openCodeGo)
-                        Text("Custom (OpenAI-compatible)").tag(AIModel.customProvider)
-                    }
-                    .neonSettingsDropdown(maxWidth: 260)
-                    .accessibilityLabel("Model")
+            if aiSectionTab == "providers" {
+                GroupBox("AI Model") {
+                    VStack(alignment: .leading, spacing: UI.space12) {
+                        Picker("Model", selection: selectedAIModelBinding) {
+                            Text("Apple Intelligence").tag(AIModel.appleIntelligence)
+                            Text("Grok").tag(AIModel.grok)
+                            Text("OpenAI").tag(AIModel.openAI)
+                            Text("Gemini").tag(AIModel.gemini)
+                            Text("Anthropic").tag(AIModel.anthropic)
+                            Text("OpenCode Go").tag(AIModel.openCodeGo)
+                            Text("Custom (OpenAI-compatible)").tag(AIModel.customProvider)
+                        }
+                        .neonSettingsDropdown(maxWidth: 260)
+                        .accessibilityLabel("Model")
 
-                    Text("The selected AI model is used for AI-assisted code completion.")
-                        .font(Typography.footnote)
-                        .foregroundStyle(.secondary)
-
-                    if #available(macOS 27.0, *) {
-                        Toggle("Allow Private Cloud Compute for Agent Mode", isOn: $editorAgentAllowPrivateCloudCompute)
-                            .disabled(selectedAIModelBinding.wrappedValue != .appleIntelligence)
-                            .accessibilityHint("Allows complex Edit and Verify requests to use Apple's Private Cloud Compute when available.")
-                        Text("Agent Mode remains on-device by default. When enabled, complex Edit and Verify requests may send the captured project context to Apple Private Cloud Compute when available; otherwise they fall back to the on-device model.")
+                        Text("The selected AI model is used for AI-assisted code completion.")
                             .font(Typography.footnote)
                             .foregroundStyle(.secondary)
+
+                        if #available(macOS 27.0, *) {
+                            Toggle("Allow Private Cloud Compute for Agent Mode", isOn: $editorAgentAllowPrivateCloudCompute)
+                                .disabled(selectedAIModelBinding.wrappedValue != .appleIntelligence)
+                                .accessibilityHint("Allows complex Edit and Verify requests to use Apple's Private Cloud Compute when available.")
+                            Text("Agent Mode remains on-device by default. When enabled, complex Edit and Verify requests may send the captured project context to Apple Private Cloud Compute when available; otherwise they fall back to the on-device model.")
+                                .font(Typography.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        HStack {
+                            Button("Data Disclosure") { showDataDisclosureDialog = true }
+                            Button("Jev Context Ranking…") { showJevContextRankingDialog = true }
+                        }
+                        .buttonStyle(.bordered)
                     }
+                    .padding(UI.groupPadding)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                    HStack {
-                        Button("Data Disclosure") { showDataDisclosureDialog = true }
-                        Button("Jev Context Ranking…") { showJevContextRankingDialog = true }
+                GroupBox("AI Provider API Keys") {
+                    VStack(alignment: .center, spacing: UI.space12) {
+                        aiKeyRow(title: "Grok", placeholder: "sk-…", value: $grokAPIToken, provider: .grok)
+                        aiKeyRow(title: "OpenAI", placeholder: "sk-…", value: $openAIAPIToken, provider: .openAI)
+                        aiKeyRow(title: "Gemini", placeholder: "AIza…", value: $geminiAPIToken, provider: .gemini)
+                        aiKeyRow(title: "Anthropic", placeholder: "sk-ant-…", value: $anthropicAPIToken, provider: .anthropic)
+                        aiKeyRow(title: "OpenCode Go", placeholder: "sk-…", value: $openCodeGoAPIToken, provider: .openCodeGo)
+                        aiTextRow(title: "OpenCode Model", placeholder: OpenCodeGoConfig.defaultModel, value: $openCodeGoModelID)
                     }
-                    .buttonStyle(.bordered)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(UI.groupPadding)
                 }
-                .padding(UI.groupPadding)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            GroupBox("AI Provider API Keys") {
-                VStack(alignment: .center, spacing: UI.space12) {
-                    aiKeyRow(title: "Grok", placeholder: "sk-…", value: $grokAPIToken, provider: .grok)
-                    aiKeyRow(title: "OpenAI", placeholder: "sk-…", value: $openAIAPIToken, provider: .openAI)
-                    aiKeyRow(title: "Gemini", placeholder: "AIza…", value: $geminiAPIToken, provider: .gemini)
-                    aiKeyRow(title: "Anthropic", placeholder: "sk-ant-…", value: $anthropicAPIToken, provider: .anthropic)
-                    aiKeyRow(title: "OpenCode Go", placeholder: "sk-…", value: $openCodeGoAPIToken, provider: .openCodeGo)
-                    aiTextRow(title: "OpenCode Model", placeholder: OpenCodeGoConfig.defaultModel, value: $openCodeGoModelID)
+            } else {
+                GroupBox("Custom Provider") {
+                    VStack(alignment: .center, spacing: UI.space12) {
+                        Text("Any OpenAI-compatible endpoint (v1 chat completions). The key is optional and stored in the system Keychain.")
+                            .font(Typography.footnote)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        aiTextRow(title: "Base URL", placeholder: "https://host/v1", value: $customProviderBaseURL)
+                        aiTextRow(title: "Model", placeholder: "model-id", value: $customProviderModel)
+                        aiKeyRow(title: "API Key", placeholder: "optional", value: $customProviderAPIToken, provider: .customProvider)
+                        customProviderTimeoutControls
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(UI.groupPadding)
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(UI.groupPadding)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            GroupBox("Custom Provider") {
-                VStack(alignment: .center, spacing: UI.space12) {
-                    Text("Any OpenAI-compatible endpoint (v1 chat completions). The key is optional and stored in the system Keychain.")
-                        .font(Typography.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    aiTextRow(title: "Base URL", placeholder: "https://host/v1", value: $customProviderBaseURL)
-                    aiTextRow(title: "Model", placeholder: "model-id", value: $customProviderModel)
-                    aiKeyRow(title: "API Key", placeholder: "optional", value: $customProviderAPIToken, provider: .customProvider)
-                    customProviderTimeoutControls
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(UI.groupPadding)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
 #endif
 
         }

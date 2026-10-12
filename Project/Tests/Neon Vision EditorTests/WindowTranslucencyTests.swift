@@ -11,6 +11,17 @@ import SwiftUI
 /// MARK: - Tests
 
 final class WindowTranslucencyTests: XCTestCase {
+    func testSettingsPaneRetainsReleasedIntrinsicSizingWhenInactive() {
+        let hosting = NSHostingView(rootView: NeonSettingsView.SettingsTabPage(
+            title: "AI", systemImage: "brain", tag: "ai", selectedTag: "python",
+            content: { AnyView(Text("Released pane content").frame(height: 900)) }
+        ))
+        hosting.frame = NSRect(x: 0, y: 0, width: 900, height: 600)
+        hosting.layoutSubtreeIfNeeded()
+        XCTAssertGreaterThanOrEqual(hosting.fittingSize.height, 900,
+            "Keep the released native Settings sizing contract; inactive panes must remain real content")
+    }
+
     func testFrostedGlassSliderMapsToExistingTranslucencyModes() {
         XCTAssertEqual(NeonSettingsView.MacTranslucencyModeOption.frosted.sliderValue, 0)
         XCTAssertEqual(NeonSettingsView.MacTranslucencyModeOption.subtle.sliderValue, 1)

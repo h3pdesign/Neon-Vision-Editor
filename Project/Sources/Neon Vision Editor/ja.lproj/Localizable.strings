@@ -1405,6 +1405,8 @@
 "Show Indentation Guides" = "インデントガイドを表示";
 "Show Installer Log" = "インストーラーログを表示";
 "Show Invisible Characters" = "非表示文字を表示";
+"Show CSV/TSV Table View" = "CSV/TSVの表ビューを表示";
+"Turn off to edit CSV and TSV as text and stop automatic table detection in new notes. This does not change file contents." = "オフにすると、CSVとTSVをテキストとして編集し、新しいメモでの表の自動検出を無効にします。ファイルの内容は変更されません。";
 "Show Keyboard Snippet Bar" = "キーボードスニペットバーを表示";
 "Show Line Numbers" = "行番号を表示";
 "Show Markdown Cards" = "Markdownカードを表示";

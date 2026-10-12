@@ -117,6 +117,9 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsHighlightScopeBackground") private var highlightScopeBackground: Bool = false
     @AppStorage(SettingsPreferenceKey.lineWrapEnabled) private var lineWrapEnabled: Bool = true
     @AppStorage(SettingsPreferenceKey.showInvisibleCharacters) private var showInvisibleCharacters: Bool = false
+#if os(macOS)
+    @AppStorage("SettingsDelimitedTableViewEnabled") private var delimitedTableViewEnabled: Bool = true
+#endif
     @AppStorage(SettingsPreferenceKey.indentStyle) private var indentStyle: String = "spaces"
     @AppStorage(SettingsPreferenceKey.indentWidth) private var indentWidth: Int = 4
     @AppStorage("SettingsStatusBarShowCursor") private var statusBarShowCursor: Bool = true
@@ -3506,6 +3509,11 @@ struct NeonSettingsView: View {
                     Toggle("Highlight Scoped Region", isOn: $highlightScopeBackground)
                     Toggle("Line Wrap", isOn: $lineWrapEnabled)
                     Toggle("Show Invisible Characters", isOn: $showInvisibleCharacters)
+                    Toggle("Show CSV/TSV Table View", isOn: $delimitedTableViewEnabled)
+                        .accessibilityHint("Turn off to edit CSV and TSV as text and stop automatic table detection in new notes. This does not change file contents.")
+                    Text("Turn off to edit CSV and TSV as text and stop automatic table detection in new notes. This does not change file contents.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
                     Text("When Line Wrap is enabled, scope guides/scoped region are turned off to avoid layout conflicts.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)

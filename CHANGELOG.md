@@ -6,6 +6,20 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Added
+
+- Adds a macOS Settings → Editor → Basics toggle to disable CSV/TSV table views and automatic table detection in new notes without changing file contents (#738).
+
+### Changed
+
+- Moves macOS project Markdown preview options to their own section under Settings → Editor → Markdown Preview.
+- Splits macOS AI settings into sections for model and provider keys, and custom-provider configuration.
+
+### Fixed
+
+- Prevents ordinary multiline notes containing a comma from opening as CSV tables (#738).
+- Fixes macOS Settings controls appearing behind the Dock (#714).
+
 ## [v1.9.2] - 2026-10-06
 
 ### Why Upgrade

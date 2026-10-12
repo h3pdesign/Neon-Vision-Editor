@@ -7,6 +7,58 @@ import XCTest
 
 @MainActor
 final class LanguageDetectorTests: XCTestCase {
+    func testDelimitedDetectionRespectsPersistedPreferenceValue() throws {
+        let suiteName = "DelimitedTablePreferenceTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let key = "SettingsDelimitedTableViewEnabled"
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let text = "name,count\napples,2\npears,3"
+        func detect(name: String? = nil) -> String {
+            LanguageDetector.shared.detect(text: text, name: name, fileURL: nil,
+                allowsDelimitedTextDetection: defaults.object(forKey: key) as? Bool ?? true).lang
+        }
+        XCTAssertEqual(detect(), "csv")
+        defaults.set(false, forKey: key)
+        XCTAssertNotEqual(detect(), "csv")
+        for name in ["data.csv", "data.tsv"] {
+            XCTAssertEqual(detect(name: name), "csv")
+        }
+        defaults.set(true, forKey: key)
+        XCTAssertEqual(detect(), "csv")
+
+        // Verify the production reader without changing live application state.
+        let liveValue = UserDefaults.standard.object(forKey: key) as? Bool ?? true
+        XCTAssertEqual(
+            LanguageDetector.shared.detect(text: text, name: nil, fileURL: nil).lang,
+            LanguageDetector.shared.detect(text: text, name: nil, fileURL: nil,
+                allowsDelimitedTextDetection: liveValue).lang
+        )
+    }
+
+    func testDelimitedDetectionCanBeDisabledWithoutLosingExtensionHints() {
+        let csv = "name,count\napples,2\npears,3"
+        XCTAssertEqual(LanguageDetector.shared.detect(text: csv, name: nil, fileURL: nil,
+            allowsDelimitedTextDetection: true).lang, "csv")
+        XCTAssertNotEqual(LanguageDetector.shared.detect(text: csv, name: nil, fileURL: nil,
+            allowsDelimitedTextDetection: false).lang, "csv")
+        for name in ["data.csv", "data.tsv"] {
+            XCTAssertEqual(LanguageDetector.shared.detect(text: csv, name: name,
+                fileURL: nil, allowsDelimitedTextDetection: false).lang,
+                "csv")
+        }
+        XCTAssertEqual(LanguageDetector.shared.detect(text: "", name: nil, fileURL: nil,
+            allowsDelimitedTextDetection: false).lang, "plain")
+    }
+
+    func testOrdinaryNoteWithOneCommaIsNotCSV() {
+        let result = LanguageDetector.shared.detect(
+            text: "Remember apples, pears\nTake the shopping bag\nLeave before noon",
+            name: nil, fileURL: nil
+        )
+        XCTAssertNotEqual(result.lang, "csv")
+    }
+
     func testPreferredLanguageForExtensions() {
         let cases: [(String, String)] = [
             ("main.swift", "swift"),

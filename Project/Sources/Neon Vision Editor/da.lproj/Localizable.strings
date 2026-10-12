@@ -1405,6 +1405,8 @@
 "Show Indentation Guides" = "Vis Indrykningsvejledninger";
 "Show Installer Log" = "Vis Installer Log";
 "Show Invisible Characters" = "Vis usynlige tegn";
+"Show CSV/TSV Table View" = "Vis CSV/TSV som tabel";
+"Turn off to edit CSV and TSV as text and stop automatic table detection in new notes. This does not change file contents." = "Slå fra for at redigere CSV og TSV som tekst og deaktivere automatisk tabelgenkendelse i nye noter. Filernes indhold ændres ikke.";
 "Show Keyboard Snippet Bar" = "Vis Tastatur-snippet-linje";
 "Show Line Numbers" = "Vis linjenumre";
 "Show Markdown Cards" = "Vis Markdown-kort";

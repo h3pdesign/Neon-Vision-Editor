@@ -1405,6 +1405,8 @@
 "Show Indentation Guides" = "显示缩进引导线";
 "Show Installer Log" = "显示安装日志";
 "Show Invisible Characters" = "显示不可见字符";
+"Show CSV/TSV Table View" = "显示 CSV/TSV 表格视图";
+"Turn off to edit CSV and TSV as text and stop automatic table detection in new notes. This does not change file contents." = "关闭后，CSV 和 TSV 将以文本形式编辑，并停止在新笔记中自动检测表格。此操作不会更改文件内容。";
 "Show Keyboard Snippet Bar" = "显示键盘片段栏。";
 "Show Line Numbers" = "显示行号";
 "Show Markdown Cards" = "显示Markdown卡片";

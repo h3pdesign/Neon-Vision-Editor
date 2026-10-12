@@ -4,7 +4,7 @@ import Foundation
 extension ContentView {
     @ViewBuilder
     var structuredDataModeControl: some View {
-        if isDelimitedFileLanguage {
+        if delimitedTableViewEnabled && isDelimitedFileLanguage {
             delimitedModeControl
         } else if isPlistDocument {
             plistModeControl
@@ -764,14 +764,15 @@ extension ContentView {
     }
 
     func scheduleDelimitedTableRebuild() {
-        guard isDelimitedFileLanguage else {
+        guard shouldShowDelimitedTable else {
             delimitedParseTask?.cancel()
+            delimitedParseTask = nil
             isBuildingDelimitedTable = false
             delimitedTableSnapshot = nil
+            activeDelimitedCell = nil
             delimitedTableStatus = ""
             return
         }
-        guard shouldShowDelimitedTable else { return }
 
         delimitedParseTask?.cancel()
         isBuildingDelimitedTable = true

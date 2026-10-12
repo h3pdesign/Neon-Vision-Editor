@@ -1405,6 +1405,8 @@
 "Show Indentation Guides" = "Mostrar Guías de indentación";
 "Show Installer Log" = "Mostrar Registro del instalador";
 "Show Invisible Characters" = "Mostrar caracteres invisibles";
+"Show CSV/TSV Table View" = "Mostrar CSV/TSV como tabla";
+"Turn off to edit CSV and TSV as text and stop automatic table detection in new notes. This does not change file contents." = "Desactiva esta opción para editar CSV y TSV como texto y desactivar la detección automática de tablas en notas nuevas. El contenido de los archivos no cambia.";
 "Show Keyboard Snippet Bar" = "Mostrar barra de fragmentos de teclado";
 "Show Line Numbers" = "Mostrar números de línea";
 "Show Markdown Cards" = "Mostrar tarjetas Markdown";

@@ -7,6 +7,16 @@ import SwiftUI
 
 @MainActor
 final class EditorSettingsDefaultsTests: XCTestCase {
+    func testDelimitedTablePreferenceMatchesPersistedSettings() {
+        // Do not mutate the host editor's observed preferences during a layout test suite.
+        let expected = UserDefaults.standard.object(forKey: "SettingsDelimitedTableViewEnabled") as? Bool ?? true
+        let contentView = ContentView()
+        XCTAssertEqual(contentView.delimitedTableViewEnabled, expected)
+        if !expected {
+            XCTAssertFalse(contentView.shouldShowDelimitedTable)
+        }
+    }
+
 #if os(macOS)
     func testMacSettingsTabRoutePersistsAndPublishesRequestedTab() async throws {
         final class Capture: @unchecked Sendable {

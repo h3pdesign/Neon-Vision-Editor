@@ -1,3 +1,22 @@
+// v1.9.3 release highlights
+"What’s New in v1.9.3" = "v1.9.3更新内容";
+"Release highlights for v1.9.3." = "v1.9.3主要更新。";
+"CSV/TSV Editing" = "CSV/TSV编辑";
+"Font Selection" = "字体选择";
+"Settings Sections" = "设置分区";
+"Choose plain-text editing instead of CSV/TSV tables on macOS." = "在macOS上选择文本编辑，而不是CSV/TSV表格视图。";
+"CSV/TSV Editing: Choose plain-text editing instead of CSV/TSV tables on macOS." = "CSV/TSV编辑: 在macOS上选择文本编辑，而不是CSV/TSV表格视图。";
+"Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad." = "较长的字体名称不会再遮挡控件或撑宽Mac、iPhone和iPad的设置页面。";
+"Font Selection: Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad." = "字体选择: 较长的字体名称不会再遮挡控件或撑宽Mac、iPhone和iPad的设置页面。";
+"Find Markdown preview and AI provider options in dedicated macOS Settings sections." = "在macOS设置的独立分区中查找Markdown预览和AI提供商选项。";
+"Settings Sections: Find Markdown preview and AI provider options in dedicated macOS Settings sections." = "设置分区: 在macOS设置的独立分区中查找Markdown预览和AI提供商选项。";
+"Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…" = "在macOS的设置 → 编辑器 → 基础中新增CSV/TSV表格视图开关。关闭后可作为文本编辑，并停止自动…";
+"CSV/TSV Editing: Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…" = "CSV/TSV编辑: 在macOS的设置 → 编辑器 → 基础中新增CSV/TSV表格视图开关。关闭后可作为文本编辑，并停止自动…";
+"Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS." = "将macOS的Markdown项目预览选项移至设置 → 编辑器 → Markdown预览。";
+"Markdown Preview Settings: Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS." = "Markdown预览设置: 将macOS的Markdown项目预览选项移至设置 → 编辑器 → Markdown预览。";
+"Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…" = "将macOS的AI设置分为提供商／模型和自定义提供商分区，保留现有凭据和已保存的…";
+"AI Settings: Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…" = "AI设置: 将macOS的AI设置分为提供商／模型和自定义提供商分区，保留现有凭据和已保存的…";
+
 // v1.9.2 release highlights
 "What’s New in v1.9.2" = "v1.9.2 新功能";
 "Release highlights for v1.9.2." = "v1.9.2 主要更新。";

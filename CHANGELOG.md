@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.9.3] - 2026-10-13
+
 ### Why Upgrade
 
 - Choose plain-text editing instead of CSV/TSV tables on macOS.

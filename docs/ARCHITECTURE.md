@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-10-06 (v1.9.2 release-aligned architecture)
+Last updated: 2026-10-13 (v1.9.3 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -8,6 +8,15 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v1.9.3 (2026-10-13)
+
+- Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic table detection in new notes without changing file contents (#738).
+- Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS.
+- Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved values.
+- Prevents ordinary multiline notes containing commas from opening as CSV tables (#738).
+- Keeps long selected font names inside their dropdown on macOS, iPhone, and iPad without overlapping nearby controls or widening the page. The complete name remains available in the font menu.
+- Restores the released native macOS Settings sizing and background behavior, keeping controls accessible above the Dock (#714).
 
 ### v1.9.2 (2026-10-06)
 
@@ -17,15 +26,6 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 - Handles macOS Option-Delete through the existing document edit path, recognizes Unicode letters and combining marks, and leaves read-only preview selections unchanged (#696).
 - Restore access to AI provider and Jev settings on iPhone and iPad, and improve Jev disclosure text and Done button contrast.
 - Sizes the mobile bottom toolbar from its actual container on first layout, keeping editor actions and Settings visible when the observed editor width has not been populated.
-
-### v1.9.1 (2026-10-01)
-
-- Exposes Apple’s available text encodings in the existing encoding picker, including Shift-JIS, with persisted encoding choices and non-lossy saving (#674).
-- Allows the always-available Settings action to be reordered in custom mobile toolbars (#676).
-- Reveals the destination of macOS Command-Up/Down document navigation even when it lies outside the loaded editor viewport, including Shift-selection (#660).
-- Loads the destination inside oversized single-line files using a bounded offset-aware window, preserving edit offsets, column reporting and repeated boundary navigation.
-- Arranges the mobile status pill and bottom toolbar in one measured stack instead of independent fixed offsets, avoiding touching bars and double keyboard-accessory spacing (#672, #673).
-- Fits the iPad bottom toolbar to its visible controls while retaining its window-width limit and horizontal scrolling (#675).
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

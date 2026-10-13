@@ -118,7 +118,19 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.9.2</h2><span class="date">6 October 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v1.9.3</h2><span class="date">13 October 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic table detection in new notes without changing file contents (#738).</p></div>
+          <div class="item"><span class="badge new">New</span><p>Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved values.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Prevents ordinary multiline notes containing commas from opening as CSV tables (#738).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps long selected font names inside their dropdown on macOS, iPhone, and iPad without overlapping nearby controls or widening the page. The complete name remains available in the font menu.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Restores the released native macOS Settings sizing and background behavior, keeping controls accessible above the Dock (#714).</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.9.2</h2><span class="date">6 October 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713).</p></div>
           <div class="item"><span class="badge new">New</span><p>Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715).</p></div>

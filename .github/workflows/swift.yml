@@ -34,8 +34,11 @@ jobs:
           if [[ -n "${PR_NUMBER}" ]] &&
              files="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files?per_page=100")" &&
              jq -se 'add | length > 0 and all(.[];
-               .filename == "README.md" or .filename == "CHANGELOG.md" or
-               (.filename | startswith("docs/")) or (.filename | startswith("site/"))
+               # Renames may remove executable inputs, so never skip those.
+               (.status == "added" or .status == "modified" or .status == "removed") and (
+                 .filename == "README.md" or .filename == "CHANGELOG.md" or
+                 .filename == "appcast.xml" or .filename == "release/prepared-release.json" or
+                 (.filename | startswith("docs/")) or (.filename | startswith("site/")))
              )' <<< "${files}" >/dev/null; then
             echo "run_swift=false" >> "$GITHUB_OUTPUT"
           else

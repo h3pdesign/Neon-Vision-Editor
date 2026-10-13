@@ -12,8 +12,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 from unittest import mock
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
@@ -31,6 +33,7 @@ docs = load("release_docs", "scripts/prepare_release_docs.py")
 prep = load("release_prepare", "scripts/release_prepare.py")
 public = load("public_release", "scripts/ci/wait_for_public_release.py")
 cloud_module = load("cloud_counter", "scripts/cloud_build_number.py")
+required_checks = load("required_checks", "scripts/ci/wait_for_required_checks.py")
 
 
 def fixture(root):
@@ -157,6 +160,9 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("length > 0 and all(.[];", workflow)
         for path in ('"README.md"', '"CHANGELOG.md"', 'startswith("docs/")', 'startswith("site/")'):
             self.assertIn(path, workflow)
+        self.assertIn('.filename == "appcast.xml"', workflow)
+        self.assertIn('.filename == "release/prepared-release.json"', workflow)
+        self.assertIn('.status == "modified"', workflow)
         self.assertIn('echo "run_swift=true" >> "$GITHUB_OUTPUT"', workflow)
         required_jobs = workflow.split("  build:", 1)[1]
         self.assertEqual(required_jobs.count("    needs: changes"), 2)
@@ -508,11 +514,249 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn('GH_TOKEN="${METRICS_MERGE_TOKEN}" gh pr merge "${metrics_pr}"', metrics)
         self.assertNotIn('|| echo "Auto-merge is unavailable', metrics)
         docs_sync = (ROOT / ".github/workflows/post-release-documentation-sync.yml").read_text()
-        self.assertIn("checks_ready=false", docs_sync)
-        self.assertIn("--json name --jq 'length'", docs_sync)
-        self.assertIn("Timed out waiting for checks to register", docs_sync)
+        self.assertIn('scripts/ci/wait_for_required_checks.py "${docs_pr}"', docs_sync)
+        self.assertIn('--head "${docs_sha}"', docs_sync)
+        self.assertIn('--match-head-commit "${docs_sha}"', docs_sync)
         self.assertIn('if ! gh pr merge "${docs_pr}"', docs_sync)
         self.assertIn('if [[ -z "$merged_at" ]]', docs_sync)
+
+    def test_publication_prs_use_automation_identity_and_preserve_published_assets(self):
+        primary = (ROOT / ".github/workflows/release-github-only.yml").read_text()
+        for workflow, step in (
+            (primary, "Generate and publish signed Sparkle appcast"),
+            ((ROOT / ".github/workflows/post-release-documentation-sync.yml").read_text(), "Commit repaired documentation"),
+            ((ROOT / ".github/workflows/sync-readme-appstore-versions.yml").read_text(), "Commit and update pull request if changed"),
+        ):
+            env = workflow.split(f"- name: {step}", 1)[1].split("        run:", 1)[0]
+            self.assertIn("GH_TOKEN: ${{ secrets.METRIC_TOKEN }}", env)
+        self.assertIn("id: publish_verified_release", primary)
+        rollback = primary.split("- name: Roll back broken release assets", 1)[1]
+        self.assertIn("steps.publish_verified_release.outcome != 'success'", rollback)
+        self.assertIn("steps.upload_release_assets.outputs.assets_reused == 'false'", rollback)
+        updates = primary.split("- name: Trigger post-release updates", 1)[1]
+        self.assertEqual(updates.count("gh workflow run post-release-documentation-sync.yml"), 1)
+        self.assertLess(updates.index("gh workflow run post-release-documentation-sync.yml"),
+                        updates.index("pages_run_id="))
+        for path in (".github/workflows/release-notarized.yml",
+                     ".github/workflows/release-notarized-selfhosted.yml",
+                     "scripts/workflow-templates/release-notarized.yml",
+                     "scripts/workflow-templates/release-notarized-selfhosted.yml"):
+            fallback = (ROOT / path).read_text()
+            self.assertIn("group: release-${{ inputs.tag }}", fallback)
+            self.assertIn("cancel-in-progress: false", fallback)
+            self.assertIn("id: verify_published_assets", fallback)
+            self.assertIn("steps.verify_published_assets.outcome != 'success'", fallback)
+
+    def test_reused_assets_still_repair_appcast_using_the_uploaded_zip(self):
+        primary = (ROOT / ".github/workflows/release-github-only.yml").read_text()
+        appcast = primary.split("- name: Generate and publish signed Sparkle appcast", 1)[1].split("- name: Trigger post-release updates", 1)[0]
+        updates = primary.split("- name: Trigger post-release updates", 1)[1].split("- name: Roll back broken release assets", 1)[0]
+        for step in (appcast, updates):
+            condition = step.split("        env:", 1)[0]
+            self.assertNotIn("assets_reused", condition)
+            self.assertIn("!(inputs.dry_run || false)", condition)
+        verify = primary.split("- name: Verify uploaded release assets", 1)[1].split("- name: Publish verified GitHub release", 1)[0]
+        self.assertIn("id: verify_uploaded_assets", verify)
+        self.assertIn('cp "$WORK_DIR/Neon.Vision.Editor.app.zip" "$RUNNER_TEMP/verified-release.zip"', verify)
+        self.assertIn('if [[ "$zip_value" != "$dmg_value" ]]', verify)
+        self.assertIn('cp "$verified_zip" "$appcast_dir/Neon.Vision.Editor.app.zip"', appcast)
+        self.assertIn('!= "$RELEASE_ZIP_SHA256"', appcast)
+        self.assertIn('appcast_build="$RELEASE_BUILD"', appcast)
+        self.assertNotIn('$RUNNER_TEMP/export/Neon Vision Editor.app', appcast)
+
+    def test_pages_lookup_matches_requested_source_not_dispatch_head(self):
+        primary = (ROOT / ".github/workflows/release-github-only.yml").read_text()
+        updates = primary.split("- name: Trigger post-release updates", 1)[1]
+        expression = updates.split('--jq "', 1)[1].split('" || true', 1)[0]
+        head = "a" * 40
+        expression = expression.replace('\\"', '"').replace('${APPCAST_COMMIT}', head)
+        runs = [{"databaseId": 456, "headSha": "b" * 40, "event": "workflow_dispatch",
+                 "displayTitle": "Pages " + head}]
+        result = subprocess.run(["jq", "-r", expression], input=json.dumps(runs), text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "456")
+        runs[0]["displayTitle"] = "Pages wrong-source"
+        result = subprocess.run(["jq", "-r", expression], input=json.dumps(runs), text=True, capture_output=True)
+        self.assertEqual(result.stdout.strip(), "")
+        pages = (ROOT / ".github/workflows/pages-deployment.yml").read_text()
+        self.assertIn("run-name: Pages ${{ inputs.source_ref || github.sha }}", pages)
+
+    def test_uploaded_metadata_and_zip_persistence_are_checked_before_signing(self):
+        primary = (ROOT / ".github/workflows/release-github-only.yml").read_text()
+        verify = primary.split("- name: Verify uploaded release assets", 1)[1].split("- name: Publish verified GitHub release", 1)[0]
+        script = textwrap.dedent(verify[verify.index("          # Persist the exact uploaded ZIP"):])
+        # Apple tooling is replaced only in this disposable shell harness.
+        script = script.replace("/usr/libexec/PlistBuddy", "fixture-plist")
+        with tempfile.TemporaryDirectory(prefix="nve-uploaded-metadata-") as temp:
+            root = Path(temp)
+            fakebin = root / "bin"
+            fakebin.mkdir()
+            plist = fakebin / "fixture-plist"
+            plist.write_text('#!/bin/sh\ncase "$2" in\n*CFBundleShortVersionString) echo "$NVE_TEST_VERSION";;\n*CFBundleVersion) case "$3" in\n*/dmg/*) echo "$NVE_TEST_DMG_BUILD";;\n*) echo "$NVE_TEST_ZIP_BUILD";;\nesac;;\n*) exit 99;;\nesac\n')
+            plist.chmod(0o755)
+            work = root / "work"
+            work.mkdir()
+            uploaded = work / "Neon.Vision.Editor.app.zip"
+            uploaded.write_bytes(b"exact published ZIP bytes, not a fresh build")
+            output = root / "output"
+            for version, zip_build, dmg_build, expected in (
+                    ("1.9.3", "1085", "1085", 0), ("1.9.2", "1085", "1085", 1),
+                    ("1.9.3", "invalid", "1085", 1), ("1.9.3", "1085", "1084", 1)):
+                output.write_text("")
+                env = {**os.environ, "PATH": str(fakebin) + os.pathsep + os.environ["PATH"],
+                       "WORK_DIR": str(work), "MOUNT_POINT": str(root / "dmg"), "RUNNER_TEMP": str(root),
+                       "GITHUB_OUTPUT": str(output), "TAG_NAME": "v1.9.3", "NVE_TEST_VERSION": version,
+                       "NVE_TEST_ZIP_BUILD": zip_build, "NVE_TEST_DMG_BUILD": dmg_build}
+                result = subprocess.run(["bash", "-euo", "pipefail", "-c", script], env=env,
+                                        capture_output=True, text=True, timeout=5)
+                self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
+                if expected == 0:
+                    self.assertEqual((root / "verified-release.zip").read_bytes(), uploaded.read_bytes())
+                    self.assertIn("build=1085", output.read_text())
+                    self.assertIn(hashlib.sha256(uploaded.read_bytes()).hexdigest(), output.read_text())
+                else:
+                    self.assertEqual(output.read_text(), "")
+
+    def test_appcast_readiness_requires_one_matching_signed_item(self):
+        url = "https://github.com/owner/repo/releases/download/v1.9.3/Neon.Vision.Editor.app.zip"
+        signature = base64.b64encode(b"s" * 64).decode()
+        item = (f'<item><sparkle:version>1085</sparkle:version>'
+                f'<sparkle:shortVersionString>1.9.3</sparkle:shortVersionString>'
+                f'<enclosure url="{url}" length="123" sparkle:edSignature="{signature}" /></item>')
+        def feed(items):
+            return f'<rss xmlns:sparkle="{public.SPARKLE}"><channel>{items}</channel></rss>'
+        self.assertTrue(public.appcast_matches(feed(item), "1.9.3", "1085", url))
+        bad_items = [item.replace('length="123"', 'length="0"'),
+                     item.replace(signature, "not-base64"), item.replace(signature, ""),
+                     item.replace("1085", "1084"), item.replace("1.9.3", "1.9.2"),
+                     item.replace(url, "https://unexpected.invalid/app.zip")]
+        for invalid in bad_items:
+            self.assertFalse(public.appcast_matches(feed(invalid), "1.9.3", "1085", url))
+        # Separate items may each contain a requested string but do not jointly
+        # describe a valid update. The previous grep-based check accepted this.
+        split_items = item.replace("1085", "1084") + item.replace("1.9.3", "1.9.2")
+        for invalid in ("", "<broken>", feed(split_items)):
+            self.assertFalse(public.appcast_matches(invalid, "1.9.3", "1085", url))
+
+    def test_post_release_step_reports_pages_and_feed_failures_without_stopping_dispatches(self):
+        primary = (ROOT / ".github/workflows/release-github-only.yml").read_text()
+        step = primary.split("- name: Trigger post-release updates", 1)[1].split("- name: Roll back broken release assets", 1)[0]
+        script = textwrap.dedent(step.split("        run: |\n", 1)[1])
+        with tempfile.TemporaryDirectory(prefix="nve-post-release-step-") as temp:
+            root = Path(temp)
+            fakebin = root / "bin"
+            fakebin.mkdir()
+            commands = {
+                "gh": '#!/bin/sh\ncase "$1 $2" in\n"workflow run") echo "$3" >> "$NVE_TEST_DISPATCHES";;\n"run list") echo 123;;\n"run view") echo "completed|${NVE_TEST_PAGES_STATE}";;\n*) exit 99;;\nesac\n',
+                "curl": '#!/bin/sh\ncat "$NVE_TEST_FEED"\n',
+                "sleep": '#!/bin/sh\nexit 0\n',
+            }
+            for name, body in commands.items():
+                path = fakebin / name
+                path.write_text(body)
+                path.chmod(0o755)
+            signature = base64.b64encode(b"s" * 64).decode()
+            feed = (f'<rss xmlns:sparkle="{public.SPARKLE}"><channel><item>'
+                    '<sparkle:version>1085</sparkle:version><sparkle:shortVersionString>1.9.3</sparkle:shortVersionString>'
+                    f'<enclosure url="https://github.com/owner/repo/releases/download/v1.9.3/Neon.Vision.Editor.app.zip" '
+                    f'length="123" sparkle:edSignature="{signature}" /></item></channel></rss>')
+            feed_path = root / "feed.xml"
+            log = root / "dispatches"
+            for state, contents, expected in (("success", feed, 0), ("failure", feed, 1),
+                                               ("success", feed.replace(signature, ""), 1)):
+                feed_path.write_text(contents)
+                log.write_text("")
+                env = {**os.environ, "PATH": str(fakebin) + os.pathsep + os.environ["PATH"],
+                       "GITHUB_REPOSITORY": "owner/repo", "APPCAST_COMMIT": "a" * 40,
+                       "APPCAST_VERSION": "1.9.3", "APPCAST_BUILD": "1085", "TAG_NAME": "v1.9.3",
+                       "NVE_TEST_PAGES_STATE": state, "NVE_TEST_FEED": str(feed_path),
+                       "NVE_TEST_DISPATCHES": str(log)}
+                result = subprocess.run(["bash", "-c", script], cwd=ROOT, env=env,
+                                        capture_output=True, text=True, timeout=30)
+                self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
+                self.assertEqual(log.read_text().splitlines(), ["post-release-documentation-sync.yml",
+                                  "update-download-metrics.yml", "sync-readme-appstore-versions.yml"])
+                if expected:
+                    self.assertIn("Public release assets are preserved", result.stderr)
+
+    def test_current_publication_inputs_remain_valid(self):
+        # Feed and manifest-only PRs avoid Xcode, but their inputs stay checked
+        # by this required Linux preflight suite.
+        manifest = ROOT / prep.STATE
+        if manifest.exists():
+            prep.validate_state(json.loads(manifest.read_text()))
+        feed = (ROOT / "appcast.xml").read_bytes()
+        self.assertEqual(feed, (ROOT / "site/appcast.xml").read_bytes())
+        self.assertEqual(ET.fromstring(feed).tag, "rss")
+        self.assertIsNotNone(ET.fromstring(feed).find("channel"))
+
+    def test_swift_change_classifier_runs_on_actual_file_lists(self):
+        workflow = (ROOT / ".github/workflows/swift.yml").read_text()
+        expression = workflow.split("jq -se '", 1)[1].split("' <<<", 1)[0]
+        cases = [
+            ([{"filename": "appcast.xml", "status": "modified"},
+              {"filename": "site/appcast.xml", "status": "modified"}], True),
+            ([{"filename": "README.md", "status": "modified"},
+              {"filename": prep.STATE, "status": "modified"}], True),
+            ([{"filename": "Project/Sources/Editor.swift", "status": "modified"}], False),
+            ([{"filename": "site/readme.md", "status": "renamed",
+               "previous_filename": "Project/Sources/Editor.swift"}], False),
+            ([{"filename": "appcast.xml", "status": "modified"},
+              {"filename": ".github/workflows/swift.yml", "status": "modified"}], False),
+            ([{"filename": "README.md"}], False), ([], False),
+        ]
+        for files, expected in cases:
+            with self.subTest(files=files):
+                result = subprocess.run(["jq", "-se", expression], input=json.dumps(files),
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode == 0, expected, result.stderr)
+        paginated = json.dumps(cases[0][0]) + "\n" + json.dumps(cases[2][0])
+        self.assertNotEqual(subprocess.run(["jq", "-se", expression], input=paginated,
+                                          capture_output=True, text=True).returncode, 0)
+
+    def test_required_check_wait_rejects_partial_failed_and_ambiguous_checks(self):
+        passed = [{"name": name, "bucket": "pass"} for name in sorted(required_checks.EXPECTED)]
+        self.assertTrue(required_checks.checks_ready(passed))
+        self.assertTrue(required_checks.checks_ready([dict(row, bucket="skipping") for row in passed]))
+        for rows in ([], passed[:1], [{"name": "CodeRabbit", "bucket": "pass"}],
+                     passed + [{"name": "additional required check", "bucket": "pending"}]):
+            self.assertFalse(required_checks.checks_ready(rows))
+        for bucket in ("fail", "cancel", "unknown", None):
+            with self.assertRaises(ValueError):
+                required_checks.checks_ready([dict(row, bucket=bucket) for row in passed])
+        for rows in (None, {}, [{}], passed + passed):
+            with self.assertRaises(ValueError):
+                required_checks.checks_ready(rows)
+
+    def test_required_check_wait_pins_head_and_handles_registration(self):
+        head = "a" * 40
+        info = {"headRefOid": head, "state": "OPEN"}
+        passed = [{"name": name, "bucket": "pass"} for name in sorted(required_checks.EXPECTED)]
+        def response(value, code=0):
+            return mock.Mock(returncode=code, stdout=json.dumps(value))
+        with mock.patch.object(required_checks.subprocess, "run", side_effect=[
+                response(info), response([], 8), response(info), response(passed)]) as run, \
+                mock.patch.object(required_checks.time, "sleep") as sleep:
+            required_checks.wait(762, "owner/repo", head)
+            self.assertEqual(sleep.call_count, 1)
+            self.assertIn("--required", run.call_args.args[0])
+            self.assertLessEqual(run.call_args.kwargs["timeout"], 30)
+        unregistered = mock.Mock(returncode=1, stdout="", stderr="no checks reported on branch")
+        with mock.patch.object(required_checks.subprocess, "run", side_effect=[
+                response(info), unregistered, response(info), response(passed)]), \
+                mock.patch.object(required_checks.time, "sleep") as sleep:
+            required_checks.wait(762, "owner/repo", head)
+            self.assertEqual(sleep.call_count, 1)
+        for value in (dict(info, headRefOid="b" * 40), dict(info, state="CLOSED")):
+            with mock.patch.object(required_checks.subprocess, "run", return_value=response(value)), \
+                    self.assertRaisesRegex(ValueError, "changed"):
+                required_checks.wait(762, "owner/repo", head)
+        with mock.patch.object(required_checks.subprocess, "run", return_value=response({}, 4)), \
+                self.assertRaisesRegex(ValueError, "query failed"):
+            required_checks.wait(762, "owner/repo", head)
+        with mock.patch.object(required_checks.time, "monotonic", side_effect=[0, 2]), \
+                self.assertRaises(TimeoutError):
+            required_checks.wait(762, "owner/repo", head, timeout=1)
 
     def test_architecture_thinning_precedes_export_not_build(self):
         project = (ROOT / "Neon Vision Editor.xcodeproj/project.pbxproj").read_text()

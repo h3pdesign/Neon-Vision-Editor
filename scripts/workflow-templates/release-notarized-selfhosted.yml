@@ -27,7 +27,7 @@ jobs:
     environment: self-hosted-release
     concurrency:
       group: release-${{ inputs.tag }}
-      cancel-in-progress: true
+      cancel-in-progress: false
 
     steps:
       - name: Validate trusted self-hosted request
@@ -321,6 +321,7 @@ jobs:
           fi
 
       - name: Verify published release asset payload
+        id: verify_published_assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ inputs.tag }}
@@ -357,7 +358,7 @@ jobs:
         run: gh workflow run post-release-documentation-sync.yml --ref main -f tag="$TAG_NAME"
 
       - name: Roll back broken published release asset
-        if: ${{ failure() && steps.publish_release.outcome == 'success' }}
+        if: ${{ failure() && steps.publish_release.outcome == 'success' && steps.verify_published_assets.outcome != 'success' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ inputs.tag }}

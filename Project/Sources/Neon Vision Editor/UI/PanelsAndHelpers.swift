@@ -2792,12 +2792,12 @@ struct WelcomeTourView: View {
             title: "What’s New in v1.9.3",
             subtitle: "Release highlights for v1.9.3.",
             bullets: [
-                "Editor Improvements: Choose plain-text editing instead of CSV/TSV tables on macOS.",
-                "Workflow Refinements: Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad.",
-                "AI Timeouts: Find Markdown preview and AI provider options in dedicated macOS Settings sections.",
-                "Usability Updates: Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…",
-                "Editor Improvements: Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS.",
-                "Reliable Saves: Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…"
+                "CSV/TSV Editing: Choose plain-text editing instead of CSV/TSV tables on macOS.",
+                "Font Selection: Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad.",
+                "Settings Sections: Find Markdown preview and AI provider options in dedicated macOS Settings sections.",
+                "CSV/TSV Editing: Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…",
+                "Markdown Preview Settings: Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS.",
+                "AI Settings: Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],

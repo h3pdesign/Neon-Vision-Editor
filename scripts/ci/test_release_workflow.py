@@ -49,6 +49,21 @@ def fixture(root):
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_welcome_headings_describe_configuration_changes_without_claiming_timeouts_or_performance(self):
+        descriptions = [
+            ("Choose plain-text editing instead of CSV/TSV tables on macOS.", "CSV/TSV Editing"),
+            ("Keep long font names from overlapping controls or widening Settings.", "Font Selection"),
+            ("Find Markdown preview and AI provider options in dedicated macOS Settings sections.", "Settings Sections"),
+            ("Moves project Markdown preview options to their own section.", "Markdown Preview Settings"),
+            ("Separates AI settings into provider/model and custom-provider sections.", "AI Settings"),
+            ("Fixes an AI provider timeout.", "AI Timeouts"),
+        ]
+        for description, expected in descriptions:
+            with self.subTest(description=description):
+                self.assertEqual(docs.welcome_feature_title(description, 2), expected)
+                self.assertEqual(docs.normalize_welcome_tour_bullets(["- v1.9.3: " + description])[0],
+                                 "- " + expected + ": " + docs.shorten_for_welcome_tour_card(description))
+
     def test_in_app_changelog_is_current_idempotent_and_keeps_history(self):
         source = (ROOT / "Project/Sources/Neon Vision Editor/UI/PanelsAndHelpers.swift").read_text()
         changelog = (ROOT / "CHANGELOG.md").read_text()

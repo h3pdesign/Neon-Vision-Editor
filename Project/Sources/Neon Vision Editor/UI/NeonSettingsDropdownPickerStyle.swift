@@ -13,13 +13,18 @@ struct NeonSettingsDropdownPickerModifier: ViewModifier {
             .pickerStyle(.menu)
             .buttonStyle(.plain)
             .font(.body.weight(.semibold))
+            .lineLimit(1)
+            .truncationMode(.middle)
             .foregroundStyle(isEnabled ? Color.primary : Color.secondary)
             .tint(Color.primary)
             .padding(.leading, 14)
             .padding(.trailing, trailingPadding)
             .padding(.vertical, verticalPadding)
-            .fixedSize(horizontal: true, vertical: false)
-            .frame(minHeight: minHeight, alignment: .leading)
+            // Only unconstrained toolbar menus use their intrinsic width. Settings
+            // controls must accept the row's proposal before drawing their chrome.
+            .fixedSize(horizontal: maxWidth == nil, vertical: false)
+            .frame(minWidth: maxWidth == nil ? nil : 0, maxWidth: maxWidth,
+                   minHeight: minHeight, alignment: .leading)
             .background(background)
             .overlay(alignment: .trailing) {
 #if os(macOS)
@@ -35,7 +40,6 @@ struct NeonSettingsDropdownPickerModifier: ViewModifier {
             .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.22 : 0.07), radius: 8, x: 0, y: 3)
             .opacity(isEnabled ? 1 : 0.56)
-            .frame(maxWidth: maxWidth, alignment: .leading)
     }
 
     private var background: some View {

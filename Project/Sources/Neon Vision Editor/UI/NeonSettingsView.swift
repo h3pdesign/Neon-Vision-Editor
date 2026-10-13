@@ -2520,6 +2520,9 @@ struct NeonSettingsView: View {
                             Text(useSystemFont ? localized("System") : (editorFontName.isEmpty ? localized("System") : editorFontName))
                                 .font(Typography.footnote)
                                 .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .help(useSystemFont || editorFontName.isEmpty ? localized("System") : editorFontName)
                             Button(showFontList ? localized("Hide Font List") : localized("Show Font List")) {
                                 showFontList.toggle()
                             }

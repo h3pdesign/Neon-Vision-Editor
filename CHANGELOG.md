@@ -17,6 +17,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Fixed
 
+- Keeps long font names inside their Settings dropdown on macOS, iPhone, and iPad without overlapping nearby controls or widening the page.
 - Prevents ordinary multiline notes containing a comma from opening as CSV tables (#738).
 - Fixes macOS Settings controls appearing behind the Dock (#714).
 

@@ -303,9 +303,15 @@ def welcome_feature_title(description: str, index: int) -> str:
     lowered = description.lower()
     rules = (
         (("navigation",), "Editor Navigation"),
+        (("csv", "tsv"), "CSV/TSV Editing"),
+        (("font name",), "Font Selection"),
+        (("settings sections",), "Settings Sections"),
+        (("markdown preview options",), "Markdown Preview Settings"),
+        (("ai settings", "custom-provider"), "AI Settings"),
         (("unnecessary work", "larger document", "performance", "responsive"), "Editor Performance"),
         (("assistive", "accessibility", "toolbar controls"), "Accessible Controls"),
-        (("timeout", "ai provider"), "AI Timeouts"),
+        (("timeout",), "AI Timeouts"),
+        (("ai provider",), "AI Providers"),
         (("table of contents", "toc", "heading"), "iPhone TOC"),
         (("syntax highlighting", "syntax coloring"), "Large-file Highlighting"),
         (("save", "trailing whitespace", "line ending"), "Reliable Saves"),

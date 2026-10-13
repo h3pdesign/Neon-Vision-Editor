@@ -1,3 +1,22 @@
+// v1.9.3 release highlights
+"What’s New in v1.9.3" = "v1.9.3の新機能";
+"Release highlights for v1.9.3." = "v1.9.3の主な変更点。";
+"CSV/TSV Editing" = "CSV/TSVの編集";
+"Font Selection" = "フォントの選択";
+"Settings Sections" = "設定のセクション";
+"Choose plain-text editing instead of CSV/TSV tables on macOS." = "macOSでCSV/TSVの表表示ではなくテキスト編集を選べます。";
+"CSV/TSV Editing: Choose plain-text editing instead of CSV/TSV tables on macOS." = "CSV/TSVの編集: macOSでCSV/TSVの表表示ではなくテキスト編集を選べます。";
+"Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad." = "長いフォント名がMac、iPhone、iPadの設定で操作部に重なったり、画面幅を広げたりしなくなります。";
+"Font Selection: Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad." = "フォントの選択: 長いフォント名がMac、iPhone、iPadの設定で操作部に重なったり、画面幅を広げたりしなくなります。";
+"Find Markdown preview and AI provider options in dedicated macOS Settings sections." = "macOS設定の専用セクションでMarkdownプレビューとAIプロバイダのオプションを見つけられます。";
+"Settings Sections: Find Markdown preview and AI provider options in dedicated macOS Settings sections." = "設定のセクション: macOS設定の専用セクションでMarkdownプレビューとAIプロバイダのオプションを見つけられます。";
+"Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…" = "macOSの設定 → エディタ → 基本にCSV/TSV表表示を追加。オフにするとテキストとして編集でき、自動認識を…";
+"CSV/TSV Editing: Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…" = "CSV/TSVの編集: macOSの設定 → エディタ → 基本にCSV/TSV表表示を追加。オフにするとテキストとして編集でき、自動認識を…";
+"Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS." = "macOSのMarkdownプロジェクトプレビューを設定 → エディタ → Markdownプレビューへ移動します。";
+"Markdown Preview Settings: Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS." = "Markdownプレビュー設定: macOSのMarkdownプロジェクトプレビューを設定 → エディタ → Markdownプレビューへ移動します。";
+"Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…" = "macOSのAI設定をプロバイダ／モデルとカスタムプロバイダに分割し、認証情報と保存済みの…";
+"AI Settings: Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…" = "AI設定: macOSのAI設定をプロバイダ／モデルとカスタムプロバイダに分割し、認証情報と保存済みの…";
+
 // v1.9.2 release highlights
 "What’s New in v1.9.2" = "v1.9.2 の新機能";
 "Release highlights for v1.9.2." = "v1.9.2 の主な変更。";
@@ -1405,6 +1424,8 @@
 "Show Indentation Guides" = "インデントガイドを表示";
 "Show Installer Log" = "インストーラーログを表示";
 "Show Invisible Characters" = "非表示文字を表示";
+"Show CSV/TSV Table View" = "CSV/TSVの表ビューを表示";
+"Turn off to edit CSV and TSV as text and stop automatic table detection in new notes. This does not change file contents." = "オフにすると、CSVとTSVをテキストとして編集し、新しいメモでの表の自動検出を無効にします。ファイルの内容は変更されません。";
 "Show Keyboard Snippet Bar" = "キーボードスニペットバーを表示";
 "Show Line Numbers" = "行番号を表示";
 "Show Markdown Cards" = "Markdownカードを表示";

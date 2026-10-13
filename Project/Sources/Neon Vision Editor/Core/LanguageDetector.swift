@@ -192,7 +192,7 @@ public struct LanguageDetector: Sendable {
         return hasSecondaryMarkdownSyntax || (hasHeading && hasBodyText)
     }
 
-    public func detect(text: String, name: String?, fileURL: URL?) -> Result {
+    public func detect(text: String, name: String?, fileURL: URL?, allowsDelimitedTextDetection: Bool? = nil) -> Result {
         let sample = String(text.prefix(120_000))
         let lower = sample.lowercased()
         let trimForDetection = UserDefaults.standard.bool(forKey: "SettingsTrimWhitespaceForSyntaxDetection")
@@ -345,7 +345,9 @@ public struct LanguageDetector: Sendable {
             }
         }
 
-        if looksLikeCSV(text) { bump("csv", 140) }
+        let detectDelimitedText = allowsDelimitedTextDetection
+            ?? (UserDefaults.standard.object(forKey: "SettingsDelimitedTableViewEnabled") as? Bool ?? true)
+        if detectDelimitedText && looksLikeCSV(sample) { bump("csv", 140) }
 
         // Markdown
         let mdHeadingCount = regexCount(lower, pattern: "(?m)^\\s{0,3}#{1,6}\\s+.+$")
@@ -589,7 +591,9 @@ public struct LanguageDetector: Sendable {
         let sample = lines.prefix(6)
         let counts = sample.map { line in line.filter { $0 == "," }.count }
         guard let first = counts.first, first > 0 else { return false }
-        let consistent = counts.dropFirst().allSatisfy { abs($0 - first) <= 1 }
+        // A comma in one prose line must not classify subsequent ordinary lines
+        // as table rows. Require every sampled row to contain the same delimiter count.
+        let consistent = counts.dropFirst().allSatisfy { $0 == first }
         return consistent
     }
 }

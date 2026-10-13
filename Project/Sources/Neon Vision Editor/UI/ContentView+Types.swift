@@ -11,6 +11,7 @@ extension ContentView {
         let context: SecondaryContentContext
         let revision: Int
         let delimitedMode: DelimitedViewMode
+        let delimitedTableEnabled: Bool
         let plistMode: PlistViewMode
         let crashMode: CrashReportViewMode
         let logMode: LogViewMode
@@ -26,6 +27,7 @@ extension ContentView {
             ),
             revision: viewModel.selectedTab?.contentRevision ?? editorExternalMutationRevision,
             delimitedMode: delimitedViewMode,
+            delimitedTableEnabled: delimitedTableViewEnabled,
             plistMode: plistViewMode,
             crashMode: crashReportViewMode,
             logMode: logViewMode,

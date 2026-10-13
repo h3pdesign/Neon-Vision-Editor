@@ -6,6 +6,38 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v1.9.3] - 2026-10-13
+
+### Why Upgrade
+
+- Choose plain-text editing instead of CSV/TSV tables on macOS.
+- Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad.
+- Find Markdown preview and AI provider options in dedicated macOS Settings sections.
+
+### Highlights
+
+- Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic table detection in new notes without changing file contents (#738).
+- Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS.
+- Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved values.
+
+### Fixes
+
+- Prevents ordinary multiline notes containing commas from opening as CSV tables (#738).
+- Keeps long selected font names inside their dropdown on macOS, iPhone, and iPad without overlapping nearby controls or widening the page. The complete name remains available in the font menu.
+- Restores the released native macOS Settings sizing and background behavior, keeping controls accessible above the Dock (#714).
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. CSV/TSV table views remain enabled by default; existing font choices and AI provider settings are preserved.
+
+### Maintenance
+
+- Adds regression coverage for bounded dropdown sizing, accessibility-sized text, delimited-text detection, table-view preference changes, and Settings layout.
+
 ## [v1.9.2] - 2026-10-06
 
 ### Why Upgrade

@@ -1,3 +1,22 @@
+// v1.9.3 release highlights
+"What’s New in v1.9.3" = "Neu in v1.9.3";
+"Release highlights for v1.9.3." = "Die wichtigsten Neuerungen in v1.9.3.";
+"CSV/TSV Editing" = "CSV/TSV bearbeiten";
+"Font Selection" = "Schriftauswahl";
+"Settings Sections" = "Einstellungsbereiche";
+"Choose plain-text editing instead of CSV/TSV tables on macOS." = "Wählen Sie unter macOS die Textbearbeitung statt der CSV/TSV-Tabellenansicht.";
+"CSV/TSV Editing: Choose plain-text editing instead of CSV/TSV tables on macOS." = "CSV/TSV bearbeiten: Wählen Sie unter macOS die Textbearbeitung statt der CSV/TSV-Tabellenansicht.";
+"Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad." = "Lange Schriftnamen überlagern keine Bedienelemente und verbreitern die Einstellungen auf Mac, iPhone und iPad nicht.";
+"Font Selection: Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad." = "Schriftauswahl: Lange Schriftnamen überlagern keine Bedienelemente und verbreitern die Einstellungen auf Mac, iPhone und iPad nicht.";
+"Find Markdown preview and AI provider options in dedicated macOS Settings sections." = "Finden Sie Markdown-Vorschau und KI-Anbieteroptionen in eigenen Bereichen der macOS-Einstellungen.";
+"Settings Sections: Find Markdown preview and AI provider options in dedicated macOS Settings sections." = "Einstellungsbereiche: Finden Sie Markdown-Vorschau und KI-Anbieteroptionen in eigenen Bereichen der macOS-Einstellungen.";
+"Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…" = "Ergänzt Einstellungen → Editor → Grundlagen → CSV/TSV-Tabellenansicht auf macOS. Deaktivieren Sie die Option für Textbearbeitung ohne automatische…";
+"CSV/TSV Editing: Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…" = "CSV/TSV bearbeiten: Ergänzt Einstellungen → Editor → Grundlagen → CSV/TSV-Tabellenansicht auf macOS. Deaktivieren Sie die Option für Textbearbeitung ohne automatische…";
+"Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS." = "Verschiebt die Markdown-Projektvorschau nach Einstellungen → Editor → Markdown-Vorschau auf macOS.";
+"Markdown Preview Settings: Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS." = "Markdown-Vorschaueinstellungen: Verschiebt die Markdown-Projektvorschau nach Einstellungen → Editor → Markdown-Vorschau auf macOS.";
+"Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…" = "Unterteilt die macOS-KI-Einstellungen in Anbieter/Modell und eigenen Anbieter. Zugangsdaten und gespeicherte…";
+"AI Settings: Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…" = "KI-Einstellungen: Unterteilt die macOS-KI-Einstellungen in Anbieter/Modell und eigenen Anbieter. Zugangsdaten und gespeicherte…";
+
 // v1.9.2 release highlights
 "What’s New in v1.9.2" = "Neu in v1.9.2";
 "Release highlights for v1.9.2." = "Die wichtigsten Neuerungen in v1.9.2.";
@@ -1405,6 +1424,8 @@
 "Show Indentation Guides" = "Einrückungsanweisungen anzeigen";
 "Show Installer Log" = "Installer-Log anzeigen";
 "Show Invisible Characters" = "Unsichtbare Zeichen anzeigen";
+"Show CSV/TSV Table View" = "CSV/TSV-Tabellenansicht anzeigen";
+"Turn off to edit CSV and TSV as text and stop automatic table detection in new notes. This does not change file contents." = "Deaktivieren, um CSV und TSV als Text zu bearbeiten und die automatische Tabellenerkennung in neuen Notizen auszuschalten. Dateiinhalte bleiben unverändert.";
 "Show Keyboard Snippet Bar" = "Zeigt die Tastatur-Snippets-Leiste an";
 "Show Line Numbers" = "Zeilennummern anzeigen";
 "Show Markdown Cards" = "Markdown-Karten anzeigen";

@@ -1,11 +1,119 @@
 import XCTest
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 #if os(iOS)
 import UIKit
 #endif
 @testable import Neon_Vision_Editor
 
 final class ContentViewLayoutTests: XCTestCase {
+#if os(macOS) || os(iOS)
+    @MainActor
+    func testSettingsFontDropdownKeepsLongNamesInsideItsAllocatedWidth() async {
+        for name in ["System", "ITFDevanagariMarathi-Medium", "AmericanTypewriter-CondensedLight", "日本語フォント-Regular",
+                     String(repeating: "LongFontFamily", count: 6)] {
+            for width: CGFloat in [150, 280] {
+                let frames = await settingsFontDropdownFrames(name: name, width: width, maxWidth: width)
+                XCTAssertGreaterThan(frames.picker.width, 0)
+                XCTAssertGreaterThanOrEqual(frames.picker.minX, frames.slot.minX,
+                    "The selected name must not push Settings off the leading edge: \(name)")
+                XCTAssertLessThanOrEqual(frames.picker.maxX, frames.slot.maxX + 0.5,
+                    "The selected name must stay inside its dropdown, not overlap adjacent controls: \(name)")
+            }
+        }
+    }
+
+    @MainActor
+    func testSettingsFontDropdownHonorsFlexibleRowsAndAccessibilityTextSize() async {
+        for width: CGFloat in [150, 280, 500] {
+            let frames = await settingsFontDropdownFrames(name: "AmericanTypewriter-CondensedLight",
+                width: width, maxWidth: .infinity, dynamicTypeSize: .accessibility3)
+            XCTAssertLessThanOrEqual(frames.picker.maxX, frames.slot.maxX + 0.5)
+            XCTAssertLessThanOrEqual(frames.slot.maxX, frames.container.maxX + 0.5,
+                "A flexible Settings control must not widen the page at accessibility text sizes")
+            XCTAssertGreaterThanOrEqual(frames.choose.minX, frames.slot.maxX,
+                "The adjacent action must remain outside the selected font control")
+        }
+    }
+
+    @MainActor
+    func testUnconstrainedToolbarDropdownRetainsIntrinsicWidth() async {
+        let frames = await settingsFontDropdownFrames(name: String(repeating: "LongFontFamily", count: 6),
+            width: 150, maxWidth: nil)
+        XCTAssertGreaterThan(frames.picker.width, 150,
+            "Menus explicitly requesting intrinsic width must retain their existing behavior")
+    }
+
+    @MainActor
+    private func settingsFontDropdownFrames(name: String, width: CGFloat, maxWidth: CGFloat?,
+                                           dynamicTypeSize: DynamicTypeSize = .large) async -> (picker: CGRect, slot: CGRect, choose: CGRect, container: CGRect) {
+        let measured = expectation(description: "Font dropdown measured")
+        var pickerFrame = CGRect.zero
+        var slotFrame = CGRect.zero
+        var chooseFrame = CGRect.zero
+        var containerFrame = CGRect.zero
+        var fulfilled = false
+        func finishIfReady() {
+            if !fulfilled, pickerFrame.width > 0, slotFrame.width > 0, containerFrame.width > 0,
+               chooseFrame.width > 0 || maxWidth == nil {
+                fulfilled = true
+                measured.fulfill()
+            }
+        }
+        let view = HStack(spacing: 12) {
+            Picker("Font", selection: .constant(name)) {
+                Text(name).tag(name)
+            }
+            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
+                pickerFrame = $0
+                finishIfReady()
+            }
+            .neonSettingsDropdown(maxWidth: maxWidth)
+            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
+                slotFrame = $0
+                finishIfReady()
+            }
+            Button("Choose…") {}
+                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
+                    chooseFrame = $0
+                    finishIfReady()
+                }
+        }
+        .environment(\.dynamicTypeSize, dynamicTypeSize)
+        .frame(width: width + 110, height: 80, alignment: .leading)
+        .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
+            containerFrame = $0
+            finishIfReady()
+        }
+#if os(macOS)
+        let hosting = NSHostingView(rootView: view)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width + 110, height: 80),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = hosting
+        window.orderFront(nil)
+        defer { window.orderOut(nil); window.close() }
+        hosting.layoutSubtreeIfNeeded()
+#else
+        let controller = UIHostingController(rootView: view)
+        let window: UIWindow
+        if let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
+            window = UIWindow(windowScene: scene)
+        } else {
+            window = UIWindow(frame: CGRect(x: 0, y: 0, width: width + 110, height: 80))
+        }
+        window.frame = CGRect(x: 0, y: 0, width: width + 110, height: 80)
+        window.rootViewController = controller
+        window.isHidden = false
+        defer { window.isHidden = true }
+        controller.view.layoutIfNeeded()
+#endif
+        await fulfillment(of: [measured], timeout: 3)
+        return (pickerFrame, slotFrame, chooseFrame, containerFrame)
+    }
+#endif
 #if os(iOS)
     @MainActor
     func testBottomChromeMeasuresToolbarHeightInsteadOfTouchingStatus() async {
@@ -87,12 +195,12 @@ final class ContentViewLayoutTests: XCTestCase {
         let id = UUID()
         let csv = ContentView.SecondaryContentRequest(
             context: .init(tabID: id, fileURL: nil, language: "csv"),
-            revision: 1, delimitedMode: .table, plistMode: .text,
+            revision: 1, delimitedMode: .table, delimitedTableEnabled: true, plistMode: .text,
             crashMode: .text, logMode: .text
         )
         let tsv = ContentView.SecondaryContentRequest(
             context: .init(tabID: id, fileURL: nil, language: "tsv"),
-            revision: 1, delimitedMode: .table, plistMode: .text,
+            revision: 1, delimitedMode: .table, delimitedTableEnabled: true, plistMode: .text,
             crashMode: .text, logMode: .text
         )
         XCTAssertNotEqual(csv, tsv, "Changing the delimiter must replace the parse task even without editing text.")
@@ -102,13 +210,25 @@ final class ContentViewLayoutTests: XCTestCase {
     func testSecondaryContentRequestDistinguishesTabsWithIdenticalRevisions() {
         func request(_ id: UUID, revision: Int = 0) -> ContentView.SecondaryContentRequest {
             .init(context: .init(tabID: id, fileURL: nil, language: "csv"),
-                  revision: revision, delimitedMode: .table, plistMode: .text,
+                  revision: revision, delimitedMode: .table, delimitedTableEnabled: true, plistMode: .text,
                   crashMode: .text, logMode: .text)
         }
         let id = UUID()
         XCTAssertEqual(request(id), request(id), "An unchanged request must not restart parsing.")
         XCTAssertNotEqual(request(id), request(UUID()), "New tabs commonly have the same content revision.")
         XCTAssertNotEqual(request(id), request(id, revision: 1), "Edits must replace the parse task.")
+    }
+
+    @MainActor
+    func testDisablingTableViewInvalidatesSecondaryContentRequest() {
+        let context = ContentView.SecondaryContentContext(tabID: UUID(), fileURL: nil, language: "csv")
+        let enabled = ContentView.SecondaryContentRequest(context: context, revision: 1,
+            delimitedMode: .table, delimitedTableEnabled: true, plistMode: .text,
+            crashMode: .text, logMode: .text)
+        let disabled = ContentView.SecondaryContentRequest(context: context, revision: 1,
+            delimitedMode: .table, delimitedTableEnabled: false, plistMode: .text,
+            crashMode: .text, logMode: .text)
+        XCTAssertNotEqual(enabled, disabled, "Changing the preference must cancel obsolete table parsing.")
     }
 
     func testRegularWidthSplitUsesAppOwnedChrome() {

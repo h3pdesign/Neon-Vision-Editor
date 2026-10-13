@@ -960,6 +960,7 @@ struct ContentView: View {
     @State var markdownProjectPreviewResizeStartWidth: CGFloat? = nil
     @State var isMarkdownProjectPreviewResizeHandleHovered: Bool = false
 #endif
+    @AppStorage("SettingsDelimitedTableViewEnabled") var delimitedTableViewEnabled: Bool = true
     @State var delimitedViewMode: DelimitedViewMode = .table
     @State var delimitedTableSnapshot: DelimitedTableSnapshot? = nil
     @State var activeDelimitedCell: DelimitedCellPosition? = nil
@@ -1168,7 +1169,7 @@ struct ContentView: View {
     }
 
     var shouldShowDelimitedTable: Bool {
-        isDelimitedFileLanguage && delimitedViewMode == .table
+        delimitedTableViewEnabled && isDelimitedFileLanguage && delimitedViewMode == .table
     }
 
     var isPlistDocument: Bool {

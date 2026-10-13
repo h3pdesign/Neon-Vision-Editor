@@ -1,3 +1,22 @@
+// v1.9.3 release highlights
+"What’s New in v1.9.3" = "Novedades de v1.9.3";
+"Release highlights for v1.9.3." = "Lo más destacado de v1.9.3.";
+"CSV/TSV Editing" = "Edición CSV/TSV";
+"Font Selection" = "Selección de fuente";
+"Settings Sections" = "Secciones de ajustes";
+"Choose plain-text editing instead of CSV/TSV tables on macOS." = "Elige la edición de texto en lugar de tablas CSV/TSV en macOS.";
+"CSV/TSV Editing: Choose plain-text editing instead of CSV/TSV tables on macOS." = "Edición CSV/TSV: Elige la edición de texto en lugar de tablas CSV/TSV en macOS.";
+"Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad." = "Los nombres largos de fuentes no se superponen a los controles ni ensanchan Ajustes en Mac, iPhone y iPad.";
+"Font Selection: Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad." = "Selección de fuente: Los nombres largos de fuentes no se superponen a los controles ni ensanchan Ajustes en Mac, iPhone y iPad.";
+"Find Markdown preview and AI provider options in dedicated macOS Settings sections." = "Encuentra la vista previa Markdown y los proveedores de IA en secciones dedicadas de los ajustes de macOS.";
+"Settings Sections: Find Markdown preview and AI provider options in dedicated macOS Settings sections." = "Secciones de ajustes: Encuentra la vista previa Markdown y los proveedores de IA en secciones dedicadas de los ajustes de macOS.";
+"Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…" = "Añade Ajustes → Editor → Básicos → Mostrar tablas CSV/TSV en macOS. Desactívalo para editar texto sin detección automática…";
+"CSV/TSV Editing: Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…" = "Edición CSV/TSV: Añade Ajustes → Editor → Básicos → Mostrar tablas CSV/TSV en macOS. Desactívalo para editar texto sin detección automática…";
+"Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS." = "Mueve la vista previa de proyectos Markdown a Ajustes → Editor → Vista previa Markdown en macOS.";
+"Markdown Preview Settings: Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS." = "Ajustes de vista previa Markdown: Mueve la vista previa de proyectos Markdown a Ajustes → Editor → Vista previa Markdown en macOS.";
+"Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…" = "Separa los ajustes de IA de macOS en proveedor/modelo y proveedor personalizado, conservando las credenciales y los valores…";
+"AI Settings: Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…" = "Ajustes de IA: Separa los ajustes de IA de macOS en proveedor/modelo y proveedor personalizado, conservando las credenciales y los valores…";
+
 // v1.9.2 release highlights
 "What’s New in v1.9.2" = "Novedades de v1.9.2";
 "Release highlights for v1.9.2." = "Principales novedades de v1.9.2.";
@@ -1405,6 +1424,8 @@
 "Show Indentation Guides" = "Mostrar Guías de indentación";
 "Show Installer Log" = "Mostrar Registro del instalador";
 "Show Invisible Characters" = "Mostrar caracteres invisibles";
+"Show CSV/TSV Table View" = "Mostrar CSV/TSV como tabla";
+"Turn off to edit CSV and TSV as text and stop automatic table detection in new notes. This does not change file contents." = "Desactiva esta opción para editar CSV y TSV como texto y desactivar la detección automática de tablas en notas nuevas. El contenido de los archivos no cambia.";
 "Show Keyboard Snippet Bar" = "Mostrar barra de fragmentos de teclado";
 "Show Line Numbers" = "Mostrar números de línea";
 "Show Markdown Cards" = "Mostrar tarjetas Markdown";

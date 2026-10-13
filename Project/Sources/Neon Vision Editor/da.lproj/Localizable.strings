@@ -1,3 +1,22 @@
+// v1.9.3 release highlights
+"What’s New in v1.9.3" = "Nyt i v1.9.3";
+"Release highlights for v1.9.3." = "Højdepunkter i v1.9.3.";
+"CSV/TSV Editing" = "CSV/TSV-redigering";
+"Font Selection" = "Valg af skrifttype";
+"Settings Sections" = "Indstillingssektioner";
+"Choose plain-text editing instead of CSV/TSV tables on macOS." = "Vælg tekstredigering i stedet for CSV/TSV-tabeller på macOS.";
+"CSV/TSV Editing: Choose plain-text editing instead of CSV/TSV tables on macOS." = "CSV/TSV-redigering: Vælg tekstredigering i stedet for CSV/TSV-tabeller på macOS.";
+"Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad." = "Lange skriftnavne overlapper ikke betjeningselementer og udvider ikke Indstillinger på Mac, iPhone og iPad.";
+"Font Selection: Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad." = "Valg af skrifttype: Lange skriftnavne overlapper ikke betjeningselementer og udvider ikke Indstillinger på Mac, iPhone og iPad.";
+"Find Markdown preview and AI provider options in dedicated macOS Settings sections." = "Find Markdown-forhåndsvisning og AI-udbydere i egne sektioner i macOS-indstillingerne.";
+"Settings Sections: Find Markdown preview and AI provider options in dedicated macOS Settings sections." = "Indstillingssektioner: Find Markdown-forhåndsvisning og AI-udbydere i egne sektioner i macOS-indstillingerne.";
+"Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…" = "Tilføjer Indstillinger → Editor → Grundlæggende → Vis CSV/TSV-tabeller på macOS. Slå fra for tekstredigering uden automatisk…";
+"CSV/TSV Editing: Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…" = "CSV/TSV-redigering: Tilføjer Indstillinger → Editor → Grundlæggende → Vis CSV/TSV-tabeller på macOS. Slå fra for tekstredigering uden automatisk…";
+"Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS." = "Flytter Markdown-projektforhåndsvisning til Indstillinger → Editor → Markdown-forhåndsvisning på macOS.";
+"Markdown Preview Settings: Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS." = "Markdown-forhåndsvisning: Flytter Markdown-projektforhåndsvisning til Indstillinger → Editor → Markdown-forhåndsvisning på macOS.";
+"Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…" = "Opdeler macOS AI-indstillinger i udbyder/model og brugerdefineret udbyder og bevarer legitimationsoplysninger og gemte…";
+"AI Settings: Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…" = "AI-indstillinger: Opdeler macOS AI-indstillinger i udbyder/model og brugerdefineret udbyder og bevarer legitimationsoplysninger og gemte…";
+
 // v1.9.2 release highlights
 "What’s New in v1.9.2" = "Nyheder i v1.9.2";
 "Release highlights for v1.9.2." = "De vigtigste nyheder i v1.9.2.";

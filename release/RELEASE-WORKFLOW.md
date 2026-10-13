@@ -22,6 +22,43 @@ under two hours end-to-end, with a roughly ten-minute hosted workflow, but
 external queues, notarization, and protected-branch approval cannot be
 guaranteed by automation.
 
+### Publication latency and recovery
+
+The v1.9.3 hosted run archived and notarized in about nine minutes, then spent
+23 minutes publishing the appcast PR. Feed-only and publication-manifest-only
+PRs now retain required check contexts but avoid the Xcode matrix; the Linux
+preflight validates the feed mirrors and manifest. Swift, project, script,
+workflow and renamed files still require full Swift validation.
+
+Appcast, publication-documentation and App Store metadata PRs use the existing
+`METRIC_TOKEN` automation identity for PR creation as well as branch pushes.
+GitHub holds `GITHUB_TOKEN`-authored PR checks for workflow approval; using the
+existing PAT avoids that hold without changing protection or signature rules.
+Keep this credential limited to the repository automation it already serves.
+
+Documentation and appcast merges wait for all required checks on the exact
+signed PR head (including registration), reject failures or changed heads, and
+leave the PR open with an actionable error on timeout. Publication docs are
+dispatched before the other documentation writers and before Pages polling.
+Same-tag primary/fallback notarized runs share one non-cancelling lock. Do not
+start a duplicate run: GitHub's lock serializes rather than deduplicates it.
+
+After uploaded assets pass verification and become public, an appcast, Pages,
+or documentation failure must not delete those assets. Repair the failed
+publication step/PR and rerun the failed job only after inspecting its source
+and completed steps; do not overwrite a healthy release to repair documentation.
+Reruns re-verify and reuse the published ZIP/DMG without replacing them, but
+still reconcile the appcast and documentation. Appcast signing uses the exact
+downloaded, checksum-verified ZIP and its version/build, not a fresh same-tag
+archive. ZIP and DMG metadata must agree. A Pages failure or a malformed/stale
+live feed fails the run visibly while preserving published assets. Feed
+readiness requires version, build, URL and a well-formed Ed25519 signature on
+the same XML item; it is not an independent cryptographic verification.
+Manually dispatched Pages runs identify their requested source in `run-name`,
+so a later main commit does not make the pinned deployment undiscoverable.
+The next hosted release must verify these changes end to end; offline checks
+do not establish token validity, runner timing or protected-merge behavior.
+
 OS 27 features are part of `develop`; App Store builds must use Xcode 27 or later so their
 SDK-qualified sources are included, while older SDK builds retain compatibility.
 

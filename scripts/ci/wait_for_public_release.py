@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Bounded publication readiness check followed by public asset checksum verification."""
 import argparse
+import base64
+import binascii
 import hashlib
 import json
 from pathlib import Path
@@ -8,8 +10,35 @@ import re
 import subprocess
 import tempfile
 import time
+import xml.etree.ElementTree as ET
 
 ASSETS = {"Neon.Vision.Editor.app.zip", "Neon.Vision.Editor.app.dmg", "SHA256SUMS.txt"}
+SPARKLE = "http://www.andymatuschak.org/xml-namespaces/sparkle"
+
+
+def appcast_matches(feed: str, version: str, build: str, url: str) -> bool:
+    """Require matching metadata and a well-formed signature on one item.
+
+    This is publication readiness, not cryptographic signature verification;
+    signing and artifact verification remain the hosted release gates.
+    """
+    try:
+        root = ET.fromstring(feed)
+        if root.tag != "rss":
+            return False
+        for item in root.findall("./channel/item"):
+            if (item.findtext(f"{{{SPARKLE}}}version") != build
+                    or item.findtext(f"{{{SPARKLE}}}shortVersionString") != version):
+                continue
+            enclosure = item.find("enclosure")
+            if enclosure is None or enclosure.get("url") != url:
+                continue
+            signature = base64.b64decode(enclosure.get(f"{{{SPARKLE}}}edSignature", ""), validate=True)
+            if len(signature) == 64 and int(enclosure.get("length", "0")) > 0:
+                return True
+    except (ET.ParseError, ValueError, binascii.Error):
+        return False
+    return False
 
 
 def ready(release: dict, tag: str) -> bool:

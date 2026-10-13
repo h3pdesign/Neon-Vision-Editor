@@ -53,7 +53,7 @@ jobs:
   release:
     timeout-minutes: 180
     concurrency:
-      group: github-only-release-${{ inputs.tag || github.ref_name }}
+      group: release-${{ inputs.tag || github.ref_name }}
       cancel-in-progress: false
     environment:
       name: github-release
@@ -563,6 +563,7 @@ jobs:
           fi
 
       - name: Verify uploaded release assets
+        id: verify_uploaded_assets
         if: ${{ !(inputs.dry_run || false) }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -614,7 +615,29 @@ jobs:
           xcrun stapler validate "$MOUNT_POINT/Neon Vision Editor.app"
           scripts/ci/verify_icon_payload.sh "$MOUNT_POINT/Neon Vision Editor.app"
 
+          # Persist the exact uploaded ZIP, not a newly rebuilt same-tag ZIP.
+          # Sparkle signatures must match the bytes users actually download.
+          uploaded_app="$WORK_DIR/extracted/Neon Vision Editor.app"
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$uploaded_app/Contents/Info.plist")"
+          build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$uploaded_app/Contents/Info.plist")"
+          if [[ "$version" != "${TAG_NAME#v}" || ! "$build" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Uploaded app metadata does not match ${TAG_NAME}." >&2
+            exit 1
+          fi
+          for key in CFBundleShortVersionString CFBundleVersion; do
+            zip_value="$(/usr/libexec/PlistBuddy -c "Print :${key}" "$uploaded_app/Contents/Info.plist")"
+            dmg_value="$(/usr/libexec/PlistBuddy -c "Print :${key}" "$MOUNT_POINT/Neon Vision Editor.app/Contents/Info.plist")"
+            if [[ "$zip_value" != "$dmg_value" ]]; then
+              echo "Uploaded ZIP and DMG have different ${key}." >&2
+              exit 1
+            fi
+          done
+          cp "$WORK_DIR/Neon.Vision.Editor.app.zip" "$RUNNER_TEMP/verified-release.zip"
+          printf 'version=%s\nbuild=%s\n' "$version" "$build" >> "$GITHUB_OUTPUT"
+          printf 'zip_sha256=%s\n' "$(shasum -a 256 "$RUNNER_TEMP/verified-release.zip" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
       - name: Publish verified GitHub release
+        id: publish_verified_release
         if: ${{ !(inputs.dry_run || false) }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -647,15 +670,19 @@ jobs:
           gh_retry gh release edit "$TAG_NAME" --draft=false "${RELEASE_FLAGS[@]}"
 
       - name: Generate and publish signed Sparkle appcast
-        if: ${{ !(inputs.dry_run || false) && steps.upload_release_assets.outputs.assets_reused != 'true' }}
+        if: ${{ !(inputs.dry_run || false) }}
         id: publish_appcast
         env:
           APPCAST_PATH: ${{ runner.temp }}/appcast.xml
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # PR creation must use the same identity as the signed branch push.
+          GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
           METRICS_SIGNING_SSH_KEY: ${{ secrets.METRICS_SIGNING_SSH_KEY }}
           METRICS_SIGNING_NAME: ${{ secrets.METRICS_SIGNING_NAME }}
           METRICS_SIGNING_EMAIL: ${{ secrets.METRICS_SIGNING_EMAIL }}
           NVE_SPARKLE_PRIVATE_KEY: ${{ secrets.NVE_SPARKLE_PRIVATE_KEY }}
+          RELEASE_VERSION: ${{ steps.verify_uploaded_assets.outputs.version }}
+          RELEASE_BUILD: ${{ steps.verify_uploaded_assets.outputs.build }}
+          RELEASE_ZIP_SHA256: ${{ steps.verify_uploaded_assets.outputs.zip_sha256 }}
         run: |
           set -euo pipefail
           tool="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_appcast' -type f -perm -u+x -print -quit)"
@@ -667,18 +694,22 @@ jobs:
           appcast_dir="$(mktemp -d)"
           trap 'rm -rf "$appcast_dir"' EXIT
           cp appcast.xml "$appcast_dir/appcast.xml"
-          cp Neon.Vision.Editor.app.zip "$appcast_dir/"
+          verified_zip="$RUNNER_TEMP/verified-release.zip"
+          if [[ "$(shasum -a 256 "$verified_zip" | awk '{print $1}')" != "$RELEASE_ZIP_SHA256" ]]; then
+            echo "Verified uploaded ZIP changed before appcast signing." >&2
+            exit 1
+          fi
+          cp "$verified_zip" "$appcast_dir/Neon.Vision.Editor.app.zip"
           printf '%s' "$NVE_SPARKLE_PRIVATE_KEY" | "$tool" \
             --ed-key-file - \
             --download-url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}/" \
             -o "$APPCAST_PATH" \
             "$appcast_dir"
 
-          app_path="$RUNNER_TEMP/export/Neon Vision Editor.app"
-          appcast_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Contents/Info.plist")"
-          appcast_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app_path/Contents/Info.plist")"
+          appcast_version="$RELEASE_VERSION"
+          appcast_build="$RELEASE_BUILD"
           if [[ "$appcast_version" != "${TAG_NAME#v}" || ! "$appcast_build" =~ ^[0-9]+$ ]]; then
-            echo "Exported app version does not match ${TAG_NAME}: ${appcast_version} (${appcast_build})." >&2
+            echo "Uploaded app version does not match ${TAG_NAME}: ${appcast_version} (${appcast_build})." >&2
             exit 1
           fi
           if ! grep -F "<sparkle:version>${appcast_build}</sparkle:version>" "$APPCAST_PATH" >/dev/null \
@@ -755,9 +786,10 @@ jobs:
                 echo "Could not resolve the open appcast PR for ${appcast_branch_sha}." >&2
                 exit 1
               fi
-              if ! gh pr merge "${appcast_pr_number}" --repo "${GITHUB_REPOSITORY}" --merge; then
-                gh pr merge "${appcast_pr_number}" --repo "${GITHUB_REPOSITORY}" --auto --merge
-              fi
+              python3 scripts/ci/wait_for_required_checks.py "${appcast_pr_number}" \
+                --repo "${GITHUB_REPOSITORY}" --head "${appcast_branch_sha}"
+              gh pr merge "${appcast_pr_number}" --repo "${GITHUB_REPOSITORY}" \
+                --merge --match-head-commit "${appcast_branch_sha}"
               for _ in {1..120}; do
                 merge_state="$(gh pr view "${appcast_pr_number}" --repo "${GITHUB_REPOSITORY}" --json state,mergeCommit --jq '[.state, (.mergeCommit.oid // "")] | join("|")' || true)"
                 if [[ "${merge_state%%|*}" == "MERGED" && -n "${merge_state#*|}" ]]; then
@@ -785,7 +817,7 @@ jobs:
           printf 'build=%s\n' "$appcast_build" >> "$GITHUB_OUTPUT"
 
       - name: Trigger post-release updates
-        if: ${{ !(inputs.dry_run || false) && steps.upload_release_assets.outputs.assets_reused != 'true' && (inputs.trigger_post_release_updates || false) }}
+        if: ${{ !(inputs.dry_run || false) && (inputs.trigger_post_release_updates || false) }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPCAST_COMMIT: ${{ steps.publish_appcast.outputs.commit }}
@@ -811,6 +843,12 @@ jobs:
             exit 1
           fi
 
+          # Queue publication docs first. Its writer lock covers the protected
+          # merge, avoiding a metrics/Store PR advancing main underneath it.
+          # Explicit dispatch is necessary: GITHUB_TOKEN publication does not
+          # trigger the release event workflow automatically.
+          gh_retry gh workflow run post-release-documentation-sync.yml --ref main -f tag="$TAG_NAME"
+
           pages_run_id=""
           # Appcast publication pushes to main. On repositories where that push
           # does not start Pages, dispatch an exact-source deployment; otherwise
@@ -818,30 +856,30 @@ jobs:
           # environment (the manual run can be cancelled even when Pages is
           # healthy).
           for _ in {1..20}; do
-            sleep 5
             pages_run_id="$(
               gh_retry gh run list \
                 --workflow pages-deployment.yml \
                 --limit 20 \
-                --json databaseId,createdAt,headSha,event \
-                --jq "[.[] | select(.headSha == \"${APPCAST_COMMIT}\") | select(.event == \"push\" or .event == \"workflow_dispatch\")][0].databaseId // empty" || true
+                --json databaseId,createdAt,headSha,event,displayTitle \
+                --jq "[.[] | select((.event == \"push\" and .headSha == \"${APPCAST_COMMIT}\") or (.event == \"workflow_dispatch\" and .displayTitle == \"Pages ${APPCAST_COMMIT}\"))][0].databaseId // empty" || true
             )"
             [[ -n "$pages_run_id" ]] && break
+            sleep 5
           done
           if [[ -z "$pages_run_id" ]]; then
             pages_dispatched_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
             gh_retry gh workflow run pages-deployment.yml --ref main -f source_ref="$APPCAST_COMMIT"
             for _ in {1..20}; do
-              sleep 5
               pages_run_id="$(
                 gh_retry gh run list \
                   --workflow pages-deployment.yml \
                   --event workflow_dispatch \
                   --limit 20 \
-                  --json databaseId,createdAt,headSha \
-                  --jq "[.[] | select(.createdAt >= \"${pages_dispatched_at}\" and .headSha == \"${APPCAST_COMMIT}\")][0].databaseId // empty" || true
+                  --json databaseId,createdAt,displayTitle \
+                  --jq "[.[] | select(.createdAt >= \"${pages_dispatched_at}\" and .displayTitle == \"Pages ${APPCAST_COMMIT}\")][0].databaseId // empty" || true
               )"
               [[ -n "$pages_run_id" ]] && break
+              sleep 5
             done
           fi
           if [[ -z "$pages_run_id" ]]; then
@@ -859,34 +897,42 @@ jobs:
               sleep 15
             done
           fi
+          publication_failed=false
           if [[ "$pages_conclusion" != "success" ]]; then
-            echo "Pages deployment ${pages_run_id:-unknown} did not complete successfully (${pages_conclusion:-timeout}); continuing release automation." >&2
+            echo "::error::Pages deployment ${pages_run_id:-unknown} failed (${pages_conclusion:-timeout}). Public release assets are preserved." >&2
+            publication_failed=true
           fi
 
           feed_url="https://h3pdesign.github.io/Neon-Vision-Editor/appcast.xml"
           feed=""
+          feed_matches_release() {
+            PYTHONPATH=scripts/ci python3 -c 'import sys; from wait_for_public_release import appcast_matches; sys.exit(0 if appcast_matches(sys.stdin.read(), *sys.argv[1:]) else 1)' \
+              "$APPCAST_VERSION" "$APPCAST_BUILD" \
+              "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}/Neon.Vision.Editor.app.zip" <<<"$feed"
+          }
           if [[ "$pages_conclusion" == "success" ]]; then
             for _ in {1..40}; do
-              feed="$(curl --fail --silent --show-error --location "$feed_url" || true)"
-              if grep -F "<sparkle:version>${APPCAST_BUILD}</sparkle:version>" <<<"$feed" >/dev/null \
-                && grep -F "<sparkle:shortVersionString>${APPCAST_VERSION}</sparkle:shortVersionString>" <<<"$feed" >/dev/null \
-                && grep -F "releases/download/${TAG_NAME}/Neon.Vision.Editor.app.zip" <<<"$feed" >/dev/null; then
+              feed="$(curl --fail --silent --show-error --location --connect-timeout 10 --max-time 20 "$feed_url" || true)"
+              if feed_matches_release; then
                 break
               fi
               sleep 5
             done
-            if ! grep -F "<sparkle:version>${APPCAST_BUILD}</sparkle:version>" <<<"${feed:-}" >/dev/null \
-              || ! grep -F "<sparkle:shortVersionString>${APPCAST_VERSION}</sparkle:shortVersionString>" <<<"${feed:-}" >/dev/null \
-              || ! grep -F "releases/download/${TAG_NAME}/Neon.Vision.Editor.app.zip" <<<"${feed:-}" >/dev/null; then
-              echo "GitHub Pages did not publish the expected Sparkle appcast for ${TAG_NAME}; continuing release automation." >&2
+            if ! feed_matches_release; then
+              echo "::error::GitHub Pages did not publish the expected Sparkle appcast for ${TAG_NAME}. Public release assets are preserved." >&2
+              publication_failed=true
             fi
           fi
 
           gh_retry gh workflow run update-download-metrics.yml
           gh_retry gh workflow run sync-readme-appstore-versions.yml -f tag="$TAG_NAME"
-          gh_retry gh workflow run post-release-documentation-sync.yml --ref main -f tag="$TAG_NAME"
+          if [[ "$publication_failed" == true ]]; then
+            echo "Repair the Pages/feed failure, then rerun this release without overwrite_assets." >&2
+            exit 1
+          fi
       - name: Roll back broken release assets
-        if: ${{ failure() && steps.upload_release_assets.outcome == 'success' }}
+        # Downstream PR/Pages failures must not erase a verified public release.
+        if: ${{ failure() && steps.upload_release_assets.outcome == 'success' && steps.upload_release_assets.outputs.assets_reused == 'false' && steps.publish_verified_release.outcome != 'success' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

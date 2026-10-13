@@ -1,4 +1,5 @@
 name: Pages Deployment
+run-name: Pages ${{ inputs.source_ref || github.sha }}
 
 on:
   push:

@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 180
     concurrency:
       group: release-${{ inputs.tag }}
-      cancel-in-progress: true
+      cancel-in-progress: false
     # The production gate below rejects the preview beta until GitHub updates
     # this image to Xcode 27 RC or a later public release.
     runs-on: xcode-27
@@ -287,6 +287,7 @@ jobs:
           fi
 
       - name: Verify published release asset payload
+        id: verify_published_assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ inputs.tag }}
@@ -324,7 +325,7 @@ jobs:
         run: gh workflow run post-release-documentation-sync.yml --ref main -f tag="$TAG_NAME"
 
       - name: Roll back broken published release asset
-        if: ${{ failure() && steps.publish_release.outcome == 'success' }}
+        if: ${{ failure() && steps.publish_release.outcome == 'success' && steps.verify_published_assets.outcome != 'success' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ inputs.tag }}

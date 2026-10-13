@@ -102,7 +102,7 @@ jobs:
 
       - name: Commit and update pull request if changed
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.METRIC_TOKEN }}
         run: |
           set -euo pipefail
 

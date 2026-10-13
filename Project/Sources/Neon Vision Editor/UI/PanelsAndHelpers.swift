@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.9.2",
-            subtitle: "Release highlights for v1.9.2.",
+            title: "What’s New in v1.9.3",
+            subtitle: "Release highlights for v1.9.3.",
             bullets: [
-                "Editor Improvements: Delete the previous word with Option-Delete on macOS, including Unicode text.",
-                "Workflow Refinements: Keep mobile editor actions and AI settings accessible from the first layout.",
-                "Performance Updates: Optionally rank external AI chat context with explicit TypeSafe consent and conservative fallback.",
-                "Usability Updates: Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713).",
-                "Editor Improvements: Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715).",
-                "Workflow Refinements: Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…"
+                "Editor Improvements: Choose plain-text editing instead of CSV/TSV tables on macOS.",
+                "Workflow Refinements: Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad.",
+                "AI Timeouts: Find Markdown preview and AI provider options in dedicated macOS Settings sections.",
+                "Usability Updates: Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…",
+                "Editor Improvements: Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS.",
+                "Reliable Saves: Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4517,6 +4517,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "1.9.3", version: "1.9.3", date: "2026-10-13", highlights: [
+            "Choose plain-text editing instead of CSV/TSV tables on macOS.",
+            "Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad.",
+            "Find Markdown preview and AI provider options in dedicated macOS Settings sections."
+        ]),
         Release(id: "1.9.2", version: "1.9.2", date: "2026-10-06", highlights: [
             "Delete the previous word with Option-Delete on macOS, including Unicode text.",
             "Keep mobile editor actions and AI settings accessible from the first layout.",

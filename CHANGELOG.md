@@ -14,9 +14,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Highlights
 
-- Loads the macOS editor's initial text window in the background and reuses bounded render caches when returning to unchanged tabs.
-- Updates compatible Markdown previews without reloading the whole page, retaining unchanged content and scroll position.
-- Stops cancelled project indexing instead of continuing an obsolete folder scan.
+- Keeps compatible Markdown previews up to date without reloading unchanged content or losing your scroll position.
+- Stops obsolete folder scans when you cancel project indexing.
 - Adapts the phone toolbar when the available layout changes between compact and regular width.
 
 ### Fixes
@@ -37,6 +36,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Maintenance
 
 - Adds real SwiftUI-to-first-draw tab activation benchmarks and regressions for snapshot ownership, stale results, typing during activation, cancellation, and preview reuse.
+- Loads the macOS editor's initial text window in the background and reuses bounded render caches when returning to unchanged tabs.
 - Verifies the existing CSV/TSV Settings switch through a disposable, externally driven UI acceptance fixture without modifying user preferences or document contents (#738).
 - Completes loading/error translations and overflow-tab control labels across all seven app languages.
 - Full iPhone Duo pose validation remains pending the Xcode/iOS 27.1 toolchain (#498); this release does not claim verified Duo support.

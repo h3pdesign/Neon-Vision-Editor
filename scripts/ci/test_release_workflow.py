@@ -60,6 +60,12 @@ class ReleaseWorkflowTests(unittest.TestCase):
             ("Moves project Markdown preview options to their own section.", "Markdown Preview Settings"),
             ("Separates AI settings into provider/model and custom-provider sections.", "AI Settings"),
             ("Fixes an AI provider timeout.", "AI Timeouts"),
+            ("Switch between open Mac documents with less waiting.", "Tab Switching"),
+            ("Place the cursor reliably and return to saved positions.", "Cursor Placement"),
+            ("Browse overflowing Mac tabs with visible controls.", "Tab Navigation"),
+            ("Keeps compatible Markdown previews up to date.", "Markdown Preview"),
+            ("Stops obsolete folder scans when you cancel project indexing.", "Project Indexing"),
+            ("Adapts the phone toolbar when the available layout changes.", "Adaptive Toolbar"),
         ]
         for description, expected in descriptions:
             with self.subTest(description=description):

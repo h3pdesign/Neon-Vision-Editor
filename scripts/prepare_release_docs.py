@@ -302,6 +302,12 @@ def shorten_for_welcome_tour_card(text: str, limit: int = WELCOME_TOUR_CARD_TEXT
 def welcome_feature_title(description: str, index: int) -> str:
     lowered = description.lower()
     rules = (
+        (("switch between open mac documents",), "Tab Switching"),
+        (("cursor", "caret"), "Cursor Placement"),
+        (("overflowing mac tabs",), "Tab Navigation"),
+        (("compatible markdown previews",), "Markdown Preview"),
+        (("project indexing",), "Project Indexing"),
+        (("phone toolbar",), "Adaptive Toolbar"),
         (("navigation",), "Editor Navigation"),
         (("csv", "tsv"), "CSV/TSV Editing"),
         (("font name",), "Font Selection"),

@@ -1767,3 +1767,7 @@
 "Usability Updates: Adds configurable Join Lines (Command-J) and Format JSON (Command-Option-J) shortcuts on supported hardware keyboards (#713)." = "Usabilidad: atajos configurables para unir líneas (Command-J) y dar formato a JSON (Command-Option-J) en teclados físicos compatibles (#713).";
 "Editor Improvements: Allows custom macOS toolbar actions to be reordered in the chooser, including optional preset and AI-provider controls (#715)." = "Editor: permite reordenar las acciones personalizadas de la barra de herramientas de macOS, incluidos los controles opcionales de preajustes y proveedores de IA (#715).";
 "Workflow Refinements: Adds experimental, opt-in Jev ranking of optional context for external AI chat, with TypeSafe disclosure, Keychain storage…" = "Flujos de trabajo: clasificación Jev experimental y opcional del contexto para chat de IA externo, con información de TypeSafe y almacenamiento en el llavero…";
+"Scroll Tabs Left" = "Desplazar pestañas a la izquierda";
+"Scroll Tabs Right" = "Desplazar pestañas a la derecha";
+"Loading document…" = "Cargando documento…";
+"Unable to load the selected document. Reopen the file to try again." = "No se pudo cargar el documento seleccionado. Vuelve a abrir el archivo para intentarlo de nuevo.";

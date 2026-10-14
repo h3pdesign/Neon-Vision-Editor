@@ -18,6 +18,64 @@ final class EditorSettingsDefaultsTests: XCTestCase {
     }
 
 #if os(macOS)
+    func testCSVSettingIsAccessibleAndPersistsWithoutChangingDocuments() async throws {
+        guard ProcessInfo.processInfo.environment["NVE_SETTINGS_INTERACTIVE_QA"] == "1" else {
+            throw XCTSkip("Run with an external accessibility client; SwiftUI's opaque accessibility nodes are not NSAccessibilityProtocol objects")
+        }
+        let suiteName = "CSVSettingsAcceptance-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.set(true, forKey: "SettingsDelimitedTableViewEnabled")
+        let previousTab = UserDefaults.standard.object(forKey: SettingsPreferenceKey.activeTab)
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            if let previousTab { UserDefaults.standard.set(previousTab, forKey: SettingsPreferenceKey.activeTab) }
+            else { UserDefaults.standard.removeObject(forKey: SettingsPreferenceKey.activeTab) }
+        }
+        let model = EditorViewModel()
+        model.addNewTab()
+        if let tab = model.tabs.last { model.updateTabContent(tab: tab, content: "one,two\nalpha,beta\n") }
+        let before = model.tabs.map { $0.document.string() }
+        let root = NeonSettingsView()
+            .defaultAppStorage(defaults)
+            .environment(model)
+            .environmentObject(SupportPurchaseManager(loadProducts: { [] }, canMakePayments: { false }))
+            .environmentObject(AppUpdateManager())
+        let hosting = NSHostingView(rootView: root)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 980, height: 640),
+                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.title = "CSV Settings QA — disposable preferences"
+        window.contentView = hosting
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        MacSettingsTabRoute.request("editor")
+        try await Task.sleep(for: .milliseconds(200))
+        hosting.layoutSubtreeIfNeeded()
+        let image = try XCTUnwrap(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+        hosting.cacheDisplay(in: hosting.bounds, to: image)
+        let attachment = XCTAttachment(data: try XCTUnwrap(image.representation(using: .png, properties: [:])),
+                                       uniformTypeIdentifier: "public.png")
+        attachment.name = "CSV Settings acceptance 980x640"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        FileHandle.standardOutput.write(Data("CSV_SETTINGS_QA_READY\n".utf8))
+        // The external accessibility client exercises the actual checkbox, not
+        // a test-only binding. It must turn it off and then on in this isolated
+        // defaults suite while the production Settings page remains mounted.
+        let deadline = Date().addingTimeInterval(180)
+        var observedOff = false
+        var observedOn = false
+        while Date() < deadline && !observedOn {
+            let enabled = defaults.bool(forKey: "SettingsDelimitedTableViewEnabled")
+            observedOff = observedOff || !enabled
+            observedOn = observedOff && enabled
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertTrue(observedOff, "The actual checkbox must persist its disabled state")
+        XCTAssertTrue(observedOn, "The actual checkbox must persist its enabled state again")
+        XCTAssertEqual(model.tabs.map { $0.document.string() }, before)
+    }
+
     func testMacSettingsTabRoutePersistsAndPublishesRequestedTab() async throws {
         final class Capture: @unchecked Sendable {
             var tab: String?

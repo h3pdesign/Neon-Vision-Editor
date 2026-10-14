@@ -202,6 +202,31 @@ final class MacNativeFileTabBarTests: XCTestCase {
         XCTAssertEqual(selectedIDs, [secondID])
     }
 
+    func testFocusedTabRoutesHardwareArrowKeysAndMovesFocus() throws {
+        let ids = [UUID(), UUID(), UUID()]
+        let tabs = ids.enumerated().map { snapshot(id: $0.element, title: "Keyboard \($0.offset).swift") }
+        let view = MacNativeFileTabBarView(frame: NSRect(x: 0, y: 0, width: 520, height: 42))
+        let window = NSWindow(contentRect: view.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = view
+        defer { window.close() }
+        view.onSelect = { [weak view] in view?.apply(tabs: tabs, selectedTabID: $0) }
+        view.apply(tabs: tabs, selectedTabID: ids[0])
+        let first = try XCTUnwrap(view.descendants.first {
+            $0.accessibilityLabel() == "Keyboard 0.swift, local document"
+        })
+        XCTAssertTrue(window.makeFirstResponder(first))
+        let right = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+            timestamp: 0, windowNumber: window.windowNumber, context: nil,
+            characters: "\u{F703}", charactersIgnoringModifiers: "\u{F703}", isARepeat: false, keyCode: 124))
+        first.keyDown(with: right)
+        XCTAssertEqual(view.selectedTabID, ids[1])
+        let second = try XCTUnwrap(window.firstResponder as? NSView)
+        XCTAssertEqual(second.accessibilityLabel(), "Keyboard 1.swift, local document")
+        second.keyDown(with: right)
+        XCTAssertEqual(view.selectedTabID, ids[2])
+    }
+
     func testSelectedIndicatorStartsAtTheSelectedTabsLeadingEdge() throws {
         let selectedID = UUID()
         let view = MacNativeFileTabBarView(frame: NSRect(x: 0, y: 0, width: 600, height: 32))
@@ -308,6 +333,122 @@ final class MacNativeFileTabBarTests: XCTestCase {
         view.scrollToEndForTesting()
         XCTAssertTrue(view.scrollEdgeFadeState.left)
         XCTAssertFalse(view.scrollEdgeFadeState.right)
+    }
+
+    func testUpdatingUnchangedSelectionDoesNotUndoManualOverflowScrolling() throws {
+        let view = MacNativeFileTabBarView(frame: NSRect(x: 0, y: 0, width: 520, height: 42))
+        let tabs = (0..<12).map { snapshot(id: UUID(), title: "Overflow document \($0).swift") }
+        view.apply(tabs: tabs, selectedTabID: tabs[0].id)
+        view.scrollToEndForTesting()
+        let scroll = try XCTUnwrap(view.descendants.compactMap { $0 as? NSScrollView }.first)
+        let offset = scroll.contentView.bounds.minX
+        XCTAssertGreaterThan(offset, 0)
+        view.apply(tabs: tabs, selectedTabID: tabs[0].id)
+        XCTAssertEqual(scroll.contentView.bounds.minX, offset, accuracy: 0.5,
+                       "Status/dirty-state redraws must not snap away from the tabs the user is browsing")
+    }
+
+    func testSelectingBeforeInitialLayoutRevealsTabAfterViewportHasSize() throws {
+        let view = MacNativeFileTabBarView()
+        let tabs = (0..<12).map { snapshot(id: UUID(), title: "Overflow document \($0).swift") }
+        view.apply(tabs: tabs, selectedTabID: tabs.last?.id)
+        view.setFrameSize(NSSize(width: 520, height: 42))
+        view.needsLayout = true
+        view.layoutSubtreeIfNeeded()
+        let scroll = try XCTUnwrap(view.descendants.compactMap { $0 as? NSScrollView }.first)
+        let last = try XCTUnwrap(view.tabFrameForTesting(tabs.last!.id))
+        XCTAssertGreaterThan(scroll.contentView.bounds.minX, 0)
+        XCTAssertLessThanOrEqual(last.maxX, scroll.contentView.bounds.maxX + 0.5)
+    }
+
+    func testOverflowButtonsReachHiddenTabsAndExposeAccessibleActions() async throws {
+        let view = MacNativeFileTabBarView(frame: NSRect(x: 0, y: 0, width: 520, height: 42))
+        let window = NSWindow(contentRect: view.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.title = "Overflow tabs QA"
+        window.contentView = view
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        let tabs = (0..<12).map { snapshot(id: UUID(), title: "Overflow document \($0).swift") }
+        view.apply(tabs: tabs, selectedTabID: tabs[0].id)
+        let buttons = view.descendants.compactMap { $0 as? NSButton }
+        let left = try XCTUnwrap(buttons.first { $0.toolTip == NSLocalizedString("Scroll Tabs Left", comment: "") })
+        let right = try XCTUnwrap(buttons.first { $0.toolTip == NSLocalizedString("Scroll Tabs Right", comment: "") })
+        XCTAssertFalse(left.isHidden)
+        XCTAssertFalse(right.isHidden)
+        XCTAssertFalse(left.isEnabled)
+        XCTAssertTrue(right.isEnabled)
+        XCTAssertEqual(right.accessibilityLabel(), right.toolTip)
+        try await Task.sleep(for: .milliseconds(100))
+        window.displayIfNeeded()
+        let image = try XCTUnwrap(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+        view.cacheDisplay(in: view.bounds, to: image)
+        let attachment = XCTAttachment(data: try XCTUnwrap(image.representation(using: .png, properties: [:])),
+                                       uniformTypeIdentifier: "public.png")
+        attachment.name = "Overflow tab strip 520x42"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        if ProcessInfo.processInfo.environment["NVE_TAB_INTERACTIVE_QA"] == "1" {
+            view.onSelect = { [weak view] in view?.apply(tabs: tabs, selectedTabID: $0) }
+            FileHandle.standardOutput.write(Data("OVERFLOW_TABS_QA_READY\n".utf8))
+            let deadline = Date().addingTimeInterval(180)
+            let scroll = try XCTUnwrap(view.descendants.compactMap { $0 as? NSScrollView }.first)
+            var observedAdvance = false
+            var observedReturn = false
+            while Date() < deadline && !observedReturn {
+                observedAdvance = observedAdvance || scroll.contentView.bounds.minX > 0
+                observedReturn = observedAdvance && scroll.contentView.bounds.minX <= 0.5
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            XCTAssertTrue(observedAdvance)
+            XCTAssertTrue(observedReturn)
+            view.apply(tabs: tabs, selectedTabID: tabs[0].id)
+        }
+        right.performClick(nil)
+        let scroll = try XCTUnwrap(view.descendants.compactMap { $0 as? NSScrollView }.first)
+        XCTAssertGreaterThan(scroll.contentView.bounds.minX, 0)
+        for _ in 0..<20 { right.performClick(nil) }
+        XCTAssertFalse(right.isEnabled)
+        XCTAssertTrue(left.isEnabled)
+        let lastFrame = try XCTUnwrap(view.tabFrameForTesting(tabs.last!.id))
+        XCTAssertLessThanOrEqual(lastFrame.maxX, scroll.contentView.bounds.maxX + 0.5)
+        for _ in 0..<20 { left.performClick(nil) }
+        XCTAssertEqual(scroll.contentView.bounds.minX, 0, accuracy: 0.5)
+        view.apply(tabs: [tabs[0]], selectedTabID: tabs[0].id)
+        XCTAssertTrue(left.isHidden)
+        XCTAssertTrue(right.isHidden)
+    }
+
+    func testChangingSelectionRevealsTheNewTabButUnchangedMetadataKeepsScroll() throws {
+        let view = MacNativeFileTabBarView(frame: NSRect(x: 0, y: 0, width: 520, height: 42))
+        let tabs = (0..<12).map { snapshot(id: UUID(), title: "Overflow document \($0).swift") }
+        view.apply(tabs: tabs, selectedTabID: tabs[0].id)
+        view.apply(tabs: tabs, selectedTabID: tabs.last?.id)
+        let scroll = try XCTUnwrap(view.descendants.compactMap { $0 as? NSScrollView }.first)
+        let offset = scroll.contentView.bounds.minX
+        XCTAssertGreaterThan(offset, 0)
+        let changed = tabs.map { snapshot(id: $0.id, title: $0.title, isDirty: true) }
+        view.apply(tabs: changed, selectedTabID: tabs.last?.id)
+        XCTAssertEqual(scroll.contentView.bounds.minX, offset, accuracy: 0.5)
+    }
+
+    func testRemovingOverflowAndResizingDoesNotLeaveTabsOutsideTheViewport() throws {
+        let view = MacNativeFileTabBarView(frame: NSRect(x: 0, y: 0, width: 520, height: 42))
+        let tabs = (0..<12).map { snapshot(id: UUID(), title: "Overflow document \($0).swift") }
+        view.apply(tabs: tabs, selectedTabID: tabs[0].id)
+        view.scrollToEndForTesting()
+        let scroll = try XCTUnwrap(view.descendants.compactMap { $0 as? NSScrollView }.first)
+        view.apply(tabs: [tabs[0]], selectedTabID: tabs[0].id)
+        XCTAssertEqual(scroll.contentView.bounds.minX, 0, accuracy: 0.5)
+        view.apply(tabs: tabs, selectedTabID: tabs[0].id)
+        view.scrollToEndForTesting()
+        view.setFrameSize(NSSize(width: 4_000, height: 42))
+        view.needsLayout = true
+        view.layoutSubtreeIfNeeded()
+        XCTAssertEqual(scroll.contentView.bounds.minX, 0, accuracy: 0.5)
+        view.apply(tabs: [], selectedTabID: nil)
+        XCTAssertEqual(view.managedTabViewCount, 0)
+        XCTAssertEqual(scroll.contentView.bounds.minX, 0, accuracy: 0.5)
     }
 
     func testTabWidthTracksFilenameWithinStandardAndDoubleWidthLimits() throws {

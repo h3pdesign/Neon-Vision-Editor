@@ -3,6 +3,30 @@ import XCTest
 
 @MainActor
 final class ProjectTreePerformanceTests: XCTestCase {
+    func testCancellingCallerStopsDetachedIndexWorkerAndRetainsPreviousSnapshot() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("cancel-index-\(UUID())")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        for index in 0..<100 { try Data().write(to: root.appendingPathComponent("\(index).unknown")) }
+        let previous = await ProjectFileIndex.buildSnapshot(at: root, supportedOnly: false) { _ in true }
+        let started = expectation(description: "index callback entered")
+        let gate = DispatchSemaphore(value: 0)
+        let visits = NVELock(0)
+        let task = Task {
+            await ProjectFileIndex.refreshSnapshot(previous, at: root, supportedOnly: true) { _ in
+                let count = visits.withLock { $0 += 1; return $0 }
+                if count == 1 { started.fulfill(); gate.wait() }
+                return true
+            }
+        }
+        await fulfillment(of: [started], timeout: 3)
+        task.cancel()
+        gate.signal()
+        let result = await task.value
+        XCTAssertEqual(visits.withLock { $0 }, 1, "Parent cancellation must reach the detached enumerator")
+        XCTAssertEqual(result.entries, previous.entries)
+    }
+
     func testInitialProjectTreeOnlyLoadsRootLevelChildren() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("project-tree-\(UUID().uuidString)", isDirectory: true)

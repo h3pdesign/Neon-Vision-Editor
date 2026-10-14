@@ -29,6 +29,10 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
         webView.wantsLayer = true
         webView.layer?.backgroundColor = NSColor.clear.cgColor
         webView.navigationDelegate = context.coordinator
+        context.coordinator.loadedHTML = html
+        context.coordinator.loadedBaseURL = baseURL
+        context.coordinator.loadedDocumentID = documentID
+        context.coordinator.canPatchContent = !allowsContentJavaScript
         webView.loadHTMLString(html, baseURL: baseURL)
         applyMacOverlayScrollerStyle(in: webView)
         DispatchQueue.main.async {
@@ -42,10 +46,14 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
+        let documentChanged = context.coordinator.documentID != documentID
+        let policyChanged = webView.configuration.defaultWebpagePreferences.allowsContentJavaScript != allowsContentJavaScript
+        webView.configuration.defaultWebpagePreferences.allowsContentJavaScript = allowsContentJavaScript
+        context.coordinator.canPatchContent = !allowsContentJavaScript && !policyChanged
         applyMacOverlayScrollerStyle(in: webView)
         context.coordinator.documentID = documentID
         context.coordinator.updateSynchronizedScroll(webView: webView, fraction: synchronizedScrollFraction)
-        guard context.coordinator.lastHTML != html || context.coordinator.lastBaseURL != baseURL else { return }
+        guard documentChanged || policyChanged || context.coordinator.lastHTML != html || context.coordinator.lastBaseURL != baseURL else { return }
         context.coordinator.scheduleReloadPreservingScroll(webView: webView, html: html, baseURL: baseURL)
         context.coordinator.lastHTML = html
         context.coordinator.lastBaseURL = baseURL
@@ -55,6 +63,11 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var lastHTML: String = ""
         var lastBaseURL: URL?
+        var loadedHTML = ""
+        var loadedBaseURL: URL?
+        var loadedDocumentID: UUID?
+        var isLoaded = false
+        var canPatchContent = true
         private var pendingReload: DispatchWorkItem?
         private var reloadGeneration: Int = 0
         private let reloadCoalescingDelay: TimeInterval = 0.06
@@ -104,11 +117,34 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
         }
 
         func reloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?, generation: Int) {
+            if canPatchContent, isLoaded, loadedBaseURL == baseURL,
+               loadedDocumentID == documentID,
+               let script = MarkdownPreviewContentUpdate.script(from: loadedHTML, to: html) {
+                webView.evaluateJavaScript(script) { [weak self, weak webView] value, error in
+                    guard let self, let webView, self.reloadGeneration == generation else { return }
+                    if error == nil, value as? Bool == true {
+                        self.loadedHTML = html
+                        self.lastAppliedSynchronizedScrollFraction = nil
+                        self.updateSynchronizedScroll(webView: webView, fraction: self.pendingSynchronizedScrollFraction)
+                    } else {
+                        self.loadFullPreview(webView: webView, html: html, baseURL: baseURL, generation: generation)
+                    }
+                }
+                return
+            }
+            loadFullPreview(webView: webView, html: html, baseURL: baseURL, generation: generation)
+        }
+
+        private func loadFullPreview(webView: WKWebView, html: String, baseURL: URL?, generation: Int) {
             let capture = "(() => { const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight); return window.scrollY / max; })();"
             webView.evaluateJavaScript(capture) { [weak self, weak webView] value, _ in
                 guard let self, let webView, self.reloadGeneration == generation else { return }
                 let ratio = value as? Double ?? 0
                 EditorPerformanceMonitor.shared.markPreviewReloadExecuted()
+                self.isLoaded = false
+                self.loadedHTML = html
+                self.loadedBaseURL = baseURL
+                self.loadedDocumentID = self.documentID
                 webView.loadHTMLString(html, baseURL: baseURL)
                 let clamped = min(1.0, max(0.0, ratio))
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self, weak webView] in
@@ -145,6 +181,7 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            isLoaded = true
             applyMacOverlayScrollerStyle(in: webView)
             lastAppliedSynchronizedScrollFraction = nil
             updateSynchronizedScroll(webView: webView, fraction: pendingSynchronizedScrollFraction)
@@ -172,6 +209,10 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let webView = makeConfiguredWebView(allowsContentJavaScript: allowsContentJavaScript, scrollMessageHandler: context.coordinator)
         webView.navigationDelegate = context.coordinator
+        context.coordinator.loadedHTML = html
+        context.coordinator.loadedBaseURL = baseURL
+        context.coordinator.loadedDocumentID = documentID
+        context.coordinator.canPatchContent = !allowsContentJavaScript
         webView.loadHTMLString(html, baseURL: baseURL)
         context.coordinator.lastHTML = html
         context.coordinator.lastBaseURL = baseURL
@@ -181,9 +222,13 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        let documentChanged = context.coordinator.documentID != documentID
+        let policyChanged = webView.configuration.defaultWebpagePreferences.allowsContentJavaScript != allowsContentJavaScript
+        webView.configuration.defaultWebpagePreferences.allowsContentJavaScript = allowsContentJavaScript
+        context.coordinator.canPatchContent = !allowsContentJavaScript && !policyChanged
         context.coordinator.documentID = documentID
         context.coordinator.updateSynchronizedScroll(webView: webView, fraction: synchronizedScrollFraction)
-        guard context.coordinator.lastHTML != html || context.coordinator.lastBaseURL != baseURL else { return }
+        guard documentChanged || policyChanged || context.coordinator.lastHTML != html || context.coordinator.lastBaseURL != baseURL else { return }
         context.coordinator.scheduleReloadPreservingScroll(webView: webView, html: html, baseURL: baseURL)
         context.coordinator.lastHTML = html
         context.coordinator.lastBaseURL = baseURL
@@ -193,6 +238,11 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var lastHTML: String = ""
         var lastBaseURL: URL?
+        var loadedHTML = ""
+        var loadedBaseURL: URL?
+        var loadedDocumentID: UUID?
+        var isLoaded = false
+        var canPatchContent = true
         private var pendingReload: DispatchWorkItem?
         private var reloadGeneration: Int = 0
         private let reloadCoalescingDelay: TimeInterval = 0.06
@@ -242,11 +292,34 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
         }
 
         func reloadPreservingScroll(webView: WKWebView, html: String, baseURL: URL?, generation: Int) {
+            if canPatchContent, isLoaded, loadedBaseURL == baseURL,
+               loadedDocumentID == documentID,
+               let script = MarkdownPreviewContentUpdate.script(from: loadedHTML, to: html) {
+                webView.evaluateJavaScript(script) { [weak self, weak webView] value, error in
+                    guard let self, let webView, self.reloadGeneration == generation else { return }
+                    if error == nil, value as? Bool == true {
+                        self.loadedHTML = html
+                        self.lastAppliedSynchronizedScrollFraction = nil
+                        self.updateSynchronizedScroll(webView: webView, fraction: self.pendingSynchronizedScrollFraction)
+                    } else {
+                        self.loadFullPreview(webView: webView, html: html, baseURL: baseURL, generation: generation)
+                    }
+                }
+                return
+            }
+            loadFullPreview(webView: webView, html: html, baseURL: baseURL, generation: generation)
+        }
+
+        private func loadFullPreview(webView: WKWebView, html: String, baseURL: URL?, generation: Int) {
             let capture = "(() => { const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight); return window.scrollY / max; })();"
             webView.evaluateJavaScript(capture) { [weak self, weak webView] value, _ in
                 guard let self, let webView, self.reloadGeneration == generation else { return }
                 let ratio = value as? Double ?? 0
                 EditorPerformanceMonitor.shared.markPreviewReloadExecuted()
+                self.isLoaded = false
+                self.loadedHTML = html
+                self.loadedBaseURL = baseURL
+                self.loadedDocumentID = self.documentID
                 webView.loadHTMLString(html, baseURL: baseURL)
                 let clamped = min(1.0, max(0.0, ratio))
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self, weak webView] in
@@ -260,6 +333,7 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            isLoaded = true
             lastAppliedSynchronizedScrollFraction = nil
             updateSynchronizedScroll(webView: webView, fraction: pendingSynchronizedScrollFraction)
         }

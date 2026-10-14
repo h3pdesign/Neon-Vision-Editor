@@ -3,6 +3,64 @@ import XCTest
 
 @MainActor
 final class FileBackedTextDocumentTests: XCTestCase {
+    func testViewportSnapshotIsIndependentOfLiveEditsAndConcurrentReads() async throws {
+        let document = FileBackedTextDocument(content: "old 😀\nsecond line\n")
+        let reader = try XCTUnwrap(document.makeViewportReader())
+        try document.replaceAll(with: "new live document")
+        let worker = Task.detached { try? reader.read(0, 64_000, 512) }
+        let secondWorker = Task.detached { try? reader.read(0, 64_000, 512) }
+        let first = await worker.value
+        let second = await secondWorker.value
+        XCTAssertEqual(first?.text, "old 😀\nsecond line\n")
+        XCTAssertEqual(first, second)
+        XCTAssertEqual(document.string(), "new live document")
+    }
+
+    func testLazyViewportSnapshotReadsIndependentHandleAndPreservesEncoding() async throws {
+        for encoding in [TextEncodingDescriptor.utf8, TextEncodingDescriptor(identifier: .utf16LittleEndianWithBOM)] {
+            let source = String(repeating: "é😀\n", count: 20_000)
+            let url = directory.appendingPathComponent(UUID().uuidString)
+            try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
+            let document = try FileBackedTextDocument(url: url, knownEncoding: encoding)
+            let reader = try XCTUnwrap(document.makeViewportReader())
+            let worker = Task.detached { try? reader.read(source.utf16.count, 64_000, 512) }
+            // Read the live seekable handle while the snapshot opens its own.
+            let live = try document.viewport(aroundLine: 0, maximumByteCount: 64_000, maximumLineCount: 512)
+            let received = await worker.value
+            let result = try XCTUnwrap(received)
+            XCTAssertTrue(live.text.hasPrefix("é😀\n"))
+            XCTAssertEqual(result.startUTF16Offset + result.text.utf16.count, source.utf16.count)
+            XCTAssertLessThanOrEqual(result.text.utf8.count, 64_000)
+            XCTAssertNil(document.viewportIndexPreparedOnMainThread)
+        }
+    }
+
+    func testViewportSnapshotRejectsExternalChangesAndCancellation() async throws {
+        let url = directory.appendingPathComponent("snapshot-conflict.txt")
+        try Data("original".utf8).write(to: url)
+        let document = try FileBackedTextDocument(url: url, knownEncoding: .utf8)
+        let reader = try XCTUnwrap(document.makeViewportReader())
+        try Data("external replacement".utf8).write(to: url)
+        XCTAssertThrowsError(try reader.read(0, 64_000, 512)) { error in
+            XCTAssertEqual(error as? FileBackedTextDocument.Error, .externalConflict)
+        }
+        let started = expectation(description: "worker entered")
+        let gate = NVELock<CheckedContinuation<Void, Never>?>(nil)
+        let worker = Task.detached {
+            await withCheckedContinuation { continuation in
+                gate.withLock { $0 = continuation }
+                started.fulfill()
+            }
+            do { _ = try reader.read(0, 64_000, 512); return false }
+            catch { return error is CancellationError }
+        }
+        await fulfillment(of: [started], timeout: 3)
+        worker.cancel()
+        gate.withLock { continuation in continuation?.resume(); continuation = nil }
+        let cancelled = await worker.value
+        XCTAssertTrue(cancelled)
+    }
+
     func testOffsetViewportContainsOversizedLineTailAcrossStorageAndEncodings() throws {
         let source = String(repeating: "é😀", count: 100_001) + "TAIL"
         for identifier in [TextEncodingDescriptor.Identifier.utf8, .utf8WithBOM,

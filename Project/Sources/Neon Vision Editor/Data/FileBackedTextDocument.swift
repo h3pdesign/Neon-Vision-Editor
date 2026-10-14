@@ -14,7 +14,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         case externalConflict
     }
 
-    private struct Piece {
+    private struct Piece: Sendable {
         let sourceOffset: Int?
         let data: Data
         let utf16Length: Int
@@ -197,6 +197,87 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
     func makeSaveSnapshot() -> SaveSnapshot {
         SaveSnapshot(copy: FileBackedTextDocument(saveCopy: self), needsSourceRead: lazyFileHandle != nil,
                      generation: viewportGeneration, editCount: edits.count)
+    }
+
+    /// Frozen value-semantic state; every read creates a worker-owned backend
+    /// and opens its own handle inside file coordination. No live storage is
+    /// accessed from the worker, even if typing/save overlaps this request.
+    private struct ViewportSnapshot: Sendable {
+        let url: URL?
+        let originalData: Data
+        let pieces: [Piece]
+        let lineStarts: [Int]
+        let utf16Length: Int
+        let encoding: TextEncodingDescriptor
+        let metadata: FileMetadata?
+        let generation: UInt64
+        let isLazy: Bool
+        let byteCount: Int
+        let indexedByteOffset: Int
+        let indexedUTF16Length: Int
+        let lazyLineStarts: [Int]
+        let lazyLineUTF16Starts: [Int]
+        let checkpoints: [(byte: Int, utf16: Int)]
+        let estimatedLineCount: Int
+        let indexComplete: Bool
+    }
+
+    private init(viewportSnapshot state: ViewportSnapshot) {
+        url = state.url
+        originalData = state.originalData
+        pieces = state.pieces
+        lineStarts = state.lineStarts
+        cachedUTF16Length = state.utf16Length
+        encodingDescriptor = state.encoding
+        savedFileMetadata = state.metadata
+        viewportGeneration = state.generation
+        lazyFileByteCount = state.byteCount
+        lazyIndexedByteOffset = state.indexedByteOffset
+        lazyIndexedUTF16Length = state.indexedUTF16Length
+        lazyLineStarts = state.lazyLineStarts
+        lazyLineUTF16Starts = state.lazyLineUTF16Starts
+        lazyOffsetCheckpoints = state.checkpoints
+        lazyEstimatedLineCount = state.estimatedLineCount
+        lazyIndexComplete = state.indexComplete
+    }
+
+    func makeViewportReader() -> EditorDocumentViewportReader? {
+        let state = ViewportSnapshot(
+            url: url, originalData: originalData, pieces: pieces, lineStarts: lineStarts,
+            utf16Length: cachedUTF16Length, encoding: encodingDescriptor,
+            metadata: savedFileMetadata, generation: viewportGeneration,
+            isLazy: lazyFileHandle != nil, byteCount: lazyFileByteCount,
+            indexedByteOffset: lazyIndexedByteOffset, indexedUTF16Length: lazyIndexedUTF16Length,
+            lazyLineStarts: lazyLineStarts, lazyLineUTF16Starts: lazyLineUTF16Starts,
+            checkpoints: lazyOffsetCheckpoints, estimatedLineCount: lazyEstimatedLineCount,
+            indexComplete: lazyIndexComplete
+        )
+        return EditorDocumentViewportReader { offset, bytes, lines in
+            try Task.checkCancellation()
+            let copy = FileBackedTextDocument(viewportSnapshot: state)
+            func read() throws -> EditorDocumentViewport {
+                try Task.checkCancellation()
+                let result = try offset == 0
+                    ? copy.viewport(aroundLine: 0, maximumByteCount: bytes, maximumLineCount: lines)
+                    : copy.viewport(containingUTF16Offset: offset, maximumByteCount: bytes, maximumLineCount: lines)
+                try Task.checkCancellation()
+                return result
+            }
+            guard let url = state.url else { return try read() }
+            return try CoordinatedDocumentAccess.read(at: url) { coordinatedURL in
+                let current = try coordinatedURL.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+                guard let expected = state.metadata,
+                      current.fileSize == expected.byteCount,
+                      current.contentModificationDate == expected.modificationDate else { throw Error.externalConflict }
+                if state.isLazy { copy.lazyFileHandle = try FileHandle(forReadingFrom: coordinatedURL) }
+                defer { try? copy.lazyFileHandle?.close() }
+                // Preserve lazyWindow's prepared-index invariant. A backend
+                // not yet prepared by the loader is indexed only on this
+                // worker-owned copy, never on the live main-actor storage.
+                if state.isLazy && !state.indexComplete { try copy.prepareViewportIndex() }
+                return try read()
+            }
+        }
     }
 
     /// Called on the live document's owner after the worker completes. Newer
@@ -444,6 +525,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         guard lazyFileHandle != nil else { return }
         viewportIndexPreparedOnMainThread = Thread.isMainThread
         while !lazyIndexComplete {
+            try Task.checkCancellation()
             try extendLazyIndex(throughByte: min(lazyFileByteCount, lazyIndexedByteOffset + 256 * 1024))
         }
     }

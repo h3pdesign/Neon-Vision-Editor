@@ -188,6 +188,7 @@ final class VirtualEditorPerformanceTests: XCTestCase {
                 let event = try XCTUnwrap(received, "Actual drawing must complete the monitor event")
                 XCTAssertNotNil(event.swiftUIUpdateMilliseconds)
                 XCTAssertNotNil(event.viewportMilliseconds)
+                print("native-tab-switch stage round=\(round) language=\(languages[index]) ui_ms=\(event.swiftUIUpdateMilliseconds ?? -1) viewport_ms=\(event.viewportMilliseconds ?? -1) draw_ms=\(event.elapsedMilliseconds) active=\(NSApp.isActive) key=\(window.isKeyWindow) visible=\(window.occlusionState.contains(.visible))")
                 if round == 0 { cold.append(event.elapsedMilliseconds) }
                 else { warm.append(event.elapsedMilliseconds) }
             }

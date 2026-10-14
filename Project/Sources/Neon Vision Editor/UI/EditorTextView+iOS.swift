@@ -2157,16 +2157,15 @@ struct CustomTextEditor: UIViewRepresentable {
     let onTextMutation: ((EditorTextMutation) -> Void)?
     let onShortcutAction: ((EditorShortcutAction) -> Void)?
 
-    /// A published caret location must not overwrite an active UIKit selection.
-    /// UIKit reports a triple-tap line selection immediately, while the binding
-    /// update that records the caret can arrive on the following SwiftUI pass.
-    /// Restoring that stale caret would collapse the just-created selection.
+    /// Persisted caret locations are observations of UIKit, not navigation
+    /// commands. Replaying them within the same resource can rewind a newer
+    /// insertion point or collapse a selection. Explicit navigation has its own
+    /// move-to-line/range commands; activation/loading completion restores a bookmark.
     static func shouldRestoreStoredCaret(
         didSwitchDocumentResource: Bool,
-        didChangeStoredCaretLocation: Bool,
-        selectionLength: Int
+        didFinishTabLoad: Bool = false
     ) -> Bool {
-        didSwitchDocumentResource || (didChangeStoredCaretLocation && selectionLength == 0)
+        didSwitchDocumentResource || didFinishTabLoad
     }
 
     private var fontName: String {
@@ -2535,10 +2534,13 @@ struct CustomTextEditor: UIViewRepresentable {
         context.coordinator.parent = self
         textView.isSelectable = true
         let didSwitchDocumentResource = context.coordinator.lastDocumentResourceID != documentResourceID
-        let didChangeStoredCaretLocation = context.coordinator.lastStoredCaretLocation != storedCaretLocation
         let didFinishTabLoad = (context.coordinator.lastTabLoadingContent == true) && !isTabLoadingContent
         let didReceiveExternalEdit = context.coordinator.lastExternalEditRevision != externalEditRevision
         let didTransitionDocumentState = didSwitchDocumentResource || didFinishTabLoad || didReceiveExternalEdit
+        let shouldRestoreCaret = !isTabLoadingContent && Self.shouldRestoreStoredCaret(
+            didSwitchDocumentResource: didSwitchDocumentResource,
+            didFinishTabLoad: didFinishTabLoad
+        )
         let preserveViewportDuringContentInstall = shouldPreserveEditorViewportDuringContentInstall(
             didSwitchDocumentResource: didSwitchDocumentResource,
             didFinishTabLoad: didFinishTabLoad
@@ -2560,7 +2562,6 @@ struct CustomTextEditor: UIViewRepresentable {
         context.coordinator.lastTabLoadingContent = isTabLoadingContent
         context.coordinator.lastExternalEditRevision = externalEditRevision
         context.coordinator.lastShowsCodeMinimap = showsCodeMinimap
-        context.coordinator.lastStoredCaretLocation = storedCaretLocation
         let targetLength = (text as NSString).length
         let shouldSkipLargeFileResync =
             isLargeFileMode &&
@@ -2588,7 +2589,7 @@ struct CustomTextEditor: UIViewRepresentable {
                         target: text,
                         preserveSelection: !didSwitchDocumentResource,
                         preserveViewport: preserveViewportDuringContentInstall,
-                        restoredCaretLocation: didSwitchDocumentResource ? storedCaretLocation : nil
+                        restoredCaretLocation: shouldRestoreCaret ? storedCaretLocation : nil
                     )
                     if !didInstallLargeText {
                         textView.text = text
@@ -2713,11 +2714,9 @@ struct CustomTextEditor: UIViewRepresentable {
             }
         }
         context.coordinator.syncLineNumberScroll()
-        if Self.shouldRestoreStoredCaret(
-            didSwitchDocumentResource: didSwitchDocumentResource,
-            didChangeStoredCaretLocation: didChangeStoredCaretLocation,
-            selectionLength: textView.selectedRange.length
-        ), let storedCaretLocation {
+        // A chunk installer owns selection until all UTF-16 ranges exist. Its
+        // completion restores the bookmark instead of clamping it to a partial buffer.
+        if shouldRestoreCaret, !context.coordinator.isInstallingLargeText, let storedCaretLocation {
             context.coordinator.restoreCaret(storedCaretLocation, in: textView)
         }
         if didTransitionDocumentState {
@@ -2801,7 +2800,6 @@ struct CustomTextEditor: UIViewRepresentable {
         private var isRestoringShiftScrollOffset = false
         private var findHighlightBackgrounds: [(range: NSRange, value: Any?)] = []
         var lastDocumentResourceID: String?
-        var lastStoredCaretLocation: Int?
         var lastTabLoadingContent: Bool?
         var lastExternalEditRevision: Int?
         var lastShowsCodeMinimap: Bool?
@@ -4238,7 +4236,9 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         private func updateCaretStatus() {
-            guard let textView else { return }
+            // Placeholder/partial-buffer coordinates must not become persisted
+            // bookmarks through ContentView's caret notification receiver.
+            guard !parent.isTabLoadingContent, !isInstallingLargeText, let textView else { return }
             let nsText = (textView.text ?? "") as NSString
             let location = min(max(0, textView.selectedRange.location), nsText.length)
             let useOffsetOnlyStatus =

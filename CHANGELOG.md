@@ -6,19 +6,40 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
-### Improvements
+### Why Upgrade
 
-- Loads the macOS editor's initial text window in the background and reuses bounded render caches when returning to unchanged tabs.
-- Updates compatible Markdown previews without reloading the whole page, retaining unchanged content and scroll position.
-- Stops cancelled project indexing instead of continuing an obsolete folder scan.
+- Switch between open Mac documents with less waiting, including large Markdown and source files.
+- Place the cursor more reliably on iPhone and iPad, and return to saved positions after large documents load.
+- Browse overflowing Mac tabs with visible left and right controls.
+
+### Highlights
+
+- Keeps compatible Markdown previews up to date without reloading unchanged content or losing your scroll position.
+- Stops obsolete folder scans when you cancel project indexing.
+- Adapts the phone toolbar when the available layout changes between compact and regular width.
 
 ### Fixes
 
 - Detects external file rewrites even when file size and modification time are unchanged, preventing stale text indexes during background tab activation.
+- Keeps precise iPhone/iPad cursor placement from being overwritten by delayed saved-position updates (#770).
+- Restores saved cursor positions after deferred large-file loading completes, without saving temporary placeholder positions (#770).
+- Preserves manual scrolling through overflowing Mac tabs and adds accessible left/right navigation controls (#766).
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, preferences, and optional AI provider settings are preserved.
 
 ### Maintenance
 
 - Adds real SwiftUI-to-first-draw tab activation benchmarks and regressions for snapshot ownership, stale results, typing during activation, cancellation, and preview reuse.
+- Loads the macOS editor's initial text window in the background and reuses bounded render caches when returning to unchanged tabs.
+- Verifies the existing CSV/TSV Settings switch through a disposable, externally driven UI acceptance fixture without modifying user preferences or document contents (#738).
+- Completes loading/error translations and overflow-tab control labels across all seven app languages.
+- Full iPhone Duo pose validation remains pending the Xcode/iOS 27.1 toolchain (#498); this release does not claim verified Duo support.
 
 ## [v1.9.3] - 2026-10-13
 

@@ -49,10 +49,13 @@ final class MacNativeFileTabBarView: NSView {
     private let scrollView = NSScrollView()
     private let tabsView = MacNativeFileTabDocumentView()
     private let addButton = NSButton()
+    private let scrollLeftButton = NSButton()
+    private let scrollRightButton = NSButton()
     private let scrollEdgeMask = CAGradientLayer()
     private var tabViewsByID: [UUID: MacNativeFileTabItemView] = [:]
     private(set) var orderedTabIDs: [UUID] = []
     private(set) var selectedTabID: UUID?
+    private var pendingSelectedTabReveal: UUID?
     private(set) var scrollEdgeFadeState = (left: false, right: false)
     var usesOpaqueEditorCanvas = false
 
@@ -97,6 +100,23 @@ final class MacNativeFileTabBarView: NSView {
         addButton.setAccessibilityHelp("Creates a new untitled tab")
         addSubview(addButton)
 
+        for (button, symbol, label, action) in [
+            (scrollLeftButton, "chevron.left", "Scroll Tabs Left", #selector(scrollTabsLeft)),
+            (scrollRightButton, "chevron.right", "Scroll Tabs Right", #selector(scrollTabsRight))
+        ] {
+            let title = NSLocalizedString(label, comment: "Overflow tab strip navigation")
+            button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+            button.imagePosition = .imageOnly
+            button.bezelStyle = .accessoryBarAction
+            button.controlSize = .small
+            button.target = self
+            button.action = action
+            button.toolTip = title
+            button.setAccessibilityLabel(title)
+            button.isHidden = true
+            addSubview(button)
+        }
+
     }
 
     deinit {
@@ -116,11 +136,14 @@ final class MacNativeFileTabBarView: NSView {
         let buttonWidth: CGFloat = 36
         let trailingInset: CGFloat = 10
         let buttonX = bounds.width - trailingInset - buttonWidth
+        let availableTabWidth = max(0, buttonX - tabToButtonSpacing - leadingInset)
+        let overflows = tabsView.preferredContentWidth > availableTabWidth
+        let navigationWidth: CGFloat = overflows ? 28 : 0
         addButton.frame = NSRect(x: buttonX, y: 6, width: buttonWidth, height: max(24, bounds.height - 12))
         scrollView.frame = NSRect(
-            x: leadingInset,
+            x: leadingInset + navigationWidth,
             y: 0,
-            width: max(0, buttonX - tabToButtonSpacing - leadingInset),
+            width: max(0, availableTabWidth - navigationWidth * 2),
             height: max(0, bounds.height)
         )
         // The document view must fill the clip viewport. Deriving its height
@@ -129,6 +152,19 @@ final class MacNativeFileTabBarView: NSView {
         // bottom (most visible against dark chrome).
         tabsView.frame.size.height = scrollView.contentView.bounds.height
         tabsView.layoutTabs(viewportWidth: scrollView.contentSize.width)
+        scrollLeftButton.isHidden = !overflows
+        scrollRightButton.isHidden = !overflows
+        if overflows {
+            scrollLeftButton.frame = NSRect(x: leadingInset, y: 6, width: navigationWidth, height: max(24, bounds.height - 12))
+            scrollRightButton.frame = NSRect(x: buttonX - tabToButtonSpacing - navigationWidth, y: 6,
+                                             width: navigationWidth, height: max(24, bounds.height - 12))
+        }
+        if scrollView.contentSize.width > 0,
+           let pendingSelectedTabReveal,
+           let selectedView = tabViewsByID[pendingSelectedTabReveal] {
+            self.pendingSelectedTabReveal = nil
+            selectedView.scrollToVisible(selectedView.bounds)
+        }
         updateScrollEdgeMask()
     }
 
@@ -143,6 +179,7 @@ final class MacNativeFileTabBarView: NSView {
     }
 
     func apply(tabs: [MacNativeFileTabSnapshot], selectedTabID: UUID?) {
+        let didChangeSelection = self.selectedTabID != selectedTabID
         let incomingIDs = Set(tabs.map(\.id))
         let staleIDs = tabViewsByID.keys.filter { !incomingIDs.contains($0) }
         for staleID in staleIDs {
@@ -151,6 +188,7 @@ final class MacNativeFileTabBarView: NSView {
 
         orderedTabIDs = tabs.map(\.id)
         self.selectedTabID = selectedTabID
+        if didChangeSelection { pendingSelectedTabReveal = selectedTabID }
         var orderedViews: [MacNativeFileTabItemView] = []
         orderedViews.reserveCapacity(tabs.count)
 
@@ -175,9 +213,6 @@ final class MacNativeFileTabBarView: NSView {
         tabsView.setTabViews(orderedViews)
         needsLayout = true
         layoutSubtreeIfNeeded()
-        if let selectedTabID, let selectedView = tabViewsByID[selectedTabID] {
-            selectedView.scrollToVisible(selectedView.bounds)
-        }
     }
 
     func selectTabForTesting(_ id: UUID) {
@@ -260,6 +295,18 @@ final class MacNativeFileTabBarView: NSView {
         onAdd?()
     }
 
+    @objc private func scrollTabsLeft() { scrollTabs(direction: -1) }
+    @objc private func scrollTabsRight() { scrollTabs(direction: 1) }
+
+    private func scrollTabs(direction: CGFloat) {
+        var destination = scrollView.contentView.bounds
+        destination.origin.x += direction * scrollView.contentSize.width
+        destination = scrollView.contentView.constrainBoundsRect(destination)
+        scrollView.contentView.scroll(to: destination.origin)
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+        updateScrollEdgeMask()
+    }
+
     @objc private func scrollBoundsDidChange() {
         updateScrollEdgeMask()
     }
@@ -271,6 +318,8 @@ final class MacNativeFileTabBarView: NSView {
         let showsLeftFade = offset > 0.5
         let showsRightFade = maximumOffset - offset > 0.5
         scrollEdgeFadeState = (showsLeftFade, showsRightFade)
+        scrollLeftButton.isEnabled = showsLeftFade
+        scrollRightButton.isEnabled = showsRightFade
 
         let opaque = NSColor.black.cgColor
         let clear = NSColor.clear.cgColor
@@ -384,9 +433,7 @@ private final class MacNativeFileTabDocumentView: NSView {
         }
 
         let spacing: CGFloat = 5
-        let totalSpacing = spacing * CGFloat(max(0, count - 1))
-        let contentWidth = tabViews.reduce(0) { $0 + $1.preferredWidth } + totalSpacing
-        frame.size.width = max(viewportWidth, contentWidth)
+        frame.size.width = max(viewportWidth, preferredContentWidth)
         var x: CGFloat = 0
         for tabView in tabViews {
             let width = tabView.preferredWidth
@@ -397,6 +444,10 @@ private final class MacNativeFileTabDocumentView: NSView {
             tabView.frame = NSRect(x: x, y: 6, width: width, height: max(24, bounds.height - 12))
             x += width + spacing
         }
+    }
+
+    var preferredContentWidth: CGFloat {
+        tabViews.reduce(0) { $0 + $1.preferredWidth } + 5 * CGFloat(max(0, tabViews.count - 1))
     }
 }
 

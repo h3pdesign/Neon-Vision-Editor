@@ -67,7 +67,9 @@ final class MobileEditorInteractionTests: XCTestCase {
         _ text: String,
         wrap: Bool = false,
         documentID: UUID? = nil,
+        documentResourceID: String = "mobile-regression",
         storedCaretLocation: Int? = nil,
+        isTabLoadingContent: Bool = false,
         language: String = "plain text",
         isLargeFileMode: Bool = false,
         showKeyboardAccessoryBar: Bool = false,
@@ -81,7 +83,7 @@ final class MobileEditorInteractionTests: XCTestCase {
         onTextMutation: ((EditorTextMutation) -> Void)? = nil
     ) -> CustomTextEditor {
         CustomTextEditor(text: .constant(text), document: nil, documentID: documentID,
-            documentResourceID: "mobile-regression", storedCaretLocation: storedCaretLocation,
+            documentResourceID: documentResourceID, storedCaretLocation: storedCaretLocation,
             externalEditRevision: 0, language: language, colorScheme: .light,
             ignoreBackgroundOverrides: false,
             fontSize: 16, isLineWrapEnabled: .constant(wrap), isLargeFileMode: isLargeFileMode,
@@ -94,7 +96,7 @@ final class MobileEditorInteractionTests: XCTestCase {
             showScopeGuides: false, highlightScopeBackground: false,
             indentStyle: "spaces", indentWidth: 4, autoIndentEnabled: false,
             autoCloseBracketsEnabled: false, highlightRefreshToken: 0,
-            isTabLoadingContent: false, isReadOnly: false,
+            isTabLoadingContent: isTabLoadingContent, isReadOnly: false,
             onFontSizeChange: nil, onTextMutation: onTextMutation,
             onShortcutAction: nil)
     }
@@ -812,16 +814,8 @@ final class MobileEditorInteractionTests: XCTestCase {
         window.isHidden = true
     }
 
-    func testLineWrapChangeAppliesWhilePhoneKeyboardIsActiveAndPersistsAfterDismissal() throws {
-        final class WrapState {
-            var enabled = false
-        }
-        let state = WrapState()
-        let wrapBinding = Binding(
-            get: { state.enabled },
-            set: { state.enabled = $0 }
-        )
-        func root(keyboardVisible: Bool) -> CustomTextEditor {
+    func testLineWrapChangeAppliesWhilePhoneKeyboardIsActiveAndPersistsAfterDismissal() async throws {
+        func root(wrapEnabled: Bool, keyboardVisible: Bool) -> CustomTextEditor {
             CustomTextEditor(
                 text: .constant(String(repeating: "keyboard wrap transition ", count: 500)),
                 document: nil,
@@ -833,7 +827,7 @@ final class MobileEditorInteractionTests: XCTestCase {
                 colorScheme: .light,
                 ignoreBackgroundOverrides: false,
                 fontSize: 16,
-                isLineWrapEnabled: wrapBinding,
+                isLineWrapEnabled: .constant(wrapEnabled),
                 isLargeFileMode: false,
                 showsCodeMinimap: false,
                 translucentBackgroundEnabled: false,
@@ -865,7 +859,7 @@ final class MobileEditorInteractionTests: XCTestCase {
             )
         }
 
-        let host = UIHostingController(rootView: root(keyboardVisible: true))
+        let host = UIHostingController(rootView: root(wrapEnabled: false, keyboardVisible: true))
         let scene = try XCTUnwrap(
             UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         )
@@ -873,6 +867,7 @@ final class MobileEditorInteractionTests: XCTestCase {
         window.frame = scene.coordinateSpace.bounds
         window.rootViewController = host
         window.makeKeyAndVisible()
+        defer { window.isHidden = true }
         host.view.layoutIfNeeded()
 
         func findEditor(in view: UIView) -> EditorInputTextView? {
@@ -885,9 +880,10 @@ final class MobileEditorInteractionTests: XCTestCase {
 
         textView.setEditorContentOffset(CGPoint(x: 220, y: 0), animated: false)
         XCTAssertEqual(textView.editorContentOffset.x, 220, accuracy: 0.5)
-        state.enabled = true
-        host.rootView = root(keyboardVisible: true)
-        host.view.layoutIfNeeded()
+        // Supply a changed configuration value. Mutating a plain reference
+        // captured by Binding.get does not invalidate SwiftUI's representable.
+        host.rootView = root(wrapEnabled: true, keyboardVisible: true)
+        for _ in 0..<5 { host.view.layoutIfNeeded(); try await Task.sleep(for: .milliseconds(10)) }
 
         XCTAssertEqual(textView.textContainer.lineBreakMode, .byWordWrapping)
         XCTAssertTrue(textView.textContainer.widthTracksTextView)
@@ -896,12 +892,11 @@ final class MobileEditorInteractionTests: XCTestCase {
         XCTAssertFalse(textView.editorContainer?.horizontalScrollView.isScrollEnabled ?? true)
 
         _ = textView.resignFirstResponder()
-        host.rootView = root(keyboardVisible: false)
-        host.view.layoutIfNeeded()
+        host.rootView = root(wrapEnabled: true, keyboardVisible: false)
+        for _ in 0..<5 { host.view.layoutIfNeeded(); try await Task.sleep(for: .milliseconds(10)) }
 
         XCTAssertEqual(textView.textContainer.lineBreakMode, .byWordWrapping)
         XCTAssertTrue(textView.textContainer.widthTracksTextView)
-        window.isHidden = true
     }
 
     func testHTMLSyntaxHighlightingRendersOnIPhoneAndSupportsLargeViewports() async throws {
@@ -1045,7 +1040,8 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
-    func testPhoneKeyboardToolbarUsesAdaptiveEditorOverlay() {
+    func testPhoneKeyboardToolbarUsesAdaptiveEditorOverlay() throws {
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom != .phone, "iPad intentionally uses the native input accessory, not the phone overlay")
         let defaults = UserDefaults.standard
         let previousValue = defaults.object(forKey: IOSAdaptiveChromePreference.storageKey)
         defaults.set(true, forKey: IOSAdaptiveChromePreference.storageKey)
@@ -1080,7 +1076,8 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
-    func testPhoneKeyboardToolbarRebuildsWhenLiquidGlassSettingChanges() {
+    func testPhoneKeyboardToolbarRebuildsWhenLiquidGlassSettingChanges() throws {
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom != .phone, "iPad intentionally uses the native input accessory, not the phone overlay")
         let defaults = UserDefaults.standard
         let previousValue = defaults.object(forKey: IOSAdaptiveChromePreference.storageKey)
         defaults.set(true, forKey: IOSAdaptiveChromePreference.storageKey)
@@ -1165,7 +1162,8 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
-    func testPhoneKeyboardOverlayRemainsClearAcrossRebuilds() {
+    func testPhoneKeyboardOverlayRemainsClearAcrossRebuilds() throws {
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom != .phone, "iPad intentionally uses the native input accessory, not the phone overlay")
         withEditor("Code behind toolbar", showKeyboardAccessoryBar: true, softwareKeyboardVisible: true) { container in
             let view = container.textView
             let editorBackground = UIColor(red: 0.92, green: 0.84, blue: 0.96, alpha: 1)
@@ -1182,7 +1180,8 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
-    func testKeyboardOverlayAnchorsToKeyboardLayoutGuide() {
+    func testKeyboardOverlayAnchorsToKeyboardLayoutGuide() throws {
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom != .phone, "iPad intentionally uses the native input accessory, not the phone overlay")
         withEditor(
             String(repeating: "Editor content behind glass\n", count: 30),
             showKeyboardAccessoryBar: true,
@@ -1249,20 +1248,142 @@ final class MobileEditorInteractionTests: XCTestCase {
 
     func testStoredCaretUpdateDoesNotCollapseTripleTapSelection() {
         XCTAssertFalse(CustomTextEditor.shouldRestoreStoredCaret(
-            didSwitchDocumentResource: false,
-            didChangeStoredCaretLocation: true,
-            selectionLength: 12
+            didSwitchDocumentResource: false
         ))
         XCTAssertTrue(CustomTextEditor.shouldRestoreStoredCaret(
-            didSwitchDocumentResource: false,
-            didChangeStoredCaretLocation: true,
-            selectionLength: 0
+            didSwitchDocumentResource: true
         ))
         XCTAssertTrue(CustomTextEditor.shouldRestoreStoredCaret(
-            didSwitchDocumentResource: true,
-            didChangeStoredCaretLocation: false,
-            selectionLength: 12
+            didSwitchDocumentResource: false, didFinishTabLoad: true
+        ), "A completed load must restore the bookmark instead of the placeholder caret")
+    }
+
+    func testPersistedCaretEchoDoesNotOverrideNewerNativeCaret() async throws {
+        let source = String(repeating: "中文 é😀 wrapped text\n", count: 300)
+        let host = UIHostingController(rootView: editor(source, wrap: true, storedCaretLocation: 0))
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        func container(in view: UIView) -> LineNumberedTextViewContainer? {
+            if let result = view as? LineNumberedTextViewContainer { return result }
+            return view.subviews.lazy.compactMap(container).first
+        }
+        for _ in 0..<5 { host.view.layoutIfNeeded(); await Task.yield() }
+        let textView = try XCTUnwrap(container(in: host.view)?.textView)
+        XCTAssertTrue(textView.becomeFirstResponder())
+        textView.selectedRange = NSRange(location: 5, length: 0)
+        // A persisted notification for this position reaches SwiftUI after UIKit
+        // has already moved the insertion point again during precise placement.
+        host.rootView = editor(source, wrap: true, storedCaretLocation: 5)
+        textView.selectedRange = NSRange(location: 12, length: 0)
+        for _ in 0..<10 {
+            host.view.layoutIfNeeded()
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(textView.selectedRange, NSRange(location: 12, length: 0))
+    }
+
+    func testCompletedDeferredLoadRestoresBookmarkAfterChunkInstallation() async throws {
+        let key = "SettingsLargeFileOpenMode"
+        let previousMode = UserDefaults.standard.object(forKey: key)
+        UserDefaults.standard.set("deferred", forKey: key)
+        defer {
+            if let previousMode { UserDefaults.standard.set(previousMode, forKey: key) }
+            else { UserDefaults.standard.removeObject(forKey: key) }
+        }
+        let bookmark = 150_000
+        let documentID = UUID()
+        let transientCaret = expectation(forNotification: .caretPositionDidChange, object: nil) {
+            $0.userInfo?[EditorCommandUserInfo.documentID] as? String == documentID.uuidString &&
+                $0.userInfo?["location"] as? Int != bookmark
+        }
+        transientCaret.isInverted = true
+        let source = String(repeating: "short line\n", count: 110_000)
+        let host = UIHostingController(rootView: editor(
+            "", documentID: documentID, storedCaretLocation: bookmark, isTabLoadingContent: true,
+            language: "markdown", isLargeFileMode: true
         ))
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        func findEditor(in view: UIView) -> EditorInputTextView? {
+            if let editor = view as? EditorInputTextView { return editor }
+            return view.subviews.lazy.compactMap { findEditor(in: $0) }.first
+        }
+        for _ in 0..<5 { host.view.layoutIfNeeded(); await Task.yield() }
+        let textView = try XCTUnwrap(findEditor(in: host.view))
+        host.rootView = editor(source, documentID: documentID, storedCaretLocation: bookmark,
+                               language: "markdown", isLargeFileMode: true)
+        let deadline = Date().addingTimeInterval(5)
+        while (textView.textStorage.length != (source as NSString).length || !textView.isEditable), Date() < deadline {
+            host.view.layoutIfNeeded()
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertEqual(textView.textStorage.length, (source as NSString).length)
+        XCTAssertTrue(textView.isEditable)
+        XCTAssertEqual(textView.selectedRange, NSRange(location: bookmark, length: 0))
+        await fulfillment(of: [transientCaret], timeout: 0.2)
+    }
+
+    func testLoadingPlaceholderDoesNotPublishAPersistableCaret() async throws {
+        let documentID = UUID()
+        let notification = expectation(forNotification: .caretPositionDidChange, object: nil) {
+            $0.userInfo?[EditorCommandUserInfo.documentID] as? String == documentID.uuidString
+        }
+        notification.isInverted = true
+        let host = UIHostingController(rootView: editor(
+            "", documentID: documentID, storedCaretLocation: 150_000, isTabLoadingContent: true
+        ))
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        host.view.layoutIfNeeded()
+        await fulfillment(of: [notification], timeout: 0.2)
+    }
+
+    func testResourceActivationRestoresBookmarkWithoutCollapsingSameResourceSelection() async throws {
+        let documentID = UUID()
+        let source = "first line\nsecond line\nthird line\n"
+        let host = UIHostingController(rootView: editor(source, documentID: documentID, storedCaretLocation: 4))
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        func findEditor(in view: UIView) -> EditorInputTextView? {
+            if let editor = view as? EditorInputTextView { return editor }
+            return view.subviews.lazy.compactMap { findEditor(in: $0) }.first
+        }
+        func settle() async throws {
+            for _ in 0..<5 { host.view.layoutIfNeeded(); try await Task.sleep(for: .milliseconds(10)) }
+        }
+        try await settle()
+        let textView = try XCTUnwrap(findEditor(in: host.view))
+        XCTAssertEqual(textView.selectedRange, NSRange(location: 4, length: 0))
+        textView.selectedRange = NSRange(location: 11, length: 11)
+        host.rootView = editor(source, documentID: documentID, storedCaretLocation: 0)
+        try await settle()
+        XCTAssertEqual(textView.selectedRange, NSRange(location: 11, length: 11))
+        host.rootView = editor(source, documentID: documentID, documentResourceID: "other-resource", storedCaretLocation: 23)
+        try await settle()
+        XCTAssertEqual(textView.selectedRange, NSRange(location: 23, length: 0))
+        NotificationCenter.default.post(name: .moveCursorToRange, object: nil, userInfo: [
+            EditorCommandUserInfo.documentID: documentID.uuidString,
+            EditorCommandUserInfo.rangeLocation: 11, EditorCommandUserInfo.rangeLength: 6
+        ])
+        try await settle()
+        XCTAssertEqual(textView.selectedRange, NSRange(location: 11, length: 6),
+                       "Find navigation must remain an explicit command, independent of caret persistence")
     }
 
     func testActiveTypingUpdatesLineNumbersImmediately() {

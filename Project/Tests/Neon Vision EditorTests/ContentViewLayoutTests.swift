@@ -273,6 +273,20 @@ final class ContentViewLayoutTests: XCTestCase {
         )
     }
 
+    func testPhoneToolbarAdaptsAcrossOuterInnerAndSplitViewTraits() {
+        for sizeClass in [UserInterfaceSizeClass.compact, .regular, .compact] {
+            let regular = IOSAdaptiveLayoutPolicy.usesRegularLayout(
+                horizontalSizeClass: sizeClass, containerWidth: 900
+            )
+            XCTAssertEqual(IOSAdaptiveLayoutPolicy.usesCompactPhoneToolbar(
+                isPhone: true, regularLayout: regular
+            ), sizeClass == .compact)
+            XCTAssertFalse(IOSAdaptiveLayoutPolicy.usesCompactPhoneToolbar(
+                isPhone: false, regularLayout: regular
+            ), "Existing iPad toolbar presentation must not change")
+        }
+    }
+
     func testAdaptiveLayoutFallsBackToMeasuredWidthBeforeSizeClassArrives() {
         XCTAssertFalse(
             IOSAdaptiveLayoutPolicy.usesRegularLayout(

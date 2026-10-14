@@ -6,6 +6,20 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Improvements
+
+- Loads the macOS editor's initial text window in the background and reuses bounded render caches when returning to unchanged tabs.
+- Updates compatible Markdown previews without reloading the whole page, retaining unchanged content and scroll position.
+- Stops cancelled project indexing instead of continuing an obsolete folder scan.
+
+### Fixes
+
+- Detects external file rewrites even when file size and modification time are unchanged, preventing stale text indexes during background tab activation.
+
+### Maintenance
+
+- Adds real SwiftUI-to-first-draw tab activation benchmarks and regressions for snapshot ownership, stale results, typing during activation, cancellation, and preview reuse.
+
 ## [v1.9.3] - 2026-10-13
 
 ### Why Upgrade

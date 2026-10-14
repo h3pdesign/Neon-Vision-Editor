@@ -1,6 +1,7 @@
 #if os(macOS)
 import AppKit
 import CoreText
+import SwiftUI
 import XCTest
 @testable import Neon_Vision_Editor
 
@@ -154,26 +155,171 @@ final class VirtualEditorPerformanceTests: XCTestCase {
         XCTAssertGreaterThan(hitOffset, 0)
     }
 
-    func testTabSwitchActivationBenchmarkRecordsAllActivationStages() throws {
-        let document = FileBackedTextDocument(content: largeDocumentText())
-        let monitor = EditorPerformanceMonitor(defaults: UserDefaults(suiteName: "NVE-TabSwitchBenchmark-\(UUID().uuidString)")!)
-        let tabID = UUID()
-        monitor.beginTabSwitch(tabID: tabID)
+    func testTabSwitchActivationBenchmarkRecordsRealSwiftUIViewportAndDraw() async throws {
+        let sources = [String(repeating: "# Heading\n**Markdown** é😀\n", count: 50_000),
+                       largeDocumentText(), "{\"value\":\"" + String(repeating: "é😀", count: 150_000) + "\"}"]
+        let documents = sources.map { FileBackedTextDocument(content: $0) }
+        let ids = documents.map { _ in UUID() }
+        let languages = ["markdown", "swift", "json"]
+        let host = NSHostingView(rootView: editor(FileBackedTextDocument(content: ""), id: UUID(), language: "plain"))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        window.orderFront(nil)
+        defer { window.close() }
+        host.layoutSubtreeIfNeeded()
+        var cold: [Int] = []
+        var warm: [Int] = []
+        for round in 0..<4 {
+            for index in [1, 2, 0] {
+                let prior = EditorPerformanceMonitor.shared.recentTabSwitchEvents().last?.id
+                EditorPerformanceMonitor.shared.beginTabSwitch(tabID: ids[index])
+                host.rootView = editor(documents[index], id: ids[index], language: languages[index])
+                let deadline = Date().addingTimeInterval(5)
+                var received: EditorPerformanceMonitor.TabSwitchEvent?
+                while Date() < deadline {
+                    host.layoutSubtreeIfNeeded()
+                    host.displayIfNeeded()
+                    let event = EditorPerformanceMonitor.shared.recentTabSwitchEvents().last
+                    if let event, event.id != prior { received = event; break }
+                    try await Task.sleep(for: .milliseconds(1))
+                }
+                let event = try XCTUnwrap(received, "Actual drawing must complete the monitor event")
+                XCTAssertNotNil(event.swiftUIUpdateMilliseconds)
+                XCTAssertNotNil(event.viewportMilliseconds)
+                print("native-tab-switch stage round=\(round) language=\(languages[index]) ui_ms=\(event.swiftUIUpdateMilliseconds ?? -1) viewport_ms=\(event.viewportMilliseconds ?? -1) draw_ms=\(event.elapsedMilliseconds) active=\(NSApp.isActive) key=\(window.isKeyWindow) visible=\(window.occlusionState.contains(.visible))")
+                if round == 0 { cold.append(event.elapsedMilliseconds) }
+                else { warm.append(event.elapsedMilliseconds) }
+            }
+        }
+        let sorted = warm.sorted()
+        print("native-tab-switch cold_ms=\(cold) warm_median_ms=\(sorted[sorted.count / 2]) warm_p95_ms=\(sorted.last!)")
+        XCTAssertLessThan(sorted[sorted.count / 2], 100, "Warm SwiftUI-to-first-draw regression budget")
+        XCTAssertLessThan(sorted.last!, 250, "Warm tail latency regression budget")
+    }
 
-        let started = ProcessInfo.processInfo.systemUptime
-        _ = try document.viewport(aroundLine: lineCount / 2, maximumByteCount: viewportByteCount, maximumLineCount: 512)
-        monitor.markLoadedTabStateApplied(tabID: tabID)
-        monitor.markSwiftUIEditorUpdated(tabID: tabID)
-        monitor.markViewportLoaded(tabID: tabID)
-        monitor.markTabSwitchFirstDraw(tabID: tabID)
+    func testRapidActivationTypingAndRevisionChangesNeverInstallStaleViewport() async throws {
+        let first = FileBackedTextDocument(content: "first document\n")
+        let second = FileBackedTextDocument(content: "second document\n")
+        let ids = [UUID(), UUID()]
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        let window = NSWindow(contentRect: canvas.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = canvas
+        window.orderFront(nil)
+        defer { window.close() }
+        func configure(_ document: FileBackedTextDocument, id: UUID, revision: Int = 0, fontSize: CGFloat = 14) {
+            canvas.configure(document: document, documentID: id, resourceID: id.uuidString, displayName: "test.txt",
+                             contentRevision: revision, externalContentRevision: 0, caret: 0, language: "plain",
+                             colorScheme: .dark, fontSize: fontSize, fontName: "", lineHeightMultiplier: 1,
+                             isReadOnly: false, translucentBackgroundEnabled: false, showsLineNumbers: true,
+                             highlightCurrentLine: false, lineWrapEnabled: true, showsInvisibleCharacters: false,
+                             showsIndentationGuides: false, showsScopeGuides: false, highlightsScopeBackground: false,
+                             highlightsMatchingBrackets: false, autoIndentEnabled: true, autoCloseBracketsEnabled: false,
+                             onFontSizeChange: nil, onTextMutation: { mutation in
+                do {
+                    if let viewport = mutation.viewport {
+                        try document.replace(in: viewport, utf16Range: mutation.range, with: mutation.replacement)
+                    } else {
+                        try document.replace(utf16Range: mutation.range, with: mutation.replacement)
+                    }
+                    return true
+                }
+                catch { return false }
+            })
+        }
+        configure(first, id: ids[0])
+        configure(second, id: ids[1])
+        XCTAssertTrue(canvas.isViewportActivationPending)
+        canvas.insertText("X", replacementRange: NSRange(location: NSNotFound, length: 0))
+        XCTAssertEqual(second.string(), "Xsecond document\n")
+        XCTAssertEqual(first.string(), "first document\n")
+        configure(second, id: ids[1], revision: 1)
+        configure(first, id: ids[0])
+        configure(second, id: ids[1], revision: 1)
+        let deadline = Date().addingTimeInterval(3)
+        while canvas.isViewportActivationPending && Date() < deadline { try await Task.sleep(for: .milliseconds(1)) }
+        XCTAssertFalse(canvas.isViewportActivationPending)
+        XCTAssertTrue(canvas.installedViewportTextForTesting.hasPrefix("Xsecond"))
+        configure(first, id: ids[0])
+        configure(second, id: ids[1], revision: 1)
+        XCTAssertTrue(canvas.activationCacheHit)
+        XCTAssertFalse(canvas.isViewportActivationPending)
+        configure(first, id: ids[0])
+        configure(second, id: ids[1], revision: 1, fontSize: 18)
+        XCTAssertFalse(canvas.activationCacheHit, "Layout configuration must invalidate warm state")
+        XCTAssertLessThanOrEqual(canvas.cachedRenderStateCountForTesting, 8)
+        XCTAssertEqual(canvas.accessibilityRole(), .textArea)
+        XCTAssertTrue(canvas.acceptsFirstResponder)
+    }
 
-        let elapsed = ProcessInfo.processInfo.systemUptime - started
-        XCTAssertGreaterThanOrEqual(elapsed, 0)
-        let event = try XCTUnwrap(monitor.recentTabSwitchEvents().last)
-        XCTAssertNotNil(event.loadedStateMilliseconds)
-        XCTAssertNotNil(event.swiftUIUpdateMilliseconds)
-        XCTAssertNotNil(event.viewportMilliseconds)
-        XCTAssertGreaterThanOrEqual(event.elapsedMilliseconds, 0)
+    func testColdLazyActivationDoesNotPrepareLiveIndexOnMainActor() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("lazy-tab-\(UUID()).md")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try String(repeating: "# lazy é😀\n", count: 100_000).write(to: url, atomically: true, encoding: .utf8)
+        let document = try FileBackedTextDocument(url: url, knownEncoding: .utf8)
+        let id = UUID()
+        let host = NSHostingView(rootView: editor(FileBackedTextDocument(content: ""), id: UUID(), language: "plain"))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        window.orderFront(nil)
+        defer { window.close() }
+        host.layoutSubtreeIfNeeded()
+        let previous = EditorPerformanceMonitor.shared.recentTabSwitchEvents().last?.id
+        EditorPerformanceMonitor.shared.beginTabSwitch(tabID: id)
+        host.rootView = editor(document, id: id, language: "markdown")
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline {
+            host.layoutSubtreeIfNeeded()
+            host.displayIfNeeded()
+            if EditorPerformanceMonitor.shared.recentTabSwitchEvents().last?.id != previous { break }
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        XCTAssertNotEqual(EditorPerformanceMonitor.shared.recentTabSwitchEvents().last?.id, previous)
+        XCTAssertNil(document.viewportIndexPreparedOnMainThread, "Activation must not index live storage on its owner")
+        XCTAssertFalse(document.isViewportIndexReady, "Any missing index is prepared on the worker copy, not live storage")
+    }
+
+    func testDifferentDocumentIdentityAtSameResourceCannotReusePreviousViewport() async throws {
+        let first = FileBackedTextDocument(content: "previous resource contents")
+        let second = FileBackedTextDocument(content: "reopened resource contents")
+        let host = NSHostingView(rootView: editor(first, id: UUID(), language: "plain", resourceID: "same-resource"))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        window.orderFront(nil)
+        defer { window.close() }
+        host.layoutSubtreeIfNeeded()
+        let id = UUID()
+        let previous = EditorPerformanceMonitor.shared.recentTabSwitchEvents().last?.id
+        EditorPerformanceMonitor.shared.beginTabSwitch(tabID: id)
+        host.rootView = editor(second, id: id, language: "plain", resourceID: "same-resource")
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline {
+            host.layoutSubtreeIfNeeded()
+            host.displayIfNeeded()
+            if EditorPerformanceMonitor.shared.recentTabSwitchEvents().last?.id != previous { break }
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        XCTAssertNotEqual(EditorPerformanceMonitor.shared.recentTabSwitchEvents().last?.id, previous)
+    }
+
+    private func editor(_ document: FileBackedTextDocument, id: UUID, language: String, resourceID: String? = nil) -> VirtualEditorView {
+        VirtualEditorView(document: document, documentID: id, documentResourceID: resourceID ?? id.uuidString,
+                          documentDisplayName: "fixture.\(language)", contentRevision: 0, externalContentRevision: 0,
+                          storedCaretLocation: 0, language: language, colorScheme: .dark, themeRefreshToken: 0,
+                          fontSize: 14, fontName: "", lineHeightMultiplier: 1, isReadOnly: false,
+                          translucentBackgroundEnabled: false, showsLineNumbers: true, highlightCurrentLine: false,
+                          lineWrapEnabled: true, showsInvisibleCharacters: false, showsIndentationGuides: false,
+                          showsScopeGuides: false, highlightsScopeBackground: false, highlightsMatchingBrackets: false,
+                          autoIndentEnabled: true, autoCloseBracketsEnabled: false, indentStyle: "spaces", indentWidth: 4,
+                          isSplitPaneResizeInProgress: false, preferredLayoutWidth: 800,
+                          focusesEditorOnInitialWindowAttachment: false, onFontSizeChange: nil, onTextMutation: nil)
     }
 
     private func benchmarkOptions() -> XCTMeasureOptions {

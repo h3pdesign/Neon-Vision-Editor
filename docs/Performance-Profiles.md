@@ -1,5 +1,41 @@
 # Performance Profiles and Budgets
 
+## Native tab activation regression harness
+
+`VirtualEditorPerformanceTests.testTabSwitchActivationBenchmarkRecordsRealSwiftUIViewportAndDraw` attaches the actual SwiftUI representable to a disposable macOS window, switches between Markdown, Swift and single-line Unicode JSON, and waits for the renderer's real first-draw stage. It reports cold samples and warm median/tail samples. It does not manually mark viewport/draw events and does not open user documents.
+
+Run the focused suite in **Release** with elevated Xcode access:
+
+```bash
+xcodebuild -project 'Neon Vision Editor.xcodeproj' -scheme 'Neon Vision Editor' \
+  -configuration Release-GitHub ENABLE_TESTABILITY=YES DEAD_CODE_STRIPPING=NO \
+  COPY_PHASE_STRIP=NO STRIP_INSTALLED_PRODUCT=NO CODE_SIGNING_ALLOWED=NO \
+  -destination 'platform=macOS' \
+  -only-testing:'Neon Vision EditorTests/VirtualEditorPerformanceTests' test
+```
+
+The test-only overrides enable `@testable` linking without changing shipping settings; Swift still uses Release optimization. The 100 ms warm median / 250 ms warm tail limits are regression ceilings, not an instant-switch claim. This harness isolates native editor activation; separately profile the complete application with preview on/off, cold file-provider reads, multiple windows, and iPhone/iPad hardware. Keep raw traces, median/p95, OS/toolchain, fixture sizes and build configuration with results. Do not equate fixture generation, simulator builds or the native harness with end-to-end device proof.
+
+Initial macOS reads use immutable document snapshots and independent coordinated file handles. Captured indexes are validated against file identity and data generation, not size/mtime alone. Providers without supported version identifiers use a cancellable 256 KiB-chunk fingerprint check of the indexed source bytes; prepared indexes require a complete-source scan on that fallback path, so network/provider cold activation can remain slower. Fingerprints are accumulated during existing index passes without retaining the whole file. Completed reads install only for matching resource/document/activation/revisions. Warm render states are bounded to eight entries with a 16 MiB conservative retention-cost budget, keyed by revisions, caret, theme/font/wrapping and viewport width. This budget estimates retained text/attributed-line cost; use Allocations to measure actual Core Text heap residency. Markdown HTML has a separate six-entry / 8 MiB UTF-8 cache; local-image renders continue bypassing HTML reuse.
+
+### Local optimized harness evidence — 2026-10-14
+
+Xcode 27.0 (27A266a), macOS destination, development 1.9.4/build 1086. All runs used a disposable SwiftUI-hosted native editor window and the same Markdown/Swift/single-line Unicode JSON fixtures, with preview excluded from this native activation benchmark. Test-only linking overrides above were enabled; these are not bit-identical shipping binaries.
+
+| Fresh test-host process | Cold first-draw samples, ms (Swift / JSON / Markdown) | Warm median, ms | Warm p95, ms |
+| --- | --- | --- | --- |
+| Full regression pass | 9 / 93 / 31 | 2 | 5 |
+| Repeat 2 | 100 / 431 / 186 | 3 | 32 |
+| Repeat 3 | 358 / 101 / 154 | 5 | 32 |
+
+The full optimized regression pass ran 183 tests with zero failures, including actual WebKit in-place updates/fallback and focus retention, native keyboard/accessibility contracts, lazy snapshot ownership, same-resource document replacement and cancellation. Raw local results/logs are `/private/tmp/NeonOptimization20261014-complete.xcresult`, `/private/tmp/NeonOptimization20261014-perf2.xcresult`, `/private/tmp/NeonOptimization20261014-perf3.xcresult` and their `neon-optimization-*` logs. Temporary result locations are not durable CI artifacts; hosted CI uploads its own runtime results.
+
+PR #772 follow-up (development build 1087): the same-size/preserved-timestamp snapshot regression failed all four rewrite cases before the fix. The final optimized document/layout/activation pass ran 142 tests with zero failures. Fresh-host warm medians were 7 ms (p95 38 ms), 4 ms (p95 32 ms), and 3 ms (p95 7 ms in the complete targeted pass). Two earlier combined passes exceeded the unchanged 100 ms warm ceiling at 113 and 122 ms; those timing failures are retained, not erased or treated as a proven source-validation regression. This benchmark uses in-memory documents, outside the file-validation path. It now logs per-activation UI/viewport/draw stages and window activation/visibility to diagnose scheduling variability. Results are `/private/tmp/nve-pr772-red-exact-20261014.xcresult`, `/private/tmp/nve-pr772-green-20261014.xcresult`, `/private/tmp/nve-pr772-final-20261014.xcresult`, `/private/tmp/nve-pr772-perf-repeat1-20261014.xcresult`, `/private/tmp/nve-pr772-stages-20261014.xcresult`, and `/private/tmp/nve-pr772-final-stages-20261014.xcresult`, with matching log files.
+
+Recorded passing warm runs meet the regression budget, but timings vary across test processes. Cold activation varies considerably and is **not guaranteed instant**. This is not a before/after comparison against v1.9.3, nor proof of complete-app startup, preview-enabled switching, file-provider latency, hardware memory behavior or physical-device accessibility. Those remain separate profiling/sign-off tasks.
+
+Compatible inert Markdown pages update only `main.content`, preserving equal nodes and relative scroll position. Document, base URL, script policy or HTML-shell changes, ambiguous markers, unsafe elements and JavaScript failures fall back to a full navigation. Content scripts remain disabled; no telemetry or new network requests are introduced.
+
 Run `scripts/benchmark_large_file.sh` on a quiet machine before changing debounces, caches, or rendering paths. It creates deterministic Swift, TypeScript, JSON, NDJSON, CSV, and Markdown files plus separate 500-card Markdown and PDF project fixtures (override with `NVE_BENCHMARK_CARD_COUNT` and `NVE_BENCHMARK_PDF_CARD_COUNT`).
 
 `docs/performance-baselines.json` is the versioned contract for fixture sizes and stable retained-data limits. `scripts/ci/check_performance_budget.py` verifies that the JSON contract still matches the runtime Git and draft-recovery bounds; it deliberately does not gate raw timings, which vary across hardware and simulator runtimes.

@@ -26,14 +26,19 @@ struct ProjectFileIndex {
         ignoredFolderNames: Set<String> = ProjectIgnoredFolders.names(from: ProjectIgnoredFolders.defaultRawValue),
         isSupportedFile: @escaping @Sendable (URL) -> Bool
     ) async -> Snapshot {
-        await Task.detached(priority: .utility) {
+        let worker = Task.detached(priority: .utility) {
             buildSnapshotSync(
                 at: root,
                 supportedOnly: supportedOnly,
                 ignoredFolderNames: ignoredFolderNames,
                 isSupportedFile: isSupportedFile
             )
-        }.value
+        }
+        return await withTaskCancellationHandler {
+            await worker.value
+        } onCancel: {
+            worker.cancel()
+        }
     }
 
     nonisolated static func refreshSnapshot(
@@ -43,7 +48,7 @@ struct ProjectFileIndex {
         ignoredFolderNames: Set<String> = ProjectIgnoredFolders.names(from: ProjectIgnoredFolders.defaultRawValue),
         isSupportedFile: @escaping @Sendable (URL) -> Bool
     ) async -> Snapshot {
-        await Task.detached(priority: .utility) {
+        let worker = Task.detached(priority: .utility) {
             refreshSnapshotSync(
                 previous,
                 at: root,
@@ -51,7 +56,12 @@ struct ProjectFileIndex {
                 ignoredFolderNames: ignoredFolderNames,
                 isSupportedFile: isSupportedFile
             )
-        }.value
+        }
+        return await withTaskCancellationHandler {
+            await worker.value
+        } onCancel: {
+            worker.cancel()
+        }
     }
 
     private nonisolated static func buildSnapshotSync(
@@ -77,6 +87,7 @@ struct ProjectFileIndex {
         ignoredFolderNames: Set<String>,
         isSupportedFile: @escaping @Sendable (URL) -> Bool
     ) -> Snapshot {
+        guard !Task.isCancelled else { return previous }
         let resourceKeys: Set<URLResourceKey> = [
             .isRegularFileKey,
             .isDirectoryKey,
@@ -158,6 +169,7 @@ struct ProjectFileIndex {
             )
         }
 
+        guard !Task.isCancelled else { return previous }
         refreshedEntries.sort {
             $0.standardizedPath.localizedCaseInsensitiveCompare($1.standardizedPath) == .orderedAscending
         }

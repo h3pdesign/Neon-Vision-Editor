@@ -7,17 +7,15 @@ import AppKit
 
 // MARK: - Markdown Preview Render Cache
 
-private struct MarkdownPreviewHTMLCache {
-    private var signature: String = ""
-    private var html: String = ""
+nonisolated private struct MarkdownPreviewHTMLCache {
+    private var entries = BoundedLRUCache<String, String>(maximumCount: 6, maximumCost: 8 * 1024 * 1024)
 
-    func html(for signature: String) -> String? {
-        self.signature == signature ? html : nil
+    mutating func html(for signature: String) -> String? {
+        entries.value(for: signature)
     }
 
     mutating func store(_ html: String, for signature: String) {
-        self.signature = signature
-        self.html = html
+        entries.store(html, for: signature, cost: html.utf8.count)
     }
 }
 
@@ -603,7 +601,9 @@ extension ContentView {
         </head>
         <body class="\(template)">
         <main class="content">
+        <!-- nve-preview-content-start -->
         \(bodyHTML)
+        <!-- nve-preview-content-end -->
         </main>
         \(Self.markdownPreviewCodeBlockScript())
         </body>
@@ -842,6 +842,7 @@ extension ContentView {
               }
             });
           };
+          window.__nveEnhanceCodeBlocks = enhanceCodeBlocks;
           try {
             enhanceCodeBlocks();
           } catch (_) {

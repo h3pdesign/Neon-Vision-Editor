@@ -3,6 +3,192 @@ import XCTest
 
 @MainActor
 final class FileBackedTextDocumentTests: XCTestCase {
+    func testViewportSnapshotIsIndependentOfLiveEditsAndConcurrentReads() async throws {
+        let document = FileBackedTextDocument(content: "old 😀\nsecond line\n")
+        let reader = try XCTUnwrap(document.makeViewportReader())
+        try document.replaceAll(with: "new live document")
+        let worker = Task.detached { try? reader.read(0, 64_000, 512) }
+        let secondWorker = Task.detached { try? reader.read(0, 64_000, 512) }
+        let first = await worker.value
+        let second = await secondWorker.value
+        XCTAssertEqual(first?.text, "old 😀\nsecond line\n")
+        XCTAssertEqual(first, second)
+        XCTAssertEqual(document.string(), "new live document")
+    }
+
+    func testLazyViewportSnapshotReadsIndependentHandleAndPreservesEncoding() async throws {
+        for encoding in [TextEncodingDescriptor.utf8, TextEncodingDescriptor(identifier: .utf16LittleEndianWithBOM)] {
+            let source = String(repeating: "é😀\n", count: 20_000)
+            let url = directory.appendingPathComponent(UUID().uuidString)
+            try XCTUnwrap(encoding.encodedData(for: source)).write(to: url)
+            let document = try FileBackedTextDocument(url: url, knownEncoding: encoding)
+            let reader = try XCTUnwrap(document.makeViewportReader())
+            let worker = Task.detached { try? reader.read(source.utf16.count, 64_000, 512) }
+            // Read the live seekable handle while the snapshot opens its own.
+            let live = try document.viewport(aroundLine: 0, maximumByteCount: 64_000, maximumLineCount: 512)
+            let received = await worker.value
+            let result = try XCTUnwrap(received)
+            XCTAssertTrue(live.text.hasPrefix("é😀\n"))
+            XCTAssertEqual(result.startUTF16Offset + result.text.utf16.count, source.utf16.count)
+            XCTAssertLessThanOrEqual(result.text.utf8.count, 64_000)
+            XCTAssertNil(document.viewportIndexPreparedOnMainThread)
+        }
+    }
+
+    func testViewportSnapshotRejectsExternalChangesAndCancellation() async throws {
+        let url = directory.appendingPathComponent("snapshot-conflict.txt")
+        try Data("original".utf8).write(to: url)
+        let document = try FileBackedTextDocument(url: url, knownEncoding: .utf8)
+        let reader = try XCTUnwrap(document.makeViewportReader())
+        try Data("external replacement".utf8).write(to: url)
+        XCTAssertThrowsError(try reader.read(0, 64_000, 512)) { error in
+            XCTAssertEqual(error as? FileBackedTextDocument.Error, .externalConflict)
+        }
+        let started = expectation(description: "worker entered")
+        let gate = NVELock<CheckedContinuation<Void, Never>?>(nil)
+        let worker = Task.detached {
+            await withCheckedContinuation { continuation in
+                gate.withLock { $0 = continuation }
+                started.fulfill()
+            }
+            do { _ = try reader.read(0, 64_000, 512); return false }
+            catch { return error is CancellationError }
+        }
+        await fulfillment(of: [started], timeout: 3)
+        worker.cancel()
+        gate.withLock { continuation in continuation?.resume(); continuation = nil }
+        let cancelled = await worker.value
+        XCTAssertTrue(cancelled)
+    }
+
+    func testViewportSnapshotRejectsSameSizeRewriteWithPreservedTimestamp() throws {
+        for prepared in [false, true] {
+            for atomic in [false, true] {
+                let url = directory.appendingPathComponent(UUID().uuidString)
+                let source = Data((String(repeating: "é😀\n", count: 50_000) + "TAIL").utf8)
+                try source.write(to: url)
+                // Use an exactly representable timestamp; filesystem setters can
+                // round a newly created file's subsecond modification date.
+                let timestamp = Date(timeIntervalSince1970: 1_700_000_000)
+                try FileManager.default.setAttributes([.modificationDate: timestamp], ofItemAtPath: url.path)
+                let document = try FileBackedTextDocument(url: url, knownEncoding: .utf8)
+                if prepared { try document.prepareViewportIndex() }
+                let reader = try XCTUnwrap(document.makeViewportReader())
+                XCTAssertNoThrow(try reader.read(0, 64_000, 512))
+                var replacement = source
+                // Prepared indexes must reject changes beyond the opening prefix,
+                // including changed newline/Unicode boundaries of equal byte size.
+                let offset = prepared ? 280_000 : 0
+                replacement.replaceSubrange(offset..<(offset + 7), with: Data("abcdef\n".utf8))
+                try replacement.write(to: url, options: atomic ? .atomic : [])
+                try FileManager.default.setAttributes([.modificationDate: timestamp], ofItemAtPath: url.path)
+                var freshURL = url
+                freshURL.removeAllCachedResourceValues()
+                XCTAssertEqual(try freshURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate, timestamp)
+                XCTAssertThrowsError(try reader.read(prepared ? 170_000 : 0, 64_000, 512)) { error in
+                    XCTAssertEqual(error as? FileBackedTextDocument.Error, .externalConflict)
+                }
+            }
+        }
+    }
+
+    func testViewportFingerprintFallbackValidatesPreparedUnicodeAndEmptySources() throws {
+        for identifier in [TextEncodingDescriptor.Identifier.utf8, .utf8WithBOM,
+                           .utf16LittleEndianWithBOM, .utf16BigEndianWithBOM, .isoLatin1] {
+            let encoding = TextEncodingDescriptor(identifier: identifier)
+            for source in ["", String(repeating: identifier == .isoLatin1 ? "é\n" : "é😀\n", count: 150_000)] {
+                let url = directory.appendingPathComponent(UUID().uuidString)
+                let data = try XCTUnwrap(encoding.encodedData(for: source))
+                try data.write(to: url)
+                let timestamp = Date(timeIntervalSince1970: 1_700_000_000)
+                try FileManager.default.setAttributes([.modificationDate: timestamp], ofItemAtPath: url.path)
+                let document = try FileBackedTextDocument(url: url, knownEncoding: encoding)
+                try document.prepareViewportIndex()
+                let expectedHash = data.reduce(UInt64(0xcbf29ce484222325)) {
+                    ($0 ^ UInt64($1)) &* 0x100000001b3
+                }
+                XCTAssertEqual(document.lazyIndexedFingerprint, expectedHash, identifier.rawValue)
+                // Nil version emulates a provider without Foundation identifiers.
+                let metadata = FileBackedTextDocument.FileMetadata(
+                    byteCount: data.count, modificationDate: timestamp, fingerprint: expectedHash
+                )
+                XCTAssertNoThrow(try FileBackedTextDocument.validateViewportSource(
+                    at: url, metadata: metadata, indexedByteCount: data.count,
+                    indexedFingerprint: document.lazyIndexedFingerprint
+                ))
+                if data.count > 256 * 1024 {
+                    var replacement = data
+                    replacement[replacement.count - 1] ^= 1
+                    try replacement.write(to: url)
+                    try FileManager.default.setAttributes([.modificationDate: timestamp], ofItemAtPath: url.path)
+                    XCTAssertThrowsError(try FileBackedTextDocument.validateViewportSource(
+                        at: url, metadata: metadata, indexedByteCount: data.count,
+                        indexedFingerprint: document.lazyIndexedFingerprint
+                    )) { error in
+                        XCTAssertEqual(error as? FileBackedTextDocument.Error, .externalConflict)
+                    }
+                }
+            }
+        }
+    }
+
+    func testViewportSnapshotPreservesDirtyEditsAndRejectsRewrittenSource() throws {
+        let url = directory.appendingPathComponent("dirty-snapshot.txt")
+        let timestamp = Date(timeIntervalSince1970: 1_700_000_000)
+        try Data("original\n".utf8).write(to: url)
+        try FileManager.default.setAttributes([.modificationDate: timestamp], ofItemAtPath: url.path)
+        let document = try FileBackedTextDocument(url: url, knownEncoding: .utf8)
+        try document.replace(utf16Range: NSRange(location: 0, length: 0), with: "local ")
+        let reader = try XCTUnwrap(document.makeViewportReader())
+        XCTAssertEqual(try reader.read(0, 64_000, 512).text, "local original\n")
+        try Data("external\n".utf8).write(to: url)
+        try FileManager.default.setAttributes([.modificationDate: timestamp], ofItemAtPath: url.path)
+        XCTAssertThrowsError(try reader.read(0, 64_000, 512)) { error in
+            XCTAssertEqual(error as? FileBackedTextDocument.Error, .externalConflict)
+        }
+        XCTAssertEqual(document.string(), "local original\n")
+        XCTAssertTrue(document.isDirty)
+    }
+
+    func testViewportFingerprintFallbackValidatesIndexedPrefixAndRangeBoundaries() throws {
+        let url = directory.appendingPathComponent("prefix-snapshot.txt")
+        var data = Data(String(repeating: "prefix line\n", count: 50_000).utf8)
+        try data.write(to: url)
+        let timestamp = Date(timeIntervalSince1970: 1_700_000_000)
+        try FileManager.default.setAttributes([.modificationDate: timestamp], ofItemAtPath: url.path)
+        let document = try FileBackedTextDocument(url: url, knownEncoding: .utf8)
+        let prefixCount = try XCTUnwrap(data.prefix(256 * 1024).lastIndex(of: 0x0A)) + 1
+        let metadata = FileBackedTextDocument.FileMetadata(
+            byteCount: data.count, modificationDate: timestamp, fingerprint: 0
+        )
+        // Unprepared snapshots have no captured tail indexes. Their fingerprint
+        // must validate the prefix, not compare against the legacy unknown zero.
+        data[data.count - 2] = 0x58
+        try data.write(to: url)
+        try FileManager.default.setAttributes([.modificationDate: timestamp], ofItemAtPath: url.path)
+        XCTAssertNoThrow(try FileBackedTextDocument.validateViewportSource(
+            at: url, metadata: metadata, indexedByteCount: prefixCount,
+            indexedFingerprint: document.lazyIndexedFingerprint
+        ))
+        for invalidCount in [-1, data.count + 1] {
+            XCTAssertThrowsError(try FileBackedTextDocument.validateViewportSource(
+                at: url, metadata: metadata, indexedByteCount: invalidCount,
+                indexedFingerprint: document.lazyIndexedFingerprint
+            )) { error in
+                XCTAssertEqual(error as? FileBackedTextDocument.Error, .invalidRange)
+            }
+        }
+        data[0] = 0x58
+        try data.write(to: url)
+        try FileManager.default.setAttributes([.modificationDate: timestamp], ofItemAtPath: url.path)
+        XCTAssertThrowsError(try FileBackedTextDocument.validateViewportSource(
+            at: url, metadata: metadata, indexedByteCount: prefixCount,
+            indexedFingerprint: document.lazyIndexedFingerprint
+        )) { error in
+            XCTAssertEqual(error as? FileBackedTextDocument.Error, .externalConflict)
+        }
+    }
+
     func testOffsetViewportContainsOversizedLineTailAcrossStorageAndEncodings() throws {
         let source = String(repeating: "é😀", count: 100_001) + "TAIL"
         for identifier in [TextEncodingDescriptor.Identifier.utf8, .utf8WithBOM,

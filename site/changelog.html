@@ -118,7 +118,20 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v1.9.3</h2><span class="date">13 October 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v2.0.0</h2><span class="date">15 October 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Keeps compatible Markdown previews up to date without reloading unchanged content or losing your scroll position.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Stops obsolete folder scans when you cancel project indexing.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Adapts the phone toolbar when the available layout changes between compact and regular width.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Detects external file rewrites even when file size and modification time are unchanged, preventing stale text indexes during background tab activation.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps precise iPhone/iPad cursor placement from being overwritten by delayed saved-position updates (#770).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Restores saved cursor positions after deferred large-file loading completes, without saving temporary placeholder positions (#770).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves manual scrolling through overflowing Mac tabs and adds accessible left/right navigation controls (#766).</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v1.9.3</h2><span class="date">13 October 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic table detection in new notes without changing file contents (#738).</p></div>
           <div class="item"><span class="badge new">New</span><p>Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS.</p></div>

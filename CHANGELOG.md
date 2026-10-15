@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.0.0] - 2026-10-15
+
 ### Why Upgrade
 
 - Switch between open Mac documents with less waiting, including large Markdown and source files.

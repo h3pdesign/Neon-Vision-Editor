@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v1.9.3",
-            subtitle: "Release highlights for v1.9.3.",
+            title: "What’s New in v2.0.0",
+            subtitle: "Release highlights for v2.0.0.",
             bullets: [
-                "CSV/TSV Editing: Choose plain-text editing instead of CSV/TSV tables on macOS.",
-                "Font Selection: Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad.",
-                "Settings Sections: Find Markdown preview and AI provider options in dedicated macOS Settings sections.",
-                "CSV/TSV Editing: Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic…",
-                "Markdown Preview Settings: Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS.",
-                "AI Settings: Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved…"
+                "Tab Switching: Switch between open Mac documents with less waiting, including large Markdown and source files.",
+                "Cursor Placement: Place the cursor more reliably on iPhone and iPad, and return to saved positions after large documents load.",
+                "Tab Navigation: Browse overflowing Mac tabs with visible left and right controls.",
+                "Markdown Preview: Keeps compatible Markdown previews up to date without reloading unchanged content or losing your scroll position.",
+                "Project Indexing: Stops obsolete folder scans when you cancel project indexing.",
+                "Adaptive Toolbar: Adapts the phone toolbar when the available layout changes between compact and regular width."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4517,6 +4517,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.0.0", version: "2.0.0", date: "2026-10-15", highlights: [
+            "Switch between open Mac documents with less waiting, including large Markdown and source files.",
+            "Place the cursor more reliably on iPhone and iPad, and return to saved positions after large documents load.",
+            "Browse overflowing Mac tabs with visible left and right controls."
+        ]),
         Release(id: "1.9.3", version: "1.9.3", date: "2026-10-13", highlights: [
             "Choose plain-text editing instead of CSV/TSV tables on macOS.",
             "Keep long font names from overlapping controls or widening Settings on Mac, iPhone, and iPad.",

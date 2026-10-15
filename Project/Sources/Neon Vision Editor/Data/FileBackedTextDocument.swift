@@ -14,7 +14,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         case externalConflict
     }
 
-    private struct Piece {
+    private struct Piece: Sendable {
         let sourceOffset: Int?
         let data: Data
         let utf16Length: Int
@@ -102,6 +102,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
     private var lazyFileHandle: FileHandle?
     private var lazyFileByteCount: Int = 0
     private var lazyIndexedByteOffset: Int = 0
+    private(set) var lazyIndexedFingerprint = UInt64(0xcbf29ce484222325)
     private var lazyIndexedUTF16Length: Int = 0
     private var lazyLineStarts: [Int] = [0]
     private var lazyLineUTF16Starts: [Int] = [0]
@@ -199,6 +200,98 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
                      generation: viewportGeneration, editCount: edits.count)
     }
 
+    /// Frozen value-semantic state; every read creates a worker-owned backend
+    /// and opens its own handle inside file coordination. No live storage is
+    /// accessed from the worker, even if typing/save overlaps this request.
+    private struct ViewportSnapshot: Sendable {
+        let url: URL?
+        let originalData: Data
+        let pieces: [Piece]
+        let lineStarts: [Int]
+        let utf16Length: Int
+        let encoding: TextEncodingDescriptor
+        let metadata: FileMetadata?
+        let generation: UInt64
+        let isLazy: Bool
+        let byteCount: Int
+        let indexedByteOffset: Int
+        let indexedFingerprint: UInt64
+        let indexedUTF16Length: Int
+        let lazyLineStarts: [Int]
+        let lazyLineUTF16Starts: [Int]
+        let checkpoints: [(byte: Int, utf16: Int)]
+        let estimatedLineCount: Int
+        let indexComplete: Bool
+    }
+
+    private init(viewportSnapshot state: ViewportSnapshot) {
+        url = state.url
+        originalData = state.originalData
+        pieces = state.pieces
+        lineStarts = state.lineStarts
+        cachedUTF16Length = state.utf16Length
+        encodingDescriptor = state.encoding
+        savedFileMetadata = state.metadata
+        viewportGeneration = state.generation
+        lazyFileByteCount = state.byteCount
+        lazyIndexedByteOffset = state.indexedByteOffset
+        lazyIndexedFingerprint = state.indexedFingerprint
+        lazyIndexedUTF16Length = state.indexedUTF16Length
+        lazyLineStarts = state.lazyLineStarts
+        lazyLineUTF16Starts = state.lazyLineUTF16Starts
+        lazyOffsetCheckpoints = state.checkpoints
+        lazyEstimatedLineCount = state.estimatedLineCount
+        lazyIndexComplete = state.indexComplete
+    }
+
+    func makeViewportReader() -> EditorDocumentViewportReader? {
+        let state = ViewportSnapshot(
+            url: url, originalData: originalData, pieces: pieces, lineStarts: lineStarts,
+            utf16Length: cachedUTF16Length, encoding: encodingDescriptor,
+            metadata: savedFileMetadata, generation: viewportGeneration,
+            isLazy: lazyFileHandle != nil, byteCount: lazyFileByteCount,
+            indexedByteOffset: lazyIndexedByteOffset, indexedFingerprint: lazyIndexedFingerprint,
+            indexedUTF16Length: lazyIndexedUTF16Length,
+            lazyLineStarts: lazyLineStarts, lazyLineUTF16Starts: lazyLineUTF16Starts,
+            checkpoints: lazyOffsetCheckpoints, estimatedLineCount: lazyEstimatedLineCount,
+            indexComplete: lazyIndexComplete
+        )
+        return EditorDocumentViewportReader { offset, bytes, lines in
+            try Task.checkCancellation()
+            let copy = FileBackedTextDocument(viewportSnapshot: state)
+            func read() throws -> EditorDocumentViewport {
+                try Task.checkCancellation()
+                let result = try offset == 0
+                    ? copy.viewport(aroundLine: 0, maximumByteCount: bytes, maximumLineCount: lines)
+                    : copy.viewport(containingUTF16Offset: offset, maximumByteCount: bytes, maximumLineCount: lines)
+                try Task.checkCancellation()
+                return result
+            }
+            guard let url = state.url else { return try read() }
+            return try CoordinatedDocumentAccess.read(at: url) { coordinatedURL in
+                guard let expected = state.metadata else { throw Error.externalConflict }
+                let current = try Self.validateViewportSource(
+                    at: coordinatedURL, metadata: expected,
+                    indexedByteCount: state.isLazy ? state.indexedByteOffset : expected.byteCount,
+                    indexedFingerprint: state.isLazy ? state.indexedFingerprint : expected.fingerprint
+                )
+                if state.isLazy { copy.lazyFileHandle = try FileHandle(forReadingFrom: coordinatedURL) }
+                defer { try? copy.lazyFileHandle?.close() }
+                // Preserve lazyWindow's prepared-index invariant. A backend
+                // not yet prepared by the loader is indexed only on this
+                // worker-owned copy, never on the live main-actor storage.
+                if state.isLazy && !state.indexComplete { try copy.prepareViewportIndex() }
+                let result = try read()
+                // Catch a non-coordinating local writer changing the version
+                // during the read/index pass, before installing its result.
+                guard try Self.fileMetadata(at: coordinatedURL, fingerprint: 0) == current else {
+                    throw Error.externalConflict
+                }
+                return result
+            }
+        }
+    }
+
     /// Called on the live document's owner after the worker completes. Newer
     /// edits remain dirty and their recovery log is relative to the saved copy.
     func acceptSave(_ receipt: SaveReceipt) {
@@ -279,6 +372,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         self.lazyFileHandle = try FileHandle(forReadingFrom: url)
         self.lazyFileByteCount = byteCount
         self.lazyIndexedByteOffset = prefixData.count
+        self.lazyIndexedFingerprint = prefixIndex.fingerprint
         self.lazyIndexedUTF16Length = prefixIndex.utf16Length
         self.lazyOffsetCheckpoints.append((prefixData.count, prefixIndex.utf16Length))
         self.lazyLineStarts = prefixIndex.lineStarts
@@ -444,6 +538,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         guard lazyFileHandle != nil else { return }
         viewportIndexPreparedOnMainThread = Thread.isMainThread
         while !lazyIndexComplete {
+            try Task.checkCancellation()
             try extendLazyIndex(throughByte: min(lazyFileByteCount, lazyIndexedByteOffset + 256 * 1024))
         }
     }
@@ -710,11 +805,13 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         )
         guard validLength > 0 else { throw Error.unsupportedEncoding }
         let validData = Data(data.prefix(validLength))
-        let index = try Self.indexSegment(in: validData, baseByteOffset: base, encoding: encodingDescriptor, atDocumentStart: base == 0)
+        let index = try Self.indexSegment(in: validData, baseByteOffset: base, encoding: encodingDescriptor,
+                                         atDocumentStart: base == 0, fingerprintSeed: lazyIndexedFingerprint)
         for offset in index.lineStarts.dropFirst() { lazyLineStarts.append(offset) }
         for offset in index.lineUTF16Starts.dropFirst() { lazyLineUTF16Starts.append(lazyIndexedUTF16Length + offset) }
         lazyIndexedUTF16Length += index.utf16Length
         lazyIndexedByteOffset = base + validData.count
+        lazyIndexedFingerprint = index.fingerprint
         lazyOffsetCheckpoints.append((lazyIndexedByteOffset, lazyIndexedUTF16Length))
         lazyIndexComplete = lazyIndexedByteOffset >= lazyFileByteCount
         if lazyIndexComplete { cachedUTF16Length = lazyIndexedUTF16Length }
@@ -1058,19 +1155,19 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         let fingerprint: UInt64
     }
 
-    private static func indexUTF8(in data: Data, skipsBOM: Bool) throws -> UTF8Index {
+    private static func indexUTF8(in data: Data, skipsBOM: Bool, fingerprintSeed: UInt64 = 0xcbf29ce484222325) throws -> UTF8Index {
         let start = skipsBOM ? 3 : 0
         guard start <= data.count else { throw Error.unsupportedEncoding }
         return try data.withUnsafeBytes { rawBuffer in
             guard let bytes = rawBuffer.bindMemory(to: UInt8.self).baseAddress else {
-                return UTF8Index(utf16Length: 0, lineStarts: [0], lineUTF16Starts: [0], newlineOffsets: [], fingerprint: Self.fingerprint(of: data))
+                return UTF8Index(utf16Length: 0, lineStarts: [0], lineUTF16Starts: [0], newlineOffsets: [], fingerprint: Self.fingerprint(of: data, seed: fingerprintSeed))
             }
             var index = start
             var utf16Length = 0
             var lineStarts = [0]
             var lineUTF16Starts = [0]
             var newlineOffsets: [Int] = []
-            var fingerprint = UInt64(0xcbf29ce484222325)
+            var fingerprint = fingerprintSeed
             for offset in 0..<start {
                 fingerprint = (fingerprint ^ UInt64(bytes[offset])) &* 0x100000001b3
             }
@@ -1180,9 +1277,11 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         return (prefersLineBoundary ? data.lastIndex(of: 0x0A) : nil).map { data.distance(from: data.startIndex, to: $0) + 1 } ?? data.count
     }
 
-    private static func indexSegment(in data: Data, baseByteOffset: Int, encoding: TextEncodingDescriptor, atDocumentStart: Bool) throws -> UTF8Index {
+    private static func indexSegment(in data: Data, baseByteOffset: Int, encoding: TextEncodingDescriptor,
+                                     atDocumentStart: Bool, fingerprintSeed: UInt64 = 0xcbf29ce484222325) throws -> UTF8Index {
         if encoding.identifier == .utf8 || encoding.identifier == .utf8WithBOM {
-            let index = try indexUTF8(in: data, skipsBOM: atDocumentStart && encoding.identifier == .utf8WithBOM)
+            let index = try indexUTF8(in: data, skipsBOM: atDocumentStart && encoding.identifier == .utf8WithBOM,
+                                      fingerprintSeed: fingerprintSeed)
             return UTF8Index(utf16Length: index.utf16Length, lineStarts: index.lineStarts.map { baseByteOffset + $0 }, lineUTF16Starts: index.lineUTF16Starts, newlineOffsets: index.newlineOffsets.map { baseByteOffset + $0 }, fingerprint: index.fingerprint)
         }
         let bom = atDocumentStart ? byteOrderMarkLength(for: encoding) : 0
@@ -1216,7 +1315,7 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
                     newlines.append(absolute)
                 }
             }
-            return UTF8Index(utf16Length: text.utf16.count, lineStarts: starts, lineUTF16Starts: utf16Starts, newlineOffsets: newlines, fingerprint: fingerprint(of: data))
+            return UTF8Index(utf16Length: text.utf16.count, lineStarts: starts, lineUTF16Starts: utf16Starts, newlineOffsets: newlines, fingerprint: fingerprint(of: data, seed: fingerprintSeed))
         }
     }
 
@@ -1601,26 +1700,74 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         }
     }
 
-    fileprivate struct FileMetadata: Equatable, Sendable {
+    struct FileSourceVersion: Equatable, Sendable {
+        let identity: Data
+        let generation: Data
+    }
+
+    struct FileMetadata: Equatable, Sendable {
         let byteCount: Int
         let modificationDate: Date?
         let fingerprint: UInt64
+        var sourceVersion: FileSourceVersion? = nil
     }
 
     private static func fileMetadata(at url: URL, fingerprint: UInt64) throws -> FileMetadata {
         var url = url
         url.removeAllCachedResourceValues()
-        let values = try url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+        let values = try url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey,
+                                                     .fileResourceIdentifierKey, .generationIdentifierKey])
+        // Capture immutable values, never transfer Foundation's opaque objects
+        // across actors. Unknown identifier representations use the hash path.
+        let version: FileSourceVersion?
+        if let identity = values.fileResourceIdentifier as? Data,
+           let generation = values.generationIdentifier as? Data {
+            version = FileSourceVersion(identity: identity, generation: generation)
+        } else {
+            version = nil
+        }
         return FileMetadata(
             byteCount: values.fileSize ?? 0,
             modificationDate: values.contentModificationDate,
-            fingerprint: fingerprint
+            fingerprint: fingerprint, sourceVersion: version
         )
     }
 
-    private static func fingerprint(of data: Data) -> UInt64 {
-        data.reduce(UInt64(0xcbf29ce484222325)) { hash, byte in
-            (hash ^ UInt64(byte)) &* 0x100000001b3
+    /// Validate the bytes underlying captured indexes. Lazy fingerprints cover
+    /// exactly the already indexed prefix; the remaining bytes are indexed on
+    /// the worker after validation. Prepared indexes cover the complete source.
+    static func validateViewportSource(at url: URL, metadata: FileMetadata,
+                                       indexedByteCount: Int, indexedFingerprint: UInt64) throws -> FileMetadata {
+        try Task.checkCancellation()
+        let current = try fileMetadata(at: url, fingerprint: 0)
+        guard current.byteCount == metadata.byteCount,
+              current.modificationDate == metadata.modificationDate else { throw Error.externalConflict }
+        if let expectedVersion = metadata.sourceVersion, let currentVersion = current.sourceVersion {
+            guard currentVersion == expectedVersion else { throw Error.externalConflict }
+        } else {
+            guard indexedByteCount >= 0, indexedByteCount <= metadata.byteCount else { throw Error.invalidRange }
+            let handle = try FileHandle(forReadingFrom: url)
+            defer { try? handle.close() }
+            var remaining = indexedByteCount
+            var hash = UInt64(0xcbf29ce484222325)
+            while remaining > 0 {
+                try Task.checkCancellation()
+                let chunk = try handle.read(upToCount: min(remaining, 256 * 1024)) ?? Data()
+                guard !chunk.isEmpty else { throw Error.externalConflict }
+                hash = fingerprint(of: chunk, seed: hash)
+                remaining -= chunk.count
+            }
+            guard hash == indexedFingerprint else { throw Error.externalConflict }
+        }
+        try Task.checkCancellation()
+        return current
+    }
+
+    private static func fingerprint(of data: Data, seed: UInt64 = 0xcbf29ce484222325) -> UInt64 {
+        data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            bytes.reduce(seed) { hash, byte in
+                (hash ^ UInt64(byte)) &* 0x100000001b3
+            }
         }
     }
 }

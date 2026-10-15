@@ -22,7 +22,10 @@ extension ContentView {
 #if os(iOS) || os(visionOS)
     var usesIPhoneBottomToolbar: Bool {
 #if os(iOS)
-        UIDevice.current.userInterfaceIdiom == .phone
+        IOSAdaptiveLayoutPolicy.usesCompactPhoneToolbar(
+            isPhone: UIDevice.current.userInterfaceIdiom == .phone,
+            regularLayout: usesRegularIOSLayout
+        )
 #else
         false
 #endif
@@ -30,7 +33,8 @@ extension ContentView {
 
     var usesIPadBottomToolbar: Bool {
 #if os(iOS)
-        UIDevice.current.userInterfaceIdiom == .pad
+        UIDevice.current.userInterfaceIdiom == .pad ||
+            (UIDevice.current.userInterfaceIdiom == .phone && usesRegularIOSLayout)
 #else
         false
 #endif

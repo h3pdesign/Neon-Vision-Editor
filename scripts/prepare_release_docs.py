@@ -302,6 +302,12 @@ def shorten_for_welcome_tour_card(text: str, limit: int = WELCOME_TOUR_CARD_TEXT
 def welcome_feature_title(description: str, index: int) -> str:
     lowered = description.lower()
     rules = (
+        (("switch between open mac documents",), "Tab Switching"),
+        (("cursor", "caret"), "Cursor Placement"),
+        (("overflowing mac tabs",), "Tab Navigation"),
+        (("compatible markdown previews",), "Markdown Preview"),
+        (("project indexing",), "Project Indexing"),
+        (("phone toolbar",), "Adaptive Toolbar"),
         (("navigation",), "Editor Navigation"),
         (("csv", "tsv"), "CSV/TSV Editing"),
         (("font name",), "Font Selection"),
@@ -641,6 +647,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v2.0.0": ("Schneller wechseln und präziser bearbeiten", "Verbessert den Wechsel zwischen Mac-Dokumenten und Aktualisierungen der Markdown-Vorschau. Stabilisiert die Cursorposition auf iPhone und iPad, stellt gespeicherte Positionen nach dem Laden großer Dateien wieder her und ergänzt Pfeiltasten für überlaufende Mac-Tabs.", ["Leistung", "Cursor", "Tabs"]),
         "v1.9.3": ("Textansicht und übersichtliche Einstellungen", "Ergänzt einen macOS-Schalter für CSV/TSV-Tabellen, verhindert die Tabellenerkennung gewöhnlicher Notizen und hält lange Schriftnamen in ihren Auswahlfeldern. Ordnet Markdown- und KI-Einstellungen auf dem Mac in eigenen Bereichen an und stellt die native Fenstergröße wieder her.", ["Einstellungen", "Textansicht", "Schriften"]),
         "v1.9.2": ("Unicode-Tastenkürzel und optionaler KI-Kontext", "Ergänzt sicheres Löschen mit Wahltaste-Rücktaste auf dem Mac und experimentelle Jev-Kontextauswahl für externe KI-Chats. Stellt mobile KI-Einstellungen wieder her und korrigiert die Symbolleistenbreite beim ersten Layout.", ["Tastatur", "KI", "Symbolleisten"]),
         "v1.9.1": ("Native Textkodierungen und präzise Navigation", "Ergänzt Apples Textkodierungen einschließlich Shift-JIS, korrigiert die Erkennung japanischer Dateien und die Navigation mit Befehl-Auf/Ab in langen macOS-Dokumenten. Verbessert mobile Leistenabstände und die iPad-Leistenbreite; Einstellungen lassen sich in mobilen Symbolleisten neu anordnen.", ["Kodierungen", "Navigation", "Symbolleisten"]),
@@ -681,6 +688,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v2.0.0": ("Hurtigere skift og mere præcis redigering", "Forbedrer skift mellem dokumenter på Mac og opdateringer af Markdown-forhåndsvisningen. Stabiliserer markørplacering på iPhone og iPad, gendanner gemte positioner efter indlæsning af store filer og tilføjer pile til at gennemse Mac-faner.", ["Ydeevne", "Markør", "Faner"]),
         "v1.9.3": ("Tekstvisning og overskuelige indstillinger", "Tilføjer en macOS-indstilling til CSV/TSV-tabeller, undgår at almindelige noter vises som tabeller og holder lange skriftnavne inden for deres menuer. Samler Markdown- og AI-indstillinger i egne sektioner på Mac og gendanner vinduets native størrelse.", ["Indstillinger", "Tekstvisning", "Skrifttyper"]),
         "v1.9.2": ("Unicode-genveje og valgfri AI-kontekst", "Tilføjer sikker sletning med Option-Delete på Mac og eksperimentel Jev-kontekstsortering til ekstern AI-chat. Gendanner mobile AI-indstillinger og retter værktøjslinjens bredde ved første layout.", ["Tastatur", "AI", "Værktøjslinjer"]),
         "v1.9.1": ("Native tekstkodninger og præcis navigation", "Tilføjer Apples tekstkodninger, herunder Shift-JIS, og retter registrering af japanske filer samt Command-op/ned i lange macOS-dokumenter. Forbedrer afstand mellem mobile bjælker og iPad-værktøjslinjens bredde; Indstillinger kan omarrangeres i mobile værktøjslinjer.", ["Kodninger", "Navigation", "Værktøjslinjer"]),
@@ -721,6 +729,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v2.0.0": ("Navigation plus rapide et édition plus précise", "Améliore le passage entre documents sur Mac et les mises à jour de l’aperçu Markdown. Stabilise le placement du curseur sur iPhone et iPad, restaure les positions enregistrées après le chargement de gros fichiers et ajoute des flèches pour parcourir les onglets Mac.", ["Performances", "Curseur", "Onglets"]),
         "v1.9.3": ("Vue texte et réglages mieux organisés", "Ajoute une option macOS pour les tableaux CSV/TSV, évite de traiter les notes ordinaires comme des tableaux et maintient les noms de polices longs dans leurs menus. Organise les réglages Markdown et IA dans des sections dédiées sur Mac et rétablit la taille native de la fenêtre.", ["Réglages", "Vue texte", "Polices"]),
         "v1.9.2": ("Raccourcis Unicode et contexte IA facultatif", "Ajoute la suppression sûre avec Option-Supprimer sur Mac et le classement expérimental du contexte Jev pour le chat IA externe. Rétablit les réglages IA mobiles et corrige la largeur de la barre au premier affichage.", ["Clavier", "IA", "Barres d’outils"]),
         "v1.9.1": ("Encodages natifs et navigation précise", "Ajoute les encodages Apple, dont Shift-JIS, et corrige la détection des fichiers japonais ainsi que Commande-haut/bas dans les longs documents macOS. Améliore l’espacement des barres mobiles et la largeur de la barre iPad ; Réglages peut être réordonné dans les barres mobiles.", ["Encodages", "Navigation", "Barres d’outils"]),
@@ -761,6 +770,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v2.0.0": ("Cambios más rápidos y edición más precisa", "Mejora el cambio entre documentos en Mac y las actualizaciones de la vista previa de Markdown. Estabiliza la posición del cursor en iPhone y iPad, restaura las posiciones guardadas después de cargar archivos grandes y añade flechas para recorrer las pestañas de Mac.", ["Rendimiento", "Cursor", "Pestañas"]),
         "v1.9.3": ("Vista de texto y ajustes más claros", "Añade una opción de macOS para las tablas CSV/TSV, evita mostrar notas comunes como tablas y mantiene los nombres largos de fuentes dentro de sus menús. Organiza los ajustes de Markdown e IA en secciones propias en Mac y restaura el tamaño nativo de la ventana.", ["Ajustes", "Vista de texto", "Fuentes"]),
         "v1.9.2": ("Atajos Unicode y contexto de IA opcional", "Añade borrado seguro con Opción-Suprimir en Mac y clasificación experimental del contexto Jev para chat de IA externo. Recupera los ajustes de IA móviles y corrige el ancho de la barra en el primer diseño.", ["Teclado", "IA", "Barras"]),
         "v1.9.1": ("Codificaciones nativas y navegación precisa", "Añade las codificaciones de Apple, incluido Shift-JIS, y corrige la detección de archivos japoneses y Comando-arriba/abajo en documentos largos de macOS. Mejora el espaciado de las barras móviles y el ancho de la barra del iPad; Ajustes puede reordenarse en las barras móviles.", ["Codificaciones", "Navegación", "Barras"]),
@@ -801,6 +811,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v2.0.0": ("すばやい切り替えと正確な編集", "Macでの文書切り替えとMarkdownプレビューの更新を改善。iPhoneとiPadでのカーソル位置を安定させ、大きなファイルの読み込み後に保存した位置を復元し、Macのタブを移動する矢印ボタンを追加します。", ["パフォーマンス", "カーソル", "タブ"]),
         "v1.9.3": ("テキスト表示と使いやすい設定", "macOSにCSV/TSVの表表示を切り替える設定を追加し、通常のメモが表として表示される問題を修正。長いフォント名を選択欄内に収め、MacのMarkdownとAI設定を専用セクションに整理し、設定ウィンドウ本来のサイズを復元します。", ["設定", "テキスト表示", "フォント"]),
         "v1.9.2": ("Unicode のショートカットと任意の AI コンテキスト", "Mac の Option＋Delete による安全な単語削除と、外部 AI チャット向けの実験的な Jev コンテキスト選別を追加しました。モバイルの AI 設定へのアクセスを復元し、初回表示のツールバー幅を修正しました。", ["キーボード", "AI", "ツールバー"]),
         "v1.9.1": ("標準文字エンコーディングと正確な移動", "Shift-JIS を含む Apple 標準の文字エンコーディングを追加し、日本語ファイルの判定と、macOS の長い文書での Command＋上下キーによる移動を修正しました。モバイルのバー間隔と iPad のツールバー幅を改善し、モバイルのツールバーで設定を並べ替えられます。", ["エンコーディング", "移動", "ツールバー"]),
@@ -841,6 +852,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v2.0.0": ("更快切换，更精准编辑", "改进Mac文档切换和Markdown预览更新。稳定iPhone和iPad上的光标定位，在大文件加载完成后恢复已保存的位置，并新增箭头按钮以浏览超出可见区域的Mac标签页。", ["性能", "光标", "标签页"]),
         "v1.9.3": ("文本视图与更清晰的设置", "为macOS新增CSV/TSV表格视图开关，避免将普通笔记识别为表格，并让较长的字体名称保持在选择控件内。将Mac的Markdown与AI设置整理为独立分区，并恢复设置窗口的原生尺寸。", ["设置", "文本视图", "字体"]),
         "v1.9.2": ("Unicode 快捷键与可选 AI 上下文", "新增 Mac 上安全的 Option-Delete 单词删除，以及外部 AI 聊天的实验性 Jev 上下文筛选。恢复移动端 AI 设置入口，并修复首次布局时的工具栏宽度。", ["键盘", "AI", "工具栏"]),
         "v1.9.1": ("原生文本编码与准确导航", "新增包括 Shift-JIS 在内的 Apple 原生文本编码，修复日文文件识别以及 macOS 长文稿中的 Command 加上下方向键导航。改善移动端栏间距和 iPad 工具栏宽度，并允许在移动端工具栏中重新排列设置按钮。", ["编码", "导航", "工具栏"]),

@@ -168,6 +168,10 @@ enum IOSSplitChromePolicy {
 }
 
 enum IOSAdaptiveLayoutPolicy {
+    nonisolated static func usesCompactPhoneToolbar(isPhone: Bool, regularLayout: Bool) -> Bool {
+        isPhone && !regularLayout
+    }
+
     nonisolated static func usesRegularLayout(
         horizontalSizeClass: UserInterfaceSizeClass?,
         containerWidth: CGFloat

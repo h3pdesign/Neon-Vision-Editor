@@ -93,6 +93,10 @@ jobs:
             -only-testing:"Neon Vision EditorTests/ReleaseRuntimePolicyTests" \
             -only-testing:"Neon Vision EditorTests/AppDelegateExternalOpenTests" \
             -only-testing:"Neon Vision EditorTests/ToolbarActionSelectionTests" \
+            -only-testing:"Neon Vision EditorTests/FileBackedTextDocumentTests" \
+            -only-testing:"Neon Vision EditorTests/ProjectTreePerformanceTests" \
+            -only-testing:"Neon Vision EditorTests/BoundedLRUCacheTests" \
+            -only-testing:"Neon Vision EditorTests/MarkdownPreviewContentUpdateTests" \
             -only-testing:"Neon Vision EditorTests/VirtualEditorPerformanceTests" \
             test
 

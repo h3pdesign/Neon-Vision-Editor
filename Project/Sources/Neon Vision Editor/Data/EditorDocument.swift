@@ -5,12 +5,12 @@ import Foundation
 /// The compatibility `string()` API exists for small-document/TextKit features.
 /// Large-document code must use a bounded window provider instead of requesting
 /// the entire string.
-enum EditorDocumentStorageKind: Sendable {
+nonisolated enum EditorDocumentStorageKind: Sendable {
     case inMemory
     case fileBacked
 }
 
-struct EditorDocumentViewport: Equatable, Sendable {
+nonisolated struct EditorDocumentViewport: Equatable, Sendable {
     let text: String
     let startByteOffset: Int
     let startUTF16Offset: Int
@@ -29,7 +29,16 @@ struct EditorDocumentViewport: Equatable, Sendable {
     }
 }
 
-protocol EditorDocument: AnyObject {
+/// An immutable read request. A backend must not capture its live mutable
+/// storage or a shared seekable handle in the worker closure.
+nonisolated struct EditorDocumentViewportReader: Sendable {
+    let read: @Sendable (Int, Int, Int) throws -> EditorDocumentViewport
+}
+
+/// Operations run on the backend's exclusive owner, which may be a loader,
+/// snapshot worker, or the main actor. The live existential is not Sendable.
+nonisolated protocol EditorDocument: AnyObject {
+    func makeViewportReader() -> EditorDocumentViewportReader?
     var storageKind: EditorDocumentStorageKind { get }
     var utf16Length: Int { get }
     var isDirty: Bool { get }
@@ -58,14 +67,15 @@ protocol EditorDocument: AnyObject {
 }
 
 extension EditorDocument {
-    func viewport(containingUTF16Offset offset: Int, maximumByteCount: Int, maximumLineCount: Int) throws -> EditorDocumentViewport {
+    nonisolated func makeViewportReader() -> EditorDocumentViewportReader? { nil }
+    nonisolated func viewport(containingUTF16Offset offset: Int, maximumByteCount: Int, maximumLineCount: Int) throws -> EditorDocumentViewport {
         try viewport(aroundLine: position(atUTF16Offset: offset).line,
                      maximumByteCount: maximumByteCount, maximumLineCount: maximumLineCount)
     }
-    func viewport(aroundLine line: Int, maximumByteCount: Int) throws -> EditorDocumentViewport {
+    nonisolated func viewport(aroundLine line: Int, maximumByteCount: Int) throws -> EditorDocumentViewport {
         try viewport(aroundLine: line, maximumByteCount: maximumByteCount, maximumLineCount: .max)
     }
 
-    var supportsBoundedWindows: Bool { true }
-    var lineCount: Int { 1 }
+    nonisolated var supportsBoundedWindows: Bool { true }
+    nonisolated var lineCount: Int { 1 }
 }

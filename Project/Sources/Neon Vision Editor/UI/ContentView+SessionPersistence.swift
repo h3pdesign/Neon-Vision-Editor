@@ -126,6 +126,45 @@ extension ContentView {
 
     func applyStartupBehaviorIfNeeded() {
         guard !didApplyStartupBehavior else { return }
+#if os(macOS)
+        // Do not restore multiple documents into one model before its native
+        // window factory is attached. A preloaded child must not be reset.
+        if viewModel.usesNativeDocumentTabs, viewModel.nativeDocumentDestination == nil { return }
+        if startupBehavior == .nativeDocument {
+            restoreLastSessionViewContextIfAvailable()
+            if let folder = restoredLastSessionProjectFolderURL() { setProjectFolder(folder) }
+            didApplyStartupBehavior = true
+            persistSessionIfReady()
+            return
+        }
+        if viewModel.usesNativeDocumentTabs, startupBehavior == .standard {
+            let shouldOpenBlank = openWithBlankDocument && !reopenLastSession
+            if !shouldOpenBlank {
+                if let folder = restoredLastSessionProjectFolderURL() { setProjectFolder(folder) }
+                // Recover dirty buffers first. Opening their on-disk URLs must
+                // focus those owners, not start a competing load over the draft.
+                if recoverUnsavedDrafts { _ = restoreUnsavedDraftSnapshotIfAvailable() }
+                let recoveredSelection = MacDocumentWindowTabs.shared.selectedModel
+                if reopenLastSession {
+                    let preferences = restoredLastSessionEncodingPreferences()
+                    for url in restoredLastSessionFileURLs() {
+                        let preference = preferences[url.standardizedFileURL.absoluteString]
+                        _ = viewModel.openFile(url: url, preferredEncoding: preference?.encoding,
+                                               usesAutomaticEncoding: preference?.usesAutomatic ?? true)
+                    }
+                    if let selected = restoredLastSessionSelectedFileURL() {
+                        _ = viewModel.focusTabIfOpen(for: selected)
+                    } else {
+                        recoveredSelection?.nativeRevealWindow?()
+                    }
+                }
+            }
+            restoreLastSessionViewContextIfAvailable()
+            didApplyStartupBehavior = true
+            persistSessionIfReady()
+            return
+        }
+#endif
 
         if startupBehavior == .forceBlankDocument || startupBehavior == .safeMode {
             resetForBlankStartup()
@@ -257,7 +296,7 @@ extension ContentView {
     func persistSessionIfReady() {
         guard didApplyStartupBehavior else { return }
         guard startupBehavior != .safeMode else { return }
-        let fileURLs = viewModel.tabs.compactMap { $0.fileURL }
+        let fileURLs = sessionDocumentTabs.compactMap { $0.fileURL }
         let selectedURL = viewModel.selectedTab?.fileURL
         let signature = ([
             fileURLs.map(\.absoluteString).joined(separator: "|"),
@@ -270,7 +309,7 @@ extension ContentView {
                 .sorted { $0.key < $1.key }
                 .map { "\($0.key)=\($0.value)" }
                 .joined(separator: "|"),
-            viewModel.tabs.compactMap { tab in
+            sessionDocumentTabs.compactMap { tab in
                 guard let url = tab.fileURL else { return nil }
                 return "\(url.standardizedFileURL.absoluteString)=\(tab.fileEncoding.identifier.rawValue):\(tab.usesAutomaticFileEncoding)"
             }.joined(separator: "|")
@@ -296,6 +335,16 @@ extension ContentView {
 #elseif os(macOS)
         persistLastSessionSecurityScopedBookmarksMac(fileURLs: fileURLs, selectedURL: selectedURL)
 #endif
+    }
+
+    var sessionDocumentTabs: [TabData] {
+#if os(macOS)
+        if viewModel.usesNativeDocumentTabs {
+            let models = MacDocumentWindowTabs.shared.models
+            return models.flatMap(\.tabs)
+        }
+#endif
+        return viewModel.tabs
     }
 
     func restoredLastSessionFileURLs() -> [URL] {
@@ -373,7 +422,7 @@ extension ContentView {
     func persistLastSessionEncodingPreferences() {
         var identifiers: [String: String] = [:]
         var automaticModes: [String: Bool] = [:]
-        for tab in viewModel.tabs {
+        for tab in sessionDocumentTabs {
             guard let url = tab.fileURL else { continue }
             let key = url.standardizedFileURL.absoluteString
             identifiers[key] = tab.fileEncoding.identifier.rawValue
@@ -408,6 +457,17 @@ extension ContentView {
                 sessionCaretByFileURL[key] = max(0, lastCaretLocation)
             }
         }
+#if os(macOS)
+        if viewModel.usesNativeDocumentTabs {
+            var saved = sessionPreferences.object(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]
+            if let url = viewModel.selectedTab?.fileURL {
+                let key = url.standardizedFileURL.absoluteString
+                saved[key] = sessionCaretByFileURL[key] ?? max(0, lastCaretLocation)
+            }
+            sessionPreferences.set(.integers(saved), forKey: lastSessionCaretByFileURLKey)
+            return
+        }
+#endif
         sessionPreferences.set(.integers(sessionCaretByFileURL), forKey: lastSessionCaretByFileURLKey)
     }
 
@@ -579,18 +639,26 @@ extension ContentView {
     // MARK: - Unsaved Draft Recovery
 
     var unsavedDraftSnapshotRegistryKey: String { "UnsavedDraftSnapshotRegistryV1" }
-    var unsavedDraftSnapshotKey: String { "UnsavedDraftSnapshotV2.\(recoverySnapshotIdentifier)" }
+    var unsavedDraftSnapshotKey: String {
+#if os(macOS)
+        if viewModel.usesNativeDocumentTabs { return "UnsavedDraftSnapshotV2.NativeDocumentWindows" }
+#endif
+        return "UnsavedDraftSnapshotV2.\(recoverySnapshotIdentifier)"
+    }
     var maxPersistedDraftTabs: Int { 20 }
     var maxPersistedDraftUTF16Length: Int { 1_000_000 }
     var maxPersistedDraftTotalUTF16Length: Int { 4_000_000 }
 
     func persistUnsavedDraftSnapshotIfNeeded() {
+#if os(macOS)
+        if viewModel.usesNativeDocumentTabs, MacDocumentWindowTabs.shared.isTerminating { return }
+#endif
         guard recoverUnsavedDrafts else {
             clearUnsavedDraftSnapshots()
             return
         }
         let defaults = UserDefaults.standard
-        let dirtyTabs = viewModel.tabs.filter(\.isDirty)
+        let dirtyTabs = sessionDocumentTabs.filter(\.isDirty)
         let signature = dirtyTabs.isEmpty
             ? "clean"
             : dirtyTabs.map { "\($0.id.uuidString):\($0.contentRevision)" }.joined(separator: "|")
@@ -707,6 +775,18 @@ extension ContentView {
             )
         }
         viewModel.restoreTabsFromSnapshot(restoredTabs, selectedIndex: restoredSnapshot.selectedIndex)
+
+#if os(macOS)
+        if viewModel.usesNativeDocumentTabs {
+            // Persist the complete restored set, including pending scenes, before
+            // consuming legacy snapshots. Child scene attachment is asynchronous.
+            persistUnsavedDraftSnapshotIfNeeded()
+            guard defaults.data(forKey: unsavedDraftSnapshotKey) != nil else { return true }
+            for key in keys where key != unsavedDraftSnapshotKey { defaults.removeObject(forKey: key) }
+            defaults.set([unsavedDraftSnapshotKey], forKey: unsavedDraftSnapshotRegistryKey)
+            return true
+        }
+#endif
 
         for key in keys {
             defaults.removeObject(forKey: key)

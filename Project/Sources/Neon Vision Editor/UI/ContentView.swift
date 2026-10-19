@@ -84,11 +84,12 @@ import FoundationModels
 #endif
 
 #if os(macOS)
-private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate {
+final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate {
     nonisolated(unsafe) weak var forwardedDelegate: NSWindowDelegate?
     var shouldConfirm: (() -> Bool)?
     var hasDirtyTabs: (() -> Bool)?
     var saveAllDirtyTabs: (() -> Bool)?
+    var saveAllDirtyTabsAsync: (() async -> Bool)?
     var dialogTitle: (() -> String)?
     var dialogMessage: (() -> String)?
     var onWindowWillClose: (() -> Void)?
@@ -114,15 +115,25 @@ private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate 
         alert.addButton(withTitle: "Cancel")
         alert.beginSheetModal(for: sender) { [weak self] response in
             guard let self else { return }
-            self.isPromptInFlight = false
             switch response {
             case .alertFirstButtonReturn:
+                if let save = self.saveAllDirtyTabsAsync {
+                    Task { @MainActor in
+                        let didSave = await save()
+                        self.isPromptInFlight = false
+                        if didSave { self.closeConfirmedWindow(sender) }
+                    }
+                    return
+                }
+                self.isPromptInFlight = false
                 if self.saveAllDirtyTabs?() == true {
                     self.closeConfirmedWindow(sender)
                 }
             case .alertSecondButtonReturn:
+                self.isPromptInFlight = false
                 self.closeConfirmedWindow(sender)
             default:
+                self.isPromptInFlight = false
                 break
             }
         }
@@ -1295,6 +1306,13 @@ struct ContentView: View {
 
         static func configureWindowDragBehavior(_ window: NSWindow) {
             window.isMovableByWindowBackground = true
+            if window.tabbingIdentifier == MacDocumentTabPolicy.tabbingIdentifier {
+                if let monitor = dragMonitors.removeValue(forKey: window.windowNumber) {
+                    NSEvent.removeMonitor(monitor)
+                }
+                // AppKit owns hit testing and drag/reorder gestures in its tab bar.
+                return
+            }
             guard dragMonitors[window.windowNumber] == nil else { return }
             let monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak window] event in
                 guard let window,
@@ -1674,6 +1692,16 @@ struct ContentView: View {
             WindowViewModelRegistry.shared.unregister(windowNumber: old)
         }
         hostWindowNumber = number
+        if let window, viewModel.usesNativeDocumentTabs {
+            MacDocumentWindowTabs.shared.register(viewModel, window: window, persistDrafts: {
+                lastPersistedDraftSignature = ""
+                persistUnsavedDraftSnapshotIfNeeded()
+                lastPersistedSessionSignature = ""
+                persistSessionIfReady()
+            }) { id in
+                openWindow(value: id)
+            }
+        }
         configureWindowFrameAutosave(window)
         installWindowCloseConfirmationDelegate(window)
         updateWindowChrome(window)
@@ -1686,6 +1714,7 @@ struct ContentView: View {
             // The initial startup pass can run before WindowAccessor has
             // registered this window. Reapply now that the window is eligible.
             applyWindowTranslucency(enableTranslucentWindow)
+            if viewModel.usesNativeDocumentTabs { applyStartupBehaviorIfNeeded() }
         }
     }
 
@@ -1765,6 +1794,11 @@ struct ContentView: View {
 
     private func updateWindowSubtitle(_ window: NSWindow? = nil) {
         guard let targetWindow = window ?? hostWindowNumber.flatMap({ NSApp.window(withWindowNumber: $0) }) else { return }
+        if viewModel.usesNativeDocumentTabs {
+            targetWindow.title = viewModel.selectedTab?.name ?? "Neon Vision Editor"
+            targetWindow.representedURL = viewModel.selectedTab?.fileURL
+            targetWindow.isDocumentEdited = viewModel.tabs.contains(where: \.isDirty)
+        }
         let subtitle = windowSubtitleText
         if targetWindow.subtitle != subtitle {
             targetWindow.subtitle = subtitle
@@ -1816,14 +1850,24 @@ struct ContentView: View {
         delegate.shouldConfirm = { confirmCloseDirtyTab }
         delegate.hasDirtyTabs = { viewModel.tabs.contains(where: \.isDirty) }
         delegate.saveAllDirtyTabs = { saveAllDirtyTabsForWindowClose() }
+        delegate.saveAllDirtyTabsAsync = viewModel.usesNativeDocumentTabs ? {
+            await viewModel.saveDirtyDocumentsBeforeWindowClose()
+        } : nil
         delegate.dialogTitle = { "Save changes before closing?" }
         delegate.dialogMessage = { windowCloseDialogMessage() }
-        delegate.onWindowWillClose = { notifyWindowClosedIfNeeded() }
+        delegate.onWindowWillClose = {
+            if viewModel.usesNativeDocumentTabs { handleWindowDisappear(nativeWindowDidClose: true) }
+            else { notifyWindowClosedIfNeeded() }
+        }
     }
 
     private func notifyWindowClosedIfNeeded() {
         guard !didNotifyWindowClosed else { return }
         didNotifyWindowClosed = true
+        if viewModel.usesNativeDocumentTabs {
+            MacDocumentWindowTabs.shared.unregister(viewModel)
+            persistUnsavedDraftSnapshotIfNeeded()
+        }
         onWindowClosed?()
     }
 
@@ -2766,7 +2810,7 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .editorLastTabClosed)) { notif in
                 #if os(macOS)
                 guard let model = notif.object as? EditorViewModel, model === viewModel,
-                      UserDefaults.standard.object(forKey: "SettingsCloseWindowWhenLastTabClosed") as? Bool ?? true,
+                      (model.usesNativeDocumentTabs || (UserDefaults.standard.object(forKey: "SettingsCloseWindowWhenLastTabClosed") as? Bool ?? true)),
                       let number = hostWindowNumber else { return }
                 NSApp.window(withWindowNumber: number)?.performClose(nil)
                 #endif
@@ -2915,6 +2959,13 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResizeNotification)) { notification in
             persistWindowFrame(for: notification)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
+            guard viewModel.usesNativeDocumentTabs,
+                  (notification.object as? NSWindow)?.windowNumber == hostWindowNumber else { return }
+            MacDocumentWindowTabs.shared.noteBecameKey(viewModel)
+            persistSelectedSessionFileURLImmediately()
+            scheduleSessionPersistence(delay: 0)
         }
         .onChange(of: tabChromeObservationSnapshot) { _, _ in
             if activeSplitSecondaryTabID == nil {
@@ -3391,7 +3442,9 @@ struct ContentView: View {
     }
 
 #if os(macOS)
-    private func handleWindowDisappear() {
+    private func handleWindowDisappear(nativeWindowDidClose: Bool = false) {
+        // A native tab becoming hidden is not a document/window close event.
+        if viewModel.usesNativeDocumentTabs, !nativeWindowDidClose { return }
         notifyWindowClosedIfNeeded()
         completionDebounceTask?.cancel()
         completionTask?.cancel()

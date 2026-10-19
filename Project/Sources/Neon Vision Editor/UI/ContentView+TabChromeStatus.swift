@@ -801,6 +801,14 @@ extension ContentView {
 
     @ViewBuilder
     var tabBarView: some View {
+#if os(macOS)
+        if !viewModel.usesNativeDocumentTabs { legacyTabBarView }
+#else
+        legacyTabBarView
+#endif
+    }
+
+    private var legacyTabBarView: some View {
         VStack(spacing: 0) {
 #if os(macOS)
             MacNativeFileTabBar(

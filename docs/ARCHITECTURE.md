@@ -79,6 +79,18 @@ When tracing a change, follow this path: user action or system callback -> `Cont
 
 ### Fast tab activation path
 
+The development-only native macOS document-tab option is opt-in and sampled once
+per launch (`SettingsNativeDocumentTabsMac`). `MacDocumentWindowTabs` creates an
+owner model before requesting a SwiftUI window, then groups only editor windows
+with AppKit. Loads, saves, dirty state, and file presenters stay with that owner;
+tab reordering and detaching do not copy buffers. A PDF and its attached note
+remain one composite editor window. Native session persistence aggregates open
+owners, including pending scenes, so a child cannot overwrite the session with
+only its own file. Draft migration persists the restored set before consuming
+legacy recovery snapshots. Settings and utility windows are never grouped.
+The stable/default in-content tab path remains unchanged. Native-mode interaction
+and accessibility acceptance must complete before #621 is closed.
+
 Tab activation has an explicit critical path: select the destination tab, bind its
 already-available bounded viewport to the existing native editor, and draw the
 first frame. It must not synchronously scan the document, write preferences,

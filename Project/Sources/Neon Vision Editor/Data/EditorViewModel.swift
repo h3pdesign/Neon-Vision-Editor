@@ -1484,7 +1484,20 @@ class EditorViewModel {
         "zsh": "zsh"
     ]
     
-    init() {
+    #if os(macOS)
+    let usesNativeDocumentTabs: Bool
+    @ObservationIgnored var nativeDocumentDestination: ((URL?, Bool) -> EditorViewModel?)?
+    @ObservationIgnored var nativeFocusFile: ((URL) -> Bool)?
+    @ObservationIgnored var nativeRevealWindow: (() -> Void)?
+    var canReuseNativeBlankDocument: Bool {
+        tabs.isEmpty || cleanUntitledTabIDForFileOpenReplacement() != nil
+    }
+    #endif
+
+    init(usesNativeDocumentTabs: Bool = false) {
+        #if os(macOS)
+        self.usesNativeDocumentTabs = usesNativeDocumentTabs
+        #endif
         addNewTab()
     }
 
@@ -1496,6 +1509,9 @@ class EditorViewModel {
 
     // Creates and selects a new untitled tab.
     func addNewTab() {
+        #if os(macOS)
+        if nativeDocumentDestination?(nil, false) != nil { return }
+        #endif
         _ = applyTabCommand(
             .addNewTab(
                 name: nextUntitledTabName(),
@@ -1598,6 +1614,22 @@ class EditorViewModel {
     }
 
     func restoreTabsFromSnapshot(_ snapshots: [RestoredTabSnapshot], selectedIndex: Int?) {
+        #if os(macOS)
+        if usesNativeDocumentTabs, snapshots.count > 1, nativeDocumentDestination != nil {
+            let restoredSelection = selectedIndex.flatMap { snapshots.indices.contains($0) ? $0 : nil } ?? 0
+            var selectedOwner = self
+            // Restore each document directly into its final owner; never move a
+            // live file-backed document or queued save between models.
+            _ = applyTabCommand(.restoreTabs(snapshots: [snapshots[0]], selectedIndex: 0))
+            for (index, snapshot) in snapshots.enumerated().dropFirst() {
+                guard let destination = nativeDocumentDestination?(nil, false) else { continue }
+                destination.restoreTabsFromSnapshot([snapshot], selectedIndex: 0)
+                if restoredSelection == index { selectedOwner = destination }
+            }
+            selectedOwner.nativeRevealWindow?()
+            return
+        }
+        #endif
         _ = applyTabCommand(.restoreTabs(snapshots: snapshots, selectedIndex: selectedIndex))
     }
 
@@ -1752,6 +1784,19 @@ class EditorViewModel {
     }
 
     // MARK: - Saving and Conflict Resolution
+
+    #if os(macOS)
+    /// A native window must not close until its asynchronous writes complete.
+    /// Cancellation, failures, conflicts, and edits made during a save stay open.
+    func saveDirtyDocumentsBeforeWindowClose() async -> Bool {
+        let dirtyIDs = tabs.filter(\.isDirty).map(\.id)
+        for id in dirtyIDs { saveFile(tabID: id) }
+        for id in dirtyIDs {
+            while let task = localSaveTasks[id]?.task { await task.value }
+        }
+        return !tabs.contains(where: \.isDirty)
+    }
+    #endif
 
     // Saves tab content to the existing file URL or falls back to Save As.
     func saveFile(tabID: UUID, allowExternalOverwrite: Bool = false) {
@@ -2847,6 +2892,12 @@ class EditorViewModel {
             return false
         }
         if focusTabIfOpen(for: url) { return true }
+        #if os(macOS)
+        if let destination = nativeDocumentDestination?(url, true) {
+            return destination.openFile(url: url, preferredEncoding: preferredEncoding,
+                                        usesAutomaticEncoding: usesAutomaticEncoding)
+        }
+        #endif
         let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
         let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         let isLargeCandidate = fileSize >= EditorLoadHelper.largeFileCandidateByteThreshold
@@ -2950,6 +3001,15 @@ class EditorViewModel {
     func openRemoteDocument(name: String, remotePath: String, content: String, isReadOnly: Bool, revisionToken: String? = nil) {
         let trimmedPath = remotePath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPath.isEmpty else { return }
+        #if os(macOS)
+        if !tabs.contains(where: { $0.remotePreviewPath == trimmedPath }),
+           let destination = nativeDocumentDestination?(nil, true) {
+            destination.openRemoteDocument(name: name, remotePath: remotePath, content: content,
+                                           isReadOnly: isReadOnly, revisionToken: revisionToken)
+            return
+        }
+        if usesNativeDocumentTabs, canReuseNativeBlankDocument { resetTabsForSessionRestore() }
+        #endif
 
         let pseudoURL = URL(fileURLWithPath: trimmedPath)
         let detectedLanguage = LanguageDetector.shared.preferredLanguage(for: pseudoURL)
@@ -3699,13 +3759,19 @@ class EditorViewModel {
             }
             _ = applyTabCommand(.selectTab(tabID: tab.id))
             reloadOpenTabIfContentUnavailable(tab: tab, url: url)
+            #if os(macOS)
+            nativeRevealWindow?()
+            #endif
             return true
         }
+        #if os(macOS)
+        if nativeFocusFile?(url) == true { return true }
+        #endif
         return false
     }
 
     private func reloadOpenTabIfContentUnavailable(tab: TabData, url: URL) {
-        guard !tab.isLoadingContent, tab.document.utf16Length == 0 else { return }
+        guard !tab.isLoadingContent, !tab.isDirty, tab.document.utf16Length == 0 else { return }
         let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         guard fileSize > 0 else { return }
         let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]

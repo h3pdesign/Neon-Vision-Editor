@@ -1790,3 +1790,5 @@
 "Adaptive Toolbar" = "Adaptive Symbolleiste";
 "Adapts the phone toolbar when the available layout changes between compact and regular width." = "Passt die iPhone-Symbolleiste an, wenn das verfügbare Layout zwischen kompakter und regulärer Breite wechselt.";
 "Adaptive Toolbar: Adapts the phone toolbar when the available layout changes between compact and regular width." = "Adaptive Symbolleiste: Passt die iPhone-Symbolleiste an, wenn das verfügbare Layout zwischen kompakter und regulärer Breite wechselt.";
+"Native macOS document tabs (experimental)" = "Native macOS-Dokumenttabs (experimentell)";
+"Applies after relaunch. Each document opens in a native window tab. Existing sessions are preserved." = "Gilt nach einem Neustart. Jedes Dokument öffnet sich in einem nativen Fenstertab. Vorhandene Sitzungen bleiben erhalten.";

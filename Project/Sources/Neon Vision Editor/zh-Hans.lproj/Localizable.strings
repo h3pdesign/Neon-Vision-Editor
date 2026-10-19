@@ -1790,3 +1790,5 @@
 "Adaptive Toolbar" = "自适应工具栏";
 "Adapts the phone toolbar when the available layout changes between compact and regular width." = "可用布局在紧凑宽度与常规宽度之间变化时，相应调整iPhone工具栏。";
 "Adaptive Toolbar: Adapts the phone toolbar when the available layout changes between compact and regular width." = "自适应工具栏: 可用布局在紧凑宽度与常规宽度之间变化时，相应调整iPhone工具栏。";
+"Native macOS document tabs (experimental)" = "原生 macOS 文稿标签页（实验性）";
+"Applies after relaunch. Each document opens in a native window tab. Existing sessions are preserved." = "重新启动后生效。每个文稿在原生窗口标签页中打开。现有会话将保留。";

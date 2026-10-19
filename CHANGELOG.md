@@ -6,6 +6,10 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Highlights
+
+- Adds an experimental, opt-in native macOS document-tab mode in General settings; changing the option takes effect after relaunch. The native tab-bar plus creates a document tab in the active group, and switching tabs preserves each document's contents.
+
 ### Fixes
 
 - Preserves JSON object member order, repeated keys, exact number tokens, and escaped strings when formatting or combining lines (#802).

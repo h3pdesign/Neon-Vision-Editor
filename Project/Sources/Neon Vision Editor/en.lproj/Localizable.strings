@@ -1790,3 +1790,5 @@
 "Adaptive Toolbar" = "Adaptive Toolbar";
 "Adapts the phone toolbar when the available layout changes between compact and regular width." = "Adapts the phone toolbar when the available layout changes between compact and regular width.";
 "Adaptive Toolbar: Adapts the phone toolbar when the available layout changes between compact and regular width." = "Adaptive Toolbar: Adapts the phone toolbar when the available layout changes between compact and regular width.";
+"Native macOS document tabs (experimental)" = "Native macOS document tabs (experimental)";
+"Applies after relaunch. Each document opens in a native window tab. Existing sessions are preserved." = "Applies after relaunch. Each document opens in a native window tab. Existing sessions are preserved.";

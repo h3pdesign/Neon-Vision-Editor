@@ -843,6 +843,18 @@ extension ContentView {
     }
 
     func closeAllTabsFromToolbar() {
+#if os(macOS)
+        if viewModel.usesNativeDocumentTabs {
+            let owners = MacDocumentWindowTabs.shared.models(inGroupOf: viewModel)
+            Task {
+                for owner in owners {
+                    owner.nativeRevealWindow?()
+                    guard await owner.saveAndCloseTabs(tabIDs: owner.tabs.map(\.id)) else { return }
+                }
+            }
+            return
+        }
+#endif
         let tabIDsToClose = viewModel.tabs.map(\.id)
         Task { await viewModel.saveAndCloseTabs(tabIDs: tabIDsToClose) }
     }
@@ -859,6 +871,12 @@ extension ContentView {
     }
 
     func requestCloseTab(_ tab: TabData) {
+        #if os(macOS)
+        if viewModel.usesNativeDocumentTabs, let hostWindowNumber {
+            NSApp.window(withWindowNumber: hostWindowNumber)?.performClose(nil)
+            return
+        }
+        #endif
         #if os(iOS) || os(visionOS)
         let shouldConfirmClose = tab.isDirty
         #else

@@ -92,6 +92,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsShowMenuBarIconMac") private var showMenuBarIconMac: Bool = true
     @AppStorage("SettingsOpenFilesOnCurrentDesktop") private var openFilesOnCurrentDesktop = false
     @AppStorage("SettingsCloseWindowWhenLastTabClosed") private var closeWindowWhenLastTabClosed = true
+    @AppStorage(MacDocumentTabPolicy.preferenceKey) private var nativeDocumentTabsMac = false
     @AppStorage("SettingsToolbarUseCustomMac") private var toolbarUseCustomMac: Bool = false
     @AppStorage("SettingsToolbarCustomIDsMac") private var toolbarCustomIDsMac: String = ""
     @AppStorage("SettingsToolbarPresetMac") private var toolbarPresetMacRaw: String = ToolbarPreset.standard.rawValue
@@ -2358,6 +2359,11 @@ struct NeonSettingsView: View {
                     .help(localized("Reuse an editor on this desktop, or open a new window without switching desktops."))
                 Toggle(localized("Close window when the last tab is closed"), isOn: $closeWindowWhenLastTabClosed)
                     .help(localized("Turn off to keep an empty editor window available for opening files."))
+                    .disabled(MacDocumentTabPolicy.enabledForLaunch)
+
+                Toggle(localized("Native macOS document tabs (experimental)"), isOn: $nativeDocumentTabsMac)
+                    .help(localized("Applies after relaunch. Each document opens in a native window tab. Existing sessions are preserved."))
+                    .accessibilityHint(localized("Applies after relaunch. Each document opens in a native window tab. Existing sessions are preserved."))
 
                 Toggle(localized("Show Menu Bar Icon"), isOn: $showMenuBarIconMac)
                     .help(localized("Shows the Welcome Tour shortcut in the macOS menu bar."))

@@ -1790,3 +1790,5 @@
 "Adaptive Toolbar" = "Tilpasset værktøjslinje";
 "Adapts the phone toolbar when the available layout changes between compact and regular width." = "Tilpasser telefonens værktøjslinje, når det tilgængelige layout skifter mellem kompakt og almindelig bredde.";
 "Adaptive Toolbar: Adapts the phone toolbar when the available layout changes between compact and regular width." = "Tilpasset værktøjslinje: Tilpasser telefonens værktøjslinje, når det tilgængelige layout skifter mellem kompakt og almindelig bredde.";
+"Native macOS document tabs (experimental)" = "Indbyggede macOS-dokumentfaner (eksperimentelt)";
+"Applies after relaunch. Each document opens in a native window tab. Existing sessions are preserved." = "Gælder efter genstart. Hvert dokument åbnes i en indbygget vinduesfane. Eksisterende sessioner bevares.";

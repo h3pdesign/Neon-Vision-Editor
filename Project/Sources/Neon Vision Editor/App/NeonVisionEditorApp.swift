@@ -110,6 +110,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         handleExternalOpenURLs(urls)
     }
 
+    @objc func newWindowForTab(_ sender: Any?) {
+        (WindowViewModelRegistry.shared.activeViewModel() ?? viewModel)?.addNewTab()
+    }
+
     func handleExternalOpenURLs(_ urls: [URL]) {
         for url in urls {
             if ShareImportHandoff.isShareImportURL(url) {
@@ -172,6 +176,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        MacDocumentWindowTabs.shared.beginTermination()
         EditorPreferenceWriter.shared.flushBeforeTermination()
         MacEditorWindowSessionStore.shared.beginTermination()
         appUpdateManager?.applicationWillTerminate()
@@ -280,7 +285,7 @@ final class MacEditorWindowSessionStore {
         if let initialPresetRawValue {
             pendingEditorLayoutPresets[id] = initialPresetRawValue
         }
-        saveWindowIDs(restorableWindowIDs + [id])
+        if !MacDocumentTabPolicy.enabledForLaunch { saveWindowIDs(restorableWindowIDs + [id]) }
         return id
     }
 
@@ -311,7 +316,7 @@ final class MacEditorWindowSessionStore {
 }
 
 private struct PrimaryWindowContentView: View {
-    @State private var viewModel = EditorViewModel()
+    @State private var viewModel: EditorViewModel
     let startupBehavior: ContentView.StartupBehavior
     let safeModeMessage: String?
     @ObservedObject var supportPurchaseManager: SupportPurchaseManager
@@ -324,6 +329,24 @@ private struct PrimaryWindowContentView: View {
     @State private var pendingDetachedWindowIDs: [UUID] = []
     @State private var showsWindowRestorePrompt = false
     @State private var didCheckForRestorableWindows = false
+
+    init(startupBehavior: ContentView.StartupBehavior, safeModeMessage: String?,
+         supportPurchaseManager: SupportPurchaseManager, appUpdateManager: AppUpdateManager,
+         showGrokError: Binding<Bool>, grokErrorMessage: Binding<String>,
+         onViewModelReady: @escaping (EditorViewModel) -> Void,
+         restoreDetachedWindows: @escaping ([UUID]) -> Void, discardDetachedWindows: @escaping () -> Void) {
+        self.startupBehavior = startupBehavior
+        self.safeModeMessage = safeModeMessage
+        self.supportPurchaseManager = supportPurchaseManager
+        self.appUpdateManager = appUpdateManager
+        self._showGrokError = showGrokError
+        self._grokErrorMessage = grokErrorMessage
+        self.onViewModelReady = onViewModelReady
+        self.restoreDetachedWindows = restoreDetachedWindows
+        self.discardDetachedWindows = discardDetachedWindows
+        self._viewModel = State(initialValue: EditorViewModel(usesNativeDocumentTabs:
+            MacDocumentTabPolicy.enabledForLaunch && startupBehavior != .safeMode))
+    }
 
     var body: some View {
         ContentView(
@@ -356,6 +379,7 @@ private struct PrimaryWindowContentView: View {
         guard !didCheckForRestorableWindows else { return }
         didCheckForRestorableWindows = true
         guard case .standard = startupBehavior else { return }
+        guard !viewModel.usesNativeDocumentTabs else { return }
 
         let windowIDs = MacEditorWindowSessionStore.shared.restorableWindowIDs
         guard !windowIDs.isEmpty else { return }
@@ -386,11 +410,13 @@ private struct DetachedWindowContentView: View {
         self.appUpdateManager = appUpdateManager
         self._showGrokError = showGrokError
         self._grokErrorMessage = grokErrorMessage
+        self._viewModel = State(initialValue: MacDocumentWindowTabs.shared.takePendingModel(for: windowID)
+            ?? EditorViewModel(usesNativeDocumentTabs: MacDocumentTabPolicy.enabledForLaunch))
     }
 
     var body: some View {
         ContentView(
-            startupBehavior: .forceBlankDocument,
+            startupBehavior: viewModel.usesNativeDocumentTabs ? .nativeDocument : .forceBlankDocument,
             windowFrameAutosaveName: MacEditorWindowSessionStore.shared.frameAutosaveName(for: windowID),
             onWindowClosed: { MacEditorWindowSessionStore.shared.forgetWindow(id: windowID) },
             initialEditorLayoutPresetRawValue: initialEditorLayoutPresetRawValue
@@ -522,12 +548,14 @@ struct NeonVisionEditorApp: App {
     }
 
     private func applyMacWindowTabbingPolicy() {
-        // Use app-native file tab pills only; disable NSWindow tab bar to avoid duplicate tab systems.
+        // Group only explicitly registered document windows. Settings and utility
+        // windows must never join an editor tab group automatically.
         NSWindow.allowsAutomaticWindowTabbing = false
         for window in NSApp.windows {
-            window.tabbingMode = .disallowed
+            let native = WindowViewModelRegistry.shared.viewModel(for: window.windowNumber)?.usesNativeDocumentTabs == true
+            window.tabbingMode = native ? .preferred : .disallowed
         }
-        hideNativeTabBarMenuItems()
+        if !MacDocumentTabPolicy.enabledForLaunch { hideNativeTabBarMenuItems() }
     }
 
     private func hideNativeTabBarMenuItems() {
@@ -780,6 +808,8 @@ struct NeonVisionEditorApp: App {
                 .environment(\.locale, preferredLocale)
                 .tint(.blue)
                 .preferredColorScheme(preferredAppearance)
+            } else if MacDocumentTabPolicy.enabledForLaunch {
+                NativeTabSceneBootstrapper(windowID: $windowID)
             }
         }
         .defaultSize(width: 1400, height: 900)
@@ -1091,6 +1121,18 @@ struct NeonVisionEditorApp: App {
     }
 
 #if os(macOS)
+    private struct NativeTabSceneBootstrapper: View {
+        @Binding var windowID: UUID?
+
+        var body: some View {
+            Color.clear
+                .task {
+                    guard windowID == nil else { return }
+                    windowID = MacDocumentWindowTabs.shared.prepareNativeTabScene()
+                }
+        }
+    }
+
     private func configureExternalOpenWindowAction() {
         let action = openWindow
         appDelegate.openPrimaryWindow = { action(id: "primary-editor") }

@@ -1790,3 +1790,5 @@
 "Adaptive Toolbar" = "可変ツールバー";
 "Adapts the phone toolbar when the available layout changes between compact and regular width." = "利用可能なレイアウトがコンパクト幅と標準幅の間で変わると、iPhoneのツールバーを調整します。";
 "Adaptive Toolbar: Adapts the phone toolbar when the available layout changes between compact and regular width." = "可変ツールバー: 利用可能なレイアウトがコンパクト幅と標準幅の間で変わると、iPhoneのツールバーを調整します。";
+"Native macOS document tabs (experimental)" = "macOSのネイティブ書類タブ（実験的）";
+"Applies after relaunch. Each document opens in a native window tab. Existing sessions are preserved." = "再起動後に適用されます。各書類はネイティブのウインドウタブで開きます。既存のセッションは保持されます。";

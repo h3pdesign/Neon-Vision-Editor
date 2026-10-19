@@ -1790,3 +1790,5 @@
 "Adaptive Toolbar" = "Barre d’outils adaptative";
 "Adapts the phone toolbar when the available layout changes between compact and regular width." = "Adapte la barre d’outils du téléphone lorsque la largeur disponible passe d’un mode compact à un mode normal.";
 "Adaptive Toolbar: Adapts the phone toolbar when the available layout changes between compact and regular width." = "Barre d’outils adaptative: Adapte la barre d’outils du téléphone lorsque la largeur disponible passe d’un mode compact à un mode normal.";
+"Native macOS document tabs (experimental)" = "Onglets de document natifs macOS (expérimental)";
+"Applies after relaunch. Each document opens in a native window tab. Existing sessions are preserved." = "Prend effet au redémarrage. Chaque document ouvre un onglet de fenêtre natif. Les sessions existantes sont conservées.";

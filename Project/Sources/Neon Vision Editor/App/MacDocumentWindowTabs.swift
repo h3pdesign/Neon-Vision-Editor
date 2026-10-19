@@ -7,6 +7,13 @@ enum MacDocumentTabPolicy {
     static let preferenceKey = "SettingsNativeDocumentTabsMac"
     static let enabledForLaunch = UserDefaults.standard.bool(forKey: preferenceKey)
     static let tabbingIdentifier = "NeonVisionEditor.NativeDocuments"
+    static let projectSidebarVisibilityPreferenceKey = "NativeDocumentTabsProjectSidebarVisible"
+    static let projectSidebarWidthPreferenceKey = "NativeDocumentTabsProjectSidebarWidth"
+    static let projectSidebarModePreferenceKey = "NativeDocumentTabsProjectSidebarMode"
+
+    static func windowTitle(for model: EditorViewModel) -> String {
+        model.selectedTab?.name ?? "Untitled"
+    }
 }
 
 /// Native tabs group windows, not editor buffers. A destination model is created
@@ -18,6 +25,7 @@ final class MacDocumentWindowTabs {
     private struct Entry {
         weak var model: EditorViewModel?
         weak var window: NSWindow?
+        let synchronizeProjectFolder: (URL?) -> Void
         let openWindow: (UUID) -> Void
         let persistDrafts: () -> Void
     }
@@ -91,6 +99,7 @@ final class MacDocumentWindowTabs {
     }
 
     func register(_ model: EditorViewModel, window: NSWindow,
+                  synchronizeProjectFolder: @escaping (URL?) -> Void = { _ in },
                   persistDrafts: @escaping () -> Void = {}, openWindow: @escaping (UUID) -> Void) {
         guard model.usesNativeDocumentTabs else { return }
         let identity = ObjectIdentifier(model)
@@ -98,6 +107,7 @@ final class MacDocumentWindowTabs {
         if !order.contains(identity) { order.append(identity) }
         pending = pending.filter { $0.value.model !== model }
         entries[ObjectIdentifier(model)] = Entry(model: model, window: window,
+                                                synchronizeProjectFolder: synchronizeProjectFolder,
                                                 openWindow: openWindow, persistDrafts: persistDrafts)
         if window.isKeyWindow { activeNativeWindow = window }
         window.tabbingIdentifier = MacDocumentTabPolicy.tabbingIdentifier
@@ -144,6 +154,12 @@ final class MacDocumentWindowTabs {
         let windows = window.tabbedWindows ?? [window]
         return windows.compactMap { candidate in
             entries.values.first { $0.window === candidate }?.model
+        }
+    }
+
+    func synchronizeProjectFolder(_ folderURL: URL?, from source: EditorViewModel) {
+        for model in models(inGroupOf: source) where model !== source {
+            entries[ObjectIdentifier(model)]?.synchronizeProjectFolder(folderURL)
         }
     }
 

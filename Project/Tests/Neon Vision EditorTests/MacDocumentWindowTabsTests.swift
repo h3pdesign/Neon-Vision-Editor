@@ -28,6 +28,55 @@ final class MacDocumentWindowTabsTests: XCTestCase {
         XCTAssertEqual(window.tabbingMode, .disallowed)
     }
 
+    func testNativeWindowTitleTracksSelectedDocumentFilename() throws {
+        let model = EditorViewModel(usesNativeDocumentTabs: true)
+        XCTAssertEqual(MacDocumentTabPolicy.windowTitle(for: model), "Untitled 1")
+
+        model.restoreTabsFromSnapshot([
+            .init(name: "Notes.md", content: "notes", language: "markdown", fileURL: nil,
+                  languageLocked: false, isDirty: true, lastSavedFingerprint: nil,
+                  lastKnownFileModificationDate: nil, fileEncodingRawValue: String.Encoding.utf8.rawValue),
+            .init(name: "Config.json", content: "{}", language: "json", fileURL: nil,
+                  languageLocked: false, isDirty: true, lastSavedFingerprint: nil,
+                  lastKnownFileModificationDate: nil, fileEncodingRawValue: String.Encoding.utf8.rawValue)
+        ], selectedIndex: 0)
+
+        XCTAssertEqual(MacDocumentTabPolicy.windowTitle(for: model), "Notes.md")
+        model.selectTab(id: model.tabs[1].id)
+        XCTAssertEqual(MacDocumentTabPolicy.windowTitle(for: model), "Config.json")
+    }
+
+    func testProjectSidebarFolderSelectionIsSharedWithinNativeTabGroup() throws {
+        let store = MacDocumentWindowTabs()
+        let source = EditorViewModel(usesNativeDocumentTabs: true)
+        let first = window("Project source")
+        let second = window("Project peer")
+        defer {
+            store.unregister(source)
+            first.close()
+            second.close()
+        }
+
+        var sourceUpdates = 0
+        var childUpdates: [URL?] = []
+        var pendingIDs: [UUID] = []
+        store.register(source, window: first, synchronizeProjectFolder: { _ in sourceUpdates += 1 }) {
+            pendingIDs.append($0)
+        }
+        source.addNewTab()
+        let pendingID = try XCTUnwrap(pendingIDs.first)
+        let child = try XCTUnwrap(store.takePendingModel(for: pendingID))
+        defer { store.unregister(child) }
+        store.register(child, window: second, synchronizeProjectFolder: { childUpdates.append($0) }) { _ in }
+
+        let projectURL = URL(fileURLWithPath: "/tmp/SharedProject")
+        store.synchronizeProjectFolder(projectURL, from: source)
+        store.synchronizeProjectFolder(nil, from: source)
+
+        XCTAssertEqual(sourceUpdates, 0, "The source window already applied its own folder change")
+        XCTAssertEqual(childUpdates, [projectURL, nil])
+    }
+
     func testNewNativeTabGetsItsOwnModelWithoutMovingDirtyBuffer() throws {
         let store = MacDocumentWindowTabs()
         let source = EditorViewModel(usesNativeDocumentTabs: true)

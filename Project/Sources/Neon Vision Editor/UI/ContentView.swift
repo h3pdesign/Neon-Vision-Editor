@@ -788,7 +788,11 @@ struct ContentView: View {
     @State var findRefreshGeneration: Int = 0
     @State var findScope: SearchScope = .currentFile
     @State var findInFilesScope: SearchScope = .project
-    @State var showProjectStructureSidebar: Bool = false
+    @State var localShowProjectStructureSidebar: Bool = false
+#if os(macOS)
+    @AppStorage(MacDocumentTabPolicy.projectSidebarVisibilityPreferenceKey)
+    var nativeTabsProjectSidebarVisible: Bool = false
+#endif
     @AppStorage(JevContextRankingConfig.enabledDefaultsKey) var jevContextRankingEnabled = false
     @State var aiChatConversation = AIChatConversation()
     @State var showCompactSidebarSheet: Bool = false
@@ -958,10 +962,73 @@ struct ContentView: View {
     @State var droppedFileLoadLabel: String = ""
     @State var largeFileModeEnabled: Bool = false
     @State var settingsSheetDetent: PresentationDetent = .large
-    @SceneStorage("ProjectSidebarWidth") var projectSidebarWidth: Double = 450
-    @SceneStorage("ProjectSidebarMode") var utilitySidebarModeRaw: String = UtilitySidebarMode.project.rawValue
+    @SceneStorage("ProjectSidebarWidth") var sceneProjectSidebarWidth: Double = 450
+#if os(macOS)
+    @AppStorage(MacDocumentTabPolicy.projectSidebarWidthPreferenceKey)
+    var nativeTabsProjectSidebarWidth: Double = 450
+    @AppStorage(MacDocumentTabPolicy.projectSidebarModePreferenceKey)
+    var nativeTabsProjectSidebarModeRaw: String = UtilitySidebarMode.project.rawValue
+#endif
+    @SceneStorage("ProjectSidebarMode") var sceneUtilitySidebarModeRaw: String = UtilitySidebarMode.project.rawValue
     @SceneStorage("EditorFocusModeEnabled") var focusModeEnabled: Bool = false
     @State var projectSidebarResizeStartWidth: CGFloat? = nil
+
+    /// Native AppKit tabs are distinct windows, so their project-sidebar chrome
+    /// must use shared app preferences instead of per-scene state. The selected
+    /// project URL and its security-scoped lease remain owned by each window.
+    var showProjectStructureSidebar: Bool {
+        get {
+#if os(macOS)
+            if viewModel.usesNativeDocumentTabs { return nativeTabsProjectSidebarVisible }
+#endif
+            return localShowProjectStructureSidebar
+        }
+        nonmutating set {
+#if os(macOS)
+            if viewModel.usesNativeDocumentTabs {
+                nativeTabsProjectSidebarVisible = newValue
+                return
+            }
+#endif
+            localShowProjectStructureSidebar = newValue
+        }
+    }
+
+    var projectSidebarWidth: Double {
+        get {
+#if os(macOS)
+            if viewModel.usesNativeDocumentTabs { return nativeTabsProjectSidebarWidth }
+#endif
+            return sceneProjectSidebarWidth
+        }
+        nonmutating set {
+#if os(macOS)
+            if viewModel.usesNativeDocumentTabs {
+                nativeTabsProjectSidebarWidth = newValue
+                return
+            }
+#endif
+            sceneProjectSidebarWidth = newValue
+        }
+    }
+
+    var utilitySidebarModeRaw: String {
+        get {
+#if os(macOS)
+            if viewModel.usesNativeDocumentTabs { return nativeTabsProjectSidebarModeRaw }
+#endif
+            return sceneUtilitySidebarModeRaw
+        }
+        nonmutating set {
+#if os(macOS)
+            if viewModel.usesNativeDocumentTabs {
+                nativeTabsProjectSidebarModeRaw = newValue
+                return
+            }
+#endif
+            sceneUtilitySidebarModeRaw = newValue
+        }
+    }
 #if os(macOS)
     @SceneStorage("TOCSidebarWidth") var tocSidebarWidth: Double = 250
     @State var tocSidebarResizeStartWidth: CGFloat? = nil
@@ -1693,7 +1760,13 @@ struct ContentView: View {
         }
         hostWindowNumber = number
         if let window, viewModel.usesNativeDocumentTabs {
-            MacDocumentWindowTabs.shared.register(viewModel, window: window, persistDrafts: {
+            MacDocumentWindowTabs.shared.register(viewModel, window: window, synchronizeProjectFolder: { folderURL in
+                if let folderURL {
+                    setProjectFolder(folderURL, synchronizeNativeTabs: false)
+                } else {
+                    closeProjectFolder(synchronizeNativeTabs: false)
+                }
+            }, persistDrafts: {
                 lastPersistedDraftSignature = ""
                 persistUnsavedDraftSnapshotIfNeeded()
                 lastPersistedSessionSignature = ""
@@ -3104,7 +3177,13 @@ struct ContentView: View {
             } message: {
                 Text(sharedImportDestinationMessage)
             }
+#if os(macOS)
+            .navigationTitle(viewModel.usesNativeDocumentTabs
+                ? MacDocumentTabPolicy.windowTitle(for: viewModel)
+                : "Neon Vision Editor")
+#else
             .navigationTitle("Neon Vision Editor")
+#endif
 #if os(iOS) || os(visionOS)
             .navigationBarTitleDisplayMode(.inline)
 #endif
@@ -3386,7 +3465,13 @@ struct ContentView: View {
         if !didRunInitialWindowLayoutSetup {
             // Start with sidebars collapsed only once; otherwise toggles can get reset on layout transitions.
             viewModel.showSidebar = false
+#if os(macOS)
+            if !viewModel.usesNativeDocumentTabs {
+                showProjectStructureSidebar = false
+            }
+#else
             showProjectStructureSidebar = false
+#endif
 #if os(macOS)
             isToolbarCollapsed = startsWithToolbarCollapsed
 #endif

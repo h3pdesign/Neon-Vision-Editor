@@ -8,7 +8,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Highlights
 
-- Adds an experimental, opt-in native macOS document-tab mode in General settings; changing the option takes effect after relaunch. The native tab-bar plus creates a document tab in the active group, and switching tabs preserves each document's contents.
+- Adds an experimental, opt-in native macOS document-tab mode in General settings; changing the option takes effect after relaunch. Native tabs display the document filename and share project-sidebar visibility, width, and selected folder while preserving each document's contents when switching.
 
 ### Fixes
 

@@ -1409,7 +1409,7 @@ extension ContentView {
     /// Clears only the selected project context. Open tabs remain available,
     /// while project indexing, file observation, security scope, and Git state
     /// are released together.
-    func closeProjectFolder() {
+    func closeProjectFolder(synchronizeNativeTabs: Bool = true) {
         projectTreeRefreshGeneration &+= 1
         projectFileIndexRefreshGeneration &+= 1
         projectFileIndexTask?.cancel()
@@ -1429,6 +1429,11 @@ extension ContentView {
         showCompactProjectSidebarSheet = false
         projectSidebarFindInFilesRequestToken = 0
         persistSessionIfReady()
+#if os(macOS)
+        if synchronizeNativeTabs, viewModel.usesNativeDocumentTabs {
+            MacDocumentWindowTabs.shared.synchronizeProjectFolder(nil, from: viewModel)
+        }
+#endif
     }
 
     func requestCloseProjectFolderAndTabs() {
@@ -2247,7 +2252,7 @@ extension ContentView {
         )
     }
 
-    func setProjectFolder(_ folderURL: URL) {
+    func setProjectFolder(_ folderURL: URL, synchronizeNativeTabs: Bool = true) {
 #if os(macOS) || canImport(UIKit)
         let standardizedTarget = folderURL.standardizedFileURL
         if let previous = projectFolderSecurityURL?.standardizedFileURL,
@@ -2274,6 +2279,11 @@ extension ContentView {
         refreshProjectBrowserState()
         persistSessionIfReady()
         gitViewModel.setProjectURL(folderURL)
+#if os(macOS)
+        if synchronizeNativeTabs, viewModel.usesNativeDocumentTabs {
+            MacDocumentWindowTabs.shared.synchronizeProjectFolder(folderURL, from: viewModel)
+        }
+#endif
     }
 
     func clearProjectEditorOverrides() {

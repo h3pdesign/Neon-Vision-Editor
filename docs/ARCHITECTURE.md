@@ -86,7 +86,11 @@ with AppKit. Loads, saves, dirty state, and file presenters stay with that owner
 tab reordering and detaching do not copy buffers. A PDF and its attached note
 remain one composite editor window. Native session persistence aggregates open
 owners, including pending scenes, so a child cannot overwrite the session with
-only its own file. Draft migration persists the restored set before consuming
+only its own file. The active filename supplies the native window/tab title;
+untitled documents retain their generated untitled name. Native tabs share
+project-sidebar visibility, width, mode, and selected folder; each window keeps
+its own security-scoped folder lease and project observation lifecycle. Draft
+migration persists the restored set before consuming
 legacy recovery snapshots. Settings and utility windows are never grouped.
 The stable/default in-content tab path remains unchanged. Native-mode interaction
 and accessibility acceptance must complete before #621 is closed.

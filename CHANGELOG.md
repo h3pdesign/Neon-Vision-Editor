@@ -6,6 +6,10 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixes
+
+- Preserves JSON object member order, repeated keys, exact number tokens, and escaped strings when formatting or combining lines (#802).
+
 ## [v2.0.0] - 2026-10-15
 
 ### Why Upgrade

@@ -31,6 +31,13 @@ nonisolated struct JSONPreviewDocument: Sendable {
 
     let nodes: [Node]
 
+    /// Formats JSON text without converting objects to dictionaries. That keeps
+    /// member order, duplicate keys, exact numeric tokens, and string escapes.
+    static func formattedText(_ text: String, prettyPrinted: Bool) throws -> String {
+        var formatter = TextFormatter(bytes: Array(text.utf8), prettyPrinted: prettyPrinted)
+        return try formatter.format()
+    }
+
     static func parse(_ text: String) throws -> Self {
         guard text.utf8.count <= maximumBytes else {
             throw Failure(message: "Structured preview supports up to 16 MB. The source remains editable.")
@@ -199,6 +206,200 @@ nonisolated struct JSONPreviewDocument: Sendable {
                 length += scalarLength
             }
             return result
+        }
+    }
+
+    private struct TextFormatter {
+        let bytes: [UInt8]
+        let prettyPrinted: Bool
+        var offset = 0
+        var output: [UInt8] = []
+
+        var current: UInt8? { offset < bytes.count ? bytes[offset] : nil }
+
+        mutating func format() throws -> String {
+            output.reserveCapacity(bytes.count)
+            try whitespace()
+            try value(depth: 0)
+            try whitespace()
+            guard offset == bytes.count else { throw failure("Unexpected trailing content") }
+            return String(decoding: output, as: UTF8.self)
+        }
+
+        mutating func value(depth: Int) throws {
+            guard depth <= 128 else { throw failure("JSON nesting exceeds 128 levels") }
+            try whitespace()
+            guard let token = current else { throw failure("Expected a JSON value") }
+            switch token {
+            case 123, 91:
+                try container(depth: depth, object: token == 123)
+            case 34:
+                try stringToken()
+            case 116:
+                try literal("true")
+            case 102:
+                try literal("false")
+            case 110:
+                try literal("null")
+            case 45, 48...57:
+                try number()
+            default:
+                throw failure("Expected a JSON value")
+            }
+        }
+
+        mutating func container(depth: Int, object: Bool) throws {
+            let opening: UInt8 = object ? 123 : 91
+            let closing: UInt8 = object ? 125 : 93
+            output.append(opening)
+            offset += 1
+            try whitespace()
+            if current == closing {
+                output.append(closing)
+                offset += 1
+                return
+            }
+
+            var first = true
+            while true {
+                if !first { output.append(44) }
+                if prettyPrinted {
+                    output.append(10)
+                    output.append(contentsOf: repeatElement(32, count: (depth + 1) * 2))
+                }
+                if object {
+                    guard current == 34 else { throw failure("Expected an object key") }
+                    try stringToken()
+                    try whitespace()
+                    guard current == 58 else { throw failure("Expected ':'") }
+                    output.append(58)
+                    offset += 1
+                    if prettyPrinted { output.append(32) }
+                }
+                try value(depth: depth + 1)
+                try whitespace()
+                if current == closing { break }
+                guard current == 44 else { throw failure("Expected ',' or closing bracket") }
+                offset += 1
+                try whitespace()
+                first = false
+            }
+            if prettyPrinted {
+                output.append(10)
+                output.append(contentsOf: repeatElement(32, count: depth * 2))
+            }
+            output.append(closing)
+            offset += 1
+        }
+
+        mutating func stringToken() throws {
+            let start = offset
+            offset += 1
+            while let byte = current {
+                if byte == 92 {
+                    offset += 1
+                    guard let escaped = current else { throw failure("Incomplete escape") }
+                    if escaped == 117 {
+                        offset += 1
+                        var codeUnit: UInt16 = 0
+                        for _ in 0..<4 {
+                            guard let hex = current, Self.isHex(hex) else { throw failure("Invalid Unicode escape") }
+                            codeUnit = (codeUnit << 4) | UInt16(Self.hexValue(hex))
+                            offset += 1
+                        }
+                        if (0xD800...0xDBFF).contains(codeUnit) {
+                            guard current == 92, offset + 1 < bytes.count, bytes[offset + 1] == 117 else {
+                                throw failure("Unpaired high surrogate")
+                            }
+                            offset += 2
+                            var lowSurrogate: UInt16 = 0
+                            for _ in 0..<4 {
+                                guard let hex = current, Self.isHex(hex) else { throw failure("Invalid Unicode escape") }
+                                lowSurrogate = (lowSurrogate << 4) | UInt16(Self.hexValue(hex))
+                                offset += 1
+                            }
+                            guard (0xDC00...0xDFFF).contains(lowSurrogate) else {
+                                throw failure("Invalid low surrogate")
+                            }
+                        } else if (0xDC00...0xDFFF).contains(codeUnit) {
+                            throw failure("Unpaired low surrogate")
+                        }
+                    } else {
+                        guard [34, 92, 47, 98, 102, 110, 114, 116].contains(escaped) else {
+                            throw failure("Invalid string escape")
+                        }
+                        offset += 1
+                    }
+                } else if byte == 34 {
+                    offset += 1
+                    output.append(contentsOf: bytes[start..<offset])
+                    return
+                } else if byte < 32 {
+                    throw failure("Unescaped control character")
+                } else {
+                    offset += 1
+                }
+            }
+            throw failure("Unterminated string")
+        }
+
+        mutating func number() throws {
+            let start = offset
+            if current == 45 { offset += 1 }
+            if current == 48 {
+                offset += 1
+                if let next = current, (49...57).contains(next) { throw failure("Leading zero in number") }
+            } else {
+                guard let digit = current, (49...57).contains(digit) else { throw failure("Invalid number") }
+                digits()
+            }
+            if current == 46 {
+                offset += 1
+                guard let digit = current, (48...57).contains(digit) else { throw failure("Expected fractional digits") }
+                digits()
+            }
+            if current == 101 || current == 69 {
+                offset += 1
+                if current == 43 || current == 45 { offset += 1 }
+                guard let digit = current, (48...57).contains(digit) else { throw failure("Expected exponent digits") }
+                digits()
+            }
+            output.append(contentsOf: bytes[start..<offset])
+        }
+
+        mutating func digits() {
+            while let digit = current, (48...57).contains(digit) { offset += 1 }
+        }
+
+        mutating func literal(_ literal: StaticString) throws {
+            let token = Array(String(describing: literal).utf8)
+            guard bytes[offset...].starts(with: token) else { throw failure("Invalid literal") }
+            output.append(contentsOf: token)
+            offset += token.count
+        }
+
+        mutating func whitespace() throws {
+            while let byte = current, [9, 10, 13, 32].contains(byte) { offset += 1 }
+        }
+
+        func failure(_ reason: String) -> Failure {
+            let prefix = String(decoding: bytes.prefix(offset), as: UTF8.self)
+            let lines = prefix.split(omittingEmptySubsequences: false) {
+                $0 == "\n" || $0 == "\r" || $0 == "\r\n"
+            }
+            return Failure(message: "\(reason) at line \(lines.count), column \((lines.last?.count ?? 0) + 1).")
+        }
+
+        static func isHex(_ byte: UInt8) -> Bool {
+            (48...57).contains(byte) || (65...70).contains(byte) || (97...102).contains(byte)
+        }
+
+        static func hexValue(_ byte: UInt8) -> UInt8 {
+            switch byte {
+            case 48...57: return byte - 48
+            case 65...70: return byte - 55
+            default: return byte - 87
+            }
         }
     }
 }

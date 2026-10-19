@@ -677,12 +677,7 @@ extension ContentView {
         guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
         do {
-            let data = Data(source.utf8)
-            let json = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
-            var writingOptions: JSONSerialization.WritingOptions = prettyPrinted ? [.prettyPrinted, .sortedKeys] : [.sortedKeys]
-            writingOptions.insert(.fragmentsAllowed)
-            let outputData = try JSONSerialization.data(withJSONObject: json, options: writingOptions)
-            guard var output = String(data: outputData, encoding: .utf8) else { return }
+            var output = try JSONPreviewDocument.formattedText(source, prettyPrinted: prettyPrinted)
             if prettyPrinted && !output.hasSuffix("\n") {
                 output.append("\n")
             }

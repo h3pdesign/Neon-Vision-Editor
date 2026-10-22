@@ -302,6 +302,72 @@ final class ContentViewLayoutTests: XCTestCase {
         )
     }
 
+    // Geometry measured on the iOS 27.1 iPhone Duo simulator's outer display.
+    private let duoOuterSize = CGSize(width: 382, height: 644)
+    private let duoOuterInsets = EdgeInsets(top: 0, leading: 0, bottom: 34, trailing: 84)
+    private let duoOuterOcclusions = [
+        CGRect(x: 399.67, y: 29.33, width: 37, height: 37),
+        CGRect(x: 382, y: 0, width: 84, height: 174)
+    ]
+
+    func testVerticalToolbarFillsTrailingColumnBelowStatusBar() throws {
+        let column = try XCTUnwrap(IOSVerticalToolbarPolicy.columnFrame(
+            edge: .trailing,
+            containerSize: duoOuterSize,
+            safeAreaInsets: duoOuterInsets,
+            occlusions: duoOuterOcclusions
+        ))
+        XCTAssertEqual(column, CGRect(x: 382, y: 182, width: 84, height: 462))
+        XCTAssertGreaterThanOrEqual(column.minX, duoOuterSize.width, "Toolbar must not cover editor content")
+    }
+
+    func testVerticalToolbarStaysHorizontalWithoutSystemVerticalEdge() {
+        XCTAssertNil(IOSVerticalToolbarPolicy.columnFrame(
+            edge: nil,
+            containerSize: duoOuterSize,
+            safeAreaInsets: duoOuterInsets,
+            occlusions: duoOuterOcclusions
+        ))
+    }
+
+    func testVerticalToolbarMirrorsToLeadingEdge() throws {
+        let column = try XCTUnwrap(IOSVerticalToolbarPolicy.columnFrame(
+            edge: .leading,
+            containerSize: duoOuterSize,
+            safeAreaInsets: EdgeInsets(top: 0, leading: 84, bottom: 34, trailing: 0),
+            occlusions: [CGRect(x: -84, y: 0, width: 84, height: 174)]
+        ))
+        XCTAssertEqual(column, CGRect(x: -84, y: 182, width: 84, height: 462))
+    }
+
+    func testVerticalToolbarUsesMinimumWidthInsideNarrowInsetAndAvoidsBottomOcclusion() throws {
+        let column = try XCTUnwrap(IOSVerticalToolbarPolicy.columnFrame(
+            edge: .trailing,
+            containerSize: CGSize(width: 800, height: 600),
+            safeAreaInsets: EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 20),
+            occlusions: [
+                CGRect(x: 790, y: 500, width: 30, height: 30),
+                CGRect(x: 100, y: 0, width: 40, height: 400)
+            ]
+        ))
+        XCTAssertEqual(column, CGRect(x: 760, y: 0, width: 60, height: 492))
+    }
+
+    func testVerticalToolbarFallsBackWhenColumnIsTooShort() {
+        XCTAssertNil(IOSVerticalToolbarPolicy.columnFrame(
+            edge: .trailing,
+            containerSize: CGSize(width: 382, height: 300),
+            safeAreaInsets: duoOuterInsets,
+            occlusions: [CGRect(x: 382, y: 0, width: 84, height: 140)]
+        ))
+        XCTAssertNil(IOSVerticalToolbarPolicy.columnFrame(
+            edge: .trailing,
+            containerSize: .zero,
+            safeAreaInsets: duoOuterInsets,
+            occlusions: []
+        ))
+    }
+
     func testSecondaryPaneWidthScalesAndRemainsBounded() {
         XCTAssertEqual(IOSAdaptiveLayoutPolicy.secondaryPaneIdealWidth(containerWidth: 390), 280)
         XCTAssertEqual(IOSAdaptiveLayoutPolicy.secondaryPaneIdealWidth(containerWidth: 900), 360)

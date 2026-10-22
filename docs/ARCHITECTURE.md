@@ -79,6 +79,85 @@ When tracing a change, follow this path: user action or system callback -> `Cont
 
 ### Fast tab activation path
 
+Starting with development version 2.1.0, macOS document windows always use native
+AppKit tabs; the experimental preference and old in-editor tab strip are removed.
+`MacDocumentTabPolicy.makeWindowModel` supplies the native owner for primary,
+detached, new-tab, and Safe Mode windows. `MacDocumentWindowTabs` creates an
+owner model before constructing a document window directly with AppKit,
+avoiding the SwiftUI scene registry on each file open. The current development
+candidate mounts one `NSHostingView` editor surface per visited document window.
+In development build 1116 this root retains the existing document-state,
+command, sheet, and recovery coordinator, rather than laying out the source
+editor and every optional pane in one SwiftUI tree. `MacDocumentLayout.Controller`
+owns the window's editor/sidebar/preview arrangement. Each visible optional
+region has its own lazy, non-scene-bridging host. `MacDocumentContentController`
+owns the source column, split-editor controllers, and native scroll views
+directly; only its status/header/find/minimap and structured-reading accessories
+use small SwiftUI hosts. The same `VirtualEditorView.makeEditorView` and
+`updateEditorView` configuration path serves both the native controller and
+representable, preserving the text engine and mutation contract. Switching
+source/reading modes retains the existing source canvas. Closing a split pane
+removes it from its AppKit stack and controller hierarchy. Factories for absent
+previews and accessories are not evaluated. Environment values (document owner,
+locale, appearance, purchases, updates, and window actions) are explicitly passed
+to independent hosts; they do not inherit the former parent SwiftUI graph.
+Ordinary toolbar actions are `NSButton` instances owned by the physical window's
+toolbar coordinator. Complex menu controls retain bounded individual hosts and
+overflow menus remain lazy. This is inspired by CotEditor's controller/accessory
+separation, not copied source or a change to document/file ownership. The scene
+and state/lifecycle coordinator have **not** been removed, and performance parity
+must still be demonstrated rather than inferred from this topology change.
+Unvisited background windows remain lightweight shells. A selected document's
+graph and native canvas stay attached when another tab is selected; moving a
+single graph between windows caused synchronous SwiftUI focus traversal and
+document-environment updates before the first draw.
+Document-local presentation uses ordinary `@State` in its permanent hosting
+graph. A host rejects a different document owner instead of substituting that
+document's environment. The earlier shared-host state wrapper is retained only
+for the window-storage fallback; it no longer wraps every editor property.
+The rendering host disables scene bridging. Only the primary SwiftUI scene
+declares scene toolbar presentation; child windows' physical `NSToolbar` and
+close validation remain AppKit-owned. AppKit-created documents promote their editor hosting view
+to the window's content root so window-level background preferences use the same
+ownership boundary as the primary SwiftUI scene. A dedicated window controller
+retains close protection and notifications after the temporary loading view is
+removed. Root installation rejects a mismatched document/window pair.
+Project-card rendering is
+separately shared within the tab group, not confused with document rendering.
+Metadata observation
+also keeps inactive document windows up to date. This candidate has not yet
+passed the release-performance acceptance check documented in
+`Performance-Profiles.md`.
+The coordinator retains its window controller, attaches the window to its native
+group before presentation, and preserves AppKit-owned geometry. Captured scene
+actions keep Settings and utility-window commands available in hosted content.
+Loads, saves, dirty state, and file presenters stay with that owner;
+tab reordering and detaching do not copy buffers. A PDF and its attached note
+remain one composite editor window. Native session persistence aggregates open
+owners, including pending scenes, so a child cannot overwrite the session with
+only its own file. The active filename supplies the native window/tab title;
+untitled documents retain their generated untitled name. Native tabs share
+project-sidebar visibility, width, mode, and selected folder; each window keeps
+its own security-scoped folder lease and project observation lifecycle. Draft
+migration persists the restored set before consuming
+legacy recovery snapshots. Settings and utility windows are never grouped.
+Pending document owners are populated before presentation is queued on the
+main run loop, preventing synchronous window creation inside recovery.
+The scene-root AppKit attachment joins the pending window to its native group
+before presentation, including the nil-value scene created by the tab-bar plus
+button. Editor registration is not responsible for first presentation.
+Restoring a window initializes only its own project watcher and preview state;
+it does not rebroadcast folder initialization or inherit another tab's preview.
+The selected native tab title uses AppKit's attributed title and system accent color.
+Safe Mode uses the same native tab chrome but does not restore the previous
+session. Its windows inherit a recovery-session flag and use a separate draft
+snapshot key, protecting normal-session recovery data. Startup buffer resets
+bypass the user-facing New Tab routing so they cannot create an extra window.
+iPhone/iPad continue using `MobileNativeFileTabBar` over their per-scene document
+model; visionOS retains its existing platform-specific strip. The shared buffer
+commands remain necessary for mobile editing, recovery, and composite PDF notes;
+they are not a fallback macOS tab UI.
+
 Tab activation has an explicit critical path: select the destination tab, bind its
 already-available bounded viewport to the existing native editor, and draw the
 first frame. It must not synchronously scan the document, write preferences,
@@ -207,11 +286,12 @@ The normative behavior, review findings, design requirements, and remaining rele
 `UI/MarkdownProjectPreview.swift` and `UI/ContentView+MarkdownProjectPreview.swift` provide an optional project-level Markdown/PDF overview beside the existing Markdown preview. This is a navigation surface, not a second editor or a replacement for the project sidebar.
 
 - `MarkdownProjectPreviewModel` projects the existing `ProjectFileIndex` snapshot; it does not create a second filesystem watcher or mutate editor tabs directly.
+- On macOS, the native tab coordinator shares a `MarkdownProjectPreviewSession` within each tab group: model, visibility, width, root, and refresh signature survive document switches. `MacProjectCardsPane` retains one hosting view and moves that same card surface between selected native windows, preserving the actual scroll view rather than synchronizing competing per-document scroll positions. Public AppKit tab-group observation drives attachment, and the SwiftUI environment is forwarded into the retained host. A tab disappearing or awaiting its local index cannot cancel the group's prepared cards. Closing the last owner releases the host and observations; a separate window group gets a separate session. Document preview panes remain independent.
 - The project content filter supports Markdown, PDF, or both. Accepted Markdown extensions are `.md`, `.markdown`, `.mdown`, `.mkdn`, and `.mdx`; PDF cards use `.pdf`. Cards use the standardized file path as identity and are refreshed when the project root or index changes, or when the user explicitly refreshes.
 - PDF cards use bounded metadata plus a first-page thumbnail and page count; they do not create a second PDF renderer or rewrite the source file.
 - Excerpt and heading extraction are bounded to a 96 KiB text prefix. The first eligible local image is decoded off the main actor, capped at 4 MiB, and downsampled to a 640-pixel thumbnail. Remote HTTP(S) images are never fetched automatically, and paths must remain inside the project root.
 - A 100 MiB file is marked as large while the card remains metadata-only; opening the file continues through the existing large-file safeguards.
-- Grid and stack layouts share the same card model. macOS supports leading/trailing placement around the Markdown preview and a scene-local resizable width with a 480-point minimum and 500-point default so the card header and filters remain readable; regular-width iPad supports the coordinated split with a fixed card column. Compact iPhone layouts do not add a third permanent column.
+- Grid and stack layouts share the same card model. macOS supports leading/trailing placement around the Markdown preview and a group-local resizable width with a 480-point minimum and 500-point default so the card header and filters remain readable; regular-width iPad supports the coordinated split with a fixed card column. Compact iPhone layouts do not add a third permanent column.
 - Card activation calls the existing `EditorViewModel` file-opening path, preserving tab identity, caret state, dirty-buffer protection, and window ownership. Context-menu actions reveal the source or refresh the projection without rewriting Markdown.
 
 `Core/NVELock.swift` is the shared lock abstraction used by regex/detection caches and completion gates. Its non-generic storage/destructor box is intentional: it keeps Swift 6 synchronization code compatible with supported deployment targets and avoids a verified Xcode 26.5 release-optimizer crash. Replacing that storage shape requires both the local platform matrix and a compatible remote archive.
@@ -312,12 +392,14 @@ Settings iCloud synchronization is separate from document synchronization: it co
 - appearance/theme cloud sync only: `AppearanceThemeCloudSync`;
 - secure provider credentials: `SecureTokenStore`/Keychain, never `@AppStorage` or cloud sync;
 - per-window frame/session metadata: macOS-only `MacEditorWindowSessionStore` and `ContentView` frame helpers.
-- project Markdown preview preferences: `MarkdownProjectPreviewEnabledV1`, `MarkdownProjectPreviewModeV1`, `MarkdownProjectPreviewPlacementV1`, and `MarkdownProjectPreviewSortOrderV1` are shared Settings/editor preferences; `MarkdownProjectPreviewWidthV1` is scene-local width state.
+- project Markdown preview preferences: `MarkdownProjectPreviewEnabledV1`, `MarkdownProjectPreviewModeV1`, `MarkdownProjectPreviewPlacementV1`, and `MarkdownProjectPreviewSortOrderV1` are shared Settings/editor preferences; `MarkdownProjectPreviewWidthV1` is scene-local width state outside macOS, where the native group owns the current width.
 - `MarkdownProjectPreviewContentFilterV1` stores the project-card choice of Markdown, PDF, or both; Markdown remains the default.
 
 ## macOS Window and Session Restoration
 
 The primary editor window and each detached editor window have distinct frame autosave names and distinct `EditorViewModel` instances. `MacEditorWindowSessionStore` retains only detached window IDs. `ContentView` records AppKit move/resize notifications under the corresponding autosave name and restores a saved frame only when it still intersects an attached display. The initial window is hidden during that restore so a smaller fallback frame is not flashed before the persisted frame is applied.
+
+The planned post-2.1.0 migration of native document windows toward a single AppKit creation path, AppKit window shells and an `NSDocument` evaluation is recorded in [`ADR-0001-Native-macOS-Document-Windows.md`](ADR-0001-Native-macOS-Document-Windows.md).
 
 At the next launch, the primary window asks whether to reopen all detached windows or only the first. Do not share a window's `EditorViewModel`, cursor, selected tab, or frame key with another window. `defaultSize` remains a first-launch fallback; persisted AppKit frames are authoritative after a user resize.
 

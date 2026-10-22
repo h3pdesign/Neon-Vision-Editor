@@ -200,7 +200,6 @@
 "Allow Private Cloud Compute for Agent Mode" = "Agent模式允许私有云计算。";
 "Allow Shared Imports?" = "允许共享导入？";
 "Allows complex Edit and Verify requests to use Apple's Private Cloud Compute when available." = "当可用时，允许复杂编辑和验证请求使用Apple的私有云计算。";
-"Always" = "始终";
 "An item with this name already exists." = "已存在同名项目。";
 "Anthropic" = "Anthropic";
 "Anthropic API Token Required" = "Anthropic API 令牌必填";
@@ -955,7 +954,6 @@
 "Neon Vision Editor will always stay free to use." = "Neon Vision Editor始终免费使用。";
 "Neon Vision Editor will ask macOS to open its supported text and source-code file types. macOS may request your confirmation." = "Neon Vision 编辑器将请求macOS打开其支持的文本和源代码文件类型。macOS可能会要求您确认。";
 "Neutral" = "中性";
-"Never" = "从不";
 "New Chat" = "新聊天";
 "New Comparison" = "新比较";
 "New File" = "新文件";
@@ -1060,7 +1058,6 @@
 "Open in New Tab" = "在新标签页中打开";
 "Open in New Tabs" = "在新标签页中打开";
 "Open in Separate Window" = "在单独窗口中打开";
-"Open in Tabs" = "在标签页中打开";
 "Open match in editor" = "在编辑器中打开匹配项";
 "Open remote folder %@" = "打开远程文件夹 %@";
 "Open shared import %@" = "打开共享导入 %@";
@@ -1513,6 +1510,7 @@
 "Support purchase is currently unavailable." = "支持购买当前不可用。";
 "Support via Patreon" = "通过Patreon支持。";
 "Swipe horizontally to reveal more editor actions" = "水平滑动以显示更多编辑器操作";
+"Swipe vertically to reveal more editor actions" = "垂直滑动以显示更多编辑器操作";
 "Switch between a categorized crash summary and raw text" = "在分类崩溃摘要和原始文本之间切换。";
 "Switch between a severity summary and raw log text" = "在严重性摘要和原始日志文本之间切换。";
 "Switch between structured plist mode and raw text mode" = "在结构化plist模式和原始文本模式之间切换。";
@@ -1790,3 +1788,17 @@
 "Adaptive Toolbar" = "自适应工具栏";
 "Adapts the phone toolbar when the available layout changes between compact and regular width." = "可用布局在紧凑宽度与常规宽度之间变化时，相应调整iPhone工具栏。";
 "Adaptive Toolbar: Adapts the phone toolbar when the available layout changes between compact and regular width." = "自适应工具栏: 可用布局在紧凑宽度与常规宽度之间变化时，相应调整iPhone工具栏。";
+"What’s New in v2.1.0" = "v2.1.0的新功能";
+"Release highlights for v2.1.0." = "v2.1.0版本亮点。";
+"Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing." = "使用 Mac 原生文稿标签页，显示文件名、突出显示当前标签页，并支持双击关闭。";
+"Editor Improvements: Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing." = "编辑器改进: 使用 Mac 原生文稿标签页，显示文件名、突出显示当前标签页，并支持双击关闭。";
+"Keep project navigation shared while each document retains its own editing and preview state." = "共享项目导航，同时每个文稿保留各自的编辑和预览状态。";
+"Editor Navigation: Keep project navigation shared while each document retains its own editing and preview state." = "编辑器导航: 共享项目导航，同时每个文稿保留各自的编辑和预览状态。";
+"Preserve unsaved edits during external-file refreshes and exact JSON values when formatting." = "在外部文件刷新时保留未保存的更改，并在格式化时保留精确的 JSON 值。";
+"Reliable Saves: Preserve unsaved edits during external-file refreshes and exact JSON values when formatting." = "可靠保存: 在外部文件刷新时保留未保存的更改，并在格式化时保留精确的 JSON 值。";
+"Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation." = "双击 Mac 原生文稿标签页即可关闭，未保存的更改仍会照常确认。";
+"Reliable Saves: Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation." = "可靠保存: 双击 Mac 原生文稿标签页即可关闭，未保存的更改仍会照常确认。";
+"Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native…" = "原生文稿标签页成为 macOS 的标准方式，取代以前的编辑器内标签栏和实验性设置…";
+"Editor Improvements: Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native…" = "编辑器改进: 原生文稿标签页成为 macOS 的标准方式，取代以前的编辑器内标签栏和实验性设置…";
+"Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience." = "iPhone 和 iPad 继续默认使用较新的触控友好 UIKit 标签页，visionOS 保留现有的标签页体验。";
+"Workflow Refinements: Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience." = "工作流程优化: iPhone 和 iPad 继续默认使用较新的触控友好 UIKit 标签页，visionOS 保留现有的标签页体验。";

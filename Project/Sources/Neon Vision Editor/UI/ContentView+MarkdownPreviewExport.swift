@@ -440,6 +440,7 @@ extension ContentView {
     }
 
     func scheduleMarkdownPreviewRender(immediate: Bool = false) {
+        guard canInstallMarkdownPreviewWebContent else { return }
         // A detached preview remains a live consumer even after the inline pane
         // is closed. Its render pipeline must therefore not depend on the
         // inline preview's visibility.

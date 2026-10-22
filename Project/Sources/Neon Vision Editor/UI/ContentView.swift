@@ -16,6 +16,7 @@ import UIKit
 #endif
 
 #if os(macOS)
+
 @MainActor
 struct MacWindowBackdropView: NSViewRepresentable {
     let enabled: Bool
@@ -84,11 +85,12 @@ import FoundationModels
 #endif
 
 #if os(macOS)
-private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate {
+final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate {
     nonisolated(unsafe) weak var forwardedDelegate: NSWindowDelegate?
     var shouldConfirm: (() -> Bool)?
     var hasDirtyTabs: (() -> Bool)?
     var saveAllDirtyTabs: (() -> Bool)?
+    var saveAllDirtyTabsAsync: (() async -> Bool)?
     var dialogTitle: (() -> String)?
     var dialogMessage: (() -> String)?
     var onWindowWillClose: (() -> Void)?
@@ -114,15 +116,25 @@ private final class WindowCloseConfirmationDelegate: NSObject, NSWindowDelegate 
         alert.addButton(withTitle: "Cancel")
         alert.beginSheetModal(for: sender) { [weak self] response in
             guard let self else { return }
-            self.isPromptInFlight = false
             switch response {
             case .alertFirstButtonReturn:
+                if let save = self.saveAllDirtyTabsAsync {
+                    Task { @MainActor in
+                        let didSave = await save()
+                        self.isPromptInFlight = false
+                        if didSave { self.closeConfirmedWindow(sender) }
+                    }
+                    return
+                }
+                self.isPromptInFlight = false
                 if self.saveAllDirtyTabs?() == true {
                     self.closeConfirmedWindow(sender)
                 }
             case .alertSecondButtonReturn:
+                self.isPromptInFlight = false
                 self.closeConfirmedWindow(sender)
             default:
+                self.isPromptInFlight = false
                 break
             }
         }
@@ -188,6 +200,42 @@ enum IOSAdaptiveLayoutPolicy {
     }
 }
 
+enum IOSVerticalToolbarPolicy {
+    nonisolated static let minimumColumnWidth: CGFloat = 60
+    nonisolated static let minimumColumnLength: CGFloat = 160
+    nonisolated static let spacing: CGFloat = 8
+
+    /// The column for a toolbar on the edge where the system presents vertical
+    /// bars, in the coordinates of the safe-area-bounded container. The column
+    /// fills that edge's safe-area inset and starts below the status bar and
+    /// camera occlusions. Returns nil when bars are horizontal or no usable
+    /// column remains.
+    nonisolated static func columnFrame(
+        edge: HorizontalEdge?,
+        containerSize: CGSize,
+        safeAreaInsets: EdgeInsets,
+        occlusions: [CGRect]
+    ) -> CGRect? {
+        guard let edge, containerSize.width > 0, containerSize.height > 0 else { return nil }
+        let edgeInset = max(0, edge == .leading ? safeAreaInsets.leading : safeAreaInsets.trailing)
+        let width = max(edgeInset, minimumColumnWidth)
+        let minX = edge == .leading ? -edgeInset : containerSize.width + edgeInset - width
+        let maxX = minX + width
+        let midHeight = containerSize.height / 2
+        var top: CGFloat = 0
+        var bottom = containerSize.height
+        for occlusion in occlusions where occlusion.maxX > minX && occlusion.minX < maxX {
+            if occlusion.midY < midHeight {
+                top = max(top, occlusion.maxY + spacing)
+            } else {
+                bottom = min(bottom, occlusion.minY - spacing)
+            }
+        }
+        guard bottom - top >= minimumColumnLength else { return nil }
+        return CGRect(x: minX, y: top, width: width, height: bottom - top)
+    }
+}
+
 enum IOSFloatingStatusPolicy {
     nonisolated static func isVisible(
         brainDumpLayoutEnabled: Bool,
@@ -227,21 +275,68 @@ struct MobileFloatingStatusOverlayModifier: ViewModifier {
     let bottomInset: CGFloat
     let status: AnyView
     var bottomToolbar: ((CGFloat) -> AnyView?)? = nil
+    // Given the column length, returns the toolbar for a system vertical bar edge.
+    var verticalToolbar: ((CGFloat) -> AnyView?)? = nil
 
     func body(content: Content) -> some View {
         content.overlay {
-            GeometryReader { proxy in
-                VStack(spacing: 12) {
-                    if showsStatus { status }
-                    if let toolbar = bottomToolbar?(proxy.size.width) { toolbar }
-                }
-                .padding(.trailing, centered ? 0 : 12)
-                .padding(.bottom, (centered ? 8 : 12) + bottomInset)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: centered ? .bottom : .bottomTrailing)
+#if os(iOS) && IOS_27_1_DUO_LAYOUT
+            if #available(iOS 27.1, *), let verticalToolbar {
+                IOSVerticalEdgeToolbarOverlay(
+                    verticalToolbar: verticalToolbar,
+                    horizontalOverlay: { includesToolbar in AnyView(horizontalOverlay(includesToolbar: includesToolbar)) }
+                )
+            } else {
+                horizontalOverlay(includesToolbar: true)
+            }
+#else
+            horizontalOverlay(includesToolbar: true)
+#endif
+        }
+    }
+
+    private func horizontalOverlay(includesToolbar: Bool) -> some View {
+        GeometryReader { proxy in
+            VStack(spacing: 12) {
+                if showsStatus { status }
+                if includesToolbar, let toolbar = bottomToolbar?(proxy.size.width) { toolbar }
+            }
+            .padding(.trailing, centered ? 0 : 12)
+            .padding(.bottom, (centered ? 8 : 12) + bottomInset)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: centered ? .bottom : .bottomTrailing)
+        }
+    }
+}
+
+#if os(iOS) && IOS_27_1_DUO_LAYOUT
+/// Mounts the editor toolbar in the edge column where the system presents
+/// vertical bars (for example below the status bar on iPhone Duo's outer display).
+@available(iOS 27.1, *)
+private struct IOSVerticalEdgeToolbarOverlay: View {
+    @Environment(\.toolbarVerticalEdge) private var toolbarVerticalEdge
+    let verticalToolbar: (CGFloat) -> AnyView?
+    let horizontalOverlay: (Bool) -> AnyView
+
+    var body: some View {
+        GeometryReader { proxy in
+            let column = IOSVerticalToolbarPolicy.columnFrame(
+                edge: toolbarVerticalEdge,
+                containerSize: proxy.size,
+                safeAreaInsets: proxy.safeAreaInsets,
+                occlusions: proxy.reservedRegions(kind: .occlusion).map(\.frame)
+            )
+            if let column, let toolbar = verticalToolbar(column.height) {
+                horizontalOverlay(false)
+                toolbar
+                    .frame(width: column.width, height: column.height, alignment: .top)
+                    .position(x: column.midX, y: column.midY)
+            } else {
+                horizontalOverlay(true)
             }
         }
     }
 }
+#endif
 #endif
 
 private struct DroppedFileProgressOverlayModifier: ViewModifier {
@@ -521,6 +616,9 @@ struct ContentView: View {
     let windowFrameAutosaveName: String?
     let onWindowClosed: (() -> Void)?
     let initialEditorLayoutPresetRawValue: String?
+    // Native document hosts now keep a permanent owner. Ordinary State retains
+    // local presentation without replicating the shared-host fallback/box and
+    // environment lookup in every property and captured ContentView value.
     @State var editorLayoutPresetOverride: EditorLayoutPreset?
     @State private var didApplyInitialEditorLayoutPreset = false
 
@@ -529,17 +627,24 @@ struct ContentView: View {
         safeModeMessage: String? = nil,
         windowFrameAutosaveName: String? = nil,
         onWindowClosed: (() -> Void)? = nil,
-        initialEditorLayoutPresetRawValue: String? = nil
+        initialEditorLayoutPresetRawValue: String? = nil,
+        markdownProjectPreviewSession: MarkdownProjectPreviewSession? = nil
     ) {
         self.startupBehavior = startupBehavior
         self.safeModeMessage = safeModeMessage
         self.windowFrameAutosaveName = windowFrameAutosaveName
         self.onWindowClosed = onWindowClosed
         self.initialEditorLayoutPresetRawValue = initialEditorLayoutPresetRawValue
+        let previewSession = markdownProjectPreviewSession ?? MarkdownProjectPreviewSession()
+        self._markdownProjectPreviewSession = State(initialValue: previewSession)
+        self._markdownProjectPreviewModel = StateObject(wrappedValue: previewSession.model)
     }
 
     var isSafeModeActive: Bool {
-        startupBehavior == .safeMode
+#if os(macOS)
+        if viewModel.isSafeModeRecoveryWindow { return true }
+#endif
+        return startupBehavior == .safeMode
     }
 
     var effectiveShowCodeMinimap: Bool {
@@ -659,17 +764,27 @@ struct ContentView: View {
     }
 
     // Environment-provided view model and theme/error bindings
+#if os(macOS)
+    @EditorDocumentModel var viewModel
+#else
     @Environment(EditorViewModel.self) var viewModel
+#endif
     @EnvironmentObject private var supportPurchaseManager: SupportPurchaseManager
     @EnvironmentObject var appUpdateManager: AppUpdateManager
     @Environment(\.colorScheme) var colorScheme
+#if os(macOS)
+    @Environment(\.locale) private var documentAccessoryLocale
+#endif
 #if os(iOS) || os(visionOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @ScaledMetric(relativeTo: .caption) var mobileTabBarHeight: CGFloat = 42
 #endif
 #if os(macOS)
-    @Environment(\.openWindow) var openWindow
-    @Environment(\.openSettings) var openSettingsAction
+    @Environment(\.openWindow) private var sceneOpenWindow
+    @Environment(\.openSettings) private var sceneOpenSettingsAction
+    @Environment(\.nativeEditorWindowActions) private var nativeEditorWindowActions
+    var openWindow: OpenWindowAction { nativeEditorWindowActions?.openWindow ?? sceneOpenWindow }
+    var openSettingsAction: OpenSettingsAction { nativeEditorWindowActions?.openSettings ?? sceneOpenSettingsAction }
 #endif
     @Environment(\.showGrokError) var showGrokError
     @Environment(\.grokErrorMessage) var grokErrorMessage
@@ -777,7 +892,11 @@ struct ContentView: View {
     @State var findRefreshGeneration: Int = 0
     @State var findScope: SearchScope = .currentFile
     @State var findInFilesScope: SearchScope = .project
-    @State var showProjectStructureSidebar: Bool = false
+    @State var localShowProjectStructureSidebar: Bool = false
+#if os(macOS)
+    @AppStorage(MacDocumentTabPolicy.projectSidebarVisibilityPreferenceKey)
+    var nativeTabsProjectSidebarVisible: Bool = false
+#endif
     @AppStorage(JevContextRankingConfig.enabledDefaultsKey) var jevContextRankingEnabled = false
     @State var aiChatConversation = AIChatConversation()
     @State var showCompactSidebarSheet: Bool = false
@@ -890,9 +1009,38 @@ struct ContentView: View {
     @State var projectFileIndexHasCompleted: Bool = false
     @State var projectFileIndexRefreshGeneration: Int = 0
     @State var projectFileIndexTask: Task<Void, Never>? = nil
-    @StateObject var markdownProjectPreviewModel = MarkdownProjectPreviewModel()
-    @State var markdownProjectPreviewLastRefreshSignature: String? = nil
-    @State var isMarkdownProjectPreviewPresented: Bool = false
+    @State var markdownProjectPreviewSession: MarkdownProjectPreviewSession
+    @StateObject var markdownProjectPreviewModel: MarkdownProjectPreviewModel
+#if os(macOS)
+    @State private var nativeSecondaryContentReadyResourceID: String?
+#endif
+
+    var canInstallMarkdownPreviewWebContent: Bool {
+#if os(macOS)
+        !isMarkdownPreviewDocument || isMarkdownPreviewReadingMode
+            || nativeSecondaryContentReadyResourceID == documentResourceID(for: viewModel.selectedTabID)
+#else
+        true
+#endif
+    }
+
+    func recordExplicitMarkdownReadingPresentation() {
+#if os(macOS)
+        // Reading mode deliberately has no editor to draw first. Keep an
+        // already-presented preview alive when the user returns to split editing.
+        if isMarkdownPreviewReadingMode {
+            nativeSecondaryContentReadyResourceID = documentResourceID(for: viewModel.selectedTabID)
+        }
+#endif
+    }
+    var markdownProjectPreviewLastRefreshSignature: String? {
+        get { markdownProjectPreviewSession.lastRefreshSignature }
+        nonmutating set { markdownProjectPreviewSession.lastRefreshSignature = newValue }
+    }
+    var isMarkdownProjectPreviewPresented: Bool {
+        get { markdownProjectPreviewSession.isPresented }
+        nonmutating set { markdownProjectPreviewSession.isPresented = newValue }
+    }
     @AppStorage("MarkdownProjectPreviewHiddenV1") var hasManuallyHiddenMarkdownProjectPreview: Bool = false
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewEnabled) var markdownProjectPreviewEnabled: Bool = true
     @AppStorage(SettingsPreferenceKey.markdownProjectPreviewMode) var markdownProjectPreviewModeRaw: String = MarkdownProjectPreviewMode.grid.rawValue
@@ -947,20 +1095,96 @@ struct ContentView: View {
     @State var droppedFileLoadLabel: String = ""
     @State var largeFileModeEnabled: Bool = false
     @State var settingsSheetDetent: PresentationDetent = .large
-    @SceneStorage("ProjectSidebarWidth") var projectSidebarWidth: Double = 450
-    @SceneStorage("ProjectSidebarMode") var utilitySidebarModeRaw: String = UtilitySidebarMode.project.rawValue
-    @SceneStorage("EditorFocusModeEnabled") var focusModeEnabled: Bool = false
-    @State var projectSidebarResizeStartWidth: CGFloat? = nil
+    @EditorWindowStorage("ProjectSidebarWidth") var sceneProjectSidebarWidth: Double = 450
 #if os(macOS)
-    @SceneStorage("TOCSidebarWidth") var tocSidebarWidth: Double = 250
+    @AppStorage(MacDocumentTabPolicy.projectSidebarWidthPreferenceKey)
+    var nativeTabsProjectSidebarWidth: Double = 450
+    @AppStorage(MacDocumentTabPolicy.projectSidebarModePreferenceKey)
+    var nativeTabsProjectSidebarModeRaw: String = UtilitySidebarMode.project.rawValue
+#endif
+    @EditorWindowStorage("ProjectSidebarMode") var sceneUtilitySidebarModeRaw: String = UtilitySidebarMode.project.rawValue
+    @EditorWindowStorage("EditorFocusModeEnabled") var focusModeEnabled: Bool = false
+    @State var projectSidebarResizeStartWidth: CGFloat? = nil
+
+    /// Native AppKit tabs are distinct windows, so their project-sidebar chrome
+    /// must use shared app preferences instead of per-scene state. The selected
+    /// project URL and its security-scoped lease remain owned by each window.
+    var showProjectStructureSidebar: Bool {
+        get {
+#if os(macOS)
+            return nativeTabsProjectSidebarVisible
+#else
+            return localShowProjectStructureSidebar
+#endif
+        }
+        nonmutating set {
+#if os(macOS)
+            nativeTabsProjectSidebarVisible = newValue
+#else
+            localShowProjectStructureSidebar = newValue
+#endif
+        }
+    }
+
+    var projectSidebarWidth: Double {
+        get {
+#if os(macOS)
+            return nativeTabsProjectSidebarWidth
+#else
+            return sceneProjectSidebarWidth
+#endif
+        }
+        nonmutating set {
+#if os(macOS)
+            nativeTabsProjectSidebarWidth = newValue
+#else
+            sceneProjectSidebarWidth = newValue
+#endif
+        }
+    }
+
+    var utilitySidebarModeRaw: String {
+        get {
+#if os(macOS)
+            return nativeTabsProjectSidebarModeRaw
+#else
+            return sceneUtilitySidebarModeRaw
+#endif
+        }
+        nonmutating set {
+#if os(macOS)
+            nativeTabsProjectSidebarModeRaw = newValue
+#else
+            sceneUtilitySidebarModeRaw = newValue
+#endif
+        }
+    }
+#if os(macOS)
+    @EditorWindowStorage("TOCSidebarWidth") var tocSidebarWidth: Double = 250
     @State var tocSidebarResizeStartWidth: CGFloat? = nil
     @State var isTOCSidebarResizeHandleHovered: Bool = false
-    @SceneStorage("PreviewPaneWidthV3") var previewPaneWidth: Double = 0
+    @EditorWindowStorage("PreviewPaneWidthV3") var previewPaneWidth: Double = 0
     @State var previewPaneResizeStartWidth: CGFloat? = nil
     @State var previewPaneResizeMaximumWidth: CGFloat? = nil
     @State var isPreviewPaneResizeHandleHovered: Bool = false
     @State var previewPaneAvailableWidth: CGFloat = 0
-    @SceneStorage("MarkdownProjectPreviewWidthV1") var markdownProjectPreviewWidth: Double = 500
+    @EditorWindowStorage("MarkdownProjectPreviewWidthV1") var localMarkdownProjectPreviewWidth: Double = 500
+    var markdownProjectPreviewWidth: Double {
+        get {
+#if os(macOS)
+            markdownProjectPreviewSession.width
+#else
+            localMarkdownProjectPreviewWidth
+#endif
+        }
+        nonmutating set {
+#if os(macOS)
+            markdownProjectPreviewSession.width = newValue
+#else
+            localMarkdownProjectPreviewWidth = newValue
+#endif
+        }
+    }
     @State var markdownProjectPreviewResizeStartWidth: CGFloat? = nil
     @State var isMarkdownProjectPreviewResizeHandleHovered: Bool = false
 #endif
@@ -1201,9 +1425,8 @@ struct ContentView: View {
         if currentLanguage.lowercased() == "crashlog" {
             return true
         }
-        return AppleCrashReportParser.looksLikeAppleCrashReport(
-            currentDocumentPrefix(maxUTF16Length: 16_000)
-        )
+        if let tab = viewModel.selectedTab { return tab.looksLikeAppleCrashReport }
+        return AppleCrashReportParser.looksLikeAppleCrashReport(currentDocumentPrefix(maxUTF16Length: 16_000))
     }
 
     var shouldShowCrashReportStructure: Bool {
@@ -1295,6 +1518,13 @@ struct ContentView: View {
 
         static func configureWindowDragBehavior(_ window: NSWindow) {
             window.isMovableByWindowBackground = true
+            if window.tabbingIdentifier == MacDocumentTabPolicy.tabbingIdentifier {
+                if let monitor = dragMonitors.removeValue(forKey: window.windowNumber) {
+                    NSEvent.removeMonitor(monitor)
+                }
+                // AppKit owns hit testing and drag/reorder gestures in its tab bar.
+                return
+            }
             guard dragMonitors[window.windowNumber] == nil else { return }
             let monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak window] event in
                 guard let window,
@@ -1409,6 +1639,44 @@ struct ContentView: View {
                 whiteLevel = isDarkMode ? 0.15 : 0.86
             }
             return NSColor(calibratedWhite: whiteLevel, alpha: 1)
+        }
+
+        static func configureRegisteredWindowTranslucency(_ enabled: Bool,
+            opaqueEditorCanvas: Bool, modeRaw: String, isDarkMode: Bool) {
+        let nativeTranslucencyEnabled = ContentView.MacEditorSurfacePolicy.nativeTranslucencyEnabled(
+            translucent: enabled,
+            opaqueEditorCanvas: opaqueEditorCanvas
+        )
+        for window in NSApp.windows {
+            // Apply only to editor windows registered by ContentView instances.
+            guard WindowViewModelRegistry.shared.viewModel(for: window.windowNumber) != nil else {
+                continue
+            }
+            let isOpaque = !nativeTranslucencyEnabled
+            // Toolbars blend within the window. A clear window backing exposes
+            // the desktop sharply above the content's behind-window backdrop.
+            // Keep the native backing; the content NSVisualEffectView still
+            // provides the user-selected behind-window translucency.
+            let backgroundColor = NSColor.windowBackgroundColor
+            if window.isOpaque != isOpaque {
+                window.isOpaque = isOpaque
+            }
+            if window.backgroundColor != backgroundColor {
+                window.backgroundColor = backgroundColor
+            }
+            if window.contentView?.wantsLayer != true {
+                window.contentView?.wantsLayer = true
+            }
+            if window.contentView?.layer?.backgroundColor != NSColor.clear.cgColor {
+                window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
+            }
+            // Native document chrome has one owner, including when content
+            // translucency changes. Do not maintain a second styling policy here.
+            MacDocumentTabPolicy.configureWindowChrome(window)
+            if !window.styleMask.contains(.fullSizeContentView) {
+                window.styleMask.insert(.fullSizeContentView)
+            }
+        }
         }
     }
 
@@ -1666,7 +1934,11 @@ struct ContentView: View {
     }
 
     private func updateWindowRegistration(_ window: NSWindow?) {
-        let number = window?.windowNumber
+        // A rendering surface leaving a native document is not that document
+        // closing. Keep its registry and close delegate with the physical owner.
+        guard let window,
+              !MacDocumentWindowTabs.shared.isForeignDocumentWindow(window, for: viewModel) else { return }
+        let number = window.windowNumber
         // WindowAccessor updates whenever its SwiftUI parent updates. Registration
         // and initial window styling belong to attachment, not document selection.
         guard hostWindowNumber != number else { return }
@@ -1674,6 +1946,30 @@ struct ContentView: View {
             WindowViewModelRegistry.shared.unregister(windowNumber: old)
         }
         hostWindowNumber = number
+        MacDocumentWindowTabs.shared.register(viewModel, window: window, synchronizeProjectFolder: { folderURL in
+            if let folderURL {
+                setProjectFolder(folderURL, synchronizeNativeTabs: false)
+            } else {
+                closeProjectFolder(synchronizeNativeTabs: false)
+            }
+        }, persistDrafts: {
+            lastPersistedDraftSignature = ""
+            persistUnsavedDraftSnapshotIfNeeded()
+            lastPersistedSessionSignature = ""
+            persistSessionIfReady()
+        }) { id in
+            MacDocumentWindowTabs.shared.presentPendingWindow(for: id) {
+                let owner = MacDocumentWindowTabs.shared.takePendingModel(for: id)
+                    ?? MacDocumentTabPolicy.makeWindowModel()
+                return NativeEditorSurfaceView(configuration: NativeEditorSurfaceConfiguration(
+                    model: owner, startupBehavior: .nativeDocument, safeModeMessage: nil,
+                    frameAutosaveName: MacEditorWindowSessionStore.shared.frameAutosaveName(for: id),
+                    initialLayout: MacEditorWindowSessionStore.shared.consumeInitialEditorLayoutPreset(for: id),
+                    support: supportPurchaseManager, updates: appUpdateManager,
+                    showGrokError: showGrokError, grokErrorMessage: grokErrorMessage,
+                    actions: NativeEditorWindowActions(openWindow: openWindow, openSettings: openSettingsAction)))
+            }
+        }
         configureWindowFrameAutosave(window)
         installWindowCloseConfirmationDelegate(window)
         updateWindowChrome(window)
@@ -1681,12 +1977,12 @@ struct ContentView: View {
             self.updateWindowChrome(window)
             self.applyWindowTranslucency(self.enableTranslucentWindow)
         }
-        if let number {
-            WindowViewModelRegistry.shared.register(viewModel, for: number)
-            // The initial startup pass can run before WindowAccessor has
-            // registered this window. Reapply now that the window is eligible.
-            applyWindowTranslucency(enableTranslucentWindow)
-        }
+        WindowViewModelRegistry.shared.register(viewModel, for: number)
+        // The initial startup pass can run before WindowAccessor has
+        // registered this window. Reapply now that the window is eligible.
+        applyWindowTranslucency(enableTranslucentWindow)
+        applyStartupBehaviorIfNeeded()
+        presentPendingExternalConflictIfNeeded()
     }
 
     // AppKit owns the autosave name, while this explicit frame key avoids a first
@@ -1751,20 +2047,17 @@ struct ContentView: View {
                 targetWindow.titlebarSeparatorStyle = .none
             }
         }
-        if !enableTranslucentWindow {
-            let backgroundColor = MacEditorSurfacePolicy.windowBackground(
-                translucent: false,
-                modeRaw: macTranslucencyModeRaw,
-                isDarkMode: colorScheme == .dark
-            )
-            if targetWindow.backgroundColor != backgroundColor {
-                targetWindow.backgroundColor = backgroundColor
-            }
-        }
+        MacDocumentTabPolicy.configureWindowChrome(targetWindow)
     }
 
     private func updateWindowSubtitle(_ window: NSWindow? = nil) {
         guard let targetWindow = window ?? hostWindowNumber.flatMap({ NSApp.window(withWindowNumber: $0) }) else { return }
+        if MacDocumentWindowTabs.shared.isForeignDocumentWindow(targetWindow, for: viewModel) { return }
+        MacDocumentTabPolicy.applyDocumentMetadata(
+            title: viewModel.selectedTab?.name ?? "Neon Vision Editor",
+            url: viewModel.selectedTab?.fileURL,
+            edited: viewModel.tabs.contains(where: \.isDirty), to: targetWindow)
+        MacDocumentWindowTabs.shared.updateTabAppearance(for: viewModel)
         let subtitle = windowSubtitleText
         if targetWindow.subtitle != subtitle {
             targetWindow.subtitle = subtitle
@@ -1816,14 +2109,23 @@ struct ContentView: View {
         delegate.shouldConfirm = { confirmCloseDirtyTab }
         delegate.hasDirtyTabs = { viewModel.tabs.contains(where: \.isDirty) }
         delegate.saveAllDirtyTabs = { saveAllDirtyTabsForWindowClose() }
+        delegate.saveAllDirtyTabsAsync = {
+            await viewModel.saveDirtyDocumentsBeforeWindowClose()
+        }
         delegate.dialogTitle = { "Save changes before closing?" }
         delegate.dialogMessage = { windowCloseDialogMessage() }
-        delegate.onWindowWillClose = { notifyWindowClosedIfNeeded() }
+        delegate.onWindowWillClose = {
+            handleWindowDisappear(nativeWindowDidClose: true)
+        }
     }
 
     private func notifyWindowClosedIfNeeded() {
         guard !didNotifyWindowClosed else { return }
         didNotifyWindowClosed = true
+        MacDocumentWindowTabs.shared.unregister(viewModel)
+        persistUnsavedDraftSnapshotIfNeeded()
+        // The closed document must not reopen; let AppKit select the next tab first.
+        DispatchQueue.main.async { MacDocumentWindowTabs.shared.persistSessionFromSelectedOwner() }
         onWindowClosed?()
     }
 
@@ -1875,6 +2177,10 @@ struct ContentView: View {
     private func withBaseEditorEvents<Content: View>(_ view: Content) -> some View {
         let viewWithClipboardEvents = view
             .onReceive(NotificationCenter.default.publisher(for: .caretPositionDidChange)) { notif in
+                guard EditorCommandSemantics.acceptsDocumentEvent(
+                    documentID: notif.userInfo?[EditorCommandUserInfo.documentID] as? String,
+                    openDocumentIDs: viewModel.tabs.map(\.id)
+                ) else { return }
                 let tab = (notif.userInfo?[EditorCommandUserInfo.documentID] as? String)
                     .flatMap(UUID.init(uuidString:))
                     .flatMap { id in viewModel.tabs.first(where: { $0.id == id }) }
@@ -1938,6 +2244,10 @@ struct ContentView: View {
                 )
             }
             .onReceive(NotificationCenter.default.publisher(for: .editorSelectionDidChange)) { notif in
+                guard EditorCommandSemantics.acceptsDocumentEvent(
+                    documentID: notif.userInfo?[EditorCommandUserInfo.documentID] as? String,
+                    openDocumentIDs: viewModel.tabs.map(\.id)
+                ) else { return }
                 let selection = (notif.object as? String) ?? ""
                 currentSelectionSnapshotText = selection
                 currentSelectionSnapshotRange = (notif.userInfo?["range"] as? NSValue)?.rangeValue
@@ -2045,10 +2355,8 @@ struct ContentView: View {
             .onChange(of: currentLanguage) { _, language in
                 EditorPreferenceWriter.shared.set(.string(language), forKey: "SettingsTemplateLanguage")
             }
-            .onChange(of: viewModel.pendingExternalFileConflict?.tabID) { _, conflictTabID in
-                if conflictTabID != nil {
-                    showExternalConflictDialog = true
-                }
+            .onChange(of: viewModel.pendingExternalFileConflict?.tabID, initial: true) { _, _ in
+                presentPendingExternalConflictIfNeeded()
             }
             .onChange(of: viewModel.pendingRemoteSaveIssue?.tabID) { _, issueTabID in
                 if issueTabID != nil {
@@ -2467,16 +2775,16 @@ struct ContentView: View {
         }
         let expectedTabID = viewModel.selectedTabID
         let expectedContentRevision = viewModel.selectedTab?.contentRevision
-        if let tab = viewModel.selectedTab,
-           tab.usesFileBackedStorage {
-            // File-backed documents already expose bounded line metadata. Never
-            // promote the document to a String merely to update the status bar.
+        if let tab = viewModel.selectedTab {
+            // Every document already maintains its line index. Reusing it also
+            // avoids rescanning in-memory/remote text on the main actor.
             statusLineCount = tab.document.lineCount
             return
         }
         let snapshot = currentContentBinding.wrappedValue
         wordCountTask = Task(priority: .utility) {
-            let lineCount = Self.lineCount(for: snapshot)
+            let lineCount = await Task.detached(priority: .utility) { Self.lineCount(for: snapshot) }.value
+            guard !Task.isCancelled else { return }
             await MainActor.run {
                 guard viewModel.selectedTabID == expectedTabID else { return }
                 if let expectedContentRevision,
@@ -2766,7 +3074,6 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .editorLastTabClosed)) { notif in
                 #if os(macOS)
                 guard let model = notif.object as? EditorViewModel, model === viewModel,
-                      UserDefaults.standard.object(forKey: "SettingsCloseWindowWhenLastTabClosed") as? Bool ?? true,
                       let number = hostWindowNumber else { return }
                 NSApp.window(withWindowNumber: number)?.performClose(nil)
                 #endif
@@ -2916,6 +3223,13 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResizeNotification)) { notification in
             persistWindowFrame(for: notification)
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
+            guard (notification.object as? NSWindow)?.windowNumber == hostWindowNumber else { return }
+            MacDocumentWindowTabs.shared.noteBecameKey(viewModel)
+            presentPendingExternalConflictIfNeeded()
+            persistSelectedSessionFileURLImmediately()
+            scheduleSessionPersistence(delay: 0)
+        }
         .onChange(of: tabChromeObservationSnapshot) { _, _ in
             if activeSplitSecondaryTabID == nil {
                 splitSecondaryTabID = nil
@@ -3053,7 +3367,10 @@ struct ContentView: View {
             } message: {
                 Text(sharedImportDestinationMessage)
             }
+#if !os(macOS)
+            // macOS document windows receive their title from MacDocumentWindowTabs.
             .navigationTitle("Neon Vision Editor")
+#endif
 #if os(iOS) || os(visionOS)
             .navigationBarTitleDisplayMode(.inline)
 #endif
@@ -3110,7 +3427,10 @@ struct ContentView: View {
     private func applyEditorSettingObservers<Content: View>(to view: Content) -> some View {
         view
             .onAppear {
+                // macOS document windows run this from their owner's activation task.
+#if !os(macOS)
                 handleSettingsAndEditorDefaultsOnAppear()
+#endif
             }
             .onChange(of: settingsLineWrapEnabled) { _, enabled in
                 let target = projectOverrideLineWrapEnabled ?? enabled
@@ -3160,8 +3480,14 @@ struct ContentView: View {
             .onChange(of: windowSessionObservationSnapshot) { _, _ in
                 scheduleWindowSessionObservationHandling()
             }
-            .onChange(of: viewModel.selectedTabID) { previousTabID, selectedTabID in
-                guard previousTabID != selectedTabID else { return }
+            .onChange(of: EditorDocumentSelectionContext(owner: ObjectIdentifier(viewModel), tabID: viewModel.selectedTabID)) { previous, selected in
+                guard previous != selected else { return }
+#if os(macOS)
+                let shouldApplyPresentation = previous.owner == selected.owner
+#else
+                let shouldApplyPresentation = true
+#endif
+                if shouldApplyPresentation {
                 if activeSplitSecondaryTabID == nil {
                     splitSecondaryTabID = nil
                 }
@@ -3177,6 +3503,7 @@ struct ContentView: View {
                     previewMode = automaticPreviewMode
                 }
 #endif
+                }
                 // Keep the selection immediately available in memory; the serial
                 // writer delivers preference notifications off the main thread.
                 persistSelectedSessionFileURLImmediately()
@@ -3266,8 +3593,10 @@ struct ContentView: View {
     private var lifecycleConfiguredRootView: some View {
         rootViewWithPlatformLifecycleObservers
             .onAppear {
+#if !os(macOS)
                 startSharedImportNotificationObserverIfNeeded()
                 consumePendingSharedImportsIfNeeded()
+#endif
             }
             .onDisappear {
                 sharedImportNotificationObserver?.stop()
@@ -3295,8 +3624,25 @@ struct ContentView: View {
             .modifier(ModalPresentationModifier(contentView: self))
             .modifier(NeonPulseInboxNotificationModifier(viewModel: viewModel))
             .onAppear {
+#if !os(macOS)
                 handleStartupOnAppear()
+#endif
             }
+#if os(macOS)
+            .task(id: ObjectIdentifier(viewModel)) {
+                guard !Task.isCancelled else { return }
+                MacDocumentWindowTabs.shared.registerSurfaceDeactivation(for: viewModel) {
+                    cancelSecondaryContentTasks()
+                    cancelMarkdownProjectPreviewRefresh(windowDisappeared: true)
+                    sharedImportNotificationObserver?.stop()
+                    sharedImportNotificationObserver = nil
+                }
+                handleSettingsAndEditorDefaultsOnAppear()
+                handleStartupOnAppear()
+                startSharedImportNotificationObserverIfNeeded()
+                consumePendingSharedImportsIfNeeded()
+            }
+#endif
     }
 
     private func handleSettingsAndEditorDefaultsOnAppear() {
@@ -3335,7 +3681,10 @@ struct ContentView: View {
         if !didRunInitialWindowLayoutSetup {
             // Start with sidebars collapsed only once; otherwise toggles can get reset on layout transitions.
             viewModel.showSidebar = false
+#if !os(macOS)
+            // macOS document tabs share the project sidebar's visibility.
             showProjectStructureSidebar = false
+#endif
 #if os(macOS)
             isToolbarCollapsed = startsWithToolbarCollapsed
 #endif
@@ -3391,7 +3740,9 @@ struct ContentView: View {
     }
 
 #if os(macOS)
-    private func handleWindowDisappear() {
+    private func handleWindowDisappear(nativeWindowDidClose: Bool = false) {
+        // A native tab becoming hidden is not a document/window close event.
+        if !nativeWindowDidClose { return }
         notifyWindowClosedIfNeeded()
         completionDebounceTask?.cancel()
         completionTask?.cancel()
@@ -3556,7 +3907,6 @@ struct ContentView: View {
         private func applyingSettingsSheet(to view: AnyView) -> AnyView {
             AnyView(view.sheet(isPresented: contentView.$showSettingsSheet) {
                 ConfiguredSettingsView(
-                    supportsOpenInTabs: false,
                     supportsTranslucency: false,
                     editorViewModel: contentView.viewModel,
                     supportPurchaseManager: contentView.supportPurchaseManager,
@@ -4009,12 +4359,11 @@ struct ContentView: View {
                         Text("Save unsaved project files and close the project folder.")
                     }
                 }
-                .confirmationDialog(
+                .externalFileConflictPrompt(
                     contentView.viewModel.pendingEncodingReopen == nil
                         ? "File changed on disk"
                         : "Save changes before reopening?",
-                    isPresented: contentView.$showExternalConflictDialog,
-                    titleVisibility: .visible
+                    isPresented: contentView.$showExternalConflictDialog
                 ) {
                     if let conflict = contentView.viewModel.pendingExternalFileConflict {
                         Button(
@@ -4883,6 +5232,7 @@ struct ContentView: View {
         return "untitled-\(tabID.uuidString)"
     }
 
+#if os(macOS)
     private func editorTextView(
         tabID: UUID?,
         language: String,
@@ -4893,9 +5243,15 @@ struct ContentView: View {
         effectiveBracketHighlight: Bool,
         effectiveScopeGuides: Bool,
         effectiveScopeBackground: Bool
-    ) -> some View {
+    ) -> VirtualEditorView {
         let tab = tabID.flatMap { id in viewModel.tabs.first(where: { $0.id == id }) }
-#if os(macOS)
+        let firstDrawCallback: ((UUID, String) -> Void)? =
+            nativeSecondaryContentReadyResourceID != documentResourceID(for: tabID) ? { id, resource in
+                guard viewModel.selectedTabID == id,
+                      viewModel.selectedTab?.isLoadingContent == false,
+                      documentResourceID(for: id) == resource else { return }
+                if nativeSecondaryContentReadyResourceID != resource { nativeSecondaryContentReadyResourceID = resource }
+            } : nil
         return VirtualEditorView(
             document: tab?.document,
             documentID: tabID,
@@ -4943,11 +5299,23 @@ struct ContentView: View {
                         replacement: mutation.replacement
                     )
                 }
-            }
+            },
+            onFirstDraw: firstDrawCallback
         )
-        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
-        .clipped()
+    }
 #else
+    private func editorTextView(
+        tabID: UUID?,
+        language: String,
+        isLoading: Bool,
+        isReadOnly: Bool,
+        lineWrapEnabled: Binding<Bool>,
+        effectiveHighlightCurrentLine: Bool,
+        effectiveBracketHighlight: Bool,
+        effectiveScopeGuides: Bool,
+        effectiveScopeBackground: Bool
+    ) -> some View {
+        let tab = tabID.flatMap { id in viewModel.tabs.first(where: { $0.id == id }) }
         let text = editorTextBinding(for: tabID)
         let editorTextBinding: Binding<String> = {
             guard Self.shouldUseInertMobileEditorBinding(
@@ -5063,8 +5431,8 @@ struct ContentView: View {
             .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
 #endif
-#endif
     }
+#endif
 
     nonisolated static func shouldUseInertMobileEditorBinding(
         isLargeFileModeEnabled: Bool,
@@ -5243,6 +5611,15 @@ struct ContentView: View {
         consumePendingSharedImportsIfNeeded()
     }
 
+    private func presentPendingExternalConflictIfNeeded() {
+        guard viewModel.pendingExternalFileConflict != nil else { return }
+#if os(macOS)
+        guard let number = hostWindowNumber,
+              NSApp.window(withWindowNumber: number)?.isKeyWindow == true else { return }
+#endif
+        showExternalConflictDialog = true
+    }
+
     private func startSharedImportNotificationObserverIfNeeded() {
         guard sharedImportNotificationObserver == nil else { return }
         let observer = SharedImportNotificationObserver {
@@ -5286,6 +5663,182 @@ struct ContentView: View {
         editorSurfaceBackgroundStyle
     }
 
+#if os(macOS)
+    private func macHostedContent<Content: View>(_ content: Content) -> AnyView {
+        AnyView(content.environment(viewModel)
+            .environmentObject(supportPurchaseManager).environmentObject(appUpdateManager)
+            .environment(\.colorScheme, colorScheme)
+            .environment(\.showGrokError, showGrokError)
+            .environment(\.grokErrorMessage, grokErrorMessage)
+            .environment(\.nativeEditorWindowActions, nativeEditorWindowActions)
+            .environment(\.locale, documentAccessoryLocale)
+            .tint(.blue))
+    }
+
+    private func macDocumentLayout(primaryEditor: MacDocumentContentController.Configuration) -> some View {
+        var layout = MacDocumentLayout(primary: .init(id: "document", content: { AnyView(EmptyView()) }), source: primaryEditor,
+            availablePreviewWidthChanged: { previewPaneAvailableWidth = $0 })
+        if showProjectStructureSidebar && !brainDumpLayoutEnabled && !focusModeEnabled {
+            if projectNavigatorPlacement == .leading {
+                layout.leadingSidebar = .init(id: "project", content: {
+                    macHostedContent(HStack(spacing: 0) { projectStructureSidebarPanel; projectSidebarResizeHandle })
+                })
+            } else {
+                layout.trailingSidebar = .init(id: "project", content: {
+                    macHostedContent(HStack(spacing: 0) { projectSidebarResizeHandle; projectStructureSidebarPanel })
+                })
+            }
+        }
+        if let presentation = editorDiffPresentation {
+            layout.source = nil
+            layout.primary = .init(id: "diff", content: {
+                macHostedContent(DiffEditorSurface(presentation: presentation, onClose: { editorDiffPresentation = nil }))
+            })
+        } else if showGitChangesEditor {
+            layout.source = nil
+            layout.primary = .init(id: "git", content: {
+                macHostedContent(GitChangesEditorView(gitViewModel: gitViewModel,
+                    translucentBackgroundEnabled: effectiveMobileTranslucencyEnabled, onClose: { showGitChangesEditor = false }))
+            })
+        } else {
+            if isMarkdownProjectPreviewVisible {
+                let cards = MacDocumentLayout.Region(id: "cards", content: {
+                    macHostedContent(HStack(spacing: 0) {
+                        markdownProjectPreviewResizeHandle
+                        markdownProjectPreviewPanel.frame(width: clampedMarkdownProjectPreviewWidthIfAvailable)
+                    })
+                })
+                if markdownProjectPreviewPlacement == .leading { layout.leadingPreview = cards }
+                else { layout.trailingPreview = cards }
+            }
+            if isPDFPreviewDocument && !isPDFNoteEditorActive {
+                layout.source = nil
+                layout.primary = .init(id: "pdf", content: { macHostedContent(pdfPreviewSplitPane) })
+            } else if isMarkdownPreviewSplitVisible {
+                layout.preview = .init(id: "markdown", content: {
+                    macHostedContent(HStack(spacing: 0) {
+                        previewPaneResizeHandle
+                        markdownPreviewSplitPane.frame(width: clampedPreviewPaneWidth)
+                    })
+                })
+            } else if isJSONPreviewSplitVisible {
+                layout.preview = .init(id: "json", content: {
+                    macHostedContent(HStack(spacing: 0) { previewPaneResizeHandle; jsonPreviewSplitPane.frame(width: clampedPreviewPaneWidth) })
+                })
+            } else if isYAMLPreviewSplitVisible {
+                layout.preview = .init(id: "yaml", content: {
+                    macHostedContent(HStack(spacing: 0) { previewPaneResizeHandle; yamlPreviewSplitPane.frame(width: clampedPreviewPaneWidth) })
+                })
+            } else if isWebPreviewSplitVisible {
+                layout.preview = .init(id: "web", content: {
+                    macHostedContent(HStack(spacing: 0) { previewPaneResizeHandle; webPreviewSplitPane.frame(width: clampedPreviewPaneWidth) })
+                })
+            } else if isImagePreviewSplitVisible {
+                layout.preview = .init(id: "image", content: {
+                    macHostedContent(HStack(spacing: 0) { previewPaneResizeHandle; imagePreviewSplitPane.frame(width: clampedPreviewPaneWidth) })
+                })
+            } else if isPDFPreviewSplitVisible && isPDFNoteEditorActive {
+                layout.preview = .init(id: "pdf-note", content: {
+                    macHostedContent(HStack(spacing: 0) { previewPaneResizeHandle; pdfPreviewSplitPane.frame(width: clampedPreviewPaneWidth) })
+                })
+            }
+        }
+        return layout.background(editorSurfaceBackgroundStyle)
+    }
+
+    private func macEditorPaneConfiguration(
+        tabID: UUID?, language: String, isLoading: Bool, isReadOnly: Bool,
+        lineWrap: Binding<Bool>, highlightLine: Bool, bracket: Bool, scope: Bool, scopeBackground: Bool
+    ) -> MacDocumentContentController.Pane {
+        var pane = MacDocumentContentController.Pane(editor: editorTextView(
+            tabID: tabID, language: language, isLoading: isLoading, isReadOnly: isReadOnly,
+            lineWrapEnabled: lineWrap, effectiveHighlightCurrentLine: highlightLine,
+            effectiveBracketHighlight: bracket, effectiveScopeGuides: scope,
+            effectiveScopeBackground: scopeBackground))
+        if effectiveShowCodeMinimap, supportsCodeMinimap(language: language),
+           viewModel.tabs.first(where: { $0.id == tabID })?.usesFileBackedStorage != true {
+            pane.minimap = {
+                AnyView(CodeMinimapView(documentID: tabID,
+                    snapshotCacheKey: minimapSnapshotCacheKey(tabID: tabID, language: language),
+                    text: viewModel.tabs.first(where: { $0.id == tabID })?.document.string() ?? "",
+                    language: language, colorScheme: effectiveEditorColorScheme,
+                    isLargeFileMode: effectiveLargeFileModeEnabled || isLoading,
+                    onSelectLine: { moveEditorFromMinimap(to: $0, tabID: tabID) },
+                    onMoveViewport: { moveEditorViewportFromMinimap(to: $0, tabID: tabID) })
+                    .id("code-minimap-\(minimapSnapshotCacheKey(tabID: tabID, language: language))"))
+            }
+        }
+        return pane
+    }
+
+    private func macEditorColumn(
+        lineWrap: Binding<Bool>, highlightLine: Bool, bracket: Bool, scope: Bool, scopeBackground: Bool
+    ) -> MacDocumentContentController.Configuration {
+        var configuration = MacDocumentContentController.Configuration()
+        configuration.hostContent = { macHostedContent($0) }
+        let structured = (isDelimitedFileLanguage || isPlistDocument || isAppleCrashReportDocument || isLogDocument)
+            && !brainDumpLayoutEnabled
+        let formatting = MarkdownFormattingChromePolicy.shouldRenderInEditorStack(
+            shouldShow: shouldShowMarkdownFormattingControls,
+            overlaysEditor: shouldOverlayMarkdownFormattingControls,
+            reservesChromeRow: shouldPlaceMarkdownFormattingBelowTabs)
+        if isConvertingTextToMarkdown || isStructuringTextAsJSON || showBracketHelperBarMac || formatting || structured {
+            configuration.header = {
+                AnyView(VStack(spacing: 0) {
+                    if isConvertingTextToMarkdown { markdownConversionProgressBanner }
+                    if isStructuringTextAsJSON { jsonStructuringProgressBanner }
+                    if showBracketHelperBarMac { bracketHelperBar }
+                    if formatting {
+                        HStack(spacing: 0) { Spacer(minLength: 0); markdownFormattingControlBar }
+                    }
+                    if structured { structuredDataModeControl }
+                })
+            }
+        }
+        if isMarkdownPreviewReadingViewVisible {
+            configuration.replacement = { AnyView(markdownPreviewPane) }
+        } else if shouldShowDelimitedTable && !brainDumpLayoutEnabled {
+            configuration.replacement = { AnyView(delimitedTableView) }
+        } else if shouldShowPlistStructure && !brainDumpLayoutEnabled {
+            configuration.replacement = { AnyView(plistStructureView) }
+        } else if shouldShowCrashReportStructure && !brainDumpLayoutEnabled {
+            configuration.replacement = { AnyView(crashReportStructureView) }
+        } else if shouldShowLogSummary && !brainDumpLayoutEnabled {
+            configuration.replacement = { AnyView(structuredLogSummaryView) }
+        } else if shouldUseDeferredLargeFileOpenMode,
+                  viewModel.selectedTab?.isLoadingContent == true,
+                  viewModel.selectedTab?.isLargeFileCandidate == true || largeFileModeEnabled {
+            configuration.replacement = { AnyView(largeFileLoadingPlaceholder) }
+        } else {
+            configuration.primary = macEditorPaneConfiguration(tabID: viewModel.selectedTabID,
+                language: currentLanguage, isLoading: viewModel.selectedTab?.isLoadingContent ?? false,
+                isReadOnly: isSelectedTabReadOnlyPreview, lineWrap: lineWrap,
+                highlightLine: highlightLine, bracket: bracket, scope: scope, scopeBackground: scopeBackground)
+            if let secondaryID = activeSplitSecondaryTabID, let secondaryTab = tabForID(secondaryID) {
+                configuration.primary?.header = { AnyView(splitEditorPaneHeader(title: viewModel.selectedTab?.name ?? "Primary Editor")) }
+                configuration.secondary = macEditorPaneConfiguration(tabID: secondaryID,
+                    language: secondaryTab.language, isLoading: secondaryTab.isLoadingContent,
+                    isReadOnly: secondaryTab.isReadOnlyPreview, lineWrap: lineWrap,
+                    highlightLine: highlightLine, bracket: bracket, scope: scope, scopeBackground: scopeBackground)
+                configuration.secondary?.header = { AnyView(splitEditorPaneHeader(title: secondaryTab.name, showsCloseButton: true)) }
+            }
+        }
+        if !brainDumpLayoutEnabled { configuration.status = { AnyView(wordCountView) } }
+        if showFindReplace { configuration.find = { AnyView(inlineFindBar.frame(maxWidth: .infinity)) } }
+        configuration.contentInsets = brainDumpLayoutEnabled ? NSEdgeInsets(top: 40, left: 24, bottom: 40, right: 24) : .init()
+        configuration.maximumEditorWidth = brainDumpLayoutEnabled ? 920 : nil
+        if shouldShowStartupOverlay, configuration.replacement == nil, configuration.secondary == nil {
+            configuration.startupOverlay = { AnyView(startupOverlay) }
+        }
+        if shouldOverlayMarkdownFormattingControls && !shouldPlaceMarkdownFormattingBelowTabs {
+            configuration.formattingOverlay = {
+                AnyView(markdownFormattingControlBar.padding(.top, markdownFormattingOverlayTopInset).padding(.trailing, 12))
+            }
+        }
+        return configuration
+    }
+#endif
+
     var editorView: some View {
         @Bindable var bindableViewModel = viewModel
         let shouldThrottleFeatures = shouldThrottleHeavyEditorFeatures()
@@ -5293,6 +5846,11 @@ struct ContentView: View {
         let effectiveBracketHighlight = highlightMatchingBrackets && !shouldThrottleFeatures
         let effectiveScopeGuides = showScopeGuides && !shouldThrottleFeatures
         let effectiveScopeBackground = highlightScopeBackground && !shouldThrottleFeatures
+#if os(macOS)
+        let primaryEditorColumn = macEditorColumn(lineWrap: $bindableViewModel.isLineWrapEnabled,
+            highlightLine: effectiveHighlightCurrentLine, bracket: effectiveBracketHighlight,
+            scope: effectiveScopeGuides, scopeBackground: effectiveScopeBackground)
+#else
         let primaryEditorColumn = VStack(spacing: 0) {
                 if !useIOSUnifiedTopHost && !brainDumpLayoutEnabled {
                     tabBarView
@@ -5452,91 +6010,10 @@ struct ContentView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-
-#if os(macOS)
-        let editorAndPreview = Group {
-            if let editorDiffPresentation {
-                DiffEditorSurface(
-                    presentation: editorDiffPresentation,
-                    onClose: { self.editorDiffPresentation = nil }
-                )
-            } else if showGitChangesEditor {
-                GitChangesEditorView(
-                    gitViewModel: gitViewModel,
-                    translucentBackgroundEnabled: effectiveMobileTranslucencyEnabled,
-                    onClose: { showGitChangesEditor = false }
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                VStack(spacing: 0) {
-#if os(macOS)
-                    // PDF preview replaces the editor column on macOS. Keep
-                    // the file tabs in the chrome so closing or switching a
-                    // PDF never leaves the preview surface without tabs.
-                    if isPDFPreviewDocument && !isPDFNoteEditorActive {
-                        tabBarView
-                    }
-#endif
-                    HStack(spacing: 0) {
-#if os(macOS)
-                    if !isPDFPreviewDocument || isPDFNoteEditorActive {
-                        primaryEditorColumn
-                            .frame(minWidth: 320, maxWidth: .infinity)
-                    }
-#else
-                    primaryEditorColumn
 #endif
 
-            if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .leading {
-                markdownProjectPreviewResizeHandle
-                markdownProjectPreviewPanel
-                    .frame(width: clampedMarkdownProjectPreviewWidthIfAvailable)
-            }
-
-            if isMarkdownPreviewSplitVisible {
-                previewPaneResizeHandle
-                markdownPreviewSplitPane
-                    .frame(width: clampedPreviewPaneWidth)
-            } else if isJSONPreviewSplitVisible {
-                previewPaneResizeHandle
-                jsonPreviewSplitPane
-                    .frame(width: clampedPreviewPaneWidth)
-            } else if isYAMLPreviewSplitVisible {
-                previewPaneResizeHandle
-                yamlPreviewSplitPane
-                    .frame(width: clampedPreviewPaneWidth)
-            } else if isWebPreviewSplitVisible {
-                previewPaneResizeHandle
-                webPreviewSplitPane
-                    .frame(width: clampedPreviewPaneWidth)
-            } else if isImagePreviewSplitVisible {
-                previewPaneResizeHandle
-                imagePreviewSplitPane
-                    .frame(width: clampedPreviewPaneWidth)
-            } else if isPDFPreviewSplitVisible {
-                if isPDFNoteEditorActive {
-                    previewPaneResizeHandle
-                    pdfPreviewSplitPane
-                        .frame(width: clampedPreviewPaneWidth)
-                } else {
-                    pdfPreviewSplitPane
-                        .frame(maxWidth: .infinity)
-                }
-            }
-
-                    if isMarkdownProjectPreviewVisible && markdownProjectPreviewPlacement == .trailing {
-                markdownProjectPreviewResizeHandle
-                markdownProjectPreviewPanel
-                    .frame(width: clampedMarkdownProjectPreviewWidthIfAvailable)
-            }
-                }
-                .background(editorSurfaceBackgroundStyle)
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { newWidth in
-                    previewPaneAvailableWidth = newWidth
-                }
-                }
-            }
-        }
+#if os(macOS)
+        let editorAndPreview = macDocumentLayout(primaryEditor: primaryEditorColumn)
 #else
         // Keep these top-level alternatives separate. A single Group containing
         // the diff, Git, and preview HStacks creates a very deep conditional
@@ -5608,17 +6085,21 @@ struct ContentView: View {
 #endif
 
         let content = HStack(spacing: 0) {
+#if !os(macOS)
             if showProjectStructureSidebar && projectNavigatorPlacement == .leading && !brainDumpLayoutEnabled && !focusModeEnabled {
                 projectStructureSidebarPanel
                 projectSidebarResizeHandle
             }
+#endif
 
             editorAndPreview
 
+#if !os(macOS)
             if showProjectStructureSidebar && projectNavigatorPlacement == .trailing && !brainDumpLayoutEnabled && !focusModeEnabled {
                 projectSidebarResizeHandle
                 projectStructureSidebarPanel
             }
+#endif
         }
         .background(
             Group {
@@ -5677,7 +6158,10 @@ struct ContentView: View {
         .onPreferenceChange(ContentViewWidthPreferenceKey.self) { newValue in
             liveContainerWidth = newValue
         }
-        .onAppear {
+        .task {
+            // Model publication belongs to the view's task, not its synchronous
+            // installation callback (which can be inside a hosting-view update).
+            guard !Task.isCancelled else { return }
             refreshMarkdownProjectPreview()
             if shouldAutomaticallyPresentMarkdownProjectPreview {
                 presentMarkdownProjectPreviewIfAvailable()
@@ -5700,7 +6184,8 @@ struct ContentView: View {
                 EditorPerformanceMonitor.shared.markTOCUpdated(tabID: tabID)
             }
         }
-        .onChange(of: viewModel.selectedTab?.fileURL) { _, _ in
+        .onChange(of: EditorDocumentFileContext(owner: ObjectIdentifier(viewModel), fileURL: viewModel.selectedTab?.fileURL)) { previous, selected in
+            guard previous.owner == selected.owner else { return }
             openAutomaticPreviewIfNeeded()
 #if os(macOS)
             applyDefaultMarkdownPreviewOpenMode()
@@ -5720,7 +6205,7 @@ struct ContentView: View {
         }
         .onDisappear {
             cancelSecondaryContentTasks()
-            cancelMarkdownProjectPreviewRefresh()
+            cancelMarkdownProjectPreviewRefresh(windowDisappeared: true)
         }
         .onChange(of: enableTranslucentWindow) { _, newValue in
             applyWindowTranslucency(newValue)
@@ -5809,9 +6294,13 @@ struct ContentView: View {
 #endif
 
         return eventAwareContent
+#if os(macOS)
+        .modifier(MacDocumentToolbarModifier(contentView: self))
+#else
         .toolbar {
             editorToolbarContent
         }
+#endif
 #if os(iOS)
         .toolbarBackground(.hidden, for: .bottomBar)
         .sheet(
@@ -5855,7 +6344,8 @@ struct ContentView: View {
                 centered: usesIOSBottomToolbar,
                 bottomInset: 0,
                 status: AnyView(floatingStatusPill),
-                bottomToolbar: { width in mobileBottomToolbarOverlay(availableWidth: width) }
+                bottomToolbar: { width in mobileBottomToolbarOverlay(availableWidth: width) },
+                verticalToolbar: { length in mobileVerticalToolbarOverlay(availableLength: length) }
             )
         )
 #endif
@@ -5865,11 +6355,6 @@ struct ContentView: View {
             }
         }
 #if os(macOS)
-        .toolbarBackground(
-            macToolbarBackgroundStyle,
-            for: ToolbarPlacement.windowToolbar
-        )
-        .modifier(MacToolbarVisibilityModifier(hidden: focusModeEnabled))
         .tint(NeonUIStyle.accentBlue)
 #else
         .toolbarBackground(
@@ -5899,4 +6384,22 @@ struct ContentView: View {
         .accessibilityValue("Deferred open mode is loading the editor content")
     }
 
+}
+
+private extension View {
+    @ViewBuilder
+    func externalFileConflictPrompt<Actions: View, Message: View>(
+        _ title: LocalizedStringKey, isPresented: Binding<Bool>,
+        @ViewBuilder actions: () -> Actions,
+        @ViewBuilder message: () -> Message
+    ) -> some View {
+#if os(macOS)
+        // A confirmation popover disappears when startup changes the selected
+        // window. A file-conflict decision belongs to a persistent window sheet.
+        alert(title, isPresented: isPresented, actions: actions, message: message)
+#else
+        confirmationDialog(title, isPresented: isPresented, titleVisibility: .visible,
+                           actions: actions, message: message)
+#endif
+    }
 }

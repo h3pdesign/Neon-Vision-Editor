@@ -200,7 +200,6 @@
 "Allow Private Cloud Compute for Agent Mode" = "Allow Private Cloud Compute for Agent Mode";
 "Allow Shared Imports?" = "Allow Shared Imports?";
 "Allows complex Edit and Verify requests to use Apple's Private Cloud Compute when available." = "Allows complex Edit and Verify requests to use Apple's Private Cloud Compute when available.";
-"Always" = "Always";
 "An item with this name already exists." = "An item with this name already exists.";
 "Anthropic" = "Anthropic";
 "Anthropic API Token Required" = "Anthropic API Token Required";
@@ -955,7 +954,6 @@
 "Neon Vision Editor will always stay free to use." = "Neon Vision Editor will always stay free to use.";
 "Neon Vision Editor will ask macOS to open its supported text and source-code file types. macOS may request your confirmation." = "Neon Vision Editor will ask macOS to open its supported text and source-code file types. macOS may request your confirmation.";
 "Neutral" = "Neutral";
-"Never" = "Never";
 "New Chat" = "New Chat";
 "New Comparison" = "New Comparison";
 "New File" = "New File";
@@ -1060,7 +1058,6 @@
 "Open in New Tab" = "Open in New Tab";
 "Open in New Tabs" = "Open in New Tabs";
 "Open in Separate Window" = "Open in Separate Window";
-"Open in Tabs" = "Open in Tabs";
 "Open match in editor" = "Open match in editor";
 "Open remote folder %@" = "Open remote folder %@";
 "Open shared import %@" = "Open shared import %@";
@@ -1513,6 +1510,7 @@
 "Support purchase is currently unavailable." = "Support purchase is currently unavailable.";
 "Support via Patreon" = "Support via Patreon";
 "Swipe horizontally to reveal more editor actions" = "Swipe horizontally to reveal more editor actions";
+"Swipe vertically to reveal more editor actions" = "Swipe vertically to reveal more editor actions";
 "Switch between a categorized crash summary and raw text" = "Switch between a categorized crash summary and raw text";
 "Switch between a severity summary and raw log text" = "Switch between a severity summary and raw log text";
 "Switch between structured plist mode and raw text mode" = "Switch between structured plist mode and raw text mode";
@@ -1790,3 +1788,17 @@
 "Adaptive Toolbar" = "Adaptive Toolbar";
 "Adapts the phone toolbar when the available layout changes between compact and regular width." = "Adapts the phone toolbar when the available layout changes between compact and regular width.";
 "Adaptive Toolbar: Adapts the phone toolbar when the available layout changes between compact and regular width." = "Adaptive Toolbar: Adapts the phone toolbar when the available layout changes between compact and regular width.";
+"What’s New in v2.1.0" = "What’s New in v2.1.0";
+"Release highlights for v2.1.0." = "Release highlights for v2.1.0.";
+"Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing." = "Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing.";
+"Editor Improvements: Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing." = "Editor Improvements: Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing.";
+"Keep project navigation shared while each document retains its own editing and preview state." = "Keep project navigation shared while each document retains its own editing and preview state.";
+"Editor Navigation: Keep project navigation shared while each document retains its own editing and preview state." = "Editor Navigation: Keep project navigation shared while each document retains its own editing and preview state.";
+"Preserve unsaved edits during external-file refreshes and exact JSON values when formatting." = "Preserve unsaved edits during external-file refreshes and exact JSON values when formatting.";
+"Reliable Saves: Preserve unsaved edits during external-file refreshes and exact JSON values when formatting." = "Reliable Saves: Preserve unsaved edits during external-file refreshes and exact JSON values when formatting.";
+"Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation." = "Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation.";
+"Reliable Saves: Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation." = "Reliable Saves: Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation.";
+"Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native…" = "Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native…";
+"Editor Improvements: Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native…" = "Editor Improvements: Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native…";
+"Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience." = "Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience.";
+"Workflow Refinements: Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience." = "Workflow Refinements: Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience.";

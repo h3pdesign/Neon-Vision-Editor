@@ -6,9 +6,43 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing.
+- Keep project navigation shared while each document retains its own editing and preview state.
+- Preserve unsaved edits during external-file refreshes and exact JSON values when formatting.
+
+### Highlights
+
+- Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation.
+- Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state.
+- Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience.
+- On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is closed, open, or partially folded, so it no longer covers the bottom of your document (#498).
+
 ### Fixes
 
+- Gives the first Mac tab the same toolbar background as every other tab.
+- Keeps each Mac tab's cursor, selection, and preview independent, so typing in one document no longer refreshes other tabs.
+- Keeps project Markdown cards shared across Mac tabs, preserving prepared previews, pane width, and scroll position when switching or opening documents.
+- Restores Mac tabs without briefly showing separate windows, keeps file-conflict prompts with their own document, and preserves unsaved-change protection when closing.
+- Rechecks document revisions before applying external file refreshes, so edits made while a refresh is pending are not replaced by stale content.
+- Keeps Safe Mode's blank editor in its original window and keeps recovery drafts separate from the normal saved session.
 - Preserves JSON object member order, repeated keys, exact number tokens, and escaped strings when formatting or combining lines (#802).
+
+### Breaking changes
+
+- The previous Mac in-editor tab strip and experimental native-tab preference are replaced by native document tabs. iPhone, iPad, and visionOS retain their existing platform-specific tab experiences.
+
+### Migration
+
+- No document conversion is required. Existing saved sessions use the native document-tab layout on macOS.
+
+### Maintenance
+
+- Hides the content of unselected native Mac tabs so their rendering surfaces can be released; in the paired benchmark this kept retained memory close to 2.0.0 while tab switching stayed faster than 2.0.0.
+- Removes the retired in-window Mac tab code paths and the unused "Open in Tabs" setting.
+- Builds native Mac toolbars once per document, starts file loading before window setup, and defers inline Markdown preview and the language menu until needed.
+- Adds a disposable native-tab benchmark harness with display-state logging, titlebar parity, pane-height, and Markdown rendering checks.
 
 ## [v2.0.0] - 2026-10-15
 

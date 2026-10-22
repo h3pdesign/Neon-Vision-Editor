@@ -311,6 +311,10 @@ extension ContentView {
 
 #if os(macOS)
     var detachedPreviewHTML: String {
+        // The presenter remains installed to close its window when hidden.
+        // Do not project and sanitize a complete document for an unused window
+        // on every editor update, especially in retained native document tabs.
+        guard showDetachedPreviewWindow else { return "" }
         if isMarkdownPreviewDocument {
             return markdownPreviewRenderedHTML.isEmpty
                 ? markdownPreviewLoadingHTML(preferDarkMode: markdownPreviewPreferDarkMode)

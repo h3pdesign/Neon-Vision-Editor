@@ -2,10 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>Send or receive a document with a nearby device only when you start a transfer.</string>
-	<key>NSBonjourServices</key>
-	<array><string>_nve-transfer._tcp</string></array>
 	<key>CFBundleDisplayName</key>
 	<string>Neon Vision Editor</string>
 	<key>CFBundleDocumentTypes</key>
@@ -159,8 +155,14 @@
 	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.developer-tools</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_nve-transfer._tcp</string>
+	</array>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Send or receive a document with a nearby device only when you start a transfer.</string>
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
 	<key>SUFeedURL</key>

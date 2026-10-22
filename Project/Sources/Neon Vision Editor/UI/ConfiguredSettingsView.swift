@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct ConfiguredSettingsView: View {
-    let supportsOpenInTabs: Bool
     let supportsTranslucency: Bool
     let editorViewModel: EditorViewModel
 
@@ -10,7 +9,6 @@ struct ConfiguredSettingsView: View {
 
     var body: some View {
         NeonSettingsView(
-            supportsOpenInTabs: supportsOpenInTabs,
             supportsTranslucency: supportsTranslucency
         )
         .environment(editorViewModel)

@@ -976,7 +976,7 @@ struct ProjectStructureSidebarView: View {
     var onLoadDirectory: ((URL, @escaping @MainActor @Sendable () -> Void) -> Void)? = nil
     var onExpandAllDirectories: ((@escaping @MainActor @Sendable () -> Void) -> Void)? = nil
     @State private var expandedDirectories: Set<String> = []
-    @SceneStorage("ProjectSidebarExpandedDirectories.v1") private var persistedExpansionState: String = ""
+    @EditorWindowStorage("ProjectSidebarExpandedDirectories.v1") private var persistedExpansionState: String = ""
     @State private var persistedExpansionByRoot: [String: [String]] = [:]
     @State private var expansionPersistenceTask: Task<Void, Never>?
     @State private var loadingDirectoryIDs: Set<String> = []

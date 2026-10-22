@@ -14,7 +14,9 @@ extension ContentView {
             markdownPreviewPaneHeader
             markdownPreviewWebViewHost
         }
-        .onAppear {
+        .task(id: canInstallMarkdownPreviewWebContent) {
+            guard canInstallMarkdownPreviewWebContent, !Task.isCancelled else { return }
+            recordExplicitMarkdownReadingPresentation()
             scheduleMarkdownPreviewRender()
         }
         .onDisappear {
@@ -250,21 +252,28 @@ extension ContentView {
 #endif
     }
 
+    @ViewBuilder
     private var markdownPreviewWebViewContent: some View {
-        MarkdownPreviewWebView(
-            html: markdownPreviewRenderedHTML.isEmpty
-                ? markdownPreviewLoadingHTML(preferDarkMode: markdownPreviewPreferDarkMode)
-                : markdownPreviewRenderedHTML,
-            baseURL: localPreviewBaseURL,
-            // Keep the preview document inert. The app-owned WebKit bridge still
-            // uses evaluateJavaScript for scroll synchronization, but page
-            // scripts supplied by document content are not enabled.
-            allowsContentJavaScript: false,
-            documentID: viewModel.selectedTab?.id,
-            synchronizedScrollFraction: markdownPreviewSynchronousScroll ? markdownPreviewEditorScrollFraction : nil
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityLabel("Markdown Preview Content")
+        if canInstallMarkdownPreviewWebContent {
+            MarkdownPreviewWebView(
+                html: markdownPreviewRenderedHTML.isEmpty
+                    ? markdownPreviewLoadingHTML(preferDarkMode: markdownPreviewPreferDarkMode)
+                    : markdownPreviewRenderedHTML,
+                baseURL: localPreviewBaseURL,
+                // Keep the preview document inert. The app-owned WebKit bridge still
+                // uses evaluateJavaScript for scroll synchronization, but page
+                // scripts supplied by document content are not enabled.
+                allowsContentJavaScript: false,
+                documentID: viewModel.selectedTab?.id,
+                synchronizedScrollFraction: markdownPreviewSynchronousScroll ? markdownPreviewEditorScrollFraction : nil
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityLabel("Markdown Preview Content")
+        } else {
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityLabel("Markdown Preview Content")
+        }
     }
 
     var localPreviewBaseURL: URL? {

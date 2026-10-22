@@ -1,9 +1,120 @@
 #if os(macOS)
 import XCTest
+import AppKit
 @testable import Neon_Vision_Editor
 
 @MainActor
 final class VirtualEditorLayoutTests: XCTestCase {
+    func testCrashDetectionReusesBoundedReadForUnchangedPositiveAndNegativeResults() {
+        for text in ["ordinary 😀 text", "Exception Type: EXC_CRASH\nCrashed Thread: 0\n"] {
+            let document = CountingEditorDocument(backing: FileBackedTextDocument(content: text))
+            let cache = AppleCrashReportParser.DetectionCache()
+            let expected = AppleCrashReportParser.looksLikeAppleCrashReport(text)
+            for _ in 0..<20 {
+                XCTAssertEqual(cache.detect(document: document, contentRevision: 0, externalContentRevision: 0), expected)
+            }
+            XCTAssertEqual(document.textRangeCallCount, 1, "Tab/view updates must not repeat content classification")
+            XCTAssertEqual(document.stringCallCount, 0)
+        }
+    }
+
+    func testCrashDetectionInvalidatesForEditsRefreshReplacementAndExplicitReset() throws {
+        let cache = AppleCrashReportParser.DetectionCache()
+        let first = CountingEditorDocument(backing: FileBackedTextDocument(content: "plain"))
+        XCTAssertFalse(cache.detect(document: first, contentRevision: 0, externalContentRevision: 0))
+        try first.replaceAll(with: "Exception Type: EXC_CRASH\nCrashed Thread: 0\n")
+        XCTAssertTrue(cache.detect(document: first, contentRevision: 1, externalContentRevision: 0))
+        try first.replaceAll(with: "plain again")
+        XCTAssertFalse(cache.detect(document: first, contentRevision: 1, externalContentRevision: 1))
+        XCTAssertEqual(first.textRangeCallCount, 3)
+        let second = CountingEditorDocument(backing: FileBackedTextDocument(content: "Exception Type: EXC_CRASH\nCrashed Thread: 0\n"))
+        XCTAssertTrue(cache.detect(document: second, contentRevision: 1, externalContentRevision: 1))
+        cache.invalidate()
+        XCTAssertTrue(cache.detect(document: second, contentRevision: 1, externalContentRevision: 1))
+        XCTAssertEqual(second.textRangeCallCount, 2)
+    }
+
+    func testCrashDetectionBoundsReadsAndDoesNotCacheTransientFailure() {
+        let document = CountingEditorDocument(backing: FileBackedTextDocument(content: String(repeating: "😀 text\n", count: 20_000)))
+        let cache = AppleCrashReportParser.DetectionCache()
+        document.failTextRangeRead = true
+        XCTAssertFalse(cache.detect(document: document, contentRevision: 0, externalContentRevision: 0))
+        document.failTextRangeRead = false
+        XCTAssertFalse(cache.detect(document: document, contentRevision: 0, externalContentRevision: 0))
+        XCTAssertFalse(cache.detect(document: document, contentRevision: 0, externalContentRevision: 0))
+        XCTAssertEqual(document.textRangeCallCount, 2)
+        XCTAssertEqual(document.lastTextRange, NSRange(location: 0, length: 16_000))
+        XCTAssertEqual(document.stringCallCount, 0)
+    }
+
+    func testCrashDetectionDoesNotRetainClosedDocument() {
+        let cache = AppleCrashReportParser.DetectionCache()
+        weak var released: CountingEditorDocument?
+        do {
+            let document = CountingEditorDocument(backing: FileBackedTextDocument(content: ""))
+            released = document
+            XCTAssertFalse(cache.detect(document: document, contentRevision: 0, externalContentRevision: 0))
+        }
+        XCTAssertNil(released)
+    }
+
+    func testFirstDrawCallbackIsDeferredAndRejectsAReplacedResource() async throws {
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 500))
+        let window = NSWindow(contentRect: canvas.frame, styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.tabbingMode = .disallowed
+        window.contentView = canvas
+        defer { window.close() }
+        let document = FileBackedTextDocument(content: "Ready document\n")
+        let id = UUID()
+        func configure(_ resource: String, callback: ((UUID, String) -> Void)?) {
+            _ = canvas.setViewportSize(CGSize(width: 800, height: 500))
+            canvas.configure(document: document, documentID: id, resourceID: resource, displayName: resource,
+                contentRevision: 0, externalContentRevision: 0, caret: 0, language: "plain", colorScheme: .light,
+                fontSize: 14, fontName: "", lineHeightMultiplier: 1, isReadOnly: false,
+                translucentBackgroundEnabled: false, showsLineNumbers: true, highlightCurrentLine: false,
+                lineWrapEnabled: true, showsInvisibleCharacters: false, showsIndentationGuides: false,
+                showsScopeGuides: false, highlightsScopeBackground: false, highlightsMatchingBrackets: false,
+                autoIndentEnabled: true, autoCloseBracketsEnabled: false,
+                onFontSizeChange: nil, onTextMutation: nil, onFirstDraw: callback)
+        }
+        configure("old", callback: nil)
+        window.makeKeyAndOrderFront(nil)
+        let deadline = ProcessInfo.processInfo.systemUptime + 5
+        while canvas.isViewportActivationPending, ProcessInfo.processInfo.systemUptime < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        var resources: [String] = []
+        let ready = expectation(description: "New resource drawn")
+        configure("old") { _, resource in resources.append(resource) }
+        canvas.needsDisplay = true
+        canvas.displayIfNeeded()
+        XCTAssertTrue(resources.isEmpty, "The callback must not mutate SwiftUI state during draw")
+        configure("new") { _, resource in resources.append(resource); ready.fulfill() }
+        await fulfillment(of: [ready], timeout: 5)
+        XCTAssertEqual(resources, ["new"], "A queued frame for a replaced resource must not enable its preview")
+    }
+
+    func testDocumentEventsDoNotInvalidateOtherNativeTabEditors() {
+        let local = UUID()
+        let split = UUID()
+        let foreign = UUID()
+        let owned = [local, split]
+        XCTAssertTrue(EditorCommandSemantics.acceptsDocumentEvent(documentID: local.uuidString, openDocumentIDs: owned))
+        XCTAssertTrue(EditorCommandSemantics.acceptsDocumentEvent(documentID: split.uuidString, openDocumentIDs: owned))
+        XCTAssertFalse(EditorCommandSemantics.acceptsDocumentEvent(documentID: foreign.uuidString, openDocumentIDs: owned))
+        XCTAssertFalse(EditorCommandSemantics.acceptsDocumentEvent(documentID: local.uuidString, openDocumentIDs: []))
+        XCTAssertFalse(EditorCommandSemantics.acceptsDocumentEvent(documentID: "invalid", openDocumentIDs: owned))
+        XCTAssertTrue(EditorCommandSemantics.acceptsDocumentEvent(documentID: nil, openDocumentIDs: owned))
+    }
+
+    func testHiddenDetachedPreviewDoesNotReadDocumentContent() {
+        // No model is installed: an invisible presenter must not even request
+        // the model/document, let alone parse its complete source as HTML.
+        let content = ContentView(startupBehavior: .forceBlankDocument)
+        XCTAssertEqual(content.detachedPreviewHTML, "")
+    }
+
     func testSharedEditorCommandSemanticsDefinePlatformParity() {
         XCTAssertEqual(EditorCommandSemantics.indentation(style: "tabs", width: 8), "\t")
         XCTAssertEqual(EditorCommandSemantics.indentation(style: "spaces", width: 2), "  ")
@@ -1849,6 +1960,9 @@ private final class CountingEditorDocument: EditorDocument {
     let backing: FileBackedTextDocument
     private(set) var stringCallCount = 0
     private(set) var viewportCallCount = 0
+    private(set) var textRangeCallCount = 0
+    private(set) var lastTextRange: NSRange?
+    var failTextRangeRead = false
 
     init(backing: FileBackedTextDocument) { self.backing = backing }
 
@@ -1864,7 +1978,10 @@ private final class CountingEditorDocument: EditorDocument {
         try backing.textChunk(startByteOffset: startByteOffset, maximumByteCount: maximumByteCount)
     }
     func text(inUTF16Range range: NSRange) throws -> String {
-        try backing.text(inUTF16Range: range)
+        textRangeCallCount += 1
+        lastTextRange = range
+        if failTextRangeRead { throw CocoaError(.fileReadUnknown) }
+        return try backing.text(inUTF16Range: range)
     }
     func string() -> String {
         stringCallCount += 1

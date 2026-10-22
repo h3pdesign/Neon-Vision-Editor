@@ -200,7 +200,6 @@
 "Allow Private Cloud Compute for Agent Mode" = "Permettre le calcul privé de Cloud pour le mode agent";
 "Allow Shared Imports?" = "Permettre les importations partagées ?";
 "Allows complex Edit and Verify requests to use Apple's Private Cloud Compute when available." = "Autorise les demandes d'édition et de vérification complexes à utiliser le calcul privé de Cloud d'Apple lorsque disponible.";
-"Always" = "Toujours";
 "An item with this name already exists." = "Un élément portant ce nom existe déjà.";
 "Anthropic" = "Anthropic";
 "Anthropic API Token Required" = "Requête API Anthropic requise";
@@ -955,7 +954,6 @@
 "Neon Vision Editor will always stay free to use." = "L'éditeur Neon Vision sera toujours gratuit à utiliser.";
 "Neon Vision Editor will ask macOS to open its supported text and source-code file types. macOS may request your confirmation." = "L'éditeur Neon Vision demandera au macOS d'ouvrir ses types de fichiers texte et de code source pris en charge. Le macOS peut vous demander une confirmation.";
 "Neutral" = "Neutre";
-"Never" = "Jamais";
 "New Chat" = "Nouveau chat";
 "New Comparison" = "Nouvelle comparaison";
 "New File" = "Nouveau fichier";
@@ -1060,7 +1058,6 @@
 "Open in New Tab" = "Ouvrir dans une nouvelle tabette";
 "Open in New Tabs" = "Ouvrir dans de nouvelles tabettes";
 "Open in Separate Window" = "Ouvrir dans une fenêtre séparée";
-"Open in Tabs" = "Ouvrir dans des onglets";
 "Open match in editor" = "Ouvrir le match dans l'éditeur";
 "Open remote folder %@" = "Ouvrir le dossier distant %@";
 "Open shared import %@" = "Ouvrir l'importation partagée %@";
@@ -1513,6 +1510,7 @@
 "Support purchase is currently unavailable." = "Achats actuellement indisponibles.";
 "Support via Patreon" = "Soutien via Patreon";
 "Swipe horizontally to reveal more editor actions" = "Balayez horizontalement pour révéler plus d'actions de l'éditeur";
+"Swipe vertically to reveal more editor actions" = "Balayez verticalement pour révéler plus d'actions de l'éditeur";
 "Switch between a categorized crash summary and raw text" = "Basculer entre un résumé de crash catégorisé et du texte brut";
 "Switch between a severity summary and raw log text" = "Basculer entre un résumé de gravité et du texte brut du journal";
 "Switch between structured plist mode and raw text mode" = "Basculer entre le mode plist structuré et le mode texte brut";
@@ -1790,3 +1788,17 @@
 "Adaptive Toolbar" = "Barre d’outils adaptative";
 "Adapts the phone toolbar when the available layout changes between compact and regular width." = "Adapte la barre d’outils du téléphone lorsque la largeur disponible passe d’un mode compact à un mode normal.";
 "Adaptive Toolbar: Adapts the phone toolbar when the available layout changes between compact and regular width." = "Barre d’outils adaptative: Adapte la barre d’outils du téléphone lorsque la largeur disponible passe d’un mode compact à un mode normal.";
+"What’s New in v2.1.0" = "Nouveautés de v2.1.0";
+"Release highlights for v2.1.0." = "Les points forts de v2.1.0.";
+"Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing." = "Utilisez les onglets de documents natifs du Mac avec les noms de fichiers, la mise en évidence de l’onglet actif et la fermeture par double-clic.";
+"Editor Improvements: Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing." = "Améliorations de l'éditeur: Utilisez les onglets de documents natifs du Mac avec les noms de fichiers, la mise en évidence de l’onglet actif et la fermeture par double-clic.";
+"Keep project navigation shared while each document retains its own editing and preview state." = "La navigation du projet reste partagée, tandis que chaque document conserve son propre état d’édition et d’aperçu.";
+"Editor Navigation: Keep project navigation shared while each document retains its own editing and preview state." = "Navigation de l'éditeur: La navigation du projet reste partagée, tandis que chaque document conserve son propre état d’édition et d’aperçu.";
+"Preserve unsaved edits during external-file refreshes and exact JSON values when formatting." = "Les modifications non enregistrées sont préservées lors des actualisations de fichiers externes, et les valeurs JSON restent exactes lors du formatage.";
+"Reliable Saves: Preserve unsaved edits during external-file refreshes and exact JSON values when formatting." = "Sauvegardes fiables: Les modifications non enregistrées sont préservées lors des actualisations de fichiers externes, et les valeurs JSON restent exactes lors du formatage.";
+"Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation." = "Double-cliquez sur un onglet de document natif du Mac pour le fermer, avec la confirmation habituelle des modifications non enregistrées.";
+"Reliable Saves: Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation." = "Sauvegardes fiables: Double-cliquez sur un onglet de document natif du Mac pour le fermer, avec la confirmation habituelle des modifications non enregistrées.";
+"Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native…" = "Les onglets de documents natifs deviennent la norme sur macOS et remplacent l’ancienne barre d’onglets de l’éditeur ainsi que le réglage expérimental…";
+"Editor Improvements: Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native…" = "Améliorations de l'éditeur: Les onglets de documents natifs deviennent la norme sur macOS et remplacent l’ancienne barre d’onglets de l’éditeur ainsi que le réglage expérimental…";
+"Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience." = "Les onglets UIKit plus récents, adaptés au toucher, restent la norme sur iPhone et iPad, et visionOS conserve son expérience d’onglets actuelle.";
+"Workflow Refinements: Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience." = "Ajustements du flux de travail: Les onglets UIKit plus récents, adaptés au toucher, restent la norme sur iPhone et iPad, et visionOS conserve son expérience d’onglets actuelle.";

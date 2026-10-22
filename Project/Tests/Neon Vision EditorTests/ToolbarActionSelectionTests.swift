@@ -1,8 +1,47 @@
 import XCTest
+#if os(macOS)
+import AppKit
+#endif
 @testable import Neon_Vision_Editor
 
 @MainActor
 final class ToolbarActionSelectionTests: XCTestCase {
+#if os(macOS)
+    func testLanguageMenuDefersRowsUntilRequestedAndKeepsSelectionAndSearch() throws {
+        var reads = 0
+        var selected = "markdown"
+        var searched = false
+        func configuration() -> MacEditorLanguageMenu {
+            MacEditorLanguageMenu(selectedLanguage: selected, options: {
+                reads += 1
+                return ["markdown", "swift", "json"]
+            }, label: { $0.uppercased() }, tint: .systemBlue,
+                select: { selected = $0 }, search: { searched = true })
+        }
+        let coordinator = MacEditorLanguageMenu.Coordinator(configuration())
+        let button = coordinator.makeButton()
+        let menu = try XCTUnwrap(button.menu)
+        _ = button.intrinsicContentSize
+        coordinator.updateButton(button)
+        XCTAssertEqual(reads, 0, "Constructing/sizing an unopened toolbar must not build every language row")
+        XCTAssertEqual(menu.numberOfItems, 1)
+        XCTAssertFalse(button.accessibilityLabel()?.isEmpty ?? true)
+        coordinator.menuNeedsUpdate(menu)
+        XCTAssertEqual(reads, 1)
+        XCTAssertEqual(menu.numberOfItems, 6)
+        XCTAssertEqual(menu.item(at: 1)?.state, .on)
+        coordinator.chooseLanguage(try XCTUnwrap(menu.items.first { ($0.representedObject as? String) == "swift" }))
+        XCTAssertEqual(selected, "swift")
+        coordinator.searchLanguages(try XCTUnwrap(menu.item(at: 2)))
+        XCTAssertTrue(searched)
+        coordinator.configuration = configuration()
+        coordinator.updateButton(button)
+        XCTAssertEqual(menu.item(at: 0)?.title, "SWIFT")
+        coordinator.menuNeedsUpdate(menu)
+        XCTAssertEqual(menu.item(at: 1)?.representedObject as? String, "swift")
+        XCTAssertEqual(menu.items.compactMap { $0.representedObject as? String }.sorted(), ["json", "markdown", "swift"])
+    }
+#endif
     func testMacChooserIncludesPreviouslyMandatoryControlsAndPreservesSavedOrder() {
         let catalog = ToolbarActionSelection.customizableMacActionIDs
         XCTAssertTrue(catalog.contains("toolbarPreset"))

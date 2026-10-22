@@ -351,6 +351,7 @@ private struct EditorFileSavePayload: Sendable {
 @MainActor
 @Observable
 final class TabData: Identifiable {
+    @ObservationIgnored private let crashReportDetection = AppleCrashReportParser.DetectionCache()
     let id: UUID
     fileprivate(set) var name: String
     private var contentStorage: any EditorDocument
@@ -428,6 +429,11 @@ final class TabData: Identifiable {
     var document: any EditorDocument {
         _ = contentRevision
         return contentStorage
+    }
+
+    var looksLikeAppleCrashReport: Bool {
+        crashReportDetection.detect(document: contentStorage, contentRevision: contentRevision,
+                                    externalContentRevision: externalContentRevision)
     }
 
 
@@ -544,6 +550,8 @@ final class TabData: Identifiable {
     }
 
     func resetContentRevision() {
+        // Resetting a revision can otherwise reuse a result from an older edit.
+        crashReportDetection.invalidate()
         contentRevision = 0
     }
 
@@ -632,6 +640,12 @@ nonisolated private final class OpenDocumentObservationCenter: @unchecked Sendab
 
 // MARK: - Editor View Model
 // Owns tab lifecycle, file IO, and language-detection behavior.
+enum ExternalFileRefreshCommitPolicy {
+    static func canInstall(isDirty: Bool, currentRevision: Int, expectedRevision: Int?) -> Bool {
+        !isDirty && expectedRevision.map { $0 == currentRevision } == true
+    }
+}
+
 @MainActor
 @Observable
 class EditorViewModel {
@@ -1018,7 +1032,8 @@ class EditorViewModel {
             isPartialPreview: Bool,
             byteCount: Int,
             isExternalRefresh: Bool,
-            fileBackedDocument: FileBackedTextDocument?
+            fileBackedDocument: FileBackedTextDocument?,
+            expectedContentRevision: Int?
         )
     }
 
@@ -1338,8 +1353,23 @@ class EditorViewModel {
             recordTabStateMutation()
             return TabCommandOutcome(index: index)
 
-        case let .applyLoadedTabState(tabID, content, _, fileEncoding, lineEnding, language, languageLocked, fingerprint, fileModificationDate, isLargeCandidate, isPartialPreview, byteCount, isExternalRefresh, fileBackedDocument):
+        case let .applyLoadedTabState(tabID, content, _, fileEncoding, lineEnding, language, languageLocked, fingerprint, fileModificationDate, isLargeCandidate, isPartialPreview, byteCount, isExternalRefresh, fileBackedDocument, expectedContentRevision):
             guard let index = tabIndex(for: tabID) else { return TabCommandOutcome() }
+            // Background metadata/load checks precede awaits and the serialized
+            // command queue. Validate again at the actual mutation boundary;
+            // an edit or save after those checks must win over this old result.
+            if isExternalRefresh,
+               !ExternalFileRefreshCommitPolicy.canInstall(isDirty: tabs[index].isDirty,
+                    currentRevision: tabs[index].contentRevision, expectedRevision: expectedContentRevision) {
+                if tabs[index].isDirty, let fileURL = tabs[index].fileURL {
+                    markExternalRefreshNeedsReview(tabID: tabID, modifiedAt: fileModificationDate)
+                    pendingExternalFileConflict = ExternalFileConflictState(
+                        tabID: tabID, fileURL: fileURL, diskModifiedAt: fileModificationDate)
+                } else {
+                    clearExternalRefreshActivity(tabID: tabID)
+                }
+                return TabCommandOutcome()
+            }
             tabs[index].language = language
             tabs[index].languageLocked = languageLocked
             tabs[index].markClean(withFingerprint: fingerprint)
@@ -1484,7 +1514,20 @@ class EditorViewModel {
         "zsh": "zsh"
     ]
     
-    init() {
+    #if os(macOS)
+    let isSafeModeRecoveryWindow: Bool
+    @ObservationIgnored var nativeDocumentDestination: ((URL?, Bool) -> EditorViewModel?)?
+    @ObservationIgnored var nativeFocusFile: ((URL) -> Bool)?
+    @ObservationIgnored var nativeRevealWindow: (() -> Void)?
+    var canReuseNativeBlankDocument: Bool {
+        tabs.isEmpty || cleanUntitledTabIDForFileOpenReplacement() != nil
+    }
+    #endif
+
+    init(isSafeModeRecoveryWindow: Bool = false) {
+        #if os(macOS)
+        self.isSafeModeRecoveryWindow = isSafeModeRecoveryWindow
+        #endif
         addNewTab()
     }
 
@@ -1496,6 +1539,9 @@ class EditorViewModel {
 
     // Creates and selects a new untitled tab.
     func addNewTab() {
+        #if os(macOS)
+        if nativeDocumentDestination?(nil, false) != nil { return }
+        #endif
         _ = applyTabCommand(
             .addNewTab(
                 name: nextUntitledTabName(),
@@ -1597,7 +1643,30 @@ class EditorViewModel {
         _ = applyTabCommand(.resetTabs)
     }
 
+    /// Startup owns this window's first buffer. Unlike the New Tab command,
+    /// resetting it must not route through a native destination window.
+    func resetToBlankDocumentForStartup() {
+        resetTabsForSessionRestore()
+        _ = applyTabCommand(.addNewTab(name: nextUntitledTabName(), language: defaultNewTabLanguage()))
+    }
+
     func restoreTabsFromSnapshot(_ snapshots: [RestoredTabSnapshot], selectedIndex: Int?) {
+        #if os(macOS)
+        if snapshots.count > 1, nativeDocumentDestination != nil {
+            let restoredSelection = selectedIndex.flatMap { snapshots.indices.contains($0) ? $0 : nil } ?? 0
+            var selectedOwner = self
+            // Restore each document directly into its final owner; never move a
+            // live file-backed document or queued save between models.
+            _ = applyTabCommand(.restoreTabs(snapshots: [snapshots[0]], selectedIndex: 0))
+            for (index, snapshot) in snapshots.enumerated().dropFirst() {
+                guard let destination = nativeDocumentDestination?(nil, false) else { continue }
+                destination.restoreTabsFromSnapshot([snapshot], selectedIndex: 0)
+                if restoredSelection == index { selectedOwner = destination }
+            }
+            selectedOwner.nativeRevealWindow?()
+            return
+        }
+        #endif
         _ = applyTabCommand(.restoreTabs(snapshots: snapshots, selectedIndex: selectedIndex))
     }
 
@@ -1752,6 +1821,19 @@ class EditorViewModel {
     }
 
     // MARK: - Saving and Conflict Resolution
+
+    #if os(macOS)
+    /// A native window must not close until its asynchronous writes complete.
+    /// Cancellation, failures, conflicts, and edits made during a save stay open.
+    func saveDirtyDocumentsBeforeWindowClose() async -> Bool {
+        let dirtyIDs = tabs.filter(\.isDirty).map(\.id)
+        for id in dirtyIDs { saveFile(tabID: id) }
+        for id in dirtyIDs {
+            while let task = localSaveTasks[id]?.task { await task.value }
+        }
+        return !tabs.contains(where: \.isDirty)
+    }
+    #endif
 
     // Saves tab content to the existing file URL or falls back to Save As.
     func saveFile(tabID: UUID, allowExternalOverwrite: Bool = false) {
@@ -2424,12 +2506,14 @@ class EditorViewModel {
     func refreshExternalConflictForTab(tabID: UUID) {
         guard let index = tabIndex(for: tabID) else { return }
         let conflict = detectExternalConflict(for: tabs[index])
-        pendingExternalFileConflict = conflict
         if let conflict {
+            pendingExternalFileConflict = conflict
             markExternalRefreshNeedsReview(
                 tabID: tabID,
                 modifiedAt: conflict.diskModifiedAt
             )
+        } else if pendingExternalFileConflict?.tabID == tabID {
+            pendingExternalFileConflict = nil
         }
     }
 
@@ -2748,7 +2832,8 @@ class EditorViewModel {
                 handleObservedLocalFileChange(at: expectedURL)
                 return
             }
-            await applyLoadedContent(tabID: tabID, result: loadResult, isExternalRefresh: true)
+            guard await applyLoadedContent(tabID: tabID, result: loadResult, isExternalRefresh: true,
+                                          expectedContentRevision: expectedContentRevision) else { return }
             if let preferredEncoding {
                 setFileEncoding(tabID: tabID, encoding: preferredEncoding)
             }
@@ -2847,6 +2932,12 @@ class EditorViewModel {
             return false
         }
         if focusTabIfOpen(for: url) { return true }
+        #if os(macOS)
+        if let destination = nativeDocumentDestination?(url, true) {
+            return destination.openFile(url: url, preferredEncoding: preferredEncoding,
+                                        usesAutomaticEncoding: usesAutomaticEncoding)
+        }
+        #endif
         let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]
         let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         let isLargeCandidate = fileSize >= EditorLoadHelper.largeFileCandidateByteThreshold
@@ -2876,15 +2967,17 @@ class EditorViewModel {
             )
         }
         EditorPerformanceMonitor.shared.beginFileOpen(tabID: tabID)
+        // Start coordinated I/O now, before native-window work queued on the
+        // main run loop. A main-actor Task must not be the prerequisite for
+        // dispatching the loader to its background executor.
+        let load = Self.makeFileLoadTask(
+            from: url, extLangHint: extLangHint, isLargeCandidate: isLargeCandidate,
+            preferredEncoding: usesAutomaticEncoding ? nil : preferredEncoding
+        )
         Task { [weak self] in
-            guard let self else { return }
             do {
-                let loadResult = try await Self.loadFileResult(
-                    from: url,
-                    extLangHint: extLangHint,
-                    isLargeCandidate: isLargeCandidate,
-                    preferredEncoding: usesAutomaticEncoding ? nil : preferredEncoding
-                )
+                let loadResult = try await load.value
+                guard let self else { return }
                 await self.applyLoadedContent(tabID: tabID, result: loadResult)
                 if !usesAutomaticEncoding, let preferredEncoding {
                     self.setFileEncoding(
@@ -2894,7 +2987,7 @@ class EditorViewModel {
                     )
                 }
             } catch {
-                await self.markTabLoadFailed(tabID: tabID)
+                await self?.markTabLoadFailed(tabID: tabID)
             }
         }
         return true
@@ -2950,6 +3043,15 @@ class EditorViewModel {
     func openRemoteDocument(name: String, remotePath: String, content: String, isReadOnly: Bool, revisionToken: String? = nil) {
         let trimmedPath = remotePath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPath.isEmpty else { return }
+        #if os(macOS)
+        if !tabs.contains(where: { $0.remotePreviewPath == trimmedPath }),
+           let destination = nativeDocumentDestination?(nil, true) {
+            destination.openRemoteDocument(name: name, remotePath: remotePath, content: content,
+                                           isReadOnly: isReadOnly, revisionToken: revisionToken)
+            return
+        }
+        if canReuseNativeBlankDocument { resetTabsForSessionRestore() }
+        #endif
 
         let pseudoURL = URL(fileURLWithPath: trimmedPath)
         let detectedLanguage = LanguageDetector.shared.preferredLanguage(for: pseudoURL)
@@ -3013,7 +3115,11 @@ class EditorViewModel {
 
         // Executable source scripts belong in a code editor, but a binary marked
         // executable must never be decoded and shown as corrupted plain text.
-        if FileManager.default.isExecutableFile(atPath: url.path) {
+        // access(X_OK), used by isExecutableFile, reports sandbox execution
+        // permission rather than the file's executable mode bits.
+        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+        let permissions = (attributes?[.posixPermissions] as? NSNumber)?.uint16Value ?? 0
+        if permissions & 0o111 != 0 {
             let fileHandle = try? FileHandle(forReadingFrom: url)
             defer { try? fileHandle?.close() }
             if let prefix = try? fileHandle?.read(upToCount: 4_096),
@@ -3126,7 +3232,19 @@ class EditorViewModel {
         preferredEncoding: TextEncodingDescriptor? = nil,
         priority: TaskPriority = .userInitiated
     ) async throws -> EditorFileLoadResult {
-        try await Task.detached(priority: priority) {
+        try await makeFileLoadTask(from: url, extLangHint: extLangHint,
+            isLargeCandidate: isLargeCandidate, preferredEncoding: preferredEncoding,
+            priority: priority).value
+    }
+
+    private nonisolated static func makeFileLoadTask(
+        from url: URL,
+        extLangHint: String?,
+        isLargeCandidate: Bool,
+        preferredEncoding: TextEncodingDescriptor? = nil,
+        priority: TaskPriority = .userInitiated
+    ) -> Task<EditorFileLoadResult, Error> {
+        Task.detached(priority: priority) {
             try CoordinatedDocumentAccess.read(at: url) { url in
             let didStartScopedAccess = url.startAccessingSecurityScopedResource()
             defer {
@@ -3283,7 +3401,7 @@ class EditorViewModel {
                 fileBackedDocument: fileBackedDocument
             )
             }
-        }.value
+        }
     }
 
     private nonisolated static func prepareFileBackedDocument(
@@ -3375,14 +3493,16 @@ class EditorViewModel {
 
     // MARK: - Loaded Content and Language Detection
 
+    @discardableResult
     private func applyLoadedContent(
         tabID: UUID,
         result: EditorFileLoadResult,
-        isExternalRefresh: Bool = false
-    ) async {
+        isExternalRefresh: Bool = false,
+        expectedContentRevision: Int? = nil
+    ) async -> Bool {
         cancelPendingLanguageDetection(for: tabID)
 
-        _ = await dispatchTabCommandSerialized(
+        let outcome = await dispatchTabCommandSerialized(
             .applyLoadedTabState(
                 tabID: tabID,
                 content: result.content,
@@ -3397,9 +3517,11 @@ class EditorViewModel {
                 isPartialPreview: result.isPartialPreview,
                 byteCount: result.byteCount,
                 isExternalRefresh: isExternalRefresh,
-                fileBackedDocument: result.fileBackedDocument
+                fileBackedDocument: result.fileBackedDocument,
+                expectedContentRevision: expectedContentRevision
             )
         )
+        guard outcome.index != nil else { return false }
         if let index = tabIndex(for: tabID),
            !tabs[index].languageLocked,
            tabs[index].document.utf16Length >= Self.largeContentLanguageBypassUTF16Length {
@@ -3416,6 +3538,7 @@ class EditorViewModel {
                 byteCount: result.byteCount
             )
         }
+        return true
     }
 
     private func markTabLoadFailed(tabID: UUID) async {
@@ -3699,13 +3822,19 @@ class EditorViewModel {
             }
             _ = applyTabCommand(.selectTab(tabID: tab.id))
             reloadOpenTabIfContentUnavailable(tab: tab, url: url)
+            #if os(macOS)
+            nativeRevealWindow?()
+            #endif
             return true
         }
+        #if os(macOS)
+        if nativeFocusFile?(url) == true { return true }
+        #endif
         return false
     }
 
     private func reloadOpenTabIfContentUnavailable(tab: TabData, url: URL) {
-        guard !tab.isLoadingContent, tab.document.utf16Length == 0 else { return }
+        guard !tab.isLoadingContent, !tab.isDirty, tab.document.utf16Length == 0 else { return }
         let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         guard fileSize > 0 else { return }
         let extLangHint = LanguageDetector.shared.preferredLanguage(for: url) ?? languageMap[url.pathExtension.lowercased()]

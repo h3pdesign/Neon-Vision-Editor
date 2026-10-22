@@ -53,13 +53,20 @@
 
 > Status: **active release**  
 > Latest release: **v2.0.0**
-> Next release target: **v2.0.1**
+> Next release target: **v2.1.0**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: supported
 > Direct GitHub release: **v2.0.0** / App Store and TestFlight availability varies by platform and review status
 > Last updated (README): **2026-10-15** for latest release **v2.0.0**
 
 ## What's New Since v1.9.3
+
+### In Development for v2.1.0
+
+- Native macOS document-window tabs replace the old in-editor strip; no experimental setting is required. Tabs display filenames, mark the active document, and share the project sidebar while retaining independent document and preview state.
+- Project Markdown cards stay shared within a Mac tab group, retaining their prepared previews, panel width, and scroll position across documents.
+- iPhone and iPad keep the newer UIKit tab bar, including touch-friendly close, reorder, and overflow support. visionOS keeps its existing tab interface.
+- Existing document recovery remains supported, with Safe Mode drafts kept separate from the normal saved session. See [Unreleased changes](CHANGELOG.md#unreleased).
 
 ### Why Upgrade
 

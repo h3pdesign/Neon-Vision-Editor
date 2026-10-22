@@ -17,6 +17,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation.
 - Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state.
 - Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience.
+- On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is closed, open, or partially folded, so it no longer covers the bottom of your document (#498).
 
 ### Fixes
 

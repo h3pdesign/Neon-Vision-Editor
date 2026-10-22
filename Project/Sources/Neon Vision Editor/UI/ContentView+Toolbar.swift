@@ -913,6 +913,15 @@ extension ContentView {
 #endif
     }
 
+    func mobileVerticalToolbarOverlay(availableLength: CGFloat) -> AnyView? {
+#if os(iOS)
+        guard usesIOSBottomToolbar, !showFindReplace, !isPhoneSoftwareKeyboardVisible else { return nil }
+        return AnyView(iOSVerticalEdgeToolbar.frame(maxHeight: availableLength, alignment: .top))
+#else
+        return nil
+#endif
+    }
+
     private var iOSToolbarChromeStyle: GlassChromeStyle { .single }
     private var iOSToolbarTintColor: Color {
         if toolbarIconsBlueIOS {
@@ -2512,6 +2521,48 @@ extension ContentView {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Editor toolbar")
         .accessibilityHint("Swipe horizontally to reveal more editor actions")
+    }
+
+    // Vertical bars show icons only; titles remain available to VoiceOver.
+    var iOSVerticalEdgeToolbar: some View {
+        // Size to the items, scrolling only when the column is shorter.
+        ViewThatFits(in: .vertical) {
+            iOSVerticalEdgeToolbarItems
+            ScrollView(.vertical, showsIndicators: false) {
+                iOSVerticalEdgeToolbarItems
+            }
+        }
+        .frame(width: MobileToolbarPresentationPolicy.standardHeight)
+        .background {
+            IOSAdaptiveChromeBackground(enabled: shouldUseLiquidGlass)
+                .clipShape(Capsule())
+        }
+        .clipShape(Capsule())
+        .tint(iOSToolbarTintColor)
+        .foregroundStyle(iOSToolbarTintColor)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Editor toolbar")
+        .accessibilityHint("Swipe vertically to reveal more editor actions")
+    }
+
+    private var iOSVerticalEdgeToolbarItems: some View {
+        VStack(spacing: 4) {
+            mobileBottomToolbarItem(
+                languageLabel(for: currentLanguagePickerBinding.wrappedValue),
+                toolbarMinimized: true
+            ) {
+                languagePickerControl
+            }
+            mobileBottomToolbarItem("Preset", toolbarMinimized: true) {
+                toolbarPresetMenuControl
+            }
+            ForEach(iPhoneScrollableToolbarActions, id: \.self) { action in
+                mobileBottomToolbarItem(iPhoneBottomToolbarTitle(for: action), toolbarMinimized: true) {
+                    iOSPrimaryToolbarActionControl(action)
+                }
+            }
+        }
+        .padding(.vertical, 8)
     }
 #endif
 

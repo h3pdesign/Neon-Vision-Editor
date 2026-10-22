@@ -1510,6 +1510,7 @@
 "Support purchase is currently unavailable." = "Achats actuellement indisponibles.";
 "Support via Patreon" = "Soutien via Patreon";
 "Swipe horizontally to reveal more editor actions" = "Balayez horizontalement pour révéler plus d'actions de l'éditeur";
+"Swipe vertically to reveal more editor actions" = "Balayez verticalement pour révéler plus d'actions de l'éditeur";
 "Switch between a categorized crash summary and raw text" = "Basculer entre un résumé de crash catégorisé et du texte brut";
 "Switch between a severity summary and raw log text" = "Basculer entre un résumé de gravité et du texte brut du journal";
 "Switch between structured plist mode and raw text mode" = "Basculer entre le mode plist structuré et le mode texte brut";

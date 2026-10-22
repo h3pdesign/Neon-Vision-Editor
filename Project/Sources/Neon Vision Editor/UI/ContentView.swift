@@ -200,6 +200,42 @@ enum IOSAdaptiveLayoutPolicy {
     }
 }
 
+enum IOSVerticalToolbarPolicy {
+    nonisolated static let minimumColumnWidth: CGFloat = 60
+    nonisolated static let minimumColumnLength: CGFloat = 160
+    nonisolated static let spacing: CGFloat = 8
+
+    /// The column for a toolbar on the edge where the system presents vertical
+    /// bars, in the coordinates of the safe-area-bounded container. The column
+    /// fills that edge's safe-area inset and starts below the status bar and
+    /// camera occlusions. Returns nil when bars are horizontal or no usable
+    /// column remains.
+    nonisolated static func columnFrame(
+        edge: HorizontalEdge?,
+        containerSize: CGSize,
+        safeAreaInsets: EdgeInsets,
+        occlusions: [CGRect]
+    ) -> CGRect? {
+        guard let edge, containerSize.width > 0, containerSize.height > 0 else { return nil }
+        let edgeInset = max(0, edge == .leading ? safeAreaInsets.leading : safeAreaInsets.trailing)
+        let width = max(edgeInset, minimumColumnWidth)
+        let minX = edge == .leading ? -edgeInset : containerSize.width + edgeInset - width
+        let maxX = minX + width
+        let midHeight = containerSize.height / 2
+        var top: CGFloat = 0
+        var bottom = containerSize.height
+        for occlusion in occlusions where occlusion.maxX > minX && occlusion.minX < maxX {
+            if occlusion.midY < midHeight {
+                top = max(top, occlusion.maxY + spacing)
+            } else {
+                bottom = min(bottom, occlusion.minY - spacing)
+            }
+        }
+        guard bottom - top >= minimumColumnLength else { return nil }
+        return CGRect(x: minX, y: top, width: width, height: bottom - top)
+    }
+}
+
 enum IOSFloatingStatusPolicy {
     nonisolated static func isVisible(
         brainDumpLayoutEnabled: Bool,
@@ -239,21 +275,68 @@ struct MobileFloatingStatusOverlayModifier: ViewModifier {
     let bottomInset: CGFloat
     let status: AnyView
     var bottomToolbar: ((CGFloat) -> AnyView?)? = nil
+    // Given the column length, returns the toolbar for a system vertical bar edge.
+    var verticalToolbar: ((CGFloat) -> AnyView?)? = nil
 
     func body(content: Content) -> some View {
         content.overlay {
-            GeometryReader { proxy in
-                VStack(spacing: 12) {
-                    if showsStatus { status }
-                    if let toolbar = bottomToolbar?(proxy.size.width) { toolbar }
-                }
-                .padding(.trailing, centered ? 0 : 12)
-                .padding(.bottom, (centered ? 8 : 12) + bottomInset)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: centered ? .bottom : .bottomTrailing)
+#if os(iOS) && IOS_27_1_DUO_LAYOUT
+            if #available(iOS 27.1, *), let verticalToolbar {
+                IOSVerticalEdgeToolbarOverlay(
+                    verticalToolbar: verticalToolbar,
+                    horizontalOverlay: { includesToolbar in AnyView(horizontalOverlay(includesToolbar: includesToolbar)) }
+                )
+            } else {
+                horizontalOverlay(includesToolbar: true)
+            }
+#else
+            horizontalOverlay(includesToolbar: true)
+#endif
+        }
+    }
+
+    private func horizontalOverlay(includesToolbar: Bool) -> some View {
+        GeometryReader { proxy in
+            VStack(spacing: 12) {
+                if showsStatus { status }
+                if includesToolbar, let toolbar = bottomToolbar?(proxy.size.width) { toolbar }
+            }
+            .padding(.trailing, centered ? 0 : 12)
+            .padding(.bottom, (centered ? 8 : 12) + bottomInset)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: centered ? .bottom : .bottomTrailing)
+        }
+    }
+}
+
+#if os(iOS) && IOS_27_1_DUO_LAYOUT
+/// Mounts the editor toolbar in the edge column where the system presents
+/// vertical bars (for example below the status bar on iPhone Duo's outer display).
+@available(iOS 27.1, *)
+private struct IOSVerticalEdgeToolbarOverlay: View {
+    @Environment(\.toolbarVerticalEdge) private var toolbarVerticalEdge
+    let verticalToolbar: (CGFloat) -> AnyView?
+    let horizontalOverlay: (Bool) -> AnyView
+
+    var body: some View {
+        GeometryReader { proxy in
+            let column = IOSVerticalToolbarPolicy.columnFrame(
+                edge: toolbarVerticalEdge,
+                containerSize: proxy.size,
+                safeAreaInsets: proxy.safeAreaInsets,
+                occlusions: proxy.reservedRegions(kind: .occlusion).map(\.frame)
+            )
+            if let column, let toolbar = verticalToolbar(column.height) {
+                horizontalOverlay(false)
+                toolbar
+                    .frame(width: column.width, height: column.height, alignment: .top)
+                    .position(x: column.midX, y: column.midY)
+            } else {
+                horizontalOverlay(true)
             }
         }
     }
 }
+#endif
 #endif
 
 private struct DroppedFileProgressOverlayModifier: ViewModifier {
@@ -6261,7 +6344,8 @@ struct ContentView: View {
                 centered: usesIOSBottomToolbar,
                 bottomInset: 0,
                 status: AnyView(floatingStatusPill),
-                bottomToolbar: { width in mobileBottomToolbarOverlay(availableWidth: width) }
+                bottomToolbar: { width in mobileBottomToolbarOverlay(availableWidth: width) },
+                verticalToolbar: { length in mobileVerticalToolbarOverlay(availableLength: length) }
             )
         )
 #endif

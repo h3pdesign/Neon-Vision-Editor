@@ -1510,6 +1510,7 @@
 "Support purchase is currently unavailable." = "支持购买当前不可用。";
 "Support via Patreon" = "通过Patreon支持。";
 "Swipe horizontally to reveal more editor actions" = "水平滑动以显示更多编辑器操作";
+"Swipe vertically to reveal more editor actions" = "垂直滑动以显示更多编辑器操作";
 "Switch between a categorized crash summary and raw text" = "在分类崩溃摘要和原始文本之间切换。";
 "Switch between a severity summary and raw log text" = "在严重性摘要和原始日志文本之间切换。";
 "Switch between structured plist mode and raw text mode" = "在结构化plist模式和原始文本模式之间切换。";

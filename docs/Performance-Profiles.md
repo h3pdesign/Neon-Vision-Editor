@@ -1,5 +1,26 @@
 # Performance Profiles and Budgets
 
+## iPhone Duo toolbar (#498) — build 1120, 2026-10-22
+
+With the iOS 27.1 SDK, the phone editor toolbar moves into a vertical column on
+the edge where the system presents vertical bars (`toolbarVerticalEdge`), below
+the status bar and camera occlusions (`reservedRegions(kind: .occlusion)`).
+Where the system presents horizontal bars, including the rotated open pose,
+the existing bottom toolbar is kept; this follows the system signal rather than
+detecting the device. Column geometry is covered by
+`IOSVerticalToolbarPolicy` tests in `ContentViewLayoutTests`.
+
+Verified on the Xcode 27.1 iPhone Duo simulator: closed (outer display), open
+(inner display), partially folded, and rotated open; the user also checked the
+device simulator. Not verified: closed and partially folded poses while
+rotated, physical hardware. The editor text still spans the fold when partially
+folded; fold-aware editor/preview splitting is separate work.
+
+The `IOS_27_1_DUO_LAYOUT` condition is set for the `iphoneos`/`iphonesimulator`
+27.1–27.9 SDKs (27.0 lacks the APIs). Xcode conditional settings accept `*`
+but not character classes, and `project.pbxproj` gives overlapping conditions
+no defined order, so the SDK list is explicit; extend it for SDK 28.
+
 ## Inactive-tab content release — build 1119, 2026-10-22
 
 AppKit orders out unselected tab windows but keeps their CoreAnimation backing

@@ -1510,6 +1510,7 @@
 "Support purchase is currently unavailable." = "Support køb er i øjeblikket ikke tilgængelig.";
 "Support via Patreon" = "Support via Patreon";
 "Swipe horizontally to reveal more editor actions" = "Swipe vandret for at afsløre flere editorfunktioner";
+"Swipe vertically to reveal more editor actions" = "Swipe lodret for at afsløre flere editorfunktioner";
 "Switch between a categorized crash summary and raw text" = "Skift mellem en kategoriseret krasjersummering og rå tekst.";
 "Switch between a severity summary and raw log text" = "Skift mellem en sværhedsgradssummering og rå logtekst.";
 "Switch between structured plist mode and raw text mode" = "Skift mellem struktureret plist-tilstand og rå tekst-tilstand";

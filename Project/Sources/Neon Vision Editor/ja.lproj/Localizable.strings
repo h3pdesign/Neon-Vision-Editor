@@ -1510,6 +1510,7 @@
 "Support purchase is currently unavailable." = "購入は現在利用できません。";
 "Support via Patreon" = "Patreon経由のサポート。";
 "Swipe horizontally to reveal more editor actions" = "横にスワイプして、より多くのエディタアクションを表示します";
+"Swipe vertically to reveal more editor actions" = "縦にスワイプして、より多くのエディタアクションを表示します";
 "Switch between a categorized crash summary and raw text" = "カテゴリ化されたクラッシュサマリーと生のテキスト間で切り替え。";
 "Switch between a severity summary and raw log text" = "重症度サマリーと生のログテキスト間で切り替え。";
 "Switch between structured plist mode and raw text mode" = "構造化されたplistモードと生のテキストモード間で切り替え。";

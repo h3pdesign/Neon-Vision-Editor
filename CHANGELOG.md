@@ -21,6 +21,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Fixes
 
+- Keeps the Mac editor at full height when the code minimap is shown; short Swift, YAML, and other code files no longer collapse to a single centered line.
+- Adds space between the Mac toolbar's outer symbols and the rounded ends of their group.
 - Gives the first Mac tab the same toolbar background as every other tab.
 - Keeps each Mac tab's cursor, selection, and preview independent, so typing in one document no longer refreshes other tabs.
 - Keeps project Markdown cards shared across Mac tabs, preserving prepared previews, pane width, and scroll position when switching or opening documents.

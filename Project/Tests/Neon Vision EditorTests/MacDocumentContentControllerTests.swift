@@ -296,6 +296,22 @@ final class MacDocumentContentControllerTests: XCTestCase {
         XCTAssertEqual(editor.frame.height, 476, accuracy: 1)
     }
 
+    /// A short document's minimap has a one-line natural height. It must fill
+    /// the pane beside the editor, not shrink the editor row to that line.
+    func testShortDocumentMinimapDoesNotCollapseTheEditorRow() throws {
+        let controller = MacDocumentContentController()
+        var configuration = sourceConfiguration()
+        configuration.primary?.minimap = { AnyView(Color.clear.frame(width: 120, height: 20)) }
+        configuration.status = { AnyView(Text("Status").frame(height: 24)) }
+        controller.update(configuration)
+        controller.view.frame = NSRect(x: 0, y: 0, width: 800, height: 500)
+        controller.view.layoutSubtreeIfNeeded()
+        let editor = try XCTUnwrap(controller.primaryController?.editorView)
+        XCTAssertEqual(editor.frame.height, 476, accuracy: 1, "The editor must fill the height above the status bar")
+        let minimap = try XCTUnwrap(descendants(controller.view).first { $0 is NSHostingView<AnyView> && $0.frame.width == 120 })
+        XCTAssertEqual(minimap.frame.height, editor.frame.height, accuracy: 1, "The minimap spans the editor's height")
+    }
+
     func testTwoDocumentsNeverShareTheirCanvas() throws {
         let first = MacDocumentContentController()
         let second = MacDocumentContentController()

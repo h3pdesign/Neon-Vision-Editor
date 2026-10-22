@@ -109,6 +109,29 @@ final class WindowTranslucencyTests: XCTestCase {
         XCTAssertEqual(changes.values.count, initialChangeCount, "Unchanged updates cannot relayout toolbar identifiers")
     }
 
+    /// Symbols must not touch the rounded ends of their toolbar group.
+    func testNativeToolbarGroupKeepsEdgePaddingAroundSymbols() throws {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+            styleMask: [.titled, .closable], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        let configuration = MacDocumentToolbar(owner: MacDocumentTabPolicy.makeWindowModel(),
+            groups: [.init(id: "primary", items: ["open", "save", "find"])],
+            isVisible: true, label: { $0 }, control: { AnyView(Text($0)) }, overflow: { AnyView(Text($0)) },
+            nativeButton: { .init(symbol: "folder", title: $0, help: $0) })
+        let coordinator = MacDocumentToolbar.ToolbarCoordinator(configuration)
+        defer { coordinator.release(); window.close() }
+        coordinator.bind(window)
+        let group = try XCTUnwrap(window.toolbar?.items.compactMap { $0 as? NSToolbarItemGroup }.first)
+        let stack = try XCTUnwrap(group.view as? NSStackView)
+        stack.frame.size = stack.fittingSize
+        stack.layoutSubtreeIfNeeded()
+        let buttons = stack.arrangedSubviews
+        XCTAssertEqual(buttons.count, 3)
+        let padding = MacDocumentToolbar.groupEdgePadding
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(buttons.first).frame.minX, padding - 0.5)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(buttons.last).frame.maxX, stack.bounds.width - padding + 0.5)
+    }
+
     func testNativeToolbarActionChangesRetainUnchangedGroupsAndHostingViews() throws {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
             styleMask: [.titled, .closable], backing: .buffered, defer: true)

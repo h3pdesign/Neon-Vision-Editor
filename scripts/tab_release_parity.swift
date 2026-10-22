@@ -163,6 +163,64 @@ final class TabReleaseParityRunner {
             print("TAB_RELEASE_PARITY_DIAGNOSTIC_PAUSE render")
             let directory = URL(fileURLWithPath: directory, isDirectory: true)
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            func firstView<T: NSView>(_ type: T.Type, in view: NSView?) -> T? {
+                guard let view else { return nil }
+                if let match = view as? T { return match }
+                return view.subviews.lazy.compactMap { firstView(type, in: $0) }.first
+            }
+            /// A source editor must fill its pane, not collapse to one centered line.
+            func checkEditorFillsPane(_ item: Document, _ label: String) {
+                guard let scroll = firstView(VirtualEditorScrollView.self, in: item.window.contentView) else { return }
+                let frame = scroll.convert(scroll.bounds, to: nil)
+                print("RENDER_EDITOR \(label) file=\(item.url.lastPathComponent) frame=\(frame) viewport=\(item.window.contentLayoutRect) hidden=\(scroll.isHiddenOrHasHiddenAncestor)")
+                XCTAssertTrue(!scroll.isHiddenOrHasHiddenAncestor && frame.height >= item.window.contentLayoutRect.height * 0.5,
+                    "The selected editor must be visible and fill its pane (\(label) \(item.url.lastPathComponent))")
+            }
+#if !NVE_RELEASE_BASELINE
+            // YAML regression fixture, then a new tab followed by selecting the previous one.
+            let yamlURL = root.appendingPathComponent("Review.yaml")
+            try "# yaml-language-server: $schema=https://example.com/schema.json\n# Keep review available on demand.\nreviews:\n  auto_review:\n    enabled: false\n    auto_incremental_review: false\n".write(to: yamlURL, atomically: true, encoding: .utf8)
+            XCTAssertTrue(source.openFile(url: yamlURL))
+            try await wait({ NSApp.windows.contains { $0.title == "Review.yaml" } }, window: parent, message: "YAML window created")
+            let yamlOwner = try XCTUnwrap(store.models.first { $0.selectedTab?.fileURL == yamlURL })
+            let yamlWindow = try XCTUnwrap(NSApp.windows.first { $0.title == "Review.yaml" })
+            Self.documentModels.append(yamlOwner)
+            childModels.append(yamlOwner)
+            childWindows.append(yamlWindow)
+            let yaml = Document(model: yamlOwner, window: yamlWindow, id: try XCTUnwrap(yamlOwner.selectedTabID), url: yamlURL)
+            documents.append(yaml)
+            _ = try await draw(yaml)
+            try await Task.sleep(for: .milliseconds(300))
+            checkEditorFillsPane(yaml, "opened")
+            let shortSwiftURL = root.appendingPathComponent("Short.swift")
+            try "import Foundation\nlet answer = 42\n".write(to: shortSwiftURL, atomically: true, encoding: .utf8)
+            XCTAssertTrue(source.openFile(url: shortSwiftURL))
+            try await wait({ NSApp.windows.contains { $0.title == "Short.swift" } }, window: parent, message: "Short Swift window created")
+            let shortOwner = try XCTUnwrap(store.models.first { $0.selectedTab?.fileURL == shortSwiftURL })
+            let shortWindow = try XCTUnwrap(NSApp.windows.first { $0.title == "Short.swift" })
+            Self.documentModels.append(shortOwner)
+            childModels.append(shortOwner)
+            childWindows.append(shortWindow)
+            let shortSwift = Document(model: shortOwner, window: shortWindow, id: try XCTUnwrap(shortOwner.selectedTabID), url: shortSwiftURL)
+            documents.append(shortSwift)
+            _ = try await draw(shortSwift)
+            try await Task.sleep(for: .milliseconds(300))
+            checkEditorFillsPane(shortSwift, "opened")
+            let ownersBeforeNewTab = Set(store.models.map(ObjectIdentifier.init))
+            shortOwner.addNewTab()
+            try await wait({ store.models.contains { !ownersBeforeNewTab.contains(ObjectIdentifier($0)) } },
+                window: parent, message: "New tab created")
+            let newOwner = try XCTUnwrap(store.models.first { !ownersBeforeNewTab.contains(ObjectIdentifier($0)) })
+            childModels.append(newOwner)
+            try await wait({ store.selectedModel === newOwner && newOwner.selectedTab != nil }, window: parent, message: "New tab selected")
+            try await Task.sleep(for: .milliseconds(500))
+            for previous in documents.reversed() {
+                // Select exactly as the tab bar does, without forcing a redraw.
+                previous.window.tabGroup?.selectedWindow = previous.window
+                try await Task.sleep(for: .milliseconds(400))
+                checkEditorFillsPane(previous, "after-new-tab")
+            }
+#endif
             var startupTitlebar: [String] = []
             for item in [startup] + documents {
                 item.window.tabGroup?.selectedWindow = item.window
@@ -176,6 +234,7 @@ final class TabReleaseParityRunner {
                         + view.subviews.flatMap(regions)
                 }
                 let content = try XCTUnwrap(item.window.contentView)
+                if item.url.pathExtension != "md" { checkEditorFillsPane(item, "render") }
                 if item.url.pathExtension == "md" {
                     func previewWebView() -> WKWebView? {
                         func web(_ view: NSView) -> WKWebView? {
@@ -484,6 +543,8 @@ struct TabReleaseParityApp: App {
         defaults.set(ProcessInfo.processInfo.environment["NVE_PARITY_RENDER_DIR"] != nil,
             forKey: MacDocumentTabPolicy.projectSidebarVisibilityPreferenceKey)
         defaults.set(ProcessInfo.processInfo.environment["NVE_PARITY_RENDER_DIR"] != nil && ProcessInfo.processInfo.environment["NVE_PARITY_OPAQUE"] != "1", forKey: "EnableTranslucentWindow")
+        // Rendered checks include the code minimap beside short documents.
+        defaults.set(ProcessInfo.processInfo.environment["NVE_PARITY_RENDER_DIR"] != nil, forKey: "SettingsShowCodeMinimap")
 #endif
         defaults.set("standard", forKey: "SettingsToolbarPresetMac")
         defaults.set(ProcessInfo.processInfo.environment["NVE_PARITY_PREVIEW_MODE"] ?? "preview",

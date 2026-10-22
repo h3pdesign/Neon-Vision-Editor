@@ -25,6 +25,8 @@ struct MacDocumentToolbar: NSViewRepresentable {
     }
 
     final class Toolbar: NSToolbar {}
+    /// Space between a group's capsule edge and its first and last symbol.
+    static let groupEdgePadding: CGFloat = 10
     let owner: EditorViewModel
     let groups: [Group]
     let isVisible: Bool
@@ -160,6 +162,8 @@ struct MacDocumentToolbar: NSViewRepresentable {
                 stack.orientation = .horizontal
                 stack.alignment = .centerY
                 stack.spacing = 4
+                stack.edgeInsets = NSEdgeInsets(top: 0, left: MacDocumentToolbar.groupEdgePadding,
+                    bottom: 0, right: MacDocumentToolbar.groupEdgePadding)
                 group.view = stack
                 updateGroup(definition, group: group)
             } else {
@@ -248,6 +252,7 @@ struct MacDocumentToolbar: NSViewRepresentable {
             return AnyView(HStack(spacing: 4) {
                 ForEach(definition.items, id: \.self) { id in control(id) }
             }
+            .padding(.horizontal, MacDocumentToolbar.groupEdgePadding)
             // Standalone hosts do not inherit SwiftUI's native toolbar font.
             // Restore the 17-point action symbols without enlarging menu text.
             .font(definition.id == "primary" ? .system(size: 17) : nil))

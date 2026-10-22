@@ -242,6 +242,11 @@ final class MacDocumentContentController: NSViewController {
                     host.sizingOptions = [.intrinsicContentSize]
                     host.setContentHuggingPriority(.required, for: .horizontal)
                     host.setContentCompressionResistancePriority(.required, for: .horizontal)
+                    // The minimap's natural height follows the document (one
+                    // line for a short file). It must take the row's height,
+                    // never pull the editor row down to its own.
+                    host.setContentHuggingPriority(.init(1), for: .vertical)
+                    host.setContentCompressionResistancePriority(.init(1), for: .vertical)
                     minimap = host
                 }
             } else {

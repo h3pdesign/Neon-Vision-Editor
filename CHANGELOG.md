@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.1.0] - 2026-10-23
+
 ### Why Upgrade
 
 - Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing.

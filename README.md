@@ -1,5 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
+> Prepared release: **v2.1.0** — not published. See [candidate notes](CHANGELOG.md).
+
 <p align="center">
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v2.0.0-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
@@ -53,20 +55,13 @@
 
 > Status: **active release**  
 > Latest release: **v2.0.0**
-> Next release target: **v2.1.0**
+> Next release target: **v2.0.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: supported
 > Direct GitHub release: **v2.0.0** / App Store and TestFlight availability varies by platform and review status
 > Last updated (README): **2026-10-15** for latest release **v2.0.0**
 
 ## What's New Since v1.9.3
-
-### In Development for v2.1.0
-
-- Native macOS document-window tabs replace the old in-editor strip; no experimental setting is required. Tabs display filenames, mark the active document, and share the project sidebar while retaining independent document and preview state.
-- Project Markdown cards stay shared within a Mac tab group, retaining their prepared previews, panel width, and scroll position across documents.
-- iPhone and iPad keep the newer UIKit tab bar, including touch-friendly close, reorder, and overflow support. visionOS keeps its existing tab interface.
-- Existing document recovery remains supported, with Safe Mode drafts kept separate from the normal saved session. See [Unreleased changes](CHANGELOG.md#unreleased).
 
 ### Why Upgrade
 

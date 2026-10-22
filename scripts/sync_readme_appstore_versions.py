@@ -89,6 +89,21 @@ def replace_if_present(pattern: str, replacement: str, text: str, label: str) ->
     return updated
 
 
+def readme_last_updated_date(readme: str, latest_tag: str, today: str) -> str:
+    """Never move the README date backwards for the same release.
+
+    Scheduled runs use UTC, while release preparation records the release's
+    local date, so a same-night UTC run can otherwise be a day earlier.
+    """
+    match = re.search(
+        r"(?m)^> Last updated \(README\): \*\*(\d{4}-\d{2}-\d{2})\*\* for (?:release line|latest release) \*\*([^*]+)\*\*$",
+        readme,
+    )
+    if match and match.group(2) == latest_tag:
+        return max(today, match.group(1))
+    return today
+
+
 def sync_readme_versions(readme: str, latest_tag: str, public_store_tag: str, today: str) -> str:
     next_tag = next_patch_tag(latest_tag)
     store_is_current = public_store_tag == latest_tag
@@ -117,7 +132,7 @@ def sync_readme_versions(readme: str, latest_tag: str, public_store_tag: str, to
     )
     readme = replace_required(
         r"^> Last updated \(README\): \*\*\d{4}-\d{2}-\d{2}\*\* for latest release \*\*[^*]+\*\*$",
-        f"> Last updated (README): **{today}** for latest release **{latest_tag}**",
+        f"> Last updated (README): **{readme_last_updated_date(readme, latest_tag, today)}** for latest release **{latest_tag}**",
         readme,
         "last updated status",
     )

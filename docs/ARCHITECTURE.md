@@ -399,6 +399,8 @@ Settings iCloud synchronization is separate from document synchronization: it co
 
 The primary editor window and each detached editor window have distinct frame autosave names and distinct `EditorViewModel` instances. `MacEditorWindowSessionStore` retains only detached window IDs. `ContentView` records AppKit move/resize notifications under the corresponding autosave name and restores a saved frame only when it still intersects an attached display. The initial window is hidden during that restore so a smaller fallback frame is not flashed before the persisted frame is applied.
 
+The planned post-2.1.0 migration of native document windows toward a single AppKit creation path, AppKit window shells and an `NSDocument` evaluation is recorded in [`ADR-0001-Native-macOS-Document-Windows.md`](ADR-0001-Native-macOS-Document-Windows.md).
+
 At the next launch, the primary window asks whether to reopen all detached windows or only the first. Do not share a window's `EditorViewModel`, cursor, selected tab, or frame key with another window. `defaultSize` remains a first-launch fallback; persisted AppKit frames are authoritative after a user resize.
 
 ## Update and Distribution Boundaries

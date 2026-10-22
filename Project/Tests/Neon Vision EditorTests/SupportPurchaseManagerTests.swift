@@ -48,22 +48,23 @@ final class SupportPurchaseManagerTests: XCTestCase {
     }
 #endif
 
-    func testSettingsAlertUsesLocalPresentationState() throws {
-        let sourceURL = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Project/Sources/Neon Vision Editor/UI/NeonSettingsView.swift")
-        let source = try String(contentsOf: sourceURL, encoding: .utf8)
-        // Structural guard for the framework-owned presentation setter: it must
-        // not synchronously publish through SupportPurchaseManager.
-        XCTAssertTrue(source.contains("isPresented: $supportStatusAlert.isPresented"))
-        XCTAssertFalse(source.contains("private var supportStatusAlertBinding"))
+    func testFrameworkAlertDismissalDoesNotMutatePurchaseStatus() {
+        let manager = SupportPurchaseManager(loadProducts: { [] }, canMakePayments: { false })
+        manager.statusMessage = "Pending purchase feedback"
+        var presentation = SupportStatusAlertPresentation()
+        presentation.receive(manager.statusMessage)
+        presentation.isPresented = false
+        presentation.didDismiss()
+        XCTAssertFalse(presentation.isPresented)
+        XCTAssertEqual(manager.statusMessage, "Pending purchase feedback",
+            "Framework dismissal changes view-local presentation, not the observed purchase manager")
     }
 
     func testBackgroundMetadataRefreshPreservesNewerPurchaseStatus() async throws {
         let session = try makeSession()
         defer { session.clearTransactions() }
         let products = try await Product.products(for: [SupportPurchaseManager.supportProductID])
-        XCTAssertFalse(products.isEmpty)
+        _ = try XCTUnwrap(products.first, "StoreKit fixture must load before suspending a metadata refresh")
         var lookups = 0
         var resume: CheckedContinuation<Void, Never>?
         let started = expectation(description: "Background refresh suspended")
@@ -92,9 +93,9 @@ final class SupportPurchaseManagerTests: XCTestCase {
     }
 
     private func makeSession() throws -> SKTestSession {
-        let configuration = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Project/Sources/Neon Vision Editor/SupportOptional.storekit")
+        // App-hosted tests run inside the app sandbox. Use its bundled fixture,
+        // not a source-checkout path the running application cannot read.
+        let configuration = try XCTUnwrap(Bundle.main.url(forResource: "SupportOptional", withExtension: "storekit"))
         let session = try SKTestSession(contentsOf: configuration)
         session.resetToDefaultState()
         session.disableDialogs = true
@@ -150,7 +151,7 @@ final class SupportPurchaseManagerTests: XCTestCase {
         let session = try makeSession()
         defer { session.clearTransactions() }
         let products = try await Product.products(for: [SupportPurchaseManager.supportProductID])
-        XCTAssertFalse(products.isEmpty)
+        _ = try XCTUnwrap(products.first, "StoreKit fixture must load before suspending a shared lookup")
         var resumeLookup: CheckedContinuation<Void, Never>?
         var lookups = 0
         var purchases = 0

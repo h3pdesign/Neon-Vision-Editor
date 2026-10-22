@@ -20,6 +20,37 @@ struct AppleCrashReportSection: Identifiable, Hashable, Sendable {
 }
 
 enum AppleCrashReportParser {
+    /// View evaluation must not reread and classify an unchanged document.
+    /// Keep only a weak owner and scalar result, not the inspected text.
+    @MainActor
+    final class DetectionCache {
+        private weak var document: (any EditorDocument)?
+        private var result: (revision: Int, externalRevision: Int, value: Bool)?
+
+        func invalidate() {
+            document = nil
+            result = nil
+        }
+
+        func detect(document: any EditorDocument, contentRevision: Int, externalContentRevision: Int) -> Bool {
+            if self.document === document, let result,
+               result.revision == contentRevision, result.externalRevision == externalContentRevision {
+                return result.value
+            }
+            do {
+                let sample = try document.text(inUTF16Range: NSRange(location: 0, length: min(document.utf16Length, 16_000)))
+                let value = AppleCrashReportParser.looksLikeAppleCrashReport(sample)
+                self.document = document
+                result = (contentRevision, externalContentRevision, value)
+                return value
+            } catch {
+                // A transient provider/read failure is not a negative detection.
+                invalidate()
+                return false
+            }
+        }
+    }
+
     nonisolated private static let inspectionLimit = 1_000_000
     nonisolated private static let maximumThreadEntries = 80
     nonisolated private static let maximumBinaryImageEntries = 40

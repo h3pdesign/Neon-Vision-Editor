@@ -677,12 +677,7 @@ extension ContentView {
         guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
         do {
-            let data = Data(source.utf8)
-            let json = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
-            var writingOptions: JSONSerialization.WritingOptions = prettyPrinted ? [.prettyPrinted, .sortedKeys] : [.sortedKeys]
-            writingOptions.insert(.fragmentsAllowed)
-            let outputData = try JSONSerialization.data(withJSONObject: json, options: writingOptions)
-            guard var output = String(data: outputData, encoding: .utf8) else { return }
+            var output = try JSONPreviewDocument.formattedText(source, prettyPrinted: prettyPrinted)
             if prettyPrinted && !output.hasSuffix("\n") {
                 output.append("\n")
             }
@@ -848,8 +843,18 @@ extension ContentView {
     }
 
     func closeAllTabsFromToolbar() {
+#if os(macOS)
+        let owners = MacDocumentWindowTabs.shared.models(inGroupOf: viewModel)
+        Task {
+            for owner in owners {
+                owner.nativeRevealWindow?()
+                guard await owner.saveAndCloseTabs(tabIDs: owner.tabs.map(\.id)) else { return }
+            }
+        }
+#else
         let tabIDsToClose = viewModel.tabs.map(\.id)
         Task { await viewModel.saveAndCloseTabs(tabIDs: tabIDsToClose) }
+#endif
     }
 
     func requestCloseAllTabsFromToolbar() {
@@ -864,6 +869,12 @@ extension ContentView {
     }
 
     func requestCloseTab(_ tab: TabData) {
+        #if os(macOS)
+        if let hostWindowNumber {
+            NSApp.window(withWindowNumber: hostWindowNumber)?.performClose(nil)
+            return
+        }
+        #endif
         #if os(iOS) || os(visionOS)
         let shouldConfirmClose = tab.isDirty
         #else
@@ -1323,55 +1334,9 @@ extension ContentView {
 
     func applyWindowTranslucency(_ enabled: Bool) {
 #if os(macOS)
-        let isDarkMode = colorScheme == .dark
-        let nativeTranslucencyEnabled = ContentView.MacEditorSurfacePolicy.nativeTranslucencyEnabled(
-            translucent: enabled,
-            opaqueEditorCanvas: opaqueEditorSurfaceMac
-        )
-        let effectiveModeRaw = ContentView.MacEditorSurfacePolicy.effectiveTranslucencyModeRaw(
-            translucent: enabled,
-            opaqueEditorCanvas: opaqueEditorSurfaceMac,
-            selectedModeRaw: macTranslucencyModeRaw
-        )
-        for window in NSApp.windows {
-            // Apply only to editor windows registered by ContentView instances.
-            guard WindowViewModelRegistry.shared.viewModel(for: window.windowNumber) != nil else {
-                continue
-            }
-            let isOpaque = !nativeTranslucencyEnabled
-            let backgroundColor = ContentView.MacEditorSurfacePolicy.windowBackground(
-                translucent: nativeTranslucencyEnabled,
-                modeRaw: effectiveModeRaw,
-                isDarkMode: isDarkMode
-            )
-            if window.isOpaque != isOpaque {
-                window.isOpaque = isOpaque
-            }
-            if window.backgroundColor != backgroundColor {
-                window.backgroundColor = backgroundColor
-            }
-            if window.contentView?.wantsLayer != true {
-                window.contentView?.wantsLayer = true
-            }
-            if window.contentView?.layer?.backgroundColor != NSColor.clear.cgColor {
-                window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
-            }
-            // Keep chrome flags constant; toggling these causes visible top-bar jumps.
-            if !window.titlebarAppearsTransparent {
-                window.titlebarAppearsTransparent = true
-            }
-            if window.toolbarStyle != .unified {
-                window.toolbarStyle = .unified
-            }
-            if !window.styleMask.contains(.fullSizeContentView) {
-                window.styleMask.insert(.fullSizeContentView)
-            }
-            if #available(macOS 13.0, *) {
-                if window.titlebarSeparatorStyle != .none {
-                    window.titlebarSeparatorStyle = .none
-                }
-            }
-        }
+        Self.MacEditorSurfacePolicy.configureRegisteredWindowTranslucency(enabled,
+            opaqueEditorCanvas: opaqueEditorSurfaceMac, modeRaw: macTranslucencyModeRaw,
+            isDarkMode: colorScheme == .dark)
 #endif
     }
 
@@ -1396,7 +1361,7 @@ extension ContentView {
     /// Clears only the selected project context. Open tabs remain available,
     /// while project indexing, file observation, security scope, and Git state
     /// are released together.
-    func closeProjectFolder() {
+    func closeProjectFolder(synchronizeNativeTabs: Bool = true) {
         projectTreeRefreshGeneration &+= 1
         projectFileIndexRefreshGeneration &+= 1
         projectFileIndexTask?.cancel()
@@ -1405,6 +1370,7 @@ extension ContentView {
         projectFolderSecurityURL?.stopAccessingSecurityScopedResource()
         projectFolderSecurityURL = nil
         projectRootFolderURL = nil
+        markdownProjectPreviewSession.setProjectRoot(nil)
         projectTreeNodes = []
         projectTreeRevealURL = nil
         quickSwitcherProjectFileURLs = []
@@ -1416,6 +1382,11 @@ extension ContentView {
         showCompactProjectSidebarSheet = false
         projectSidebarFindInFilesRequestToken = 0
         persistSessionIfReady()
+#if os(macOS)
+        if synchronizeNativeTabs {
+            MacDocumentWindowTabs.shared.synchronizeProjectFolder(nil, from: viewModel)
+        }
+#endif
     }
 
     func requestCloseProjectFolderAndTabs() {
@@ -2234,7 +2205,8 @@ extension ContentView {
         )
     }
 
-    func setProjectFolder(_ folderURL: URL) {
+    func setProjectFolder(_ folderURL: URL, synchronizeNativeTabs: Bool = true) {
+        markdownProjectPreviewSession.setProjectRoot(folderURL)
 #if os(macOS) || canImport(UIKit)
         let standardizedTarget = folderURL.standardizedFileURL
         if let previous = projectFolderSecurityURL?.standardizedFileURL,
@@ -2261,6 +2233,11 @@ extension ContentView {
         refreshProjectBrowserState()
         persistSessionIfReady()
         gitViewModel.setProjectURL(folderURL)
+#if os(macOS)
+        if synchronizeNativeTabs {
+            MacDocumentWindowTabs.shared.synchronizeProjectFolder(folderURL, from: viewModel)
+        }
+#endif
     }
 
     func clearProjectEditorOverrides() {

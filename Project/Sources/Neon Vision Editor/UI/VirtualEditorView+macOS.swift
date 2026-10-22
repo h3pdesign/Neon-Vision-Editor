@@ -490,6 +490,7 @@ struct VirtualEditorView: NSViewRepresentable {
     let focusesEditorOnInitialWindowAttachment: Bool
     let onFontSizeChange: ((CGFloat) -> Void)?
     let onTextMutation: ((EditorTextMutation) -> Bool)?
+    var onFirstDraw: ((UUID, String) -> Void)? = nil
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: VirtualEditorScrollView, context: Context) -> CGSize? {
         VirtualEditorLayoutSizing.sizeThatFits(
@@ -500,44 +501,23 @@ struct VirtualEditorView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> VirtualEditorScrollView {
+        makeEditorView()
+    }
+
+    /// The AppKit document controller uses the same engine and configuration as
+    /// the representable, without installing a SwiftUI graph around the canvas.
+    func makeEditorView() -> VirtualEditorScrollView {
         let view = VirtualEditorScrollView()
         view.focusesEditorOnInitialWindowAttachment = focusesEditorOnInitialWindowAttachment
-        view.configure(
-            document: document,
-            documentID: documentID,
-            resourceID: documentResourceID,
-            displayName: documentDisplayName,
-            contentRevision: contentRevision,
-            externalContentRevision: externalContentRevision,
-            caret: storedCaretLocation,
-            language: language,
-            colorScheme: colorScheme,
-            themeRefreshToken: themeRefreshToken,
-            fontSize: fontSize,
-            fontName: fontName,
-            lineHeightMultiplier: lineHeightMultiplier,
-            isReadOnly: isReadOnly,
-            translucentBackgroundEnabled: translucentBackgroundEnabled,
-            showsLineNumbers: showsLineNumbers,
-            highlightCurrentLine: highlightCurrentLine,
-            lineWrapEnabled: lineWrapEnabled,
-            showsInvisibleCharacters: showsInvisibleCharacters,
-            showsIndentationGuides: showsIndentationGuides,
-            showsScopeGuides: showsScopeGuides,
-            highlightsScopeBackground: highlightsScopeBackground,
-            highlightsMatchingBrackets: highlightsMatchingBrackets,
-            autoIndentEnabled: autoIndentEnabled,
-            autoCloseBracketsEnabled: autoCloseBracketsEnabled,
-            indentStyle: indentStyle,
-            indentWidth: indentWidth,
-            isSplitPaneResizeInProgress: isSplitPaneResizeInProgress,
-            onFontSizeChange: onFontSizeChange,
-            onTextMutation: onTextMutation
-        )
+        updateEditorView(view)
         return view
     }
 
     func updateNSView(_ nsView: VirtualEditorScrollView, context: Context) {
+        updateEditorView(nsView)
+    }
+
+    func updateEditorView(_ nsView: VirtualEditorScrollView) {
         nsView.configure(
             document: document,
             documentID: documentID,
@@ -568,7 +548,8 @@ struct VirtualEditorView: NSViewRepresentable {
             indentWidth: indentWidth,
             isSplitPaneResizeInProgress: isSplitPaneResizeInProgress,
             onFontSizeChange: onFontSizeChange,
-            onTextMutation: onTextMutation
+            onTextMutation: onTextMutation,
+            onFirstDraw: onFirstDraw
         )
     }
 }
@@ -812,7 +793,8 @@ final class VirtualEditorScrollView: NSScrollView {
         highlightsMatchingBrackets: Bool, autoIndentEnabled: Bool, autoCloseBracketsEnabled: Bool,
         indentStyle: String = "spaces", indentWidth: Int = 4,
         isSplitPaneResizeInProgress: Bool,
-        onFontSizeChange: ((CGFloat) -> Void)?, onTextMutation: ((EditorTextMutation) -> Bool)?
+        onFontSizeChange: ((CGFloat) -> Void)?, onTextMutation: ((EditorTextMutation) -> Bool)?,
+        onFirstDraw: ((UUID, String) -> Void)? = nil
     ) {
         self.isSplitPaneResizeInProgress = isSplitPaneResizeInProgress
         hasHorizontalScroller = !lineWrapEnabled
@@ -835,7 +817,8 @@ final class VirtualEditorScrollView: NSScrollView {
             autoCloseBracketsEnabled: autoCloseBracketsEnabled,
             indentStyle: indentStyle,
             indentWidth: indentWidth,
-            onFontSizeChange: onFontSizeChange, onTextMutation: onTextMutation
+            onFontSizeChange: onFontSizeChange, onTextMutation: onTextMutation,
+            onFirstDraw: onFirstDraw
         )
         if let documentID {
             EditorPerformanceMonitor.shared.markSwiftUIEditorUpdated(tabID: documentID)
@@ -1076,6 +1059,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var document: (any EditorDocument)?
     private var documentID: UUID?
     private var resourceID = ""
+    private var onFirstDraw: ((UUID, String) -> Void)?
     private var language = "plain"
     private var scheme: ColorScheme = .light
     private var resolvedEditorTheme = currentEditorTheme(colorScheme: .light)
@@ -1585,8 +1569,10 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         showsScopeGuides: Bool, highlightsScopeBackground: Bool,
         highlightsMatchingBrackets: Bool, autoIndentEnabled: Bool, autoCloseBracketsEnabled: Bool,
         indentStyle: String = "spaces", indentWidth: Int = 4,
-        onFontSizeChange: ((CGFloat) -> Void)?, onTextMutation: ((EditorTextMutation) -> Bool)?
+        onFontSizeChange: ((CGFloat) -> Void)?, onTextMutation: ((EditorTextMutation) -> Bool)?,
+        onFirstDraw: ((UUID, String) -> Void)? = nil
     ) {
+        self.onFirstDraw = onFirstDraw
         let previousResourceID = self.resourceID
         let previousDocumentID = self.documentID
         let isNewDocument = previousResourceID != resourceID || previousDocumentID != documentID
@@ -1780,6 +1766,15 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                installedContentRevision == configuredContentRevision,
                installedExternalContentRevision == configuredExternalContentRevision {
                 EditorPerformanceMonitor.shared.markTabSwitchFirstDraw(tabID: documentID)
+                if let onFirstDraw {
+                    self.onFirstDraw = nil
+                    let drawnResourceID = resourceID
+                    Task { @MainActor [weak self] in
+                        guard let self, self.window != nil,
+                              self.documentID == documentID, self.resourceID == drawnResourceID else { return }
+                        onFirstDraw(documentID, drawnResourceID)
+                    }
+                }
                 if deferredUnwrappedWidth {
                     deferredUnwrappedWidth = false
                     scheduleDeferredUnwrappedContentWidth()

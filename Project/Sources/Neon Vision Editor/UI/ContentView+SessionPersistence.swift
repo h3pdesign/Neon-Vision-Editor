@@ -126,6 +126,52 @@ extension ContentView {
 
     func applyStartupBehaviorIfNeeded() {
         guard !didApplyStartupBehavior else { return }
+#if os(macOS)
+        // Do not restore multiple documents into one model before its native
+        // window factory is attached. A preloaded child must not be reset.
+        if viewModel.nativeDocumentDestination == nil { return }
+        if startupBehavior == .nativeDocument {
+            applyDefaultMarkdownPreviewOpenMode()
+            if !viewModel.isSafeModeRecoveryWindow {
+                restoreLastSessionViewContextIfAvailable(restoresPresentation: false)
+                if let folder = markdownProjectPreviewSession.projectRoot ?? restoredLastSessionProjectFolderURL() {
+                    setProjectFolder(folder, synchronizeNativeTabs: false)
+                }
+            }
+            didApplyStartupBehavior = true
+            persistSessionIfReady()
+            return
+        }
+        if startupBehavior == .standard {
+            let shouldOpenBlank = openWithBlankDocument && !reopenLastSession
+            if !shouldOpenBlank {
+                if let folder = restoredLastSessionProjectFolderURL() {
+                    setProjectFolder(folder, synchronizeNativeTabs: false)
+                }
+                // Recover dirty buffers first. Opening their on-disk URLs must
+                // focus those owners, not start a competing load over the draft.
+                if recoverUnsavedDrafts { _ = restoreUnsavedDraftSnapshotIfAvailable() }
+                let recoveredSelection = MacDocumentWindowTabs.shared.selectedModel
+                if reopenLastSession {
+                    let preferences = restoredLastSessionEncodingPreferences()
+                    for url in restoredLastSessionFileURLs() {
+                        let preference = preferences[url.standardizedFileURL.absoluteString]
+                        _ = viewModel.openFile(url: url, preferredEncoding: preference?.encoding,
+                                               usesAutomaticEncoding: preference?.usesAutomatic ?? true)
+                    }
+                    if let selected = restoredLastSessionSelectedFileURL() {
+                        _ = viewModel.focusTabIfOpen(for: selected)
+                    } else {
+                        recoveredSelection?.nativeRevealWindow?()
+                    }
+                }
+            }
+            restoreLastSessionViewContextIfAvailable()
+            didApplyStartupBehavior = true
+            persistSessionIfReady()
+            return
+        }
+#endif
 
         if startupBehavior == .forceBlankDocument || startupBehavior == .safeMode {
             resetForBlankStartup()
@@ -205,8 +251,7 @@ extension ContentView {
     }
 
     private func resetForBlankStartup() {
-        viewModel.resetTabsForSessionRestore()
-        viewModel.addNewTab()
+        viewModel.resetToBlankDocumentForStartup()
         projectRootFolderURL = nil
         clearProjectEditorOverrides()
         projectTreeNodes = []
@@ -225,7 +270,10 @@ extension ContentView {
 
     func persistSelectedSessionFileURLImmediately() {
         guard didApplyStartupBehavior, startupBehavior != .safeMode else { return }
-        let value = viewModel.selectedTab?.fileURL.map { EditorPreferenceWriter.Value.string($0.absoluteString) } ?? .removed
+#if os(macOS)
+        guard !viewModel.isSafeModeRecoveryWindow else { return }
+#endif
+        let value = sessionSelectedFileURL.map { EditorPreferenceWriter.Value.string($0.absoluteString) } ?? .removed
         sessionPreferences.set(value, forKey: "LastSessionSelectedFileURL")
     }
 
@@ -257,8 +305,11 @@ extension ContentView {
     func persistSessionIfReady() {
         guard didApplyStartupBehavior else { return }
         guard startupBehavior != .safeMode else { return }
-        let fileURLs = viewModel.tabs.compactMap { $0.fileURL }
-        let selectedURL = viewModel.selectedTab?.fileURL
+#if os(macOS)
+        guard !viewModel.isSafeModeRecoveryWindow else { return }
+#endif
+        let fileURLs = sessionDocumentTabs.compactMap { $0.fileURL }
+        let selectedURL = sessionSelectedFileURL
         let signature = ([
             fileURLs.map(\.absoluteString).joined(separator: "|"),
             selectedURL?.absoluteString ?? "",
@@ -270,7 +321,7 @@ extension ContentView {
                 .sorted { $0.key < $1.key }
                 .map { "\($0.key)=\($0.value)" }
                 .joined(separator: "|"),
-            viewModel.tabs.compactMap { tab in
+            sessionDocumentTabs.compactMap { tab in
                 guard let url = tab.fileURL else { return nil }
                 return "\(url.standardizedFileURL.absoluteString)=\(tab.fileEncoding.identifier.rawValue):\(tab.usesAutomaticFileEncoding)"
             }.joined(separator: "|")
@@ -295,6 +346,22 @@ extension ContentView {
         persistLastSessionSecurityScopedBookmarks(fileURLs: fileURLs, selectedURL: selectedURL)
 #elseif os(macOS)
         persistLastSessionSecurityScopedBookmarksMac(fileURLs: fileURLs, selectedURL: selectedURL)
+#endif
+    }
+
+    var sessionSelectedFileURL: URL? {
+#if os(macOS)
+        (MacDocumentWindowTabs.shared.sessionSelectionModel ?? viewModel).selectedTab?.fileURL
+#else
+        viewModel.selectedTab?.fileURL
+#endif
+    }
+
+    var sessionDocumentTabs: [TabData] {
+#if os(macOS)
+        return MacDocumentWindowTabs.shared.models.flatMap(\.tabs)
+#else
+        return viewModel.tabs
 #endif
     }
 
@@ -373,7 +440,7 @@ extension ContentView {
     func persistLastSessionEncodingPreferences() {
         var identifiers: [String: String] = [:]
         var automaticModes: [String: Bool] = [:]
-        for tab in viewModel.tabs {
+        for tab in sessionDocumentTabs {
             guard let url = tab.fileURL else { continue }
             let key = url.standardizedFileURL.absoluteString
             identifiers[key] = tab.fileEncoding.identifier.rawValue
@@ -408,24 +475,35 @@ extension ContentView {
                 sessionCaretByFileURL[key] = max(0, lastCaretLocation)
             }
         }
+#if os(macOS)
+        var saved = sessionPreferences.object(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]
+        if let url = viewModel.selectedTab?.fileURL {
+            let key = url.standardizedFileURL.absoluteString
+            saved[key] = sessionCaretByFileURL[key] ?? max(0, lastCaretLocation)
+        }
+        sessionPreferences.set(.integers(saved), forKey: lastSessionCaretByFileURLKey)
+#else
         sessionPreferences.set(.integers(sessionCaretByFileURL), forKey: lastSessionCaretByFileURLKey)
+#endif
     }
 
-    func restoreLastSessionViewContextIfAvailable() {
+    func restoreLastSessionViewContextIfAvailable(restoresPresentation: Bool = true) {
         let defaults = sessionPreferences
-        if let visible = defaults.object(forKey: lastSessionShowSidebarKey) as? Bool {
-            viewModel.showSidebar = visible
-        }
+        if restoresPresentation {
+            if let visible = defaults.object(forKey: lastSessionShowSidebarKey) as? Bool {
+                viewModel.showSidebar = visible
+            }
 #if !os(macOS)
-        if let visible = defaults.object(forKey: lastSessionShowProjectSidebarKey) as? Bool {
-            showProjectStructureSidebar = visible
-        }
+            if let visible = defaults.object(forKey: lastSessionShowProjectSidebarKey) as? Bool {
+                showProjectStructureSidebar = visible
+            }
 #endif
-        if let rawPreviewMode = defaults.object(forKey: lastSessionPreviewModeKey) as? String,
-           let restoredPreviewMode = PreviewMode(rawValue: rawPreviewMode) {
-            previewMode = restoredPreviewMode
-        } else if let visible = defaults.object(forKey: lastSessionShowMarkdownPreviewKey) as? Bool {
-            showMarkdownPreviewPane = visible
+            if let rawPreviewMode = defaults.object(forKey: lastSessionPreviewModeKey) as? String,
+               let restoredPreviewMode = PreviewMode(rawValue: rawPreviewMode) {
+                previewMode = restoredPreviewMode
+            } else if let visible = defaults.object(forKey: lastSessionShowMarkdownPreviewKey) as? Bool {
+                showMarkdownPreviewPane = visible
+            }
         }
         sessionCaretByFileURL = defaults.object(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]
     }
@@ -579,18 +657,27 @@ extension ContentView {
     // MARK: - Unsaved Draft Recovery
 
     var unsavedDraftSnapshotRegistryKey: String { "UnsavedDraftSnapshotRegistryV1" }
-    var unsavedDraftSnapshotKey: String { "UnsavedDraftSnapshotV2.\(recoverySnapshotIdentifier)" }
+    var unsavedDraftSnapshotKey: String {
+#if os(macOS)
+        return MacDocumentTabPolicy.draftSnapshotKey(for: viewModel)
+#else
+        return "UnsavedDraftSnapshotV2.\(recoverySnapshotIdentifier)"
+#endif
+    }
     var maxPersistedDraftTabs: Int { 20 }
     var maxPersistedDraftUTF16Length: Int { 1_000_000 }
     var maxPersistedDraftTotalUTF16Length: Int { 4_000_000 }
 
     func persistUnsavedDraftSnapshotIfNeeded() {
+#if os(macOS)
+        if MacDocumentWindowTabs.shared.isTerminating { return }
+#endif
         guard recoverUnsavedDrafts else {
             clearUnsavedDraftSnapshots()
             return
         }
         let defaults = UserDefaults.standard
-        let dirtyTabs = viewModel.tabs.filter(\.isDirty)
+        let dirtyTabs = sessionDocumentTabs.filter(\.isDirty)
         let signature = dirtyTabs.isEmpty
             ? "clean"
             : dirtyTabs.map { "\($0.id.uuidString):\($0.contentRevision)" }.joined(separator: "|")
@@ -708,10 +795,19 @@ extension ContentView {
         }
         viewModel.restoreTabsFromSnapshot(restoredTabs, selectedIndex: restoredSnapshot.selectedIndex)
 
+#if os(macOS)
+        // Persist the complete restored set, including pending scenes, before
+        // consuming legacy snapshots. Child scene attachment is asynchronous.
+        persistUnsavedDraftSnapshotIfNeeded()
+        guard defaults.data(forKey: unsavedDraftSnapshotKey) != nil else { return true }
+        for key in keys where key != unsavedDraftSnapshotKey { defaults.removeObject(forKey: key) }
+        defaults.set([unsavedDraftSnapshotKey], forKey: unsavedDraftSnapshotRegistryKey)
+#else
         for key in keys {
             defaults.removeObject(forKey: key)
         }
         defaults.removeObject(forKey: unsavedDraftSnapshotRegistryKey)
+#endif
         return true
     }
 

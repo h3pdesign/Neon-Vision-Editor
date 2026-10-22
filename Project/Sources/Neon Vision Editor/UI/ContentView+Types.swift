@@ -119,6 +119,7 @@ extension ContentView {
     enum StartupBehavior {
         case standard
         case forceBlankDocument
+        case nativeDocument
         case safeMode
     }
 

@@ -11,6 +11,28 @@ final class JSONPreviewDocumentTests: XCTestCase {
         XCTAssertEqual(children[1].value, "-1.2300e+100")
     }
 
+    func testJSONFormattingPreservesMemberOrderDuplicateKeysAndExactTokens() throws {
+        let source = #"{ "z": 9007199254740993, "a": -1.2300e+100, "z": true, "escaped": "a\\nb" }"#
+
+        let compact = try JSONPreviewDocument.formattedText(source, prettyPrinted: false)
+        XCTAssertEqual(compact, #"{"z":9007199254740993,"a":-1.2300e+100,"z":true,"escaped":"a\\nb"}"#)
+
+        let pretty = try JSONPreviewDocument.formattedText(source, prettyPrinted: true)
+        XCTAssertEqual(pretty, "{\n  \"z\": 9007199254740993,\n  \"a\": -1.2300e+100,\n  \"z\": true,\n  \"escaped\": \"a\\\\nb\"\n}")
+        XCTAssertEqual(compact.components(separatedBy: "\"z\"").count - 1, 2)
+        XCTAssertLessThan(try XCTUnwrap(compact.range(of: "\"z\":9007199254740993")).lowerBound,
+                          try XCTUnwrap(compact.range(of: "\"a\":-1.2300e+100")).lowerBound)
+    }
+
+    func testJSONFormattingHandlesFragmentsAndRejectsMalformedInput() throws {
+        for source in ["null", "true", "-0", "1.20e-3", #""quoted""#] {
+            XCTAssertEqual(try JSONPreviewDocument.formattedText(source, prettyPrinted: true), source)
+        }
+        for source in ["[1,]", "{\"a\":1,}", "01", "1e", #""\q""#, #""\uD800""#, "true false"] {
+            XCTAssertThrowsError(try JSONPreviewDocument.formattedText(source, prettyPrinted: false), source)
+        }
+    }
+
     func testFragmentsAndEmptyContainers() throws {
         for text in ["null", "true", "false", "0", "-0", "1.5e-2", "\"hello\"", "{}", "[]"] {
             XCTAssertEqual(try JSONPreviewDocument.parse(text).nodes.count, 1, text)

@@ -200,7 +200,6 @@
 "Allow Private Cloud Compute for Agent Mode" = "エージェントモードのプライベートクラウド計算を許可する";
 "Allow Shared Imports?" = "共有インポートを許可する？";
 "Allows complex Edit and Verify requests to use Apple's Private Cloud Compute when available." = "複雑な編集および検証リクエストが利用可能なときに、Appleのプライベートクラウド計算を使用できるようにする。";
-"Always" = "常に";
 "An item with this name already exists." = "この名前のアイテムがすでに存在します。";
 "Anthropic" = "アンソプティック";
 "Anthropic API Token Required" = "Anthropic API Token Required";
@@ -955,7 +954,6 @@
 "Neon Vision Editor will always stay free to use." = "ネオンビジョンエディタは常に無料でご利用いただけます。";
 "Neon Vision Editor will ask macOS to open its supported text and source-code file types. macOS may request your confirmation." = "ネオンビジョンエディタは、macOSにサポートされているテキストファイルおよびソースコードファイルの開示を要求します。macOSが確認を求める場合があります。";
 "Neutral" = "ニュートラル";
-"Never" = "決して";
 "New Chat" = "新しいチャット";
 "New Comparison" = "新しい比較";
 "New File" = "新しいファイル";
@@ -1060,7 +1058,6 @@
 "Open in New Tab" = "新しいタブで開く";
 "Open in New Tabs" = "新しいタブで開く";
 "Open in Separate Window" = "別ウィンドウで開く";
-"Open in Tabs" = "タブで開く";
 "Open match in editor" = "エディタでマッチを開く";
 "Open remote folder %@" = "リモートフォルダ %@を開く";
 "Open shared import %@" = "共有インポート %@を開く";
@@ -1513,6 +1510,7 @@
 "Support purchase is currently unavailable." = "購入は現在利用できません。";
 "Support via Patreon" = "Patreon経由のサポート。";
 "Swipe horizontally to reveal more editor actions" = "横にスワイプして、より多くのエディタアクションを表示します";
+"Swipe vertically to reveal more editor actions" = "縦にスワイプして、より多くのエディタアクションを表示します";
 "Switch between a categorized crash summary and raw text" = "カテゴリ化されたクラッシュサマリーと生のテキスト間で切り替え。";
 "Switch between a severity summary and raw log text" = "重症度サマリーと生のログテキスト間で切り替え。";
 "Switch between structured plist mode and raw text mode" = "構造化されたplistモードと生のテキストモード間で切り替え。";
@@ -1790,3 +1788,17 @@
 "Adaptive Toolbar" = "可変ツールバー";
 "Adapts the phone toolbar when the available layout changes between compact and regular width." = "利用可能なレイアウトがコンパクト幅と標準幅の間で変わると、iPhoneのツールバーを調整します。";
 "Adaptive Toolbar: Adapts the phone toolbar when the available layout changes between compact and regular width." = "可変ツールバー: 利用可能なレイアウトがコンパクト幅と標準幅の間で変わると、iPhoneのツールバーを調整します。";
+"What’s New in v2.1.0" = "v2.1.0の新機能";
+"Release highlights for v2.1.0." = "v2.1.0の主な変更点。";
+"Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing." = "ファイル名の表示、アクティブなタブの強調表示、ダブルクリックで閉じる操作に対応した Mac のネイティブ書類タブを使用できます。";
+"Editor Improvements: Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing." = "エディタの改善: ファイル名の表示、アクティブなタブの強調表示、ダブルクリックで閉じる操作に対応した Mac のネイティブ書類タブを使用できます。";
+"Keep project navigation shared while each document retains its own editing and preview state." = "各書類が独自の編集状態とプレビュー状態を保ったまま、プロジェクトのナビゲーションを共有します。";
+"Editor Navigation: Keep project navigation shared while each document retains its own editing and preview state." = "エディタのナビゲーション: 各書類が独自の編集状態とプレビュー状態を保ったまま、プロジェクトのナビゲーションを共有します。";
+"Preserve unsaved edits during external-file refreshes and exact JSON values when formatting." = "外部ファイルの再読み込み中も未保存の変更を保持し、整形時に JSON の値を正確に保ちます。";
+"Reliable Saves: Preserve unsaved edits during external-file refreshes and exact JSON values when formatting." = "信頼できる保存: 外部ファイルの再読み込み中も未保存の変更を保持し、整形時に JSON の値を正確に保ちます。";
+"Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation." = "Mac のネイティブ書類タブをダブルクリックして閉じられます。未保存の変更がある場合は従来どおり確認します。";
+"Reliable Saves: Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation." = "信頼できる保存: Mac のネイティブ書類タブをダブルクリックして閉じられます。未保存の変更がある場合は従来どおり確認します。";
+"Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native…" = "macOS ではネイティブ書類タブが標準になり、従来のエディタ内タブバーと実験的な設定を置き換えます…";
+"Editor Improvements: Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native…" = "エディタの改善: macOS ではネイティブ書類タブが標準になり、従来のエディタ内タブバーと実験的な設定を置き換えます…";
+"Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience." = "iPhone と iPad では新しいタッチ操作向けの UIKit タブが引き続き標準となり、visionOS は既存のタブ体験を維持します。";
+"Workflow Refinements: Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience." = "ワークフローの微調整: iPhone と iPad では新しいタッチ操作向けの UIKit タブが引き続き標準となり、visionOS は既存のタブ体験を維持します。";

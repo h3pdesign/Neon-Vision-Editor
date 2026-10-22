@@ -118,7 +118,26 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v2.0.0</h2><span class="date">15 October 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v2.1.0</h2><span class="date">23 October 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS&#x27;s existing tab experience.</p></div>
+          <div class="item"><span class="badge new">New</span><p>On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is closed, open, or partially folded, so it no longer covers the bottom of your document (#498).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps the Mac editor at full height when the code minimap is shown; short Swift, YAML, and other code files no longer collapse to a single centered line.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Adds space between the Mac toolbar&#x27;s outer symbols and the rounded ends of their group.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Gives the first Mac tab the same toolbar background as every other tab.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps each Mac tab&#x27;s cursor, selection, and preview independent, so typing in one document no longer refreshes other tabs.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps project Markdown cards shared across Mac tabs, preserving prepared previews, pane width, and scroll position when switching or opening documents.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Restores Mac tabs without briefly showing separate windows, keeps file-conflict prompts with their own document, and preserves unsaved-change protection when closing.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Rechecks document revisions before applying external file refreshes, so edits made while a refresh is pending are not replaced by stale content.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Keeps Safe Mode&#x27;s blank editor in its original window and keeps recovery drafts separate from the normal saved session.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Preserves JSON object member order, repeated keys, exact number tokens, and escaped strings when formatting or combining lines (#802).</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>The previous Mac in-editor tab strip and experimental native-tab preference are replaced by native document tabs. iPhone, iPad, and visionOS retain their existing platform-specific tab experiences.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v2.0.0</h2><span class="date">15 October 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Keeps compatible Markdown previews up to date without reloading unchanged content or losing your scroll position.</p></div>
           <div class="item"><span class="badge new">New</span><p>Stops obsolete folder scans when you cancel project indexing.</p></div>

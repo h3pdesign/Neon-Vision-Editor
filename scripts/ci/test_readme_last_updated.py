@@ -2,6 +2,7 @@
 """README "Last updated" must not move backwards for the same release."""
 import importlib.util
 import pathlib
+import sys
 import unittest
 
 SCRIPTS = pathlib.Path(__file__).resolve().parents[1]
@@ -10,7 +11,13 @@ SCRIPTS = pathlib.Path(__file__).resolve().parents[1]
 def load(name):
     spec = importlib.util.spec_from_file_location(name, SCRIPTS / f"{name}.py")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # dataclasses resolve postponed annotations through sys.modules.
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(name, None)
+        raise
     return module
 
 

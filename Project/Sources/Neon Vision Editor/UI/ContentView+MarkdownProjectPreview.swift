@@ -38,10 +38,18 @@ extension ContentView {
     var isMarkdownProjectPreviewVisible: Bool {
         markdownProjectPreviewEnabled &&
         isMarkdownProjectPreviewPresented &&
-        projectRootFolderURL != nil &&
+        markdownProjectPreviewRoot != nil &&
         !isSafeModeActive &&
         !brainDumpLayoutEnabled &&
         !focusModeEnabled
+    }
+
+    private var markdownProjectPreviewRoot: URL? {
+#if os(macOS)
+        markdownProjectPreviewSession.projectRoot
+#else
+        projectRootFolderURL
+#endif
     }
 
     var hasMarkdownOrPDFProjectPreviewFiles: Bool {
@@ -118,11 +126,15 @@ extension ContentView {
 
     func refreshMarkdownProjectPreview(force: Bool = false) {
         guard isMarkdownProjectPreviewVisible,
-              projectRootFolderURL != nil,
-              projectFileIndexHasCompleted else {
+              markdownProjectPreviewRoot != nil else {
             cancelMarkdownProjectPreviewRefresh()
             return
         }
+        // A new document has not installed its local project index yet. It
+        // must not cancel the existing group's prepared cards while doing so.
+        guard projectFileIndexHasCompleted else { return }
+        markdownProjectPreviewSession.isIndexReady = true
+        markdownProjectPreviewSession.indexedFileCount = projectFileIndexSnapshot.entries.count
         let signature = markdownProjectPreviewRefreshSignature
         guard force || signature != markdownProjectPreviewLastRefreshSignature else { return }
         markdownProjectPreviewLastRefreshSignature = signature
@@ -135,8 +147,17 @@ extension ContentView {
         )
     }
 
-    func cancelMarkdownProjectPreviewRefresh() {
+    func cancelMarkdownProjectPreviewRefresh(windowDisappeared: Bool = false) {
+#if os(macOS)
+        // The coordinator releases group-owned work when its final owner
+        // closes. Hiding one tab or its local focus layout is not that event.
+        if windowDisappeared || focusModeEnabled || brainDumpLayoutEnabled { return }
+#endif
         markdownProjectPreviewLastRefreshSignature = nil
+        if windowDisappeared {
+            markdownProjectPreviewModel.stopLoadingWork()
+            return
+        }
         markdownProjectPreviewModel.cancel()
     }
 
@@ -153,7 +174,9 @@ extension ContentView {
     }
 
     private var markdownProjectPreviewCurrentURL: URL? {
-#if os(iOS)
+#if os(macOS)
+        return viewModel.selectedTab?.fileURL
+#elseif os(iOS)
         // The compact card browser is a sheet rather than the split preview,
         // so the selected editor tab is the persistent marker source while
         // the sheet is open.
@@ -165,12 +188,21 @@ extension ContentView {
 
     @ViewBuilder
     var markdownProjectPreviewPanel: some View {
+#if os(macOS)
+        MacSharedProjectCards(pane: markdownProjectPreviewSession.nativePane,
+                              content: AnyView(markdownProjectPreviewPanelContent))
+#else
+        markdownProjectPreviewPanelContent
+#endif
+    }
+
+    private var markdownProjectPreviewPanelContent: some View {
         MarkdownProjectPreviewPanel(
             cards: markdownProjectPreviewModel.cards,
             currentPreviewURL: markdownProjectPreviewCurrentURL,
-            isIndexing: isProjectFileIndexing,
-            isIndexReady: projectFileIndexHasCompleted,
-            indexedFileCount: projectFileIndexSnapshot.entries.count,
+            isIndexing: !markdownProjectPreviewSession.isIndexReady && isProjectFileIndexing,
+            isIndexReady: markdownProjectPreviewSession.isIndexReady,
+            indexedFileCount: markdownProjectPreviewSession.indexedFileCount,
             isPreparingPreviews: markdownProjectPreviewModel.isLoading,
             previewStatus: markdownProjectPreviewModel.loadingStatus,
             translucentBackgroundEnabled: enableTranslucentWindow,

@@ -200,7 +200,6 @@
 "Allow Private Cloud Compute for Agent Mode" = "Agent模式允许私有云计算。";
 "Allow Shared Imports?" = "允许共享导入？";
 "Allows complex Edit and Verify requests to use Apple's Private Cloud Compute when available." = "当可用时，允许复杂编辑和验证请求使用Apple的私有云计算。";
-"Always" = "始终";
 "An item with this name already exists." = "已存在同名项目。";
 "Anthropic" = "Anthropic";
 "Anthropic API Token Required" = "Anthropic API 令牌必填";
@@ -955,7 +954,6 @@
 "Neon Vision Editor will always stay free to use." = "Neon Vision Editor始终免费使用。";
 "Neon Vision Editor will ask macOS to open its supported text and source-code file types. macOS may request your confirmation." = "Neon Vision 编辑器将请求macOS打开其支持的文本和源代码文件类型。macOS可能会要求您确认。";
 "Neutral" = "中性";
-"Never" = "从不";
 "New Chat" = "新聊天";
 "New Comparison" = "新比较";
 "New File" = "新文件";
@@ -1060,7 +1058,6 @@
 "Open in New Tab" = "在新标签页中打开";
 "Open in New Tabs" = "在新标签页中打开";
 "Open in Separate Window" = "在单独窗口中打开";
-"Open in Tabs" = "在标签页中打开";
 "Open match in editor" = "在编辑器中打开匹配项";
 "Open remote folder %@" = "打开远程文件夹 %@";
 "Open shared import %@" = "打开共享导入 %@";

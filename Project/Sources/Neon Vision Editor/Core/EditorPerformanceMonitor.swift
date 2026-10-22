@@ -64,6 +64,8 @@ final class EditorPerformanceMonitor {
     private var previewReloadExecutedCount = 0
     private(set) var lastMinimapViewportLatencyMilliseconds: Int?
     private(set) var lastTabSwitchLatencyMilliseconds: Int?
+    private(set) var lastNativeWindowCreationLatencyMilliseconds: Int?
+    private(set) var lastNativeWindowStageMilliseconds: [String: Int] = [:]
     private let defaults: UserDefaults
     private let eventsDefaultsKey = "PerformanceRecentFileOpenEventsV1"
     private let tabSwitchEventsDefaultsKey = "PerformanceRecentTabSwitchEventsV1"
@@ -171,6 +173,31 @@ final class EditorPerformanceMonitor {
     func measureVirtualEditorLayout<T>(_ work: () -> T) -> T {
         let state = signposter.beginInterval("virtual_editor_layout")
         defer { signposter.endInterval("virtual_editor_layout", state) }
+        return work()
+    }
+
+    func measureNativeWindowCreation<T>(_ work: () -> T) -> T {
+        lastNativeWindowStageMilliseconds.removeAll(keepingCapacity: true)
+        let startedAt = ProcessInfo.processInfo.systemUptime
+        let state = signposter.beginInterval("native_window_create")
+        defer {
+            signposter.endInterval("native_window_create", state)
+            let elapsed = Self.elapsedMilliseconds(since: startedAt)
+            lastNativeWindowCreationLatencyMilliseconds = elapsed
+#if DEBUG
+            logger.debug("perf.native_window_create_ms=\(elapsed, privacy: .public)")
+#endif
+        }
+        return work()
+    }
+
+    func measureNativeWindowStage<T>(_ name: StaticString, _ work: () -> T) -> T {
+        let startedAt = ProcessInfo.processInfo.systemUptime
+        let state = signposter.beginInterval(name)
+        defer {
+            signposter.endInterval(name, state)
+            lastNativeWindowStageMilliseconds[name.description] = Self.elapsedMilliseconds(since: startedAt)
+        }
         return work()
     }
 

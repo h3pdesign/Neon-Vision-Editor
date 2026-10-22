@@ -178,7 +178,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         MacDocumentWindowTabs.shared.beginTermination()
         EditorPreferenceWriter.shared.flushBeforeTermination()
-        MacEditorWindowSessionStore.shared.beginTermination()
         appUpdateManager?.applicationWillTerminate()
         RuntimeReliabilityMonitor.shared.markGracefulTermination()
     }
@@ -269,23 +268,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 final class MacEditorWindowSessionStore {
     static let shared = MacEditorWindowSessionStore()
 
-    private let windowIDsDefaultsKey = "MacEditorWindowSessionIDsV1"
-    private var isTerminating = false
     private var pendingEditorLayoutPresets: [UUID: String] = [:]
 
     private init() {}
-
-    var restorableWindowIDs: [UUID] {
-        UserDefaults.standard.stringArray(forKey: windowIDsDefaultsKey)?
-            .compactMap(UUID.init(uuidString:)) ?? []
-    }
 
     func createWindowID(initialPresetRawValue: String? = nil) -> UUID {
         let id = UUID()
         if let initialPresetRawValue {
             pendingEditorLayoutPresets[id] = initialPresetRawValue
         }
-        if !MacDocumentTabPolicy.enabledForLaunch { saveWindowIDs(restorableWindowIDs + [id]) }
         return id
     }
 
@@ -293,30 +284,16 @@ final class MacEditorWindowSessionStore {
         pendingEditorLayoutPresets.removeValue(forKey: id)
     }
 
-    func forgetWindow(id: UUID) {
-        guard !isTerminating else { return }
-        saveWindowIDs(restorableWindowIDs.filter { $0 != id })
-    }
-
-    func discardRestorableWindows() {
-        UserDefaults.standard.removeObject(forKey: windowIDsDefaultsKey)
-    }
-
     func frameAutosaveName(for id: UUID) -> String {
         "NeonVisionEditor.EditorWindow.\(id.uuidString)"
     }
 
-    func beginTermination() {
-        isTerminating = true
-    }
-
-    private func saveWindowIDs(_ ids: [UUID]) {
-        UserDefaults.standard.set(ids.map(\.uuidString), forKey: windowIDsDefaultsKey)
-    }
 }
 
 private struct PrimaryWindowContentView: View {
     @State private var viewModel: EditorViewModel
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     let startupBehavior: ContentView.StartupBehavior
     let safeModeMessage: String?
     @ObservedObject var supportPurchaseManager: SupportPurchaseManager
@@ -324,17 +301,11 @@ private struct PrimaryWindowContentView: View {
     @Binding var showGrokError: Bool
     @Binding var grokErrorMessage: String
     let onViewModelReady: (EditorViewModel) -> Void
-    let restoreDetachedWindows: ([UUID]) -> Void
-    let discardDetachedWindows: () -> Void
-    @State private var pendingDetachedWindowIDs: [UUID] = []
-    @State private var showsWindowRestorePrompt = false
-    @State private var didCheckForRestorableWindows = false
 
     init(startupBehavior: ContentView.StartupBehavior, safeModeMessage: String?,
          supportPurchaseManager: SupportPurchaseManager, appUpdateManager: AppUpdateManager,
          showGrokError: Binding<Bool>, grokErrorMessage: Binding<String>,
-         onViewModelReady: @escaping (EditorViewModel) -> Void,
-         restoreDetachedWindows: @escaping ([UUID]) -> Void, discardDetachedWindows: @escaping () -> Void) {
+         onViewModelReady: @escaping (EditorViewModel) -> Void) {
         self.startupBehavior = startupBehavior
         self.safeModeMessage = safeModeMessage
         self.supportPurchaseManager = supportPurchaseManager
@@ -342,56 +313,29 @@ private struct PrimaryWindowContentView: View {
         self._showGrokError = showGrokError
         self._grokErrorMessage = grokErrorMessage
         self.onViewModelReady = onViewModelReady
-        self.restoreDetachedWindows = restoreDetachedWindows
-        self.discardDetachedWindows = discardDetachedWindows
-        self._viewModel = State(initialValue: EditorViewModel(usesNativeDocumentTabs:
-            MacDocumentTabPolicy.enabledForLaunch && startupBehavior != .safeMode))
+        self._viewModel = State(initialValue: MacDocumentTabPolicy.makeWindowModel(isSafeMode: startupBehavior == .safeMode))
     }
 
     var body: some View {
-        ContentView(
-            startupBehavior: startupBehavior,
-            safeModeMessage: safeModeMessage,
-            windowFrameAutosaveName: "NeonVisionEditor.PrimaryEditorWindow"
-        )
-        .environment(viewModel)
-        .environmentObject(supportPurchaseManager)
-        .environmentObject(appUpdateManager)
-        .environment(\.showGrokError, $showGrokError)
-        .environment(\.grokErrorMessage, $grokErrorMessage)
+        NativeEditorSurface(configuration: NativeEditorSurfaceConfiguration(
+            model: viewModel, startupBehavior: startupBehavior, safeModeMessage: safeModeMessage,
+            frameAutosaveName: "NeonVisionEditor.PrimaryEditorWindow", initialLayout: nil,
+            support: supportPurchaseManager, updates: appUpdateManager,
+            showGrokError: $showGrokError, grokErrorMessage: $grokErrorMessage,
+            actions: NativeEditorWindowActions(openWindow: openWindow, openSettings: openSettings)))
+        .frame(minWidth: 600, minHeight: 400)
         .onAppear {
             onViewModelReady(viewModel)
-            presentWindowRestorePromptIfNeeded()
         }
-        .alert("Restore editor windows?", isPresented: $showsWindowRestorePrompt) {
-            Button("Restore All") {
-                restoreDetachedWindows(pendingDetachedWindowIDs)
-            }
-            Button("Open Only First", role: .cancel) {
-                discardDetachedWindows()
-            }
-        } message: {
-            Text("Neon Vision Editor was last closed with \(pendingDetachedWindowIDs.count + 1) editor windows open.")
-        }
-    }
-
-    private func presentWindowRestorePromptIfNeeded() {
-        guard !didCheckForRestorableWindows else { return }
-        didCheckForRestorableWindows = true
-        guard case .standard = startupBehavior else { return }
-        guard !viewModel.usesNativeDocumentTabs else { return }
-
-        let windowIDs = MacEditorWindowSessionStore.shared.restorableWindowIDs
-        guard !windowIDs.isEmpty else { return }
-        pendingDetachedWindowIDs = windowIDs
-        showsWindowRestorePrompt = true
     }
 }
 
 private struct DetachedWindowContentView: View {
     let windowID: UUID
     let initialEditorLayoutPresetRawValue: String?
-    @State private var viewModel = EditorViewModel()
+    @State private var viewModel: EditorViewModel
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     @ObservedObject var supportPurchaseManager: SupportPurchaseManager
     @ObservedObject var appUpdateManager: AppUpdateManager
     @Binding var showGrokError: Bool
@@ -399,6 +343,7 @@ private struct DetachedWindowContentView: View {
 
     init(
         windowID: UUID,
+        isSafeMode: Bool,
         supportPurchaseManager: SupportPurchaseManager,
         appUpdateManager: AppUpdateManager,
         showGrokError: Binding<Bool>,
@@ -411,22 +356,65 @@ private struct DetachedWindowContentView: View {
         self._showGrokError = showGrokError
         self._grokErrorMessage = grokErrorMessage
         self._viewModel = State(initialValue: MacDocumentWindowTabs.shared.takePendingModel(for: windowID)
-            ?? EditorViewModel(usesNativeDocumentTabs: MacDocumentTabPolicy.enabledForLaunch))
+            ?? MacDocumentTabPolicy.makeWindowModel(isSafeMode: isSafeMode))
     }
 
     var body: some View {
-        ContentView(
-            startupBehavior: viewModel.usesNativeDocumentTabs ? .nativeDocument : .forceBlankDocument,
-            windowFrameAutosaveName: MacEditorWindowSessionStore.shared.frameAutosaveName(for: windowID),
-            onWindowClosed: { MacEditorWindowSessionStore.shared.forgetWindow(id: windowID) },
-            initialEditorLayoutPresetRawValue: initialEditorLayoutPresetRawValue
-        )
-            .environment(viewModel)
-            .environmentObject(supportPurchaseManager)
-            .environmentObject(appUpdateManager)
-            .environment(\.showGrokError, $showGrokError)
-            .environment(\.grokErrorMessage, $grokErrorMessage)
+        ZStack {
+            NativeDocumentTabAttachment(windowID: windowID)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+            NativeEditorSurface(configuration: NativeEditorSurfaceConfiguration(
+                model: viewModel, startupBehavior: .nativeDocument, safeModeMessage: nil,
+                frameAutosaveName: MacEditorWindowSessionStore.shared.frameAutosaveName(for: windowID),
+                initialLayout: initialEditorLayoutPresetRawValue,
+                support: supportPurchaseManager, updates: appUpdateManager,
+                showGrokError: $showGrokError, grokErrorMessage: $grokErrorMessage,
+                actions: NativeEditorWindowActions(openWindow: openWindow, openSettings: openSettings)))
             .frame(minWidth: 600, minHeight: 400)
+        }
+    }
+}
+
+/// Native AppKit windows retain the same SwiftUI document content, toolbar,
+/// providers and scene actions without opening another SwiftUI WindowGroup.
+@MainActor
+struct NativeDocumentWindowContent: View {
+    let windowID: UUID
+    let supportPurchaseManager: SupportPurchaseManager
+    let appUpdateManager: AppUpdateManager
+    let showGrokError: Binding<Bool>
+    let grokErrorMessage: Binding<String>
+    let openWindow: OpenWindowAction
+    let openSettings: OpenSettingsAction
+    @AppStorage("SettingsAppearance") private var appearance = "system"
+    @AppStorage("SettingsAppLanguageCode") private var languageCode = "system"
+
+    var body: some View {
+        DetachedWindowContentView(windowID: windowID, isSafeMode: false,
+            supportPurchaseManager: supportPurchaseManager, appUpdateManager: appUpdateManager,
+            showGrokError: showGrokError, grokErrorMessage: grokErrorMessage)
+            .environment(\.nativeEditorWindowActions, NativeEditorWindowActions(openWindow: openWindow, openSettings: openSettings))
+            .environment(\.locale, languageCode == "system" ? .autoupdatingCurrent : Locale(identifier: languageCode))
+            .preferredColorScheme(ReleaseRuntimePolicy.preferredColorScheme(for: appearance))
+            .tint(.blue)
+            .onChange(of: languageCode) { _, code in RuntimeLanguageOverride.apply(languageCode: code) }
+    }
+}
+
+struct NativeEditorWindowActions {
+    let openWindow: OpenWindowAction
+    let openSettings: OpenSettingsAction
+}
+
+private struct NativeEditorWindowActionsKey: EnvironmentKey {
+    static let defaultValue: NativeEditorWindowActions? = nil
+}
+
+extension EnvironmentValues {
+    var nativeEditorWindowActions: NativeEditorWindowActions? {
+        get { self[NativeEditorWindowActionsKey.self] }
+        set { self[NativeEditorWindowActionsKey.self] = newValue }
     }
 }
 
@@ -552,28 +540,9 @@ struct NeonVisionEditorApp: App {
         // windows must never join an editor tab group automatically.
         NSWindow.allowsAutomaticWindowTabbing = false
         for window in NSApp.windows {
-            let native = WindowViewModelRegistry.shared.viewModel(for: window.windowNumber)?.usesNativeDocumentTabs == true
+            let native = WindowViewModelRegistry.shared.viewModel(for: window.windowNumber) != nil
             window.tabbingMode = native ? .preferred : .disallowed
         }
-        if !MacDocumentTabPolicy.enabledForLaunch { hideNativeTabBarMenuItems() }
-    }
-
-    private func hideNativeTabBarMenuItems() {
-        guard let mainMenu = NSApp.mainMenu else { return }
-        let targets = ["Show Tab Bar", "Hide Tab Bar", "Move Tab to New Window", "Merge All Windows"]
-
-        func filter(menu: NSMenu) {
-            for item in menu.items {
-                if let submenu = item.submenu {
-                    filter(menu: submenu)
-                }
-            }
-            menu.items.removeAll { item in
-                targets.contains(item.title)
-            }
-        }
-
-        filter(menu: mainMenu)
     }
 #endif
 
@@ -749,14 +718,9 @@ struct NeonVisionEditorApp: App {
                 onViewModelReady: { model in
                     appDelegate.viewModel = model
                     appDelegate.appUpdateManager = appUpdateManager
-                },
-                restoreDetachedWindows: { windowIDs in
-                    windowIDs.forEach { openWindow(value: $0) }
-                },
-                discardDetachedWindows: {
-                    MacEditorWindowSessionStore.shared.discardRestorableWindows()
                 }
             )
+                .modifier(EditorSceneStorageModifier())
                 .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
                 .onAppear { scheduleMacWindowChromePolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
@@ -795,11 +759,13 @@ struct NeonVisionEditorApp: App {
             if let windowID {
                 DetachedWindowContentView(
                     windowID: windowID,
+                    isSafeMode: mainStartupBehavior == .safeMode,
                     supportPurchaseManager: supportPurchaseManager,
                     appUpdateManager: appUpdateManager,
                     showGrokError: $showGrokError,
                     grokErrorMessage: $grokErrorMessage
                 )
+                .modifier(EditorSceneStorageModifier())
                 .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
                 .onAppear { scheduleMacWindowChromePolicy() }
                 .onChange(of: appearance) { _, _ in applyGlobalAppearanceOverride() }
@@ -808,7 +774,7 @@ struct NeonVisionEditorApp: App {
                 .environment(\.locale, preferredLocale)
                 .tint(.blue)
                 .preferredColorScheme(preferredAppearance)
-            } else if MacDocumentTabPolicy.enabledForLaunch {
+            } else {
                 NativeTabSceneBootstrapper(windowID: $windowID)
             }
         }
@@ -817,7 +783,6 @@ struct NeonVisionEditorApp: App {
 
         Settings {
             ConfiguredSettingsView(
-                supportsOpenInTabs: false,
                 supportsTranslucency: true,
                 editorViewModel: activeEditorViewModel,
                 supportPurchaseManager: supportPurchaseManager,
@@ -1121,16 +1086,26 @@ struct NeonVisionEditorApp: App {
     }
 
 #if os(macOS)
-    private struct NativeTabSceneBootstrapper: View {
+    private struct NativeTabSceneBootstrapper: NSViewRepresentable {
         @Binding var windowID: UUID?
 
-        var body: some View {
-            Color.clear
-                .task {
-                    guard windowID == nil else { return }
-                    windowID = MacDocumentWindowTabs.shared.prepareNativeTabScene()
+        func makeNSView(context: Context) -> NativeDocumentTabAttachment.AttachmentView {
+            let view = NativeDocumentTabAttachment.AttachmentView(frame: .zero)
+            let store = MacDocumentWindowTabs.shared
+            guard let id = store.prepareNativeTabScene() else { return view }
+            // AppKit's plus button creates a nil-value scene. Group that scene
+            // before presentation, not after a task replaces it with its editor.
+            view.attach = { window in store.attachPendingWindow(window, for: id) }
+            let binding = $windowID
+            RunLoop.main.perform(inModes: [.default]) {
+                MainActor.assumeIsolated {
+                    if binding.wrappedValue == nil { binding.wrappedValue = id }
                 }
+            }
+            return view
         }
+
+        func updateNSView(_ view: NativeDocumentTabAttachment.AttachmentView, context: Context) {}
     }
 
     private func configureExternalOpenWindowAction() {

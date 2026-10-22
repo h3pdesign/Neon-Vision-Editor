@@ -200,7 +200,6 @@
 "Allow Private Cloud Compute for Agent Mode" = "エージェントモードのプライベートクラウド計算を許可する";
 "Allow Shared Imports?" = "共有インポートを許可する？";
 "Allows complex Edit and Verify requests to use Apple's Private Cloud Compute when available." = "複雑な編集および検証リクエストが利用可能なときに、Appleのプライベートクラウド計算を使用できるようにする。";
-"Always" = "常に";
 "An item with this name already exists." = "この名前のアイテムがすでに存在します。";
 "Anthropic" = "アンソプティック";
 "Anthropic API Token Required" = "Anthropic API Token Required";
@@ -955,7 +954,6 @@
 "Neon Vision Editor will always stay free to use." = "ネオンビジョンエディタは常に無料でご利用いただけます。";
 "Neon Vision Editor will ask macOS to open its supported text and source-code file types. macOS may request your confirmation." = "ネオンビジョンエディタは、macOSにサポートされているテキストファイルおよびソースコードファイルの開示を要求します。macOSが確認を求める場合があります。";
 "Neutral" = "ニュートラル";
-"Never" = "決して";
 "New Chat" = "新しいチャット";
 "New Comparison" = "新しい比較";
 "New File" = "新しいファイル";
@@ -1060,7 +1058,6 @@
 "Open in New Tab" = "新しいタブで開く";
 "Open in New Tabs" = "新しいタブで開く";
 "Open in Separate Window" = "別ウィンドウで開く";
-"Open in Tabs" = "タブで開く";
 "Open match in editor" = "エディタでマッチを開く";
 "Open remote folder %@" = "リモートフォルダ %@を開く";
 "Open shared import %@" = "共有インポート %@を開く";

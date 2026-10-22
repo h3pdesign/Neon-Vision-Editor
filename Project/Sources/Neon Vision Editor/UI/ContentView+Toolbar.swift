@@ -1,8 +1,101 @@
 import SwiftUI
 #if os(macOS)
+struct MacDocumentToolbarModifier: ViewModifier {
+    let contentView: ContentView
+    @Environment(\.locale) private var locale
+    func body(content: Content) -> some View {
+        content.background(contentView.nativeDocumentToolbar(locale: locale))
+    }
+}
+
 import AppKit
 #elseif os(iOS) || os(visionOS)
 import UIKit
+#endif
+
+#if os(macOS)
+/// Keep unopened language rows out of every document's SwiftUI graph. AppKit
+/// requests the complete native menu when pointer, keyboard or accessibility
+/// navigation opens it.
+@MainActor
+struct MacEditorLanguageMenu: NSViewRepresentable {
+    let selectedLanguage: String
+    let options: () -> [String]
+    let label: (String) -> String
+    let tint: NSColor
+    let select: (String) -> Void
+    let search: () -> Void
+
+    final class Coordinator: NSObject, NSMenuDelegate {
+        var configuration: MacEditorLanguageMenu
+
+        init(_ configuration: MacEditorLanguageMenu) { self.configuration = configuration }
+
+        func makeButton() -> NSPopUpButton {
+            let button = NSPopUpButton(frame: .zero, pullsDown: true)
+            button.isBordered = false
+            button.controlSize = .large
+            button.font = .monospacedSystemFont(ofSize: 12, weight: .medium)
+            let menu = NSMenu()
+            menu.autoenablesItems = false
+            menu.delegate = self
+            menu.addItem(withTitle: configuration.label(configuration.selectedLanguage), action: nil, keyEquivalent: "")
+            button.menu = menu
+            updateButton(button)
+            return button
+        }
+
+        func updateButton(_ button: NSPopUpButton) {
+            let title = configuration.label(configuration.selectedLanguage)
+            if button.menu?.item(at: 0)?.title != title { button.menu?.item(at: 0)?.title = title }
+            button.contentTintColor = configuration.tint
+            button.toolTip = NSLocalizedString("Language", comment: "Toolbar language picker")
+            button.setAccessibilityLabel(NSLocalizedString("Language picker", comment: "Toolbar accessibility"))
+            button.setAccessibilityValue(title)
+        }
+
+        func menuNeedsUpdate(_ menu: NSMenu) {
+            menu.removeAllItems()
+            let selected = configuration.selectedLanguage
+            // The first item supplies a pull-down button's title and is not a
+            // selectable row. The checked current language remains a real action.
+            menu.addItem(withTitle: configuration.label(selected), action: nil, keyEquivalent: "")
+            let current = languageItem(selected)
+            current.state = .on
+            menu.addItem(current)
+            let search = NSMenuItem(title: NSLocalizedString("Language…", comment: "Language search"),
+                action: #selector(searchLanguages(_:)), keyEquivalent: "")
+            search.target = self
+            search.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
+            menu.addItem(search)
+            menu.addItem(.separator())
+            for language in configuration.options() where language != selected {
+                menu.addItem(languageItem(language))
+            }
+        }
+
+        private func languageItem(_ language: String) -> NSMenuItem {
+            let item = NSMenuItem(title: configuration.label(language), action: #selector(chooseLanguage(_:)), keyEquivalent: "")
+            item.representedObject = language
+            item.target = self
+            return item
+        }
+
+        @objc func chooseLanguage(_ sender: NSMenuItem) {
+            guard let language = sender.representedObject as? String else { return }
+            configuration.select(language)
+        }
+
+        @objc func searchLanguages(_ sender: NSMenuItem) { configuration.search() }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeNSView(context: Context) -> NSPopUpButton { context.coordinator.makeButton() }
+    func updateNSView(_ button: NSPopUpButton, context: Context) {
+        context.coordinator.configuration = self
+        context.coordinator.updateButton(button)
+    }
+}
 #endif
 
 struct ToolbarActionSelection {
@@ -591,36 +684,12 @@ extension ContentView {
 
     @ViewBuilder
     private var macLanguageIndicatorControl: some View {
-        Menu {
-            let selectedLanguage = currentLanguagePickerBinding.wrappedValue
-            Button {
-                currentLanguagePickerBinding.wrappedValue = selectedLanguage
-            } label: {
-                Label(languageLabel(for: selectedLanguage), systemImage: "checkmark")
-            }
-            Button(action: { presentLanguageSearchSheet() }) {
-                Label("Language…", systemImage: "magnifyingglass")
-            }
-            Divider()
-            ForEach(languageOptions.filter { $0 != selectedLanguage }, id: \.self) { lang in
-                Button {
-                    currentLanguagePickerBinding.wrappedValue = lang
-                } label: {
-                    Text(languageLabel(for: lang))
-                }
-            }
-        } label: {
-            HStack(spacing: 0) {
-                Text(languageLabel(for: currentLanguagePickerBinding.wrappedValue))
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundStyle(macToolbarSymbolColor)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .fixedSize(horizontal: true, vertical: false)
-            }
-            .frame(minWidth: 116, alignment: .center)
-        }
-        .menuStyle(.borderlessButton)
+        MacEditorLanguageMenu(
+            selectedLanguage: currentLanguagePickerBinding.wrappedValue,
+            options: { languageOptions }, label: { languageLabel(for: $0) },
+            tint: NSColor(macToolbarSymbolColor),
+            select: { currentLanguagePickerBinding.wrappedValue = $0 },
+            search: { presentLanguageSearchSheet() })
         .frame(minWidth: 132, alignment: .center)
         .help("Language")
         .accessibilityLabel("Language picker")
@@ -2641,27 +2710,6 @@ extension ContentView {
 
 #if os(macOS)
     @ViewBuilder
-    private var macUtilitiesMenuControl: some View {
-        Group {
-            Button(action: { openSettings() }) {
-                Label("Settings", systemImage: "gearshape")
-                    .foregroundStyle(macToolbarSymbolColor)
-            }
-            .help("Settings (Cmd+,)")
-            .accessibilityLabel("Settings")
-            .accessibilityHint("Opens app settings")
-
-            Button(action: { showEditorHelp = true }) {
-                Label("Toolbar Help", systemImage: "questionmark.circle")
-                    .foregroundStyle(macToolbarSymbolColor)
-            }
-            .help("Toolbar Help")
-            .accessibilityLabel("Toolbar Help")
-            .accessibilityHint("Opens help for all toolbar actions")
-        }
-    }
-
-    @ViewBuilder
     private var editorLayoutPresetControl: some View {
         Menu {
             ForEach(EditorLayoutPreset.allCases) { preset in
@@ -2786,6 +2834,27 @@ extension ContentView {
     @ViewBuilder
     private func macToolbarControl(_ id: String) -> some View {
         switch id {
+        case "collapse":
+            Button(action: { isToolbarCollapsed.toggle() }) {
+                Image(systemName: isToolbarCollapsed ? "chevron.down" : "chevron.up")
+                    .foregroundStyle(macToolbarSymbolColor)
+            }
+            .help(isToolbarCollapsed ? "Show Toolbar" : "Collapse Toolbar")
+            .accessibilityLabel("Toggle Toolbar")
+        case "settings":
+            Button(action: { openSettings() }) {
+                Label("Settings", systemImage: "gearshape").foregroundStyle(macToolbarSymbolColor)
+            }
+            .help("Settings (Cmd+,)")
+            .accessibilityLabel("Settings")
+            .accessibilityHint("Opens app settings")
+        case "help":
+            Button(action: { showEditorHelp = true }) {
+                Label("Toolbar Help", systemImage: "questionmark.circle").foregroundStyle(macToolbarSymbolColor)
+            }
+            .help("Toolbar Help")
+            .accessibilityLabel("Toolbar Help")
+            .accessibilityHint("Opens help for all toolbar actions")
         case "openFile":
             Button(action: { openFileFromToolbar() }) {
                 Label("Open", systemImage: "folder")
@@ -2966,6 +3035,147 @@ extension ContentView {
     }
 #endif
 
+#if os(macOS)
+    private func nativeToolbarButton(_ id: String) -> MacDocumentToolbar.NativeButton? {
+        func make(_ symbol: String, _ title: String, _ help: String,
+                  enabled: Bool = true, selected: Bool = false,
+                  value: String? = nil, hint: String? = nil) -> MacDocumentToolbar.NativeButton {
+            .init(symbol: symbol,
+                title: NSLocalizedString(title, comment: "Toolbar accessibility label"),
+                help: NSLocalizedString(help, comment: "Toolbar help"), isEnabled: enabled,
+                tint: selected ? .controlAccentColor : NSColor(macToolbarSymbolColor),
+                accessibilityValue: value.map { NSLocalizedString($0, comment: "Toolbar state") },
+                accessibilityHint: hint.map { NSLocalizedString($0, comment: "Toolbar accessibility hint") })
+        }
+        switch id {
+        case "collapse": return make(isToolbarCollapsed ? "chevron.down" : "chevron.up", "Toggle Toolbar", isToolbarCollapsed ? "Show Toolbar" : "Collapse Toolbar")
+        case "settings": return make("gearshape", "Settings", "Settings (Cmd+,)", hint: "Opens app settings")
+        case "help": return make("questionmark.circle", "Toolbar Help", "Toolbar Help", hint: "Opens help for all toolbar actions")
+        case "openFile": return make("folder", "Open", "Open File… (Cmd+O)")
+        case "undo": return make("arrow.uturn.backward", "Undo", "Undo (Cmd+Z)")
+        case "newTab": return make("plus.square.on.square", "New Tab", "New Tab (Cmd+T)")
+        case "closeAllTabs": return make("xmark.square", "Close All Tabs", "Close All Tabs")
+        case "saveFile": return make("square.and.arrow.down", "Save", "Save File (Cmd+S)", enabled: viewModel.selectedTab != nil)
+        case "saveFileAs": return make("square.and.arrow.down.on.square", "Save As", "Save As… (Cmd+Shift+S)", enabled: viewModel.selectedTab != nil)
+        case "newWindow": return make("macwindow.badge.plus", "New Window", "New Window (Cmd+N)")
+        case "codeSnapshot": return make("camera.viewfinder", "Code Snapshot", "Create Code Snapshot from Selection", enabled: canCreateCodeSnapshot)
+        case "markdownPreview":
+            let help = !isPreviewSupportedDocument ? NSLocalizedString("Preview is unavailable for this document", comment: "Toolbar help")
+                : String.localizedStringWithFormat(NSLocalizedString(isPreviewVisible ? "Hide %@" : "Show %@", comment: "Toolbar help"), previewTitle)
+            return make(previewToolbarIconName, previewTitle, help,
+                enabled: isPreviewSupportedDocument && !isSafeModeActive, selected: isPreviewVisible)
+        case "markdownProjectPreview":
+            return make(isMarkdownProjectPreviewPresented ? "square.grid.2x2.fill" : "square.grid.2x2", "Markdown Cards",
+                isMarkdownProjectPreviewPresented ? "Hide Markdown Cards" : "Show Markdown Cards",
+                enabled: projectRootFolderURL != nil && hasMarkdownOrPDFProjectPreviewFiles && !isSafeModeActive,
+                selected: isMarkdownProjectPreviewPresented, value: isMarkdownProjectPreviewPresented ? "Shown" : "Hidden",
+                hint: "Shows Markdown and PDF files from the current project as preview cards")
+        case "codeMinimap":
+            guard supportsCodeMinimap(language: currentLanguage) else { return nil }
+            return make(showCodeMinimap ? "map.fill" : "map", "Code Minimap", showCodeMinimap ? "Hide Code Minimap" : "Show Code Minimap",
+                value: showCodeMinimap ? "Shown" : "Hidden", hint: "Toggles the code minimap for code files")
+        case "toggleSidebar": return make("sidebar.left", "Table of Contents", "Toggle Sidebar (Cmd+Opt+S)", value: viewModel.showSidebar ? "Shown" : "Hidden", hint: "Shows or hides the document table of contents")
+        case "toggleProjectSidebar": return make("sidebar.right", "Toggle Project Structure Sidebar", "Toggle Project Structure Sidebar")
+        case "brainDump": return make(viewModel.isBrainDumpMode ? "note.text.fill" : "note.text", "Brain Dump Mode", "Brain Dump Mode", value: viewModel.isBrainDumpMode ? "On" : "Off", hint: "Switches to a distraction-free scratch document")
+        case "findReplace": return make("magnifyingglass", "Find", "Find & Replace (Cmd+F)")
+        case "findInFiles": return make("text.magnifyingglass", "Find in Files", "Find in Files (Cmd+Shift+F)")
+        case "splitEditor": return make("rectangle.split.2x1", "Side by Side", splitSecondaryTabID == nil ? "Open Two Tabs Side by Side" : "Close Side by Side Editor", enabled: canOpenSplitEditor || splitSecondaryTabID != nil)
+        case "gitChanges":
+            var button = make("arrow.triangle.branch", showGitChangesEditor ? "Close Git Changes" : "Open Git Changes",
+                showGitChangesEditor ? "Close Git Changes" : "Open Git Changes", selected: showGitChangesEditor)
+            button.tint = showGitChangesEditor ? .controlAccentColor : .labelColor
+            button.pointSize = 16
+            button.weight = .semibold
+            return button
+        default: return nil
+        }
+    }
+
+    private func performNativeToolbarAction(_ id: String) {
+        switch id {
+        case "collapse": isToolbarCollapsed.toggle()
+        case "settings": openSettings()
+        case "help": showEditorHelp = true
+        case "openFile": openFileFromToolbar()
+        case "undo": undoFromToolbar()
+        case "newTab": viewModel.addNewTab()
+        case "closeAllTabs": requestCloseAllTabsFromToolbar()
+        case "saveFile": saveCurrentTabFromToolbar()
+        case "saveFileAs": saveCurrentTabAsFromToolbar()
+        case "newWindow": openWindow(value: MacEditorWindowSessionStore.shared.createWindowID())
+        case "codeSnapshot": presentCodeSnapshotComposer()
+        case "markdownPreview": togglePreviewFromToolbar()
+        case "markdownProjectPreview": toggleMarkdownProjectPreviewFromToolbar()
+        case "codeMinimap": showCodeMinimap.toggle()
+        case "toggleSidebar": toggleSidebarFromToolbar()
+        case "toggleProjectSidebar": toggleProjectSidebarFromToolbar()
+        case "brainDump": toggleBrainDumpModeIOSAware()
+        case "findReplace": showFindReplace = true
+        case "findInFiles": requestFindInFilesFromToolbar()
+        case "splitEditor": toggleSplitEditorFromToolbar()
+        case "gitChanges": showGitChangesEditor.toggle()
+        default: break
+        }
+    }
+
+    func nativeDocumentToolbar(locale: Locale) -> some View {
+        let custom = toolbarUseCustomMac || toolbarPresetMacRaw == ToolbarPreset.custom.rawValue
+        let defaults = ["openFile", "undo", "newTab", "closeAllTabs", "saveFile", "saveFileAs", "newWindow", "codeSnapshot", "markdownPreview", "markdownProjectPreview", "codeMinimap", "toggleSidebar", "toggleProjectSidebar", "brainDump", "findReplace", "findInFiles", "splitEditor", "gitChanges"]
+        let primary = custom
+            ? ToolbarActionSelection.orderedIDs(from: toolbarCustomIDsMac, fallback: [])
+            : defaults.filter(isMacToolbarItemVisible)
+        let secondary = custom ? [] : ["toolbarPreset"] + ["languageIndicator", "editorLayout", "previewActions", "compare"].filter(isMacToolbarItemVisible) + ["providerBadge"]
+        func visible(_ id: String) -> Bool {
+            if id == "providerBadge" { return isAutoCompletionEnabled }
+            if id == "splitEditor", isMacToolbarItemVisible("compare") { return false }
+            return ToolbarActionSelection.customizableMacActionIDs.contains(id)
+        }
+        let groups: [MacDocumentToolbar.Group] = isToolbarCollapsed
+            ? [.init(id: "primary", items: ["collapse"])]
+            : [.init(id: "primary", items: ["collapse", "settings", "help"] + primary.filter(visible)),
+               .init(id: "secondary", items: secondary.filter(visible))]
+        return MacDocumentToolbar(owner: viewModel, groups: groups, isVisible: !focusModeEnabled, label: { id in
+            let key: String
+            switch id {
+            case "collapse": key = "Toggle Toolbar"
+            case "settings": key = "Settings"
+            case "help": key = "Toolbar Help"
+            case "newWindow": key = "New Window"
+            case "toolbarPreset": key = "Toolbar Preset"
+            case "providerBadge": key = "Code completion provider"
+            default: key = ToolbarIconOption(rawValue: id)?.title ?? id
+            }
+            return NSLocalizedString(key, comment: "Toolbar accessibility label")
+        }, control: { id in
+            AnyView(macToolbarControl(id).labelStyle(.iconOnly).buttonStyle(.borderless)
+                .controlSize(.large).padding(.horizontal, 4)
+                .environment(\.colorScheme, effectiveEditorColorScheme)
+                .environment(\.locale, locale))
+        }, overflow: { id in
+            AnyView(nativeToolbarOverflowContent(id).environment(\.locale, locale))
+        }, nativeButton: nativeToolbarButton, performNativeAction: performNativeToolbarAction)
+        .frame(width: 0, height: 0)
+    }
+
+    @ViewBuilder
+    private func nativeToolbarOverflowContent(_ id: String) -> some View {
+        if id == "languageIndicator" {
+            Group {
+                Button("Language…", systemImage: "magnifyingglass") { presentLanguageSearchSheet() }
+                Divider()
+                ForEach(languageOptions, id: \.self) { option in
+                    Button { currentLanguagePickerBinding.wrappedValue = option } label: {
+                        Text(languageLabel(for: option))
+                        if currentLanguagePickerBinding.wrappedValue == option { Image(systemName: "checkmark") }
+                    }
+                }
+            }
+        } else {
+            macToolbarControl(id)
+        }
+    }
+
+#endif
     @ToolbarContentBuilder
     var editorToolbarContent: some ToolbarContent {
 #if os(visionOS)
@@ -3010,48 +3220,6 @@ extension ContentView {
                     .tint(iOSToolbarTintColor)
                 }
             }
-        }
-#elseif os(macOS)
-        if isToolbarCollapsed {
-        ToolbarItem(placement: .automatic) {
-            Button(action: { isToolbarCollapsed.toggle() }) {
-                Image(systemName: "chevron.down")
-                    .foregroundStyle(macToolbarSymbolColor)
-            }
-            .help("Show Toolbar")
-            .accessibilityLabel("Toggle Toolbar")
-        }
-        }
-
-        if !isToolbarCollapsed {
-        ToolbarItemGroup(placement: .primaryAction) {
-        Button(action: { isToolbarCollapsed = true }) {
-            Image(systemName: "chevron.up")
-                .foregroundStyle(macToolbarSymbolColor)
-        }
-        .help("Collapse Toolbar")
-        .accessibilityLabel("Toggle Toolbar")
-
-        macUtilitiesMenuControl
-        if toolbarUseCustomMac || toolbarPresetMacRaw == ToolbarPreset.custom.rawValue {
-            ForEach(ToolbarActionSelection.orderedIDs(from: toolbarCustomIDsMac, fallback: []), id: \.self) { id in
-                macToolbarControl(id)
-            }
-        } else {
-            ForEach(["openFile", "undo", "newTab", "closeAllTabs", "saveFile", "saveFileAs", "newWindow", "codeSnapshot", "markdownPreview", "markdownProjectPreview", "codeMinimap", "toggleSidebar", "toggleProjectSidebar", "brainDump", "findReplace", "findInFiles", "splitEditor", "gitChanges"], id: \.self) { id in
-                if isMacToolbarItemVisible(id) { macToolbarControl(id) }
-            }
-        }
-        }
-        if !toolbarUseCustomMac && toolbarPresetMacRaw != ToolbarPreset.custom.rawValue {
-            ToolbarItemGroup(placement: .primaryAction) {
-                macToolbarControl("toolbarPreset")
-                ForEach(["languageIndicator", "editorLayout", "previewActions", "compare"], id: \.self) { id in
-                    if isMacToolbarItemVisible(id) { macToolbarControl(id) }
-                }
-                macToolbarControl("providerBadge")
-            }
-        }
         }
 #else
         ToolbarItem(placement: .automatic) {

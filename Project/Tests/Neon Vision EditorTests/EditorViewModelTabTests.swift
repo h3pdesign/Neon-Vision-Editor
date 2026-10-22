@@ -4,6 +4,30 @@ import XCTest
 
 @MainActor
 final class EditorViewModelTabTests: XCTestCase {
+    func testTabCrashDetectionFollowsContentMutationAndRevisionReset() {
+        let tab = TabData(name: "notes.txt", content: "plain", language: "plain", fileURL: nil)
+        XCTAssertFalse(tab.looksLikeAppleCrashReport)
+        XCTAssertTrue(tab.replaceContentStorage(with: "Exception Type: EXC_CRASH\nCrashed Thread: 0\n"))
+        XCTAssertTrue(tab.looksLikeAppleCrashReport)
+        XCTAssertTrue(tab.replaceContentStorage(with: "plain again"))
+        tab.resetContentRevision()
+        XCTAssertFalse(tab.looksLikeAppleCrashReport)
+        tab.attachFileBackedDocument(FileBackedTextDocument(content: "Exception Type: EXC_CRASH\nCrashed Thread: 0\n"))
+        XCTAssertTrue(tab.looksLikeAppleCrashReport, "Replacing storage at an unchanged revision must invalidate detection")
+    }
+
+    func testBlankStartupResetCreatesOneCleanUntitledBuffer() throws {
+        let model = EditorViewModel()
+        model.updateTabContent(tabID: try XCTUnwrap(model.selectedTabID), content: "previous buffer")
+        model.addNewTab()
+        model.resetToBlankDocumentForStartup()
+        XCTAssertEqual(model.tabs.count, 1)
+        XCTAssertEqual(model.selectedTab?.name, "Untitled 1")
+        XCTAssertEqual(model.selectedTab?.document.string(), "")
+        XCTAssertFalse(model.selectedTab?.isDirty ?? true)
+        XCTAssertNil(model.selectedTab?.fileURL)
+    }
+
     #if os(macOS)
     func testClosingLastTabLeavesNoUnrequestedUntitledDocumentAndCanReopen() throws {
         let model = EditorViewModel()

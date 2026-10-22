@@ -802,47 +802,11 @@ extension ContentView {
     @ViewBuilder
     var tabBarView: some View {
 #if os(macOS)
-        if !viewModel.usesNativeDocumentTabs { legacyTabBarView }
+        // AppKit owns the document tab bar outside the SwiftUI editor content.
+        EmptyView()
 #else
-        legacyTabBarView
-#endif
-    }
-
-    private var legacyTabBarView: some View {
         VStack(spacing: 0) {
-#if os(macOS)
-            MacNativeFileTabBar(
-                tabs: viewModel.tabs.map {
-                    MacNativeFileTabSnapshot(
-                        id: $0.id,
-                        title: $0.name,
-                        isDirty: $0.isDirty,
-                        isRemote: $0.isRemoteDocument,
-                        isReadOnly: $0.isReadOnlyPreview
-                    )
-                },
-                selectedTabID: viewModel.selectedTabID,
-                usesOpaqueEditorCanvas: opaqueEditorSurfaceMac,
-                onSelect: { viewModel.selectTab(id: $0) },
-                onClose: { tabID in
-                    guard let tab = viewModel.tabs.first(where: { $0.id == tabID }) else { return }
-                    requestCloseTab(tab)
-                },
-                onMove: { sourceID, destinationID, insertBefore in
-                    reorderDroppedTab(
-                        draggedTabID: sourceID,
-                        destinationTabID: destinationID,
-                        insertBefore: insertBefore
-                    )
-                },
-                onAdd: { viewModel.addNewTab() }
-            )
-            // Keep the AppKit representable and the divider as explicit
-            // siblings in the 42-point strip. Without a child height,
-            // VStack can compress the representable's fitting size and make
-            // its scroll view clip the tab layer at the bottom.
-            .frame(height: 41)
-#elseif os(iOS)
+#if os(iOS)
             GlassSurface(
                 // Keep the tab strip tied to the editor theme. Window
                 // translucency should apply to the tab strip as well.
@@ -893,16 +857,8 @@ extension ContentView {
 #else
             EmptyView()
 #endif
-#if os(iOS) || os(visionOS)
-            EmptyView()
-#else
-            tabBarBottomDivider
-#endif
         }
-#if os(macOS)
-        .frame(height: 42, alignment: .center)
-        .background(macToolbarBackgroundStyle)
-#elseif os(iOS)
+#if os(iOS)
         .frame(height: min(max(mobileTabBarHeight, 42), 60), alignment: .center)
         .background(
             enableTranslucentWindow
@@ -919,9 +875,10 @@ extension ContentView {
         .contentShape(Rectangle())
         .zIndex(10)
 #endif
+#endif
     }
 
-#if os(macOS) || os(iOS)
+#if os(iOS)
     private func reorderDroppedTab(
         draggedTabID: UUID,
         destinationTabID: UUID,
@@ -1092,16 +1049,6 @@ extension ContentView {
 
     private var fileTabBarContainerShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 14, style: .continuous)
-    }
-#endif
-
-#if os(macOS)
-    @ViewBuilder
-    private var tabBarBottomDivider: some View {
-        Divider()
-            .opacity(isMarkdownPreviewSplitVisible ? 0.22 : 0.32)
-            .padding(.leading, isMarkdownPreviewSplitVisible ? 18 : 0)
-            .padding(.trailing, isMarkdownPreviewSplitVisible ? 18 : 0)
     }
 #endif
 

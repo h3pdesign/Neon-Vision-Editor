@@ -11,6 +11,217 @@ import SwiftUI
 /// MARK: - Tests
 
 final class WindowTranslucencyTests: XCTestCase {
+    func testNativeToolbarButtonsDoNotCreateSwiftUIHostsAndKeepTheirOwner() throws {
+        let firstWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+            styleMask: [.titled, .closable], backing: .buffered, defer: true)
+        let secondWindow = NSWindow(contentRect: firstWindow.frame,
+            styleMask: [.titled, .closable], backing: .buffered, defer: true)
+        firstWindow.isReleasedWhenClosed = false
+        secondWindow.isReleasedWhenClosed = false
+        var firstActions: [String] = []
+        var secondActions: [String] = []
+        func configuration(_ action: @escaping (String) -> Void) -> MacDocumentToolbar {
+            MacDocumentToolbar(owner: MacDocumentTabPolicy.makeWindowModel(),
+                groups: [.init(id: "primary", items: ["open", "save"])], isVisible: true,
+                label: { $0 }, control: { _ in XCTFail("Ordinary actions cannot construct a SwiftUI host"); return AnyView(EmptyView()) },
+                overflow: { AnyView(Text($0)) },
+                nativeButton: { .init(symbol: "folder", title: $0, help: $0) }, performNativeAction: action)
+        }
+        let first = MacDocumentToolbar.ToolbarCoordinator(configuration { firstActions.append($0) })
+        let second = MacDocumentToolbar.ToolbarCoordinator(configuration { secondActions.append($0) })
+        defer { first.release(); second.release(); firstWindow.close(); secondWindow.close() }
+        first.bind(firstWindow)
+        second.bind(secondWindow)
+        XCTAssertTrue(first.hosts.isEmpty)
+        XCTAssertTrue(second.hosts.isEmpty)
+        let button = try XCTUnwrap(first.nativeButtons["open"])
+        let secondButton = try XCTUnwrap(second.nativeButtons["open"])
+        XCTAssertFalse(button === secondButton)
+        button.performClick(nil)
+        XCTAssertEqual(firstActions, ["open"])
+        XCTAssertTrue(secondActions.isEmpty)
+        first.bind(firstWindow)
+        XCTAssertTrue(first.nativeButtons["open"] === button)
+        secondButton.performClick(nil)
+        XCTAssertEqual(secondActions, ["open"])
+    }
+
+    func testNativeToolbarUpdatesDisabledStateWithoutReplacingButton() throws {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+            styleMask: [.titled, .closable], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        var actions: [String] = []
+        let configuration = MacDocumentToolbar(owner: MacDocumentTabPolicy.makeWindowModel(),
+            groups: [.init(id: "primary", items: ["save"])], isVisible: true,
+            label: { $0 }, control: { AnyView(Text($0)) }, overflow: { AnyView(Text($0)) },
+            nativeButton: { .init(symbol: "square.and.arrow.down", title: $0, help: $0) },
+            performNativeAction: { actions.append($0) })
+        let coordinator = MacDocumentToolbar.ToolbarCoordinator(configuration)
+        defer { coordinator.release(); window.close() }
+        coordinator.bind(window)
+        let button = try XCTUnwrap(coordinator.nativeButtons["save"])
+        coordinator.configuration.nativeButton = { .init(symbol: "square.and.arrow.down", title: $0, help: $0, isEnabled: false) }
+        coordinator.bind(window)
+        XCTAssertTrue(coordinator.nativeButtons["save"] === button)
+        XCTAssertFalse(button.isEnabled)
+        button.performClick(nil)
+        XCTAssertTrue(actions.isEmpty)
+        coordinator.configuration = configuration
+        coordinator.bind(window)
+        button.performClick(nil)
+        XCTAssertEqual(actions, ["save"])
+        coordinator.configuration = MacDocumentToolbar(owner: configuration.owner, groups: [], isVisible: true,
+            label: { $0 }, control: { AnyView(Text($0)) }, overflow: { AnyView(Text($0)) })
+        coordinator.bind(window)
+        XCTAssertTrue(coordinator.nativeButtons.isEmpty)
+    }
+
+    @MainActor private final class IdentifierChanges {
+        var values: [[NSToolbarItem.Identifier]] = []
+    }
+
+    func testNativeToolbarInitialBindDoesNotPublishAnEmptyIntermediateLayout() throws {
+        guard #available(macOS 15.0, *) else { throw XCTSkip("Identifier observation requires macOS 15") }
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+            styleMask: [.titled, .closable], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        MacDocumentToolbar.prepare(window)
+        let toolbar = try XCTUnwrap(window.toolbar)
+        let changes = IdentifierChanges()
+        let observation = toolbar.observe(\.itemIdentifiers, options: [.new]) { _, change in
+            MainActor.assumeIsolated { changes.values.append(change.newValue ?? []) }
+        }
+        let owner = MacDocumentTabPolicy.makeWindowModel()
+        let configuration = MacDocumentToolbar(owner: owner,
+            groups: [.init(id: "primary", items: ["open"])], isVisible: true,
+            label: { $0 }, control: { AnyView(Text($0)) }, overflow: { AnyView(Text($0)) })
+        let coordinator = MacDocumentToolbar.ToolbarCoordinator(configuration)
+        defer { observation.invalidate(); coordinator.release(); window.close() }
+        coordinator.bind(window)
+        // AppKit emits intermediate per-item KVO notifications while applying
+        // one diff. Assert the invariant, not its private notification count.
+        XCTAssertFalse(changes.values.isEmpty)
+        XCTAssertFalse(changes.values.contains(where: \.isEmpty),
+            "Opening a document must not explicitly clear its toolbar before populating it")
+        XCTAssertEqual(changes.values.last, [.flexibleSpace, .init("primary")])
+        let initialChangeCount = changes.values.count
+        coordinator.bind(window)
+        XCTAssertEqual(changes.values.count, initialChangeCount, "Unchanged updates cannot relayout toolbar identifiers")
+    }
+
+    func testNativeToolbarActionChangesRetainUnchangedGroupsAndHostingViews() throws {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+            styleMask: [.titled, .closable], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        let owner = MacDocumentTabPolicy.makeWindowModel()
+        func configuration(_ actions: [String]) -> MacDocumentToolbar {
+            MacDocumentToolbar(owner: owner, groups: [.init(id: "primary", items: actions)],
+                isVisible: true, label: { $0 },
+                control: { AnyView(Text($0)) }, overflow: { AnyView(Text($0)) })
+        }
+        let coordinator = MacDocumentToolbar.ToolbarCoordinator(configuration(["open", "save"]))
+        defer { coordinator.release(); window.close() }
+        coordinator.bind(window)
+        let toolbar = try XCTUnwrap(window.toolbar)
+        let group = try XCTUnwrap(toolbar.items.compactMap { $0 as? NSToolbarItemGroup }.first)
+        let host = try XCTUnwrap(coordinator.hosts["primary"])
+        coordinator.configuration = configuration(["save", "find"])
+        coordinator.bind(window)
+        XCTAssertTrue(toolbar.items.contains { $0 === group })
+        XCTAssertTrue(coordinator.hosts["primary"] === host)
+        XCTAssertEqual(group.subitems.map(\.itemIdentifier.rawValue), ["save", "find"])
+        coordinator.configuration = configuration([])
+        coordinator.bind(window)
+        XCTAssertTrue(coordinator.hosts.isEmpty)
+        XCTAssertEqual(toolbar.items.map(\.itemIdentifier), [.flexibleSpace])
+        coordinator.configuration = configuration(["open"])
+        coordinator.bind(window)
+        XCTAssertEqual(toolbar.items.compactMap { $0 as? NSToolbarItemGroup }.first?.subitems.map(\.itemIdentifier.rawValue), ["open"])
+    }
+
+    func testNativeToolbarVisibilityBelongsToItsPhysicalWindow() {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+            styleMask: [.titled, .closable], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        let owner = MacDocumentTabPolicy.makeWindowModel()
+        func configuration(visible: Bool) -> MacDocumentToolbar {
+            MacDocumentToolbar(owner: owner, groups: [.init(id: "primary", items: ["test"])],
+                isVisible: visible, label: { _ in "Test" },
+                control: { _ in AnyView(Text("Test")) }, overflow: { _ in AnyView(Text("Test")) })
+        }
+        let coordinator = MacDocumentToolbar.ToolbarCoordinator(configuration(visible: false))
+        defer { coordinator.release(); window.close() }
+        coordinator.bind(window)
+        XCTAssertFalse(window.toolbar?.isVisible ?? true)
+        coordinator.configuration = configuration(visible: true)
+        coordinator.bind(window)
+        XCTAssertTrue(window.toolbar?.isVisible == true)
+        coordinator.configuration = configuration(visible: false)
+        coordinator.bind(window)
+        XCTAssertFalse(window.toolbar?.isVisible ?? true)
+    }
+
+    private func applyTranslucency(_ enabled: Bool) {
+        ContentView.MacEditorSurfacePolicy.configureRegisteredWindowTranslucency(enabled,
+            opaqueEditorCanvas: UserDefaults.standard.object(forKey: "SettingsOpaqueEditorSurfaceMac") as? Bool ?? true,
+            modeRaw: UserDefaults.standard.string(forKey: "SettingsMacTranslucencyMode") ?? "balanced",
+            isDarkMode: false)
+    }
+    func testNativeTitlebarMaterialExistsBeforeSelectionAndSurvivesTranslucencyUpdates() {
+        let candidate = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: true)
+        candidate.isReleasedWhenClosed = false
+        let owner = MacDocumentTabPolicy.makeWindowModel()
+        candidate.titlebarAppearsTransparent = true
+        candidate.backgroundColor = .clear
+        MacDocumentTabPolicy.configureWindowChrome(candidate)
+        XCTAssertFalse(candidate.titlebarAppearsTransparent, "Chrome must not wait for an editor frame or tab selection")
+        XCTAssertEqual(candidate.backgroundColor, .windowBackgroundColor)
+        WindowViewModelRegistry.shared.register(owner, for: candidate.windowNumber)
+        defer { WindowViewModelRegistry.shared.unregister(windowNumber: candidate.windowNumber); candidate.close() }
+        applyTranslucency(true)
+        XCTAssertFalse(candidate.titlebarAppearsTransparent)
+        XCTAssertEqual(candidate.backgroundColor, .windowBackgroundColor,
+            "Native toolbar in-window blending must never sample a clear window backing")
+        applyTranslucency(false)
+        XCTAssertFalse(candidate.titlebarAppearsTransparent)
+    }
+
+    func testNativePrimaryAndChildChromeKeepTheSameBackingAcrossAppearanceChanges() {
+        let primary = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+            styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: true)
+        let child = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: true)
+        let owners = [MacDocumentTabPolicy.makeWindowModel(), MacDocumentTabPolicy.makeWindowModel()]
+        let windows = [primary, child]
+        for (window, owner) in zip(windows, owners) {
+            window.isReleasedWhenClosed = false
+            WindowViewModelRegistry.shared.register(owner, for: window.windowNumber)
+            MacDocumentTabPolicy.configureWindowChrome(window)
+        }
+        defer {
+            for window in windows {
+                WindowViewModelRegistry.shared.unregister(windowNumber: window.windowNumber)
+                window.close()
+            }
+        }
+        for dark in [false, true] {
+            for enabled in [true, false, true] {
+                for mode in ["frosted", "balanced", "vibrant"] {
+                    ContentView.MacEditorSurfacePolicy.configureRegisteredWindowTranslucency(enabled,
+                        opaqueEditorCanvas: true, modeRaw: mode, isDarkMode: dark)
+                    // Registration/activation and preference updates must commute.
+                    MacDocumentTabPolicy.configureWindowChrome(child)
+                    XCTAssertEqual(primary.backgroundColor, child.backgroundColor)
+                    XCTAssertEqual(primary.backgroundColor, .windowBackgroundColor)
+                    XCTAssertEqual(primary.isOpaque, child.isOpaque)
+                    XCTAssertFalse(primary.titlebarAppearsTransparent)
+                    XCTAssertFalse(child.titlebarAppearsTransparent)
+                }
+            }
+        }
+    }
+
     func testSettingsPaneRetainsReleasedIntrinsicSizingWhenInactive() {
         let hosting = NSHostingView(rootView: NeonSettingsView.SettingsTabPage(
             title: "AI", systemImage: "brain", tag: "ai", selectedTag: "python",
@@ -154,24 +365,17 @@ final class WindowTranslucencyTests: XCTestCase {
             testWindow.close()
         }
 
-        let sut = ContentView()
-
-        sut.applyWindowTranslucency(true)
+        // Every macOS editor window is a native document tab: translucency
+        // changes opacity only, while AppKit keeps the native titlebar chrome.
+        applyTranslucency(true)
         XCTAssertFalse(testWindow.isOpaque)
-        XCTAssertTrue(testWindow.titlebarAppearsTransparent)
-        XCTAssertTrue((testWindow.backgroundColor?.alphaComponent ?? 1) < 1)
+        XCTAssertFalse(testWindow.titlebarAppearsTransparent)
+        XCTAssertEqual(testWindow.backgroundColor, .windowBackgroundColor)
 
-        sut.applyWindowTranslucency(false)
+        applyTranslucency(false)
         XCTAssertTrue(testWindow.isOpaque)
-        XCTAssertTrue(testWindow.titlebarAppearsTransparent)
-        XCTAssertEqual(
-            testWindow.backgroundColor,
-            ContentView.MacEditorSurfacePolicy.windowBackground(
-                translucent: false,
-                modeRaw: "balanced",
-                isDarkMode: false
-            )
-        )
+        XCTAssertFalse(testWindow.titlebarAppearsTransparent)
+        XCTAssertEqual(testWindow.backgroundColor, .windowBackgroundColor)
     }
 
     func testMacSettingsNativeContentSizingKeepsStandardWidth() {

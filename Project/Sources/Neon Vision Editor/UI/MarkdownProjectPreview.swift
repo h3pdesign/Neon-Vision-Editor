@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import Combine
+import Observation
 import ImageIO
 import PDFKit
 import UniformTypeIdentifiers
@@ -116,6 +117,31 @@ struct MarkdownProjectPreviewCardData: Identifiable, Sendable, Hashable {
     }
 }
 
+/// Project browsing belongs to the window group, not to a selected document.
+@Observable @MainActor
+final class MarkdownProjectPreviewSession {
+    let model = MarkdownProjectPreviewModel()
+    var isPresented = false
+    var width: Double = 500
+#if os(macOS)
+    @ObservationIgnored let nativePane = MacProjectCardsPane()
+#endif
+    private(set) var projectRoot: URL?
+    var indexedFileCount = 0
+    var isIndexReady = false
+    @ObservationIgnored var lastRefreshSignature: String?
+
+    func setProjectRoot(_ root: URL?) {
+        guard projectRoot?.standardizedFileURL != root?.standardizedFileURL else { return }
+        projectRoot = root
+        lastRefreshSignature = nil
+        indexedFileCount = 0
+        isIndexReady = false
+        model.cancel()
+        if root == nil { isPresented = false }
+    }
+}
+
 @MainActor
 final class MarkdownProjectPreviewModel: ObservableObject {
     @Published private(set) var cards: [MarkdownProjectPreviewCardData] = []
@@ -141,12 +167,7 @@ final class MarkdownProjectPreviewModel: ObservableObject {
         contentFilter: MarkdownProjectPreviewContentFilter = .markdown,
         reason: String
     ) {
-        refreshTask?.cancel()
-        artworkTasks.values.forEach { $0.cancel() }
-        artworkTasks.removeAll()
-        queuedArtwork.removeAll()
-        activeArtworkLoads = 0
-        refreshGeneration &+= 1
+        stopLoadingWork()
         let generation = refreshGeneration
         guard let projectRoot else {
             cards = []
@@ -261,18 +282,20 @@ final class MarkdownProjectPreviewModel: ObservableObject {
         while activeArtworkLoads < 2, !queuedArtwork.isEmpty {
             let next = queuedArtwork.removeFirst()
             activeArtworkLoads += 1
+            let generation = refreshGeneration
             artworkTasks[next.id] = Task.detached(priority: .utility) { [weak self] in
                 let artwork = MarkdownProjectPreviewLoader.loadPDFArtwork(from: next.url)
                 guard !Task.isCancelled else {
-                    await self?.finishCancelledArtworkLoad(for: next.id)
+                    await self?.finishCancelledArtworkLoad(for: next.id, generation: generation)
                     return
                 }
-                await self?.applyPDFArtwork(artwork, for: next.id)
+                await self?.applyPDFArtwork(artwork, for: next.id, generation: generation)
             }
         }
     }
 
-    private func finishCancelledArtworkLoad(for cardID: String) {
+    private func finishCancelledArtworkLoad(for cardID: String, generation: Int) {
+        guard generation == refreshGeneration else { return }
         guard artworkTasks[cardID] != nil else { return }
         artworkTasks[cardID] = nil
         activeArtworkLoads = max(0, activeArtworkLoads - 1)
@@ -281,8 +304,10 @@ final class MarkdownProjectPreviewModel: ObservableObject {
 
     private func applyPDFArtwork(
         _ artwork: (pageCount: Int?, imageData: Data?),
-        for cardID: String
+        for cardID: String,
+        generation: Int
     ) {
+        guard generation == refreshGeneration else { return }
         guard artworkTasks[cardID] != nil else { return }
         defer { artworkTasks[cardID] = nil }
         defer {
@@ -342,16 +367,23 @@ final class MarkdownProjectPreviewModel: ObservableObject {
         refreshTask = nil
     }
 
-    func cancel() {
+    /// Teardown may run inside SwiftUI's removal/update transaction. Invalidate
+    /// producers without publishing into a surface that is being dismantled.
+    func stopLoadingWork() {
+        refreshGeneration &+= 1
         refreshTask?.cancel()
         refreshTask = nil
         artworkTasks.values.forEach { $0.cancel() }
         artworkTasks.removeAll()
         queuedArtwork.removeAll()
         activeArtworkLoads = 0
-        cards = []
-        isLoading = false
-        loadingStatus = ""
+    }
+
+    func cancel() {
+        stopLoadingWork()
+        if !cards.isEmpty { cards = [] }
+        if isLoading { isLoading = false }
+        if !loadingStatus.isEmpty { loadingStatus = "" }
     }
 
     private func sortCards() {
@@ -802,6 +834,126 @@ struct MarkdownProjectPreviewPanel: View {
         return card.url.standardizedFileURL == currentPreviewURL.standardizedFileURL
     }
 }
+
+#if os(macOS)
+/// One physical card surface per native document group. Moving the retained
+/// host preserves native scroll/focus state; hidden documents cannot lay out or
+/// scroll a competing copy of the pane.
+@Observable @MainActor
+final class MacProjectCardsPane {
+    @ObservationIgnored private(set) var host: NSHostingView<MacProjectCardsSurface>?
+    @ObservationIgnored private let containers = NSHashTable<MacProjectCardsContainer>.weakObjects()
+    @ObservationIgnored private var isReleased = false
+    var content = AnyView(EmptyView())
+
+    func register(_ container: MacProjectCardsContainer) {
+        containers.add(container)
+    }
+
+    func activate(_ container: MacProjectCardsContainer) {
+        guard !isReleased, let window = container.window else { return }
+        let isSelected = window.tabGroup.map { $0.selectedWindow === window }
+            ?? (window.isVisible || host?.superview == nil)
+        guard isSelected else { return }
+        content = container.root
+        if let host {
+            if host.superview !== container {
+                host.removeFromSuperview()
+                host.frame = container.bounds
+                container.addSubview(host)
+            }
+        } else {
+            let host = NSHostingView(rootView: MacProjectCardsSurface(pane: self))
+            host.sizingOptions = []
+            host.frame = container.bounds
+            host.autoresizingMask = [.width, .height]
+            container.addSubview(host)
+            self.host = host
+        }
+    }
+
+    func release() {
+        isReleased = true
+        for container in containers.allObjects { container.stopObserving() }
+        host?.removeFromSuperview()
+        host = nil
+        content = AnyView(EmptyView())
+        containers.removeAllObjects()
+    }
+}
+
+struct MacProjectCardsSurface: View {
+    let pane: MacProjectCardsPane
+    var body: some View { pane.content }
+}
+
+@MainActor
+final class MacProjectCardsContainer: NSView {
+    let pane: MacProjectCardsPane
+    var root: AnyView
+    private var windowObservation: NSKeyValueObservation?
+    private var selectionObservation: NSKeyValueObservation?
+
+    init(pane: MacProjectCardsPane, root: AnyView) {
+        self.pane = pane
+        self.root = root
+        super.init(frame: .zero)
+        pane.register(self)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        stopObserving()
+        guard let window else { return }
+        windowObservation = window.observe(\.tabGroup, options: [.initial, .new]) { [weak self] _, _ in
+            MainActor.assumeIsolated { self?.observeSelection() }
+        }
+    }
+
+    private func observeSelection() {
+        selectionObservation = window?.tabGroup?.observe(\.selectedWindow, options: [.initial, .new]) { [weak self] _, _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.pane.activate(self)
+            }
+        }
+        pane.activate(self)
+    }
+
+    func stopObserving() {
+        windowObservation = nil
+        selectionObservation = nil
+    }
+}
+
+struct MacSharedProjectCards: NSViewRepresentable {
+    let pane: MacProjectCardsPane
+    let content: AnyView
+
+    func makeNSView(context: Context) -> MacProjectCardsContainer {
+        MacProjectCardsContainer(pane: pane, root: hostedContent(context.environment))
+    }
+
+    func updateNSView(_ view: MacProjectCardsContainer, context: Context) {
+        view.root = hostedContent(context.environment)
+        pane.activate(view)
+    }
+
+    private func hostedContent(_ environment: EnvironmentValues) -> AnyView {
+        // Forward presentation preferences, not a document's private scene
+        // identity/storage environment into the group-owned surface.
+        AnyView(content
+            .environment(\.locale, environment.locale)
+            .environment(\.colorScheme, environment.colorScheme)
+            .environment(\.layoutDirection, environment.layoutDirection)
+            .environment(\.dynamicTypeSize, environment.dynamicTypeSize)
+            .font(environment.font)
+            .tint(.blue))
+    }
+}
+#endif
 
 private struct MarkdownProjectPreviewCard: View {
     let card: MarkdownProjectPreviewCardData

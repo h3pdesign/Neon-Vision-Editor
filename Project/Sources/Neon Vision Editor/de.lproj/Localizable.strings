@@ -200,7 +200,6 @@
 "Allow Private Cloud Compute for Agent Mode" = "Private Cloud Compute für Agentenmodus erlauben";
 "Allow Shared Imports?" = "Gemeinsame Importe erlauben?";
 "Allows complex Edit and Verify requests to use Apple's Private Cloud Compute when available." = "Ermöglicht komplexe Edit- und Verifizierungsanfragen, Apple's Private Cloud Compute zu nutzen, wenn verfügbar.";
-"Always" = "Immer";
 "An item with this name already exists." = "Ein Element mit diesem Namen existiert bereits.";
 "Anthropic" = "Anthropic";
 "Anthropic API Token Required" = "Anthropic API-Token erforderlich";
@@ -955,7 +954,6 @@
 "Neon Vision Editor will always stay free to use." = "Neon Vision Editor bleibt immer kostenlos verfügbar.";
 "Neon Vision Editor will ask macOS to open its supported text and source-code file types. macOS may request your confirmation." = "Neon Vision Editor wird macOS auffordern, seine unterstützten Text- und Quellcode-Dateitypen zu öffnen. macOS kann Ihre Bestätigung anfordern.";
 "Neutral" = "Neutral";
-"Never" = "Nie";
 "New Chat" = "Neuer Chat";
 "New Comparison" = "Neue Vergleichsanzeige";
 "New File" = "Neue Datei";
@@ -1060,7 +1058,6 @@
 "Open in New Tab" = "In neuem Tab öffnen";
 "Open in New Tabs" = "In mehreren neuem Tab öffnen";
 "Open in Separate Window" = "Öffnen Sie in einem separaten Fenster";
-"Open in Tabs" = "In Tabs öffnen";
 "Open match in editor" = "Treffer im Editor öffnen";
 "Open remote folder %@" = "Remote-Ordner %@ öffnen";
 "Open shared import %@" = "Öffnen Sie die gemeinsame Importdatei %@";

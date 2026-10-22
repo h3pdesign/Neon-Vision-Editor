@@ -5,6 +5,44 @@ import XCTest
 
 @MainActor
 final class MobileNativeFileTabBarTests: XCTestCase {
+    func testMobileTabActionsPreserveSceneOwnershipAndDirtyBuffers() throws {
+        let model = EditorViewModel()
+        let first = try XCTUnwrap(model.selectedTab)
+        model.updateTabContent(tabID: first.id, content: "unsaved 中文 😀")
+        let view = MobileNativeFileTabBarView(frame: CGRect(x: 0, y: 0, width: 390, height: 42))
+        view.onAdd = { model.addNewTab() }
+        view.onSelect = { model.selectTab(id: $0) }
+        view.onClose = { model.closeTab(tabID: $0) }
+        view.onMove = { source, destination, before in
+            if before { model.moveTab(tabID: source, beforeTabID: destination) }
+            else { model.moveTab(tabID: source, afterTabID: destination) }
+        }
+        func apply() {
+            view.apply(tabs: model.tabs.map {
+                MobileNativeFileTabSnapshot(id: $0.id, title: $0.name, isDirty: $0.isDirty,
+                                            isRemote: $0.isRemoteDocument, isReadOnly: $0.isReadOnlyPreview)
+            }, selectedTabID: model.selectedTabID)
+            view.layoutIfNeeded()
+        }
+        apply()
+        view.addTabForTesting()
+        let second = try XCTUnwrap(model.selectedTab)
+        apply()
+        XCTAssertEqual(model.tabs.count, 2)
+        XCTAssertEqual(view.selectedTabID, second.id)
+        view.moveTabForTesting(second.id, destination: first.id, before: true)
+        apply()
+        XCTAssertEqual(view.orderedTabIDs, [second.id, first.id])
+        view.selectTabForTesting(first.id)
+        view.closeTabForTesting(second.id)
+        apply()
+        XCTAssertTrue(model.selectedTab === first)
+        XCTAssertEqual(first.document.string(), "unsaved 中文 😀")
+        XCTAssertTrue(first.isDirty)
+        XCTAssertEqual(view.managedTabViewCount, 1)
+        XCTAssertEqual(view.selectedTabID, first.id)
+    }
+
     func testApplyingSnapshotsKeepsStableViewsAndSelectionHistory() throws {
         let firstID = UUID()
         let secondID = UUID()

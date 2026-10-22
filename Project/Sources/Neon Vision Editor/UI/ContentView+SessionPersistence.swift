@@ -129,18 +129,25 @@ extension ContentView {
 #if os(macOS)
         // Do not restore multiple documents into one model before its native
         // window factory is attached. A preloaded child must not be reset.
-        if viewModel.usesNativeDocumentTabs, viewModel.nativeDocumentDestination == nil { return }
+        if viewModel.nativeDocumentDestination == nil { return }
         if startupBehavior == .nativeDocument {
-            restoreLastSessionViewContextIfAvailable()
-            if let folder = restoredLastSessionProjectFolderURL() { setProjectFolder(folder) }
+            applyDefaultMarkdownPreviewOpenMode()
+            if !viewModel.isSafeModeRecoveryWindow {
+                restoreLastSessionViewContextIfAvailable(restoresPresentation: false)
+                if let folder = markdownProjectPreviewSession.projectRoot ?? restoredLastSessionProjectFolderURL() {
+                    setProjectFolder(folder, synchronizeNativeTabs: false)
+                }
+            }
             didApplyStartupBehavior = true
             persistSessionIfReady()
             return
         }
-        if viewModel.usesNativeDocumentTabs, startupBehavior == .standard {
+        if startupBehavior == .standard {
             let shouldOpenBlank = openWithBlankDocument && !reopenLastSession
             if !shouldOpenBlank {
-                if let folder = restoredLastSessionProjectFolderURL() { setProjectFolder(folder) }
+                if let folder = restoredLastSessionProjectFolderURL() {
+                    setProjectFolder(folder, synchronizeNativeTabs: false)
+                }
                 // Recover dirty buffers first. Opening their on-disk URLs must
                 // focus those owners, not start a competing load over the draft.
                 if recoverUnsavedDrafts { _ = restoreUnsavedDraftSnapshotIfAvailable() }
@@ -244,8 +251,7 @@ extension ContentView {
     }
 
     private func resetForBlankStartup() {
-        viewModel.resetTabsForSessionRestore()
-        viewModel.addNewTab()
+        viewModel.resetToBlankDocumentForStartup()
         projectRootFolderURL = nil
         clearProjectEditorOverrides()
         projectTreeNodes = []
@@ -264,6 +270,9 @@ extension ContentView {
 
     func persistSelectedSessionFileURLImmediately() {
         guard didApplyStartupBehavior, startupBehavior != .safeMode else { return }
+#if os(macOS)
+        guard !viewModel.isSafeModeRecoveryWindow else { return }
+#endif
         let value = viewModel.selectedTab?.fileURL.map { EditorPreferenceWriter.Value.string($0.absoluteString) } ?? .removed
         sessionPreferences.set(value, forKey: "LastSessionSelectedFileURL")
     }
@@ -296,6 +305,9 @@ extension ContentView {
     func persistSessionIfReady() {
         guard didApplyStartupBehavior else { return }
         guard startupBehavior != .safeMode else { return }
+#if os(macOS)
+        guard !viewModel.isSafeModeRecoveryWindow else { return }
+#endif
         let fileURLs = sessionDocumentTabs.compactMap { $0.fileURL }
         let selectedURL = viewModel.selectedTab?.fileURL
         let signature = ([
@@ -339,12 +351,10 @@ extension ContentView {
 
     var sessionDocumentTabs: [TabData] {
 #if os(macOS)
-        if viewModel.usesNativeDocumentTabs {
-            let models = MacDocumentWindowTabs.shared.models
-            return models.flatMap(\.tabs)
-        }
-#endif
+        return MacDocumentWindowTabs.shared.models.flatMap(\.tabs)
+#else
         return viewModel.tabs
+#endif
     }
 
     func restoredLastSessionFileURLs() -> [URL] {
@@ -458,34 +468,34 @@ extension ContentView {
             }
         }
 #if os(macOS)
-        if viewModel.usesNativeDocumentTabs {
-            var saved = sessionPreferences.object(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]
-            if let url = viewModel.selectedTab?.fileURL {
-                let key = url.standardizedFileURL.absoluteString
-                saved[key] = sessionCaretByFileURL[key] ?? max(0, lastCaretLocation)
-            }
-            sessionPreferences.set(.integers(saved), forKey: lastSessionCaretByFileURLKey)
-            return
+        var saved = sessionPreferences.object(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]
+        if let url = viewModel.selectedTab?.fileURL {
+            let key = url.standardizedFileURL.absoluteString
+            saved[key] = sessionCaretByFileURL[key] ?? max(0, lastCaretLocation)
         }
-#endif
+        sessionPreferences.set(.integers(saved), forKey: lastSessionCaretByFileURLKey)
+#else
         sessionPreferences.set(.integers(sessionCaretByFileURL), forKey: lastSessionCaretByFileURLKey)
+#endif
     }
 
-    func restoreLastSessionViewContextIfAvailable() {
+    func restoreLastSessionViewContextIfAvailable(restoresPresentation: Bool = true) {
         let defaults = sessionPreferences
-        if let visible = defaults.object(forKey: lastSessionShowSidebarKey) as? Bool {
-            viewModel.showSidebar = visible
-        }
+        if restoresPresentation {
+            if let visible = defaults.object(forKey: lastSessionShowSidebarKey) as? Bool {
+                viewModel.showSidebar = visible
+            }
 #if !os(macOS)
-        if let visible = defaults.object(forKey: lastSessionShowProjectSidebarKey) as? Bool {
-            showProjectStructureSidebar = visible
-        }
+            if let visible = defaults.object(forKey: lastSessionShowProjectSidebarKey) as? Bool {
+                showProjectStructureSidebar = visible
+            }
 #endif
-        if let rawPreviewMode = defaults.object(forKey: lastSessionPreviewModeKey) as? String,
-           let restoredPreviewMode = PreviewMode(rawValue: rawPreviewMode) {
-            previewMode = restoredPreviewMode
-        } else if let visible = defaults.object(forKey: lastSessionShowMarkdownPreviewKey) as? Bool {
-            showMarkdownPreviewPane = visible
+            if let rawPreviewMode = defaults.object(forKey: lastSessionPreviewModeKey) as? String,
+               let restoredPreviewMode = PreviewMode(rawValue: rawPreviewMode) {
+                previewMode = restoredPreviewMode
+            } else if let visible = defaults.object(forKey: lastSessionShowMarkdownPreviewKey) as? Bool {
+                showMarkdownPreviewPane = visible
+            }
         }
         sessionCaretByFileURL = defaults.object(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]
     }
@@ -641,9 +651,10 @@ extension ContentView {
     var unsavedDraftSnapshotRegistryKey: String { "UnsavedDraftSnapshotRegistryV1" }
     var unsavedDraftSnapshotKey: String {
 #if os(macOS)
-        if viewModel.usesNativeDocumentTabs { return "UnsavedDraftSnapshotV2.NativeDocumentWindows" }
-#endif
+        return MacDocumentTabPolicy.draftSnapshotKey(for: viewModel)
+#else
         return "UnsavedDraftSnapshotV2.\(recoverySnapshotIdentifier)"
+#endif
     }
     var maxPersistedDraftTabs: Int { 20 }
     var maxPersistedDraftUTF16Length: Int { 1_000_000 }
@@ -651,7 +662,7 @@ extension ContentView {
 
     func persistUnsavedDraftSnapshotIfNeeded() {
 #if os(macOS)
-        if viewModel.usesNativeDocumentTabs, MacDocumentWindowTabs.shared.isTerminating { return }
+        if MacDocumentWindowTabs.shared.isTerminating { return }
 #endif
         guard recoverUnsavedDrafts else {
             clearUnsavedDraftSnapshots()
@@ -777,21 +788,18 @@ extension ContentView {
         viewModel.restoreTabsFromSnapshot(restoredTabs, selectedIndex: restoredSnapshot.selectedIndex)
 
 #if os(macOS)
-        if viewModel.usesNativeDocumentTabs {
-            // Persist the complete restored set, including pending scenes, before
-            // consuming legacy snapshots. Child scene attachment is asynchronous.
-            persistUnsavedDraftSnapshotIfNeeded()
-            guard defaults.data(forKey: unsavedDraftSnapshotKey) != nil else { return true }
-            for key in keys where key != unsavedDraftSnapshotKey { defaults.removeObject(forKey: key) }
-            defaults.set([unsavedDraftSnapshotKey], forKey: unsavedDraftSnapshotRegistryKey)
-            return true
-        }
-#endif
-
+        // Persist the complete restored set, including pending scenes, before
+        // consuming legacy snapshots. Child scene attachment is asynchronous.
+        persistUnsavedDraftSnapshotIfNeeded()
+        guard defaults.data(forKey: unsavedDraftSnapshotKey) != nil else { return true }
+        for key in keys where key != unsavedDraftSnapshotKey { defaults.removeObject(forKey: key) }
+        defaults.set([unsavedDraftSnapshotKey], forKey: unsavedDraftSnapshotRegistryKey)
+#else
         for key in keys {
             defaults.removeObject(forKey: key)
         }
         defaults.removeObject(forKey: unsavedDraftSnapshotRegistryKey)
+#endif
         return true
     }
 

@@ -49,7 +49,6 @@ struct NeonSettingsView: View {
 
     fileprivate static let defaultSettingsTab = "general"
     private static var cachedEditorFonts: [String] = []
-    let supportsOpenInTabs: Bool
     let supportsTranslucency: Bool
     @Environment(EditorViewModel.self) private var editorViewModel
     @Environment(\.purchase) private var purchase
@@ -63,7 +62,6 @@ struct NeonSettingsView: View {
 #if os(visionOS)
     @Environment(\.dismiss) private var dismiss
 #endif
-    @AppStorage("SettingsOpenInTabs") private var openInTabs: String = "system"
     @AppStorage(SettingsPreferenceKey.editorFontName) private var editorFontName: String = ""
     @AppStorage(SettingsPreferenceKey.useSystemFont) private var useSystemFont: Bool = false
     @AppStorage(SettingsPreferenceKey.editorFontSize) private var editorFontSize: Double = 14
@@ -91,8 +89,6 @@ struct NeonSettingsView: View {
 #if os(macOS)
     @AppStorage("SettingsShowMenuBarIconMac") private var showMenuBarIconMac: Bool = true
     @AppStorage("SettingsOpenFilesOnCurrentDesktop") private var openFilesOnCurrentDesktop = false
-    @AppStorage("SettingsCloseWindowWhenLastTabClosed") private var closeWindowWhenLastTabClosed = true
-    @AppStorage(MacDocumentTabPolicy.preferenceKey) private var nativeDocumentTabsMac = false
     @AppStorage("SettingsToolbarUseCustomMac") private var toolbarUseCustomMac: Bool = false
     @AppStorage("SettingsToolbarCustomIDsMac") private var toolbarCustomIDsMac: String = ""
     @AppStorage("SettingsToolbarPresetMac") private var toolbarPresetMacRaw: String = ToolbarPreset.standard.rawValue
@@ -831,10 +827,8 @@ struct NeonSettingsView: View {
     }
 
     init(
-        supportsOpenInTabs: Bool = true,
         supportsTranslucency: Bool = true
     ) {
-        self.supportsOpenInTabs = supportsOpenInTabs
         self.supportsTranslucency = supportsTranslucency
         let defaults = UserDefaults.standard
 #if os(macOS)
@@ -2245,17 +2239,6 @@ struct NeonSettingsView: View {
             showsAccentStripe: false,
             tip: LocalizedStringKey(localized("Choose how windows open and how appearance is applied."))
         ) {
-            if supportsOpenInTabs {
-                iOSLabeledRow(LocalizedStringKey(localized("Open in Tabs"))) {
-                    Picker("", selection: $openInTabs) {
-                        Text(localized("Follow System")).tag("system")
-                        Text(localized("Always")).tag("always")
-                        Text(localized("Never")).tag("never")
-                    }
-                    .pickerStyle(.segmented)
-                }
-            }
-
             iOSLabeledRow(LocalizedStringKey(localized("Appearance"))) {
                 Picker("", selection: $appearance) {
                     Text(localized("System")).tag("system")
@@ -2298,18 +2281,6 @@ struct NeonSettingsView: View {
 #else
         GroupBox(localized("Window")) {
             VStack(alignment: .leading, spacing: UI.space12) {
-                if supportsOpenInTabs {
-                    HStack(alignment: .center, spacing: UI.space12) {
-                        Text(localized("Open in Tabs"))
-                            .frame(width: isCompactSettingsLayout ? nil : standardLabelWidth, alignment: .leading)
-                        Picker("", selection: $openInTabs) {
-                            Text(localized("Follow System")).tag("system")
-                            Text(localized("Always")).tag("always")
-                            Text(localized("Never")).tag("never")
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                }
 
                 HStack(alignment: .center, spacing: UI.space12) {
                     Text(localized("Appearance"))
@@ -2357,14 +2328,6 @@ struct NeonSettingsView: View {
 
                 Toggle(localized("Open files on the current desktop"), isOn: $openFilesOnCurrentDesktop)
                     .help(localized("Reuse an editor on this desktop, or open a new window without switching desktops."))
-                Toggle(localized("Close window when the last tab is closed"), isOn: $closeWindowWhenLastTabClosed)
-                    .help(localized("Turn off to keep an empty editor window available for opening files."))
-                    .disabled(MacDocumentTabPolicy.enabledForLaunch)
-
-                Toggle(localized("Native macOS document tabs (experimental)"), isOn: $nativeDocumentTabsMac)
-                    .help(localized("Applies after relaunch. Each document opens in a native window tab. Existing sessions are preserved."))
-                    .accessibilityHint(localized("Applies after relaunch. Each document opens in a native window tab. Existing sessions are preserved."))
-
                 Toggle(localized("Show Menu Bar Icon"), isOn: $showMenuBarIconMac)
                     .help(localized("Shows the Welcome Tour shortcut in the macOS menu bar."))
                     .accessibilityHint(localized("Shows or hides the Welcome Tour shortcut in the macOS menu bar."))
@@ -7751,7 +7714,6 @@ struct SettingsWindowConfigurator: NSViewRepresentable {
 #if DEBUG && canImport(SwiftUI) && canImport(PreviewsMacros)
 #Preview {
     NeonSettingsView(
-        supportsOpenInTabs: true,
         supportsTranslucency: true
     )
 }

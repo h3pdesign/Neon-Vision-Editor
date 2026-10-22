@@ -136,6 +136,30 @@ final class MacDocumentWindowTabsTests: XCTestCase {
         return root.subviews.lazy.compactMap { self.firstSubview(of: type, in: $0) }.first
     }
 
+    /// The shared session's selection follows the selected owner, and a closed
+    /// owner hands persistence to a remaining one instead of keeping its file.
+    func testSessionSelectionFollowsSelectedOwnerAndSurvivesClose() throws {
+        let store = immediateStore()
+        let first = MacDocumentTabPolicy.makeWindowModel()
+        let second = MacDocumentTabPolicy.makeWindowModel()
+        let firstWindow = window("First.swift")
+        let secondWindow = window("Second.swift")
+        defer { store.unregister(first); store.unregister(second); firstWindow.close(); secondWindow.close() }
+        var persisted: [String] = []
+        store.register(first, window: firstWindow, persistDrafts: { persisted.append("first") }) { _ in }
+        store.register(second, window: secondWindow, persistDrafts: { persisted.append("second") }) { _ in }
+
+        store.noteBecameKey(second)
+        XCTAssertTrue(store.sessionSelectionModel === second, "A background owner must not supply the selection")
+        store.persistSessionFromSelectedOwner()
+        XCTAssertEqual(persisted, ["second"])
+
+        store.unregister(second)
+        XCTAssertTrue(store.sessionSelectionModel === first, "A closed owner must not remain the session selection")
+        store.persistSessionFromSelectedOwner()
+        XCTAssertEqual(persisted, ["second", "first"])
+    }
+
     /// Unselected tabs hide their content so their layer backing can be
     /// released; selecting a tab, or leaving the group, reveals it again.
     func testOnlyTheSelectedNativeTabKeepsVisibleContent() throws {

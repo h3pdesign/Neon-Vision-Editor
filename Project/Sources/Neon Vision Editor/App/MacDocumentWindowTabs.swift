@@ -122,6 +122,20 @@ final class MacDocumentWindowTabs {
         models.first { ObjectIdentifier($0) == selectionToReveal }
     }
 
+    /// Every owner persists the shared session; its selected document must
+    /// come from the selected owner, not whichever window persisted last.
+    var sessionSelectionModel: EditorViewModel? {
+        selectedModel
+            ?? activeNativeWindow.flatMap { window in entries.values.first { $0.window === window }?.model }
+            ?? models.first
+    }
+
+    /// Re-persist the session from a remaining owner, e.g. after a tab closes.
+    func persistSessionFromSelectedOwner() {
+        guard !isTerminating, let model = sessionSelectionModel else { return }
+        entries[ObjectIdentifier(model)]?.persistDrafts()
+    }
+
     func presentationState(for model: EditorViewModel) -> EditorDocumentPresentationState {
         let identity = ObjectIdentifier(model)
         if let state = presentationStates[identity] { return state }

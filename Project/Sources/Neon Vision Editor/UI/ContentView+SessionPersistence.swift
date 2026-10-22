@@ -273,7 +273,7 @@ extension ContentView {
 #if os(macOS)
         guard !viewModel.isSafeModeRecoveryWindow else { return }
 #endif
-        let value = viewModel.selectedTab?.fileURL.map { EditorPreferenceWriter.Value.string($0.absoluteString) } ?? .removed
+        let value = sessionSelectedFileURL.map { EditorPreferenceWriter.Value.string($0.absoluteString) } ?? .removed
         sessionPreferences.set(value, forKey: "LastSessionSelectedFileURL")
     }
 
@@ -309,7 +309,7 @@ extension ContentView {
         guard !viewModel.isSafeModeRecoveryWindow else { return }
 #endif
         let fileURLs = sessionDocumentTabs.compactMap { $0.fileURL }
-        let selectedURL = viewModel.selectedTab?.fileURL
+        let selectedURL = sessionSelectedFileURL
         let signature = ([
             fileURLs.map(\.absoluteString).joined(separator: "|"),
             selectedURL?.absoluteString ?? "",
@@ -346,6 +346,14 @@ extension ContentView {
         persistLastSessionSecurityScopedBookmarks(fileURLs: fileURLs, selectedURL: selectedURL)
 #elseif os(macOS)
         persistLastSessionSecurityScopedBookmarksMac(fileURLs: fileURLs, selectedURL: selectedURL)
+#endif
+    }
+
+    var sessionSelectedFileURL: URL? {
+#if os(macOS)
+        (MacDocumentWindowTabs.shared.sessionSelectionModel ?? viewModel).selectedTab?.fileURL
+#else
+        viewModel.selectedTab?.fileURL
 #endif
     }
 

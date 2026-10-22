@@ -2041,6 +2041,8 @@ struct ContentView: View {
         didNotifyWindowClosed = true
         MacDocumentWindowTabs.shared.unregister(viewModel)
         persistUnsavedDraftSnapshotIfNeeded()
+        // The closed document must not reopen; let AppKit select the next tab first.
+        DispatchQueue.main.async { MacDocumentWindowTabs.shared.persistSessionFromSelectedOwner() }
         onWindowClosed?()
     }
 

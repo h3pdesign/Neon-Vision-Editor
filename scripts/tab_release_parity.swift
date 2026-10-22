@@ -170,10 +170,25 @@ final class TabReleaseParityRunner {
             }
             /// A source editor must fill its pane, not collapse to one centered line.
             func checkEditorFillsPane(_ item: Document, _ label: String) {
-                guard let scroll = firstView(VirtualEditorScrollView.self, in: item.window.contentView) else { return }
+                guard let scroll = firstView(VirtualEditorScrollView.self, in: item.window.contentView) else {
+                    print("RENDER_EDITOR \(label) file=\(item.url.lastPathComponent) missing")
+                    XCTFail("The selected source document must install its editor (\(label) \(item.url.lastPathComponent))")
+                    return
+                }
+                // Available height: the content area that hosts the editor panes,
+                // minus any pane header stacked above this editor's row.
+                var ancestor = scroll.superview
+                var paneColumn: NSStackView?
+                while let view = ancestor, !String(describing: type(of: view)).contains("ContentContainer") {
+                    if paneColumn == nil, let stack = view as? NSStackView, stack.orientation == .vertical { paneColumn = stack }
+                    ancestor = view.superview
+                }
+                let paneHeader = paneColumn?.arrangedSubviews.filter { !scroll.isDescendant(of: $0) }
+                    .reduce(0) { $0 + $1.frame.height } ?? 0
+                let available = (ancestor?.bounds.height ?? item.window.contentLayoutRect.height) - paneHeader
                 let frame = scroll.convert(scroll.bounds, to: nil)
-                print("RENDER_EDITOR \(label) file=\(item.url.lastPathComponent) frame=\(frame) viewport=\(item.window.contentLayoutRect) hidden=\(scroll.isHiddenOrHasHiddenAncestor)")
-                XCTAssertTrue(!scroll.isHiddenOrHasHiddenAncestor && frame.height >= item.window.contentLayoutRect.height * 0.5,
+                print("RENDER_EDITOR \(label) file=\(item.url.lastPathComponent) frame=\(frame) available=\(available) viewport=\(item.window.contentLayoutRect) hidden=\(scroll.isHiddenOrHasHiddenAncestor)")
+                XCTAssertTrue(!scroll.isHiddenOrHasHiddenAncestor && ancestor != nil && abs(frame.height - available) <= 2,
                     "The selected editor must be visible and fill its pane (\(label) \(item.url.lastPathComponent))")
             }
 #if !NVE_RELEASE_BASELINE
@@ -207,12 +222,18 @@ final class TabReleaseParityRunner {
             try await Task.sleep(for: .milliseconds(300))
             checkEditorFillsPane(shortSwift, "opened")
             let ownersBeforeNewTab = Set(store.models.map(ObjectIdentifier.init))
+            let windowsBeforeNewTab = Set(NSApp.windows.map(ObjectIdentifier.init))
             shortOwner.addNewTab()
             try await wait({ store.models.contains { !ownersBeforeNewTab.contains(ObjectIdentifier($0)) } },
                 window: parent, message: "New tab created")
             let newOwner = try XCTUnwrap(store.models.first { !ownersBeforeNewTab.contains(ObjectIdentifier($0)) })
             childModels.append(newOwner)
             try await wait({ store.selectedModel === newOwner && newOwner.selectedTab != nil }, window: parent, message: "New tab selected")
+            // Track the new tab's window so cleanup closes it.
+            childWindows.append(contentsOf: NSApp.windows.filter {
+                !windowsBeforeNewTab.contains(ObjectIdentifier($0)) && $0.tabbingIdentifier == MacDocumentTabPolicy.tabbingIdentifier
+            })
+            XCTAssertTrue(childWindows.contains { $0.tabGroup?.selectedWindow === $0 }, "The new tab's window must be tracked for cleanup")
             try await Task.sleep(for: .milliseconds(500))
             for previous in documents.reversed() {
                 // Select exactly as the tab bar does, without forcing a redraw.

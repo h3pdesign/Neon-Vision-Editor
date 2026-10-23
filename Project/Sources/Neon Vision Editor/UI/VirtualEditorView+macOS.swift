@@ -837,9 +837,13 @@ final class VirtualEditorScrollView: NSScrollView {
         super.viewDidMoveToWindow()
         guard let window else { return }
 
+        // Only claim an unfocused window: never take focus from a field the
+        // user (or a restored find/sidebar control) already focused.
         if focusesEditorOnInitialWindowAttachment, !didRequestInitialEditorFocus {
             didRequestInitialEditorFocus = true
-            window.makeFirstResponder(canvas)
+            if window.firstResponder == nil || window.firstResponder === window {
+                window.makeFirstResponder(canvas)
+            }
         }
 
         // SwiftUI can replace the surrounding hierarchy (for example when a

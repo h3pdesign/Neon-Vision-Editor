@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-10-23 (v2.1.0 release-aligned architecture)
+Last updated: 2026-10-23 (v2.1.1 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -9,6 +9,14 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
+### v2.1.1 (2026-10-23)
+
+- New native Mac tabs and newly opened documents put the cursor in the editor immediately.
+- New native Mac tabs accept typing and paste immediately, without clicking into the editor first.
+- Returning to a native Mac tab always shows its content, including after the first tab of a window has been closed.
+- Closing a native Mac tab stops its background work and shared-import watcher, and a closed tab no longer reopens after its window's first tab was closed.
+- "Open files on current desktop" finds a file that is already open in a background tab instead of opening it twice.
+
 ### v2.1.0 (2026-10-23)
 
 - Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation.
@@ -16,15 +24,6 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 - On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is closed, open, or partially folded, so it no longer covers the bottom of your document (#498).
 - Rechecks document revisions before applying external file refreshes, so edits made while a refresh is pending are not replaced by stale content.
 - Preserves JSON object member order, repeated keys, exact number tokens, and escaped strings when formatting or combining lines (#802).
-
-### v2.0.0 (2026-10-15)
-
-- Keeps compatible Markdown previews up to date without reloading unchanged content or losing your scroll position.
-- Stops obsolete folder scans when you cancel project indexing.
-- Adapts the phone toolbar when the available layout changes between compact and regular width.
-- Detects external file rewrites even when file size and modification time are unchanged, preventing stale text indexes during background tab activation.
-- Keeps precise iPhone/iPad cursor placement from being overwritten by delayed saved-position updates (#770).
-- Restores saved cursor positions after deferred large-file loading completes, without saving temporary placeholder positions (#770).
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

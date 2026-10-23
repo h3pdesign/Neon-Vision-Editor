@@ -248,6 +248,8 @@ class CloudBuildCounter:
                 if not isinstance(attrs, dict) or type(attrs.get("number")) is not int or attrs["number"] < 1:
                     raise ValueError("Cloud build number is missing or invalid.")
                 progress = attrs.get("executionProgress")
+                # An ignored run still consumed its number; only its state is ignored.
+                maximum = max(maximum, attrs["number"])
                 if progress not in ("COMPLETE", "RUNNING"):
                     raise ValueError("Cloud has an active, queued or unknown-state build. Wait for it to finish before allocating a release number.")
                 if progress == "RUNNING":
@@ -256,7 +258,6 @@ class CloudBuildCounter:
                     unfinished.append((item["id"], attrs["number"]))
                 else:
                     completed_maximum = max(completed_maximum, attrs["number"])
-                maximum = max(maximum, attrs["number"])
             url = data["links"].get("next")
             if url is not None and (not isinstance(url, str) or not url):
                 raise ValueError("Malformed Cloud pagination link.")

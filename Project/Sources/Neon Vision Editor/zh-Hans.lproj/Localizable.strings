@@ -1802,3 +1802,17 @@
 "Editor Improvements: Makes native document tabs standard for macOS, replacing the previous in-editor tab strip. Native tabs show filenames…" = "编辑器改进: 原生文稿标签页成为 macOS 的标准方式，取代以前的编辑器内标签栏。原生标签页会显示文件名…";
 "On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is…" = "在 iPhone Duo 上，编辑器工具栏会移到右侧边缘、状态栏下方的垂直栏中，当手机处于…";
 "Workflow Refinements: On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is…" = "工作流程优化: 在 iPhone Duo 上，编辑器工具栏会移到右侧边缘、状态栏下方的垂直栏中，当手机处于…";
+"What’s New in v2.1.1" = "v2.1.1的新功能";
+"Release highlights for v2.1.1." = "v2.1.1版本亮点。";
+"Type or paste into a new Mac tab right away, without clicking into the editor first." = "无需先点按编辑器，即可在新的 Mac 标签页中立即输入或粘贴。";
+"Editor Improvements: Type or paste into a new Mac tab right away, without clicking into the editor first." = "编辑器改进: 无需先点按编辑器，即可在新的 Mac 标签页中立即输入或粘贴。";
+"Mac tabs you return to always show their content, even after the window's first tab was closed." = "返回的 Mac 标签页始终显示其内容，即使窗口的第一个标签页已关闭。";
+"Workflow Refinements: Mac tabs you return to always show their content, even after the window's first tab was closed." = "工作流程优化: 返回的 Mac 标签页始终显示其内容，即使窗口的第一个标签页已关闭。";
+"Closed Mac tabs stop their background work and no longer reopen on the next launch." = "关闭的 Mac 标签页会停止后台工作，下次启动时不再重新打开。";
+"Performance Updates: Closed Mac tabs stop their background work and no longer reopen on the next launch." = "性能更新: 关闭的 Mac 标签页会停止后台工作，下次启动时不再重新打开。";
+"New native Mac tabs and newly opened documents put the cursor in the editor immediately." = "新的 Mac 原生标签页和新打开的文稿会立即将光标置于编辑器中。";
+"Cursor Placement: New native Mac tabs and newly opened documents put the cursor in the editor immediately." = "光标定位: 新的 Mac 原生标签页和新打开的文稿会立即将光标置于编辑器中。";
+"New native Mac tabs accept typing and paste immediately, without clicking into the editor first." = "新的 Mac 原生标签页无需先点按编辑器，即可立即输入和粘贴。";
+"Editor Improvements: New native Mac tabs accept typing and paste immediately, without clicking into the editor first." = "编辑器改进: 新的 Mac 原生标签页无需先点按编辑器，即可立即输入和粘贴。";
+"Returning to a native Mac tab always shows its content, including after the first tab of a window has been closed." = "返回 Mac 原生标签页时始终显示其内容，即使窗口的第一个标签页已关闭。";
+"Workflow Refinements: Returning to a native Mac tab always shows its content, including after the first tab of a window has been closed." = "工作流程优化: 返回 Mac 原生标签页时始终显示其内容，即使窗口的第一个标签页已关闭。";

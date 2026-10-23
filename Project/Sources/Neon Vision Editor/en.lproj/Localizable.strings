@@ -1802,3 +1802,17 @@
 "Editor Improvements: Makes native document tabs standard for macOS, replacing the previous in-editor tab strip. Native tabs show filenames…" = "Editor Improvements: Makes native document tabs standard for macOS, replacing the previous in-editor tab strip. Native tabs show filenames…";
 "On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is…" = "On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is…";
 "Workflow Refinements: On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is…" = "Workflow Refinements: On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is…";
+"What’s New in v2.1.1" = "What’s New in v2.1.1";
+"Release highlights for v2.1.1." = "Release highlights for v2.1.1.";
+"Type or paste into a new Mac tab right away, without clicking into the editor first." = "Type or paste into a new Mac tab right away, without clicking into the editor first.";
+"Editor Improvements: Type or paste into a new Mac tab right away, without clicking into the editor first." = "Editor Improvements: Type or paste into a new Mac tab right away, without clicking into the editor first.";
+"Mac tabs you return to always show their content, even after the window's first tab was closed." = "Mac tabs you return to always show their content, even after the window's first tab was closed.";
+"Workflow Refinements: Mac tabs you return to always show their content, even after the window's first tab was closed." = "Workflow Refinements: Mac tabs you return to always show their content, even after the window's first tab was closed.";
+"Closed Mac tabs stop their background work and no longer reopen on the next launch." = "Closed Mac tabs stop their background work and no longer reopen on the next launch.";
+"Performance Updates: Closed Mac tabs stop their background work and no longer reopen on the next launch." = "Performance Updates: Closed Mac tabs stop their background work and no longer reopen on the next launch.";
+"New native Mac tabs and newly opened documents put the cursor in the editor immediately." = "New native Mac tabs and newly opened documents put the cursor in the editor immediately.";
+"Cursor Placement: New native Mac tabs and newly opened documents put the cursor in the editor immediately." = "Cursor Placement: New native Mac tabs and newly opened documents put the cursor in the editor immediately.";
+"New native Mac tabs accept typing and paste immediately, without clicking into the editor first." = "New native Mac tabs accept typing and paste immediately, without clicking into the editor first.";
+"Editor Improvements: New native Mac tabs accept typing and paste immediately, without clicking into the editor first." = "Editor Improvements: New native Mac tabs accept typing and paste immediately, without clicking into the editor first.";
+"Returning to a native Mac tab always shows its content, including after the first tab of a window has been closed." = "Returning to a native Mac tab always shows its content, including after the first tab of a window has been closed.";
+"Workflow Refinements: Returning to a native Mac tab always shows its content, including after the first tab of a window has been closed." = "Workflow Refinements: Returning to a native Mac tab always shows its content, including after the first tab of a window has been closed.";

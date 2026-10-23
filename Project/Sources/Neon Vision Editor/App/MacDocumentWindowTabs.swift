@@ -57,6 +57,9 @@ final class MacDocumentWindowTabs {
         let synchronizeProjectFolder: (URL?) -> Void
         let openWindow: (UUID) -> Void
         let persistDrafts: () -> Void
+        /// False for a background tab's shell, which has no session state of
+        /// its own until its editor registers.
+        var ownsPersistence = true
     }
     private struct Pending {
         let model: EditorViewModel
@@ -77,6 +80,9 @@ final class MacDocumentWindowTabs {
     private var surfaceDeactivationActions: [ObjectIdentifier: () -> Void] = [:]
     private var metadataObservationGenerations: [ObjectIdentifier: Int] = [:]
     private var windowControllers: [ObjectIdentifier: NSWindowController] = [:]
+    // A closed document's views can still receive a final SwiftUI update.
+    // Weak, so a later model reusing the same address is not affected.
+    private let closedModels = NSHashTable<EditorViewModel>.weakObjects()
     private var sceneOpenRequests: [(id: UUID, open: (UUID) -> Void)] = []
     private var sceneOpenScheduled = false
     private let scheduleSceneOpen: (@escaping @MainActor @Sendable () -> Void) -> Void
@@ -119,7 +125,8 @@ final class MacDocumentWindowTabs {
     }
 
     var selectedModel: EditorViewModel? {
-        models.first { ObjectIdentifier($0) == selectionToReveal }
+        guard let id = selectionToReveal else { return nil }
+        return entries[id]?.model ?? pending.values.first { ObjectIdentifier($0.model) == id }?.model
     }
 
     /// Every owner persists the shared session; its selected document must
@@ -132,14 +139,24 @@ final class MacDocumentWindowTabs {
 
     /// Re-persist the session from a remaining owner, e.g. after a tab closes.
     func persistSessionFromSelectedOwner() {
-        guard !isTerminating, let model = sessionSelectionModel else { return }
-        entries[ObjectIdentifier(model)]?.persistDrafts()
+        guard !isTerminating else { return }
+        persistingOwner()?.persistDrafts()
+    }
+
+    /// The selected owner's entry, or any registered editor when the selected
+    /// tab is still an unmounted shell.
+    private func persistingOwner() -> Entry? {
+        if let model = sessionSelectionModel, let entry = entries[ObjectIdentifier(model)], entry.ownsPersistence {
+            return entry
+        }
+        return models.lazy.compactMap { self.entries[ObjectIdentifier($0)] }.first(where: \.ownsPersistence)
     }
 
     func presentationState(for model: EditorViewModel) -> EditorDocumentPresentationState {
         let identity = ObjectIdentifier(model)
         if let state = presentationStates[identity] { return state }
         let state = EditorDocumentPresentationState()
+        guard !closedModels.contains(model) else { return state }
         presentationStates[identity] = state
         return state
     }
@@ -152,6 +169,7 @@ final class MacDocumentWindowTabs {
         // document once; unopened background tabs still retain only their shell.
         if let existing = editorSurfaceGroups[identity] { return existing }
         let group = NativeEditorSurfaceGroup()
+        guard !closedModels.contains(model) else { return group }
         editorSurfaceGroups[identity] = group
         return group
     }
@@ -171,7 +189,8 @@ final class MacDocumentWindowTabs {
     }
 
     func bindToolbar(_ configuration: MacDocumentToolbar, to window: NSWindow) {
-        guard !isForeignDocumentWindow(window, for: configuration.owner) else { return }
+        guard !closedModels.contains(configuration.owner),
+              !isForeignDocumentWindow(window, for: configuration.owner) else { return }
         let identity = ObjectIdentifier(configuration.owner)
         let coordinator = toolbarCoordinators[identity] ?? MacDocumentToolbar.ToolbarCoordinator(configuration)
         toolbarCoordinators[identity] = coordinator
@@ -215,6 +234,7 @@ final class MacDocumentWindowTabs {
         let identity = ObjectIdentifier(model)
         if let session = projectPreviewSessions[identity] { return session }
         let session = MarkdownProjectPreviewSession()
+        guard !closedModels.contains(model) else { return session }
         projectPreviewSessions[identity] = session
         return session
     }
@@ -251,16 +271,18 @@ final class MacDocumentWindowTabs {
             if let parentEntry {
                 entries[identity] = Entry(model: item.model, window: window,
                     synchronizeProjectFolder: { _ in }, openWindow: parentEntry.openWindow,
-                    persistDrafts: parentEntry.persistDrafts)
+                    persistDrafts: {}, ownsPersistence: false)
                 observeWindowMetadata(for: item.model, window: window)
             }
             installTabMouseMonitorIfNeeded()
             let content = NativeDocumentContentHost(makeContent: makeContent,
-                model: item.model,
+                model: item.model, store: self,
                 onClose: { [weak self, weak model = item.model] in
                     guard let model else { return }
                     self?.unregister(model)
-                    if self?.isTerminating == false { parentEntry?.persistDrafts() }
+                    // The parent may have closed. Persist from a live owner
+                    // after AppKit selects the next tab, as editor owners do.
+                    DispatchQueue.main.async { self?.persistSessionFromSelectedOwner() }
                 })
             windowControllers[identity] = NativeDocumentWindowController(window: window, lifetime: content)
             // AppKit owns geometry. A hosting view keeps SwiftUI toolbar bridging
@@ -342,6 +364,7 @@ final class MacDocumentWindowTabs {
                   persistDrafts: @escaping () -> Void = {}, openWindow: @escaping (UUID) -> Void) {
         let identity = ObjectIdentifier(model)
         let wasPending = pending.values.contains { $0.model === model }
+        closedModels.remove(model)
         if !order.contains(identity) { order.append(identity) }
         pending = pending.filter { $0.value.model !== model }
         entries[ObjectIdentifier(model)] = Entry(model: model, window: window,
@@ -379,10 +402,13 @@ final class MacDocumentWindowTabs {
 
     func unregister(_ model: EditorViewModel) {
         guard !isTerminating else { return }
+        closedModels.add(model)
+        // Stops the closed document's preview refresh, secondary tasks and
+        // shared-import observer, which would otherwise outlive the tab.
+        surfaceDeactivationActions.removeValue(forKey: ObjectIdentifier(model))?()
         presentationStates.removeValue(forKey: ObjectIdentifier(model))
         editorSurfaceGroups.removeValue(forKey: ObjectIdentifier(model))
         toolbarCoordinators.removeValue(forKey: ObjectIdentifier(model))?.release()
-        surfaceDeactivationActions.removeValue(forKey: ObjectIdentifier(model))
         metadataObservationGenerations.removeValue(forKey: ObjectIdentifier(model))
         if let session = projectPreviewSessions.removeValue(forKey: ObjectIdentifier(model)),
            !projectPreviewSessions.values.contains(where: { $0 === session }) {
@@ -402,7 +428,7 @@ final class MacDocumentWindowTabs {
 
     func beginTermination() {
         guard !isTerminating else { return }
-        entries.values.first?.persistDrafts()
+        persistingOwner()?.persistDrafts()
         isTerminating = true
         tabMouseMonitor = nil
         sceneOpenRequests.removeAll()
@@ -447,10 +473,14 @@ final class MacDocumentWindowTabs {
 
     func models(inGroupOf source: EditorViewModel) -> [EditorViewModel] {
         guard let window = entries[ObjectIdentifier(source)]?.window else { return [source] }
-        let windows = window.tabbedWindows ?? [window]
-        return windows.compactMap { candidate in
-            entries.values.first { $0.window === candidate }?.model
-        }
+        let byWindow = modelsByWindow()
+        return (window.tabbedWindows ?? [window]).compactMap { byWindow[ObjectIdentifier($0)] }
+    }
+
+    private func modelsByWindow() -> [ObjectIdentifier: EditorViewModel] {
+        Dictionary(entries.values.compactMap { entry in
+            entry.window.flatMap { window in entry.model.map { (ObjectIdentifier(window), $0) } }
+        }, uniquingKeysWith: { first, _ in first })
     }
 
     func synchronizeProjectFolder(_ folderURL: URL?, from source: EditorViewModel) {
@@ -467,7 +497,9 @@ final class MacDocumentWindowTabs {
             if window.contentView?.isHidden == true { window.contentView?.isHidden = false }
             return
         }
-        for member in group.windows where entries.values.contains(where: { $0.window === member }) {
+        // Every tab's host calls this on each selection change; keep it linear.
+        let owned = modelsByWindow()
+        for member in group.windows where owned[ObjectIdentifier(member)] != nil {
             let hidden = member !== selected
             if member.contentView?.isHidden != hidden { member.contentView?.isHidden = hidden }
         }
@@ -529,9 +561,11 @@ final class MacDocumentWindowTabs {
 
     private func focusFile(_ url: URL, excluding source: EditorViewModel) -> Bool {
         for model in models where model !== source && model.hasOpenFile(url: url) {
+            // Unselected tabs are ordered out and never report the active
+            // space; their group's selected window is the one on screen.
             let window = entries[ObjectIdentifier(model)]?.window
             if UserDefaults.standard.bool(forKey: "SettingsOpenFilesOnCurrentDesktop"),
-               let window, !window.isOnActiveSpace { continue }
+               let window, !(window.tabGroup?.selectedWindow ?? window).isOnActiveSpace { continue }
             _ = model.focusTabIfOpen(for: url)
             reveal(model)
             return true
@@ -582,6 +616,10 @@ private final class NativeDocumentContentHost: NSView {
     private var makeContent: (() -> NSView)?
     private var isAttaching = true
     private weak var model: EditorViewModel?
+    private weak var store: MacDocumentWindowTabs?
+    // The editor host replaces this view as the window's content root, which
+    // clears `window`. The tab's selection observers must keep their window.
+    private weak var documentWindow: NSWindow?
     private var isObservingInitialLoad = false
     private var loadingIndicator: NSProgressIndicator?
     private var selectionObservation: NSKeyValueObservation?
@@ -592,9 +630,10 @@ private final class NativeDocumentContentHost: NSView {
     private let closeGuard = WindowCloseConfirmationDelegate()
 
     init(makeContent: @escaping () -> NSView, model: EditorViewModel,
-         onClose: @escaping () -> Void) {
+         store: MacDocumentWindowTabs, onClose: @escaping () -> Void) {
         self.makeContent = makeContent
         self.model = model
+        self.store = store
         self.onClose = onClose
         super.init(frame: .zero)
         closeGuard.shouldConfirm = { [weak self] in
@@ -614,7 +653,8 @@ private final class NativeDocumentContentHost: NSView {
         super.viewDidMoveToWindow()
         // The controller also owns this lifetime after the temporary loading
         // view leaves the hierarchy. Preserve observations until window close.
-        guard let window else { return }
+        guard let window, window !== documentWindow else { return }
+        documentWindow = window
         selectionObservation = nil
         groupObservation = nil
         closeObserver = nil
@@ -637,15 +677,15 @@ private final class NativeDocumentContentHost: NSView {
     }
 
     private func observeSelection() {
-        selectionObservation = window?.tabGroup?.observe(\.selectedWindow, options: [.new]) { [weak self] _, _ in
+        selectionObservation = documentWindow?.tabGroup?.observe(\.selectedWindow, options: [.new]) { [weak self] _, _ in
             MainActor.assumeIsolated { self?.installIfSelected() }
         }
         installIfSelected()
     }
 
     func installIfSelected() {
-        if !isAttaching, let window { MacDocumentWindowTabs.shared.updateInactiveTabContent(around: window) }
-        guard !isAttaching, let window, let makeContent,
+        if !isAttaching, let documentWindow { store?.updateInactiveTabContent(around: documentWindow) }
+        guard !isAttaching, let window = documentWindow, let makeContent,
               window.tabGroup?.selectedWindow === window || window.isKeyWindow else { return }
         if let model, model.selectedTab?.isLoadingContent == true {
             if loadingIndicator == nil {

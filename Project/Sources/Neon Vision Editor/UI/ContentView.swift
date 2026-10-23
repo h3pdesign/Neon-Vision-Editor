@@ -5282,7 +5282,10 @@ struct ContentView: View {
             indentWidth: effectiveIndentWidth,
             isSplitPaneResizeInProgress: previewPaneResizeStartWidth != nil,
             preferredLayoutWidth: brainDumpLayoutEnabled ? 920 : nil,
-            focusesEditorOnInitialWindowAttachment: startupBehavior == .forceBlankDocument,
+            // New native tabs and newly opened documents accept typing and
+            // paste immediately, as the in-window tabs of 2.0 did.
+            focusesEditorOnInitialWindowAttachment: startupBehavior == .forceBlankDocument
+                || startupBehavior == .nativeDocument,
             onFontSizeChange: { setEditorFontSize(Double($0)) },
             onTextMutation: { mutation in
                 if let viewport = mutation.viewport {

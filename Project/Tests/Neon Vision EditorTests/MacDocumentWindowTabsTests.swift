@@ -131,6 +131,67 @@ final class MacDocumentWindowTabsTests: XCTestCase {
                        "The editor must derive the toolbar inset from AppKit, as root-installed tabs do")
     }
 
+    /// A new native tab must accept typing and paste without a click: its
+    /// editor becomes the window's first responder when it is attached.
+    func testNewNativeDocumentEditorReceivesKeyboardFocus() async throws {
+        let owner = MacDocumentTabPolicy.makeWindowModel()
+        let candidate = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+                                 styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView],
+                                 backing: .buffered, defer: false)
+        candidate.isReleasedWhenClosed = false
+        candidate.tabbingMode = .disallowed
+        let support = SupportPurchaseManager(loadProducts: { [] }, canMakePayments: { false })
+        let updates = AppUpdateManager(defaults: try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString)))
+        updates.setAutoCheckEnabled(false)
+        defer { MacDocumentWindowTabs.shared.unregister(owner); candidate.close() }
+        candidate.contentView = NSHostingView(rootView: NativeSurfaceFixture(model: owner, support: support, updates: updates))
+        candidate.makeKeyAndOrderFront(nil)
+        for _ in 0..<20 { await Task.yield(); candidate.displayIfNeeded() }
+        let host = try XCTUnwrap(MacDocumentWindowTabs.shared.editorSurfaceGroup(for: owner, window: candidate).hostedView)
+        let canvas = try XCTUnwrap(nativeEditorCanvas(in: host))
+        XCTAssertTrue(candidate.firstResponder === canvas, "Paste into a new tab must not require a click first")
+    }
+
+    /// AppKit tabs replace their loading root with the editor host. Selecting
+    /// them again must still reveal their content, also once the first window
+    /// of the group (the only scene-hosted surface) has closed.
+    func testRootInstalledTabsAreRevealedWhenReselectedAfterFirstWindowCloses() throws {
+        // The app's store: content hosts must report to the store that made them.
+        let store = MacDocumentWindowTabs.shared
+        let source = MacDocumentTabPolicy.makeWindowModel()
+        let first = window("First")
+        var created: [(EditorViewModel, NSWindow)] = []
+        defer {
+            for (owner, candidate) in created { store.unregister(owner); candidate.close() }
+            store.unregister(source); first.close()
+        }
+        first.makeKeyAndOrderFront(nil)
+        store.register(source, window: first) { id in
+            guard let owner = store.takePendingModel(for: id),
+                  let candidate = store.presentPendingWindow(for: id, makeContent: { NSView() })
+            else { return XCTFail("Missing new tab") }
+            created.append((owner, candidate))
+        }
+        source.addNewTab()
+        source.addNewTab()
+        // The shared store opens queued scenes from the main run loop.
+        for _ in 0..<10 where created.count < 2 { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
+        XCTAssertEqual(created.count, 2)
+        for (owner, candidate) in created {
+            candidate.tabGroup?.selectedWindow = candidate
+            XCTAssertTrue(store.installRootEditorHost(NSView(), for: owner, in: candidate))
+        }
+        store.unregister(source)
+        first.close()
+        let (_, firstTab) = created[0], (_, secondTab) = created[1]
+        for selected in [firstTab, secondTab, firstTab] {
+            selected.tabGroup?.selectedWindow = selected
+            XCTAssertEqual(selected.contentView?.isHidden, false, "\(selected.title) must be visible when selected")
+            let other = selected === firstTab ? secondTab : firstTab
+            XCTAssertEqual(other.contentView?.isHidden, true, "Inactive tabs still release their backing")
+        }
+    }
+
     private func firstSubview<T: NSView>(of type: T.Type, in root: NSView) -> T? {
         if let match = root as? T { return match }
         return root.subviews.lazy.compactMap { self.firstSubview(of: type, in: $0) }.first
@@ -158,6 +219,62 @@ final class MacDocumentWindowTabsTests: XCTestCase {
         XCTAssertTrue(store.sessionSelectionModel === first, "A closed owner must not remain the session selection")
         store.persistSessionFromSelectedOwner()
         XCTAssertEqual(persisted, ["second", "first"])
+    }
+
+    func testUnmountedTabShellNeverPersistsThroughItsClosedParent() throws {
+        let store = immediateStore()
+        let source = MacDocumentTabPolicy.makeWindowModel()
+        let other = MacDocumentTabPolicy.makeWindowModel()
+        let sourceWindow = window("Shell parent")
+        let otherWindow = window("Live owner")
+        var child: EditorViewModel?
+        var childWindow: NSWindow?
+        var persisted: [String] = []
+        store.register(source, window: sourceWindow, persistDrafts: { persisted.append("source") }) { id in
+            child = store.takePendingModel(for: id)
+            childWindow = store.presentPendingWindow(for: id) { NSView() }
+        }
+        store.register(other, window: otherWindow, persistDrafts: { persisted.append("other") }) { _ in }
+        defer {
+            if let child { store.unregister(child) }
+            store.unregister(other)
+            childWindow?.close(); sourceWindow.close(); otherWindow.close()
+        }
+        sourceWindow.makeKeyAndOrderFront(nil)
+        source.addNewTab()
+        let shell = try XCTUnwrap(child)
+        XCTAssertTrue(store.sessionSelectionModel === shell)
+
+        store.unregister(source)
+        store.persistSessionFromSelectedOwner()
+        XCTAssertEqual(persisted, ["other"], "A shell must not persist the closed parent's session")
+        store.unregister(other)
+        store.persistSessionFromSelectedOwner()
+        XCTAssertEqual(persisted, ["other"], "Without a registered editor there is no session owner")
+    }
+
+    func testClosedOwnerStopsSurfaceWorkAndIsNotCachedAgain() {
+        let store = immediateStore()
+        let model = MacDocumentTabPolicy.makeWindowModel()
+        let documentWindow = window("Closed owner")
+        let lateToolbarWindow = window("Late toolbar update")
+        defer { documentWindow.close(); lateToolbarWindow.close() }
+        var deactivations = 0
+        store.register(model, window: documentWindow) { _ in }
+        store.registerSurfaceDeactivation(for: model) { deactivations += 1 }
+        XCTAssertTrue(store.presentationState(for: model) === store.presentationState(for: model))
+
+        store.unregister(model)
+        store.unregister(model)
+        XCTAssertEqual(deactivations, 1, "Closing must stop the document's surface work exactly once")
+        // A final SwiftUI update of the closed document must not re-cache state.
+        XCTAssertFalse(store.presentationState(for: model) === store.presentationState(for: model))
+        XCTAssertFalse(store.editorSurfaceGroup(for: model, window: documentWindow)
+            === store.editorSurfaceGroup(for: model, window: documentWindow))
+        XCTAssertFalse(store.projectPreviewSession(for: model) === store.projectPreviewSession(for: model))
+        store.bindToolbar(MacDocumentToolbar(owner: model, groups: [], isVisible: true, label: { $0 },
+            control: { _ in AnyView(EmptyView()) }, overflow: { _ in AnyView(EmptyView()) }), to: lateToolbarWindow)
+        XCTAssertNil(lateToolbarWindow.toolbar, "A closed document must not bind a new toolbar coordinator")
     }
 
     /// Unselected tabs hide their content so their layer backing can be

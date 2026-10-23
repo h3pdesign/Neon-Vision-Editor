@@ -1802,3 +1802,17 @@
 "Editor Improvements: Makes native document tabs standard for macOS, replacing the previous in-editor tab strip. Native tabs show filenames…" = "エディタの改善: macOS ではネイティブ書類タブが標準になり、従来のエディタ内タブバーを置き換えます。ネイティブタブにはファイル名が表示され…";
 "On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is…" = "iPhone Duo では、エディタのツールバーがステータスバーの下、右端の縦の列に移動します。電話が…";
 "Workflow Refinements: On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is…" = "ワークフローの微調整: iPhone Duo では、エディタのツールバーがステータスバーの下、右端の縦の列に移動します。電話が…";
+"What’s New in v2.1.1" = "v2.1.1の新機能";
+"Release highlights for v2.1.1." = "v2.1.1の主な変更点。";
+"Type or paste into a new Mac tab right away, without clicking into the editor first." = "新しい Mac タブで、エディタをクリックしなくてもすぐに入力やペーストができます。";
+"Editor Improvements: Type or paste into a new Mac tab right away, without clicking into the editor first." = "エディタの改善: 新しい Mac タブで、エディタをクリックしなくてもすぐに入力やペーストができます。";
+"Mac tabs you return to always show their content, even after the window's first tab was closed." = "戻った Mac タブには、ウインドウの最初のタブを閉じた後でも常に内容が表示されます。";
+"Workflow Refinements: Mac tabs you return to always show their content, even after the window's first tab was closed." = "操作の改善: 戻った Mac タブには、ウインドウの最初のタブを閉じた後でも常に内容が表示されます。";
+"Closed Mac tabs stop their background work and no longer reopen on the next launch." = "閉じた Mac タブはバックグラウンド処理を停止し、次回起動時に再び開かなくなりました。";
+"Performance Updates: Closed Mac tabs stop their background work and no longer reopen on the next launch." = "パフォーマンスの更新: 閉じた Mac タブはバックグラウンド処理を停止し、次回起動時に再び開かなくなりました。";
+"New native Mac tabs and newly opened documents put the cursor in the editor immediately." = "新しいネイティブ Mac タブと新しく開いた書類では、カーソルがすぐにエディタに置かれます。";
+"Cursor Placement: New native Mac tabs and newly opened documents put the cursor in the editor immediately." = "カーソル位置: 新しいネイティブ Mac タブと新しく開いた書類では、カーソルがすぐにエディタに置かれます。";
+"New native Mac tabs accept typing and paste immediately, without clicking into the editor first." = "新しいネイティブ Mac タブで、エディタをクリックしなくてもすぐに入力やペーストができます。";
+"Editor Improvements: New native Mac tabs accept typing and paste immediately, without clicking into the editor first." = "エディタの改善: 新しいネイティブ Mac タブで、エディタをクリックしなくてもすぐに入力やペーストができます。";
+"Returning to a native Mac tab always shows its content, including after the first tab of a window has been closed." = "ネイティブ Mac タブに戻ると、ウインドウの最初のタブを閉じた後でも常に内容が表示されます。";
+"Workflow Refinements: Returning to a native Mac tab always shows its content, including after the first tab of a window has been closed." = "操作の改善: ネイティブ Mac タブに戻ると、ウインドウの最初のタブを閉じた後でも常に内容が表示されます。";

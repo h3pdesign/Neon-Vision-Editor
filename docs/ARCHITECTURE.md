@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-10-15 (v2.0.0 release-aligned architecture)
+Last updated: 2026-10-23 (v2.1.0 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -8,6 +8,15 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v2.1.0 (2026-10-23)
+
+- Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation.
+- Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state.
+- Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience.
+- On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is closed, open, or partially folded, so it no longer covers the bottom of your document (#498).
+- Keeps the Mac editor at full height when the code minimap is shown; short Swift, YAML, and other code files no longer collapse to a single centered line.
+- Adds space between the Mac toolbar's outer symbols and the rounded ends of their group.
 
 ### v2.0.0 (2026-10-15)
 
@@ -17,15 +26,6 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 - Detects external file rewrites even when file size and modification time are unchanged, preventing stale text indexes during background tab activation.
 - Keeps precise iPhone/iPad cursor placement from being overwritten by delayed saved-position updates (#770).
 - Restores saved cursor positions after deferred large-file loading completes, without saving temporary placeholder positions (#770).
-
-### v1.9.3 (2026-10-13)
-
-- Adds Settings → Editor → Basics → Show CSV/TSV Table View on macOS. Turn it off to edit CSV/TSV as text and stop automatic table detection in new notes without changing file contents (#738).
-- Moves project Markdown preview options to Settings → Editor → Markdown Preview on macOS.
-- Separates macOS AI settings into provider/model and custom-provider sections, preserving existing credentials and saved values.
-- Prevents ordinary multiline notes containing commas from opening as CSV tables (#738).
-- Keeps long selected font names inside their dropdown on macOS, iPhone, and iPad without overlapping nearby controls or widening the page. The complete name remains available in the font menu.
-- Restores the released native macOS Settings sizing and background behavior, keeping controls accessible above the Dock (#714).
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

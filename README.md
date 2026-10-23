@@ -1,7 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v2.0.0-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v2.1.0-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-github-only.yml"><img alt="Primary Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-github-only.yml?branch=main&label=Primary%20Release"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md"><img alt="Security Policy" src="https://img.shields.io/badge/security-policy-22C55E"></a>
@@ -52,33 +52,27 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v2.0.0**
-> Next release target: **v2.1.0**
+> Latest release: **v2.1.0**
+> Next release target: **v2.1.1**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: supported
-> Direct GitHub release: **v2.0.0** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-10-15** for latest release **v2.0.0**
+> Direct GitHub release: **v2.1.0** / App Store and TestFlight availability varies by platform and review status
+> Last updated (README): **2026-10-23** for latest release **v2.1.0**
 
-## What's New Since v1.9.3
-
-### In Development for v2.1.0
-
-- Native macOS document-window tabs replace the old in-editor strip; no experimental setting is required. Tabs display filenames, mark the active document, and share the project sidebar while retaining independent document and preview state.
-- Project Markdown cards stay shared within a Mac tab group, retaining their prepared previews, panel width, and scroll position across documents.
-- iPhone and iPad keep the newer UIKit tab bar, including touch-friendly close, reorder, and overflow support. visionOS keeps its existing tab interface.
-- Existing document recovery remains supported, with Safe Mode drafts kept separate from the normal saved session. See [Unreleased changes](CHANGELOG.md#unreleased).
+## What's New Since v2.0.0
 
 ### Why Upgrade
 
-- v2.0.0: Switch between open Mac documents with less waiting, including large Markdown and source files.
-- v2.0.0: Place the cursor more reliably on iPhone and iPad, and return to saved positions after large documents load.
-- v2.0.0: Browse overflowing Mac tabs with visible left and right controls.
+- v2.1.0: Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing.
+- v2.1.0: Keep project navigation shared while each document retains its own editing and preview state.
+- v2.1.0: Preserve unsaved edits during external-file refreshes and exact JSON values when formatting.
 
-### v2.0.0 Highlights
+### v2.1.0 Highlights
 
-- Keeps compatible Markdown previews up to date without reloading unchanged content or losing your scroll position.
-- Stops obsolete folder scans when you cancel project indexing.
-- Adapts the phone toolbar when the available layout changes between compact and regular width.
+- Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation.
+- Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state.
+- Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience.
+- On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is closed, open, or partially folded, so it no longer covers the bottom of your document (#498).
 
 ## Start Here
 
@@ -138,7 +132,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v2.0.0 release docs current; v2.0.0 direct download current</td>
+        <td>v2.1.0 release docs current; v2.1.0 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -159,7 +153,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=14925&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=15574&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -174,12 +168,12 @@
 
 <p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>
 <p align="center">
-  <img alt="Unique cloners (14d)" src="https://img.shields.io/static/v1?label=Unique+cloners+%2814d%29&message=461&color=7C3AED&style=for-the-badge">
-  <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=203&color=0EA5E9&style=for-the-badge">
+  <img alt="Unique cloners (14d)" src="https://img.shields.io/static/v1?label=Unique+cloners+%2814d%29&message=520&color=7C3AED&style=for-the-badge">
+  <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=188&color=0EA5E9&style=for-the-badge">
 </p>
 <p align="center">
-  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-10-15&color=334155&style=flat-square">
-  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-10-15&color=334155&style=flat-square">
+  <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-10-23&color=334155&style=flat-square">
+  <img alt="View snapshot (UTC)" src="https://img.shields.io/static/v1?label=View+snapshot+%28UTC%29&message=2026-10-23&color=334155&style=flat-square">
 </p>
 
 ## Project Documentation
@@ -230,7 +224,7 @@ The direct GitHub release is currently ahead of the iOS/iPadOS App Store version
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v2.0.0** | Current direct download |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v2.1.0** | Current direct download |
 | **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.9.2** | Current public App Store listing |
 | **Store status** | macOS | Apple-managed distribution | App Store Connect | **Not verified** | GitHub publication does not confirm an App Store submission or review status |
 | **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.6.1** | Current recorded visionOS listing |
@@ -369,7 +363,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - **Languages and structured documents:** Swift 6-ready highlighting includes TeX/LaTeX and Typst/CeTZ-aware editing; CSV/TSV, property lists, Apple crash reports, and recognized logs can switch between structured and raw-text views, and plain text can be transformed into validated JSON through an explicit AI-assisted action.
 - **Project and preview workflows:** project-level Markdown/PDF cards reuse the project index for bounded excerpts and thumbnails, while Markdown, HTML, SVG, PDF, and PNG previews remain integrated with the editor.
 - **macOS integration:** the embedded Quick Look extension previews supported Markdown and source files in Finder, and detached Markdown previews can use the same glass treatment without changing editor content.
-- **Latest stable additions (v2.0.0):** Keeps compatible Markdown previews up to date without reloading unchanged content or losing your scroll position; Stops obsolete folder scans when you cancel project indexing; Adapts the phone toolbar when the available layout changes between compact and regular width.
+- **Latest stable additions (v2.1.0):** Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation; Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state; Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience; On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is closed, open, or partially folded, so it no longer covers the bottom of your document (#498).
 <!-- FEATURE_COVERAGE:END -->
 
 ### Editing Core
@@ -639,7 +633,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v2.0.0` notarized GitHub release | Current |
+| Stable direct download | `v2.1.0` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
 | Post-1.4 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v1.5+` work |
@@ -647,19 +641,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v2.0.0-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v2.0.1-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v2.1.0-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v2.1.1-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v1.5%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v2.0.0)
+### Now (v2.1.0)
 
 - ![v1.4.0](https://img.shields.io/badge/v1.4.0-22C55E?style=flat-square) delivers file-backed large-document editing, bounded live viewport virtualization, reliable ordinary-file installation, and the release workflow hardening shipped alongside the release.
-  Tracking: [Release v2.0.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.0.0)
+  Tracking: [Release v2.1.0](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.1.0)
 
-### Next (v2.0.1)
+### Next (v2.1.1)
 
-- ![v2.0.1](https://img.shields.io/badge/v2.0.1-F59E0B?style=flat-square) targets the reviewed changes listed under Unreleased in CHANGELOG.md; scope is not final until release preparation.
+- ![v2.1.1](https://img.shields.io/badge/v2.1.1-F59E0B?style=flat-square) targets the reviewed changes listed under Unreleased in CHANGELOG.md; scope is not final until release preparation.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v1.5+)
@@ -747,7 +741,7 @@ Vim navigation is also available on iPad with a hardware keyboard after enabling
 
 ## Changelog
 
-Latest stable: **v2.0.0** (2026-10-15)
+Latest stable: **v2.1.0** (2026-10-23)
 
 ### Editor Evolution
 
@@ -755,8 +749,6 @@ Latest stable: **v2.0.0** (2026-10-15)
 ```mermaid
 timeline
     title Neon Vision Editor — recent release story
-    30 September 2026 : v1.9.0 · Release highlights
-                : Use the app in seven languages, including Danish, French, Spanish, and Japanese.
     1 October 2026 : v1.9.1 · Release highlights
                 : Open and save Japanese Shift-JIS files using Apple's native text encodings.
     6 October 2026 : v1.9.2 · Safer document transitions
@@ -765,6 +757,8 @@ timeline
                 : Choose plain-text editing instead of CSV/TSV tables on macOS.
     15 October 2026 : v2.0.0 · A more deliberate workflow
                 : Switch between open Mac documents with less waiting, including large Markdown and source files.
+    23 October 2026 : v2.1.0 · Release highlights
+                : Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -774,13 +768,13 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
+| [`v2.1.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.1.0) | **Release highlights** — Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing. | Keeps the Mac editor at full height when the code minimap is shown; short Swift, YAML, and other code files no longer collapse to a single centered… |
 | [`v2.0.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.0.0) | **A more deliberate workflow** — Switch between open Mac documents with less waiting, including large Markdown and source files. | Detects external file rewrites even when file size and modification time are unchanged, preventing stale text indexes during background tab… |
 | [`v1.9.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.9.3) | **A more deliberate workflow** — Choose plain-text editing instead of CSV/TSV tables on macOS. | Prevents ordinary multiline notes containing commas from opening as CSV tables (#738). |
-| [`v1.9.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.9.2) | **Safer document transitions** — Delete the previous word with Option-Delete on macOS, including Unicode text. | Handles macOS Option-Delete through the existing document edit path, recognizes Unicode letters and combining marks, and leaves read-only preview… |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v2.0.0**
-- Compare recent changes: [v1.9.3...v2.0.0](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v1.9.3...v2.0.0)
+- Latest release: **v2.1.0**
+- Compare recent changes: [v2.0.0...v2.1.0](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v2.0.0...v2.1.0)
 
 ## Known Limitations
 
@@ -801,12 +795,12 @@ The recent release arc is about continuity: files that change outside the app, w
 
 ## Release Integrity
 
-- Tag: `v2.0.0`
+- Tag: `v2.1.0`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v2.0.0
+git rev-parse --verify v2.1.0
 ```
 
 - Verify downloaded artifact checksum locally:

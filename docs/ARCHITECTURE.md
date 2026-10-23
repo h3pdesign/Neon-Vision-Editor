@@ -12,11 +12,10 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 ### v2.1.0 (2026-10-23)
 
 - Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation.
-- Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state.
-- Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience.
+- Makes native document tabs standard for macOS, replacing the previous in-editor tab strip. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state.
 - On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is closed, open, or partially folded, so it no longer covers the bottom of your document (#498).
-- Keeps the Mac editor at full height when the code minimap is shown; short Swift, YAML, and other code files no longer collapse to a single centered line.
-- Adds space between the Mac toolbar's outer symbols and the rounded ends of their group.
+- Rechecks document revisions before applying external file refreshes, so edits made while a refresh is pending are not replaced by stale content.
+- Preserves JSON object member order, repeated keys, exact number tokens, and escaped strings when formatting or combining lines (#802).
 
 ### v2.0.0 (2026-10-15)
 

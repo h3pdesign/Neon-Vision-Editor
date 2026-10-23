@@ -416,6 +416,10 @@
 "Compare Open Tabs…" = "比较打开标签…";
 "Compare Tabs" = "比较标签页";
 "Compare with %@" = "与 %@ 比较";
+"Toggle Side by Side Editor" = "切换并排编辑器";
+"Move Tab to New Window" = "将标签页移到新窗口";
+"Show %@ side by side" = "并排显示 %@";
+"No other open tabs. Open another tab first." = "没有其他打开的标签页。请先打开另一个标签页。";
 "Compare with Disk" = "与磁盘比较";
 "Compare with Tab" = "与标签页比较";
 "Compare with Tab compares the current tab against a second tab that is already open." = "与标签页比较将当前标签页与已打开的第二个标签页进行比较。";

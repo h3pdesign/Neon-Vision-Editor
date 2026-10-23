@@ -1108,6 +1108,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var pendingDragPublication: DispatchWorkItem?
     private var dragAutoScrollTimer: Timer?
     private let documentUndoManager = UndoManager()
+    /// Edits this view applied that a configured content revision has not yet
+    /// reflected. A larger revision step means the text changed elsewhere.
+    private var pendingOwnMutationCount = 0
     private var lastConfigurationKey = ""
     private var lastStructuralConfigurationKey = ""
     private var lastThemeConfigurationKey = ""
@@ -1595,6 +1598,23 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let themeConfigurationKey = "\(themeRefreshToken)|\(syntaxThemeKey(for: resolvedTheme))|\(editorBaseThemeKey(for: resolvedTheme))"
         let key = "\(structuralConfigurationKey)|\(themeConfigurationKey)"
         let contentChanged = configuredContentRevision != contentRevision || configuredExternalContentRevision != externalContentRevision
+        // Undo entries hold ranges into the text this view last saw. Another
+        // document, or an edit made elsewhere (the other Side by Side pane, a
+        // command, a reload from disk), invalidates them. Saving an untitled
+        // document changes only its resource ID, not its text.
+        if previousDocumentID != documentID {
+            pendingOwnMutationCount = 0
+            documentUndoManager.removeAllActions()
+        } else if contentChanged {
+            let revisionStep = contentRevision &- (configuredContentRevision ?? contentRevision)
+            if configuredExternalContentRevision != externalContentRevision
+                || revisionStep < 0 || revisionStep > pendingOwnMutationCount {
+                pendingOwnMutationCount = 0
+                documentUndoManager.removeAllActions()
+            } else {
+                pendingOwnMutationCount -= revisionStep
+            }
+        }
         let themeOnlyChanged = !isNewDocument && !lastConfigurationKey.isEmpty
             && structuralConfigurationKey == lastStructuralConfigurationKey
             && themeConfigurationKey != lastThemeConfigurationKey
@@ -1627,7 +1647,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         self.indentStyle = indentStyle
         self.indentWidth = max(1, indentWidth)
         self.onFontSizeChange = onFontSizeChange
-        self.onTextMutation = onTextMutation
+        self.onTextMutation = onTextMutation.map { apply in
+            { [weak self] mutation in
+                let applied = apply(mutation)
+                if applied { self?.pendingOwnMutationCount += 1 }
+                return applied
+            }
+        }
         if isNewDocument {
             colorPickerPopover?.close()
             colorPickerPopover = nil

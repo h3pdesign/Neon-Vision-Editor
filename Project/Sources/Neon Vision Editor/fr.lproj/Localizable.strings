@@ -416,6 +416,10 @@
 "Compare Open Tabs…" = "Comparer les onglets ouverts…";
 "Compare Tabs" = "Comparer les onglets";
 "Compare with %@" = "Comparer avec %@";
+"Toggle Side by Side Editor" = "Afficher ou masquer l’éditeur côte à côte";
+"Move Tab to New Window" = "Placer l’onglet dans une nouvelle fenêtre";
+"Show %@ side by side" = "Afficher %@ côte à côte";
+"No other open tabs. Open another tab first." = "Aucun autre onglet ouvert. Ouvrez d’abord un autre onglet.";
 "Compare with Disk" = "Comparer avec disque";
 "Compare with Tab" = "Comparer avec onglet";
 "Compare with Tab compares the current tab against a second tab that is already open." = "Comparer avec onglet compare le onglet actuel à un deuxième onglet déjà ouvert.";

@@ -416,6 +416,10 @@
 "Compare Open Tabs…" = "Offene Registerkarten vergleichen…";
 "Compare Tabs" = "Registerkarten vergleichen";
 "Compare with %@" = "Mit %@ vergleichen";
+"Toggle Side by Side Editor" = "Editor nebeneinander ein-/ausblenden";
+"Move Tab to New Window" = "Tab in neues Fenster bewegen";
+"Show %@ side by side" = "%@ nebeneinander anzeigen";
+"No other open tabs. Open another tab first." = "Keine anderen offenen Tabs. Erst einen anderen Tab öffnen.";
 "Compare with Disk" = "Mit Festplatte vergleichen";
 "Compare with Tab" = "Mit Registerkarte vergleichen";
 "Compare with Tab compares the current tab against a second tab that is already open." = "Mit Registerkarte vergleichen vergleicht die aktuelle Registerkarte mit einer zweiten bereits geöffneten Registerkarte.";

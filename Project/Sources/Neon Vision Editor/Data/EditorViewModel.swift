@@ -2126,11 +2126,15 @@ class EditorViewModel {
 
     func compareTabsSnapshot(leftTabID: UUID, rightTabID: UUID) -> DocumentComparisonSnapshot? {
         guard let leftIndex = tabIndex(for: leftTabID),
-              let rightIndex = tabIndex(for: rightTabID),
-              leftTabID != rightTabID else { return nil }
-        let left = tabs[leftIndex]
-        let right = tabs[rightIndex]
-        guard !left.usesFileBackedStorage, !right.usesFileBackedStorage else { return nil }
+              let rightIndex = tabIndex(for: rightTabID) else { return nil }
+        return Self.compareTabsSnapshot(left: tabs[leftIndex], right: tabs[rightIndex])
+    }
+
+    /// The tabs may belong to different models: on macOS each native tab's
+    /// window owns its own document.
+    static func compareTabsSnapshot(left: TabData, right: TabData) -> DocumentComparisonSnapshot? {
+        guard left.id != right.id,
+              !left.usesFileBackedStorage, !right.usesFileBackedStorage else { return nil }
         return DocumentComparisonSnapshot(
             title: "Compare Open Tabs",
             leftTitle: left.name,

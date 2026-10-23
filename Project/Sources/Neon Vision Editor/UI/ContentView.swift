@@ -1074,6 +1074,12 @@ struct ContentView: View {
     @State var projectSidebarFindInFilesRequestToken: Int = 0
     @State var projectSidebarTerminalRequestToken: Int = 0
     @State var splitSecondaryTabID: UUID?
+    @State var showSplitTabPicker: Bool = false
+#if os(macOS)
+    /// Read wherever another tab's document is resolved, so tab group
+    /// membership changes re-evaluate the split and compare controls.
+    @State var nativeTabGroupRevision: Int = 0
+#endif
     @State var statusWordCount: Int = 0
     @State var statusLineCount: Int = 1
     @State var wordCountTask: Task<Void, Never>?
@@ -3230,6 +3236,17 @@ struct ContentView: View {
             persistSelectedSessionFileURLImmediately()
             scheduleSessionPersistence(delay: 0)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .toggleSplitEditorRequested)) { notif in
+            guard matchesCurrentWindow(notif) else { return }
+            toggleSplitEditorFromToolbar()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nativeDocumentTabGroupDidChange)) { _ in
+            nativeTabGroupRevision &+= 1
+            // The Side by Side document closed or left this tab group.
+            if splitSecondaryTabID != nil, activeSplitSecondaryTabID == nil {
+                splitSecondaryTabID = nil
+            }
+        }
         .onChange(of: tabChromeObservationSnapshot) { _, _ in
             if activeSplitSecondaryTabID == nil {
                 splitSecondaryTabID = nil
@@ -4024,6 +4041,23 @@ struct ContentView: View {
                         onCancel: {
                             contentView.showCompareTabsPicker = false
                         }
+                    )
+#if os(macOS)
+                    .presentationBackground(contentView.compareSheetBackgroundStyle)
+#endif
+                    .presentationCornerRadius(28)
+                }
+                .sheet(isPresented: contentView.$showSplitTabPicker) {
+                    CompareTabsPickerView(
+                        tabs: contentView.comparableOpenTabs,
+                        backgroundStyle: contentView.compareSheetBackgroundStyle,
+                        onSelect: { tabID in
+                            contentView.openSplitEditor(with: tabID)
+                        },
+                        onCancel: {
+                            contentView.showSplitTabPicker = false
+                        },
+                        opensSideBySide: true
                     )
 #if os(macOS)
                     .presentationBackground(contentView.compareSheetBackgroundStyle)
@@ -4845,36 +4879,51 @@ struct ContentView: View {
     var activeSplitSecondaryTabID: UUID? {
         guard let secondaryID = splitSecondaryTabID,
               secondaryID != viewModel.selectedTabID,
-              viewModel.tabs.contains(where: { $0.id == secondaryID }) else { return nil }
+              tabForID(secondaryID) != nil else { return nil }
         return secondaryID
     }
 
+    /// The model that owns `tabID`. On macOS each native tab's window owns one
+    /// document, so the Side by Side pane edits a document of another window
+    /// in the same tab group through that window's model.
+    func editorOwner(for tabID: UUID?) -> EditorViewModel {
+#if os(macOS)
+        _ = nativeTabGroupRevision
+        guard let tabID, !viewModel.tabs.contains(where: { $0.id == tabID }) else { return viewModel }
+        return MacDocumentWindowTabs.shared.owner(ofDocument: tabID, inGroupOf: viewModel) ?? viewModel
+#else
+        return viewModel
+#endif
+    }
+
     func tabContentBinding(for tabID: UUID) -> Binding<String> {
-        Binding(
+        let owner = editorOwner(for: tabID)
+        return Binding(
             get: {
-                viewModel.tabs.first(where: { $0.id == tabID })?.document.string() ?? ""
+                owner.tabs.first(where: { $0.id == tabID })?.document.string() ?? ""
             },
             set: { newValue in
-                guard viewModel.tabs.first(where: { $0.id == tabID })?.isReadOnlyPreview != true else { return }
-                viewModel.updateTabContent(tabID: tabID, content: newValue)
+                guard owner.tabs.first(where: { $0.id == tabID })?.isReadOnlyPreview != true else { return }
+                owner.updateTabContent(tabID: tabID, content: newValue)
             }
         )
     }
 
     func tabLanguageBinding(for tabID: UUID) -> Binding<String> {
-        Binding(
+        let owner = editorOwner(for: tabID)
+        return Binding(
             get: {
-                viewModel.tabs.first(where: { $0.id == tabID })?.language ?? currentLanguage
+                owner.tabs.first(where: { $0.id == tabID })?.language ?? currentLanguage
             },
             set: { newValue in
-                viewModel.updateTabLanguage(tabID: tabID, language: newValue)
+                owner.updateTabLanguage(tabID: tabID, language: newValue)
             }
         )
     }
 
     func tabForID(_ tabID: UUID?) -> TabData? {
         guard let tabID else { return nil }
-        return viewModel.tabs.first(where: { $0.id == tabID })
+        return editorOwner(for: tabID).tabs.first(where: { $0.id == tabID })
     }
 
     var currentDocumentUTF16Length: Int {
@@ -5180,9 +5229,9 @@ struct ContentView: View {
             // the entire source before the viewport can render.
             if effectiveShowCodeMinimap,
                supportsCodeMinimap(language: language),
-               viewModel.tabs.first(where: { $0.id == tabID })?.usesFileBackedStorage != true {
+               tabForID(tabID)?.usesFileBackedStorage != true {
 #if os(macOS)
-                let minimapText = viewModel.tabs.first(where: { $0.id == tabID })?.document.string() ?? ""
+                let minimapText = tabForID(tabID)?.document.string() ?? ""
 #else
                 let minimapText = editorTextBinding(for: tabID).wrappedValue
 #endif
@@ -5208,9 +5257,7 @@ struct ContentView: View {
     }
 
     private func minimapSnapshotCacheKey(tabID: UUID?, language: String) -> String {
-        let tab = tabID.flatMap { id in
-            viewModel.tabs.first(where: { $0.id == id })
-        }
+        let tab = tabForID(tabID)
         let contentRevision = tab?.contentRevision ?? 0
         let externalContentRevision = tab?.externalContentRevision ?? 0
         return "\(tabID?.uuidString ?? "single")|\(contentRevision)|\(externalContentRevision)|\(language)|\(effectiveLargeFileModeEnabled)"
@@ -5218,7 +5265,7 @@ struct ContentView: View {
 
     private func storedCaretLocation(for tabID: UUID?) -> Int? {
         guard let tabID else { return nil }
-        if let fileURL = viewModel.tabs.first(where: { $0.id == tabID })?.fileURL?.standardizedFileURL {
+        if let fileURL = tabForID(tabID)?.fileURL?.standardizedFileURL {
             return sessionCaretByFileURL[fileURL.absoluteString]
         }
         return caretLocationByTabID[tabID]
@@ -5226,7 +5273,7 @@ struct ContentView: View {
 
     private func documentResourceID(for tabID: UUID?) -> String {
         guard let tabID else { return "single" }
-        if let fileURL = viewModel.tabs.first(where: { $0.id == tabID })?.fileURL?.standardizedFileURL {
+        if let fileURL = tabForID(tabID)?.fileURL?.standardizedFileURL {
             return fileURL.absoluteString
         }
         return "untitled-\(tabID.uuidString)"
@@ -5244,7 +5291,8 @@ struct ContentView: View {
         effectiveScopeGuides: Bool,
         effectiveScopeBackground: Bool
     ) -> VirtualEditorView {
-        let tab = tabID.flatMap { id in viewModel.tabs.first(where: { $0.id == id }) }
+        let tab = tabForID(tabID)
+        let owner = editorOwner(for: tabID)
         let firstDrawCallback: ((UUID, String) -> Void)? =
             nativeSecondaryContentReadyResourceID != documentResourceID(for: tabID) ? { id, resource in
                 guard viewModel.selectedTabID == id,
@@ -5289,14 +5337,14 @@ struct ContentView: View {
             onFontSizeChange: { setEditorFontSize(Double($0)) },
             onTextMutation: { mutation in
                 if let viewport = mutation.viewport {
-                    viewModel.applyTabContentEdit(
+                    owner.applyTabContentEdit(
                         tabID: mutation.documentID,
                         viewport: viewport,
                         range: mutation.range,
                         replacement: mutation.replacement
                     )
                 } else {
-                    viewModel.applyTabContentEdit(
+                    owner.applyTabContentEdit(
                         tabID: mutation.documentID,
                         range: mutation.range,
                         replacement: mutation.replacement
@@ -5525,6 +5573,12 @@ struct ContentView: View {
         if let tabID {
             userInfo[EditorCommandUserInfo.documentID] = tabID.uuidString
         }
+#if os(macOS)
+        // Side by Side can show a document that its own window also hosts.
+        if let targetWindow = hostWindowNumber ?? NSApp.keyWindow?.windowNumber ?? NSApp.mainWindow?.windowNumber {
+            userInfo[EditorCommandUserInfo.windowNumber] = targetWindow
+        }
+#endif
         NotificationCenter.default.post(name: .moveCursorToLine, object: line, userInfo: userInfo)
     }
 

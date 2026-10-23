@@ -665,6 +665,75 @@ final class VirtualEditorLayoutTests: XCTestCase {
         return (document, canvas, documentID)
     }
 
+    /// Side by Side can show one document in two editors. Undo entries hold
+    /// ranges into the text the editor last saw, so an edit made anywhere
+    /// else must clear them instead of undoing at stale offsets.
+    func testUndoKeepsOwnEditsAndClearsAfterTheDocumentChangesElsewhere() throws {
+        let document = FileBackedTextDocument(content: "abc\n")
+        let documentID = UUID()
+        var revision = 0
+        var externalRevision = 0
+        let canvas = VirtualEditorCanvas(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        _ = canvas.setViewportSize(CGSize(width: 800, height: 600))
+        func configure(id: UUID = documentID, resourceID: String? = nil) {
+            canvas.configure(
+                document: document, documentID: id, resourceID: resourceID ?? id.uuidString,
+                displayName: "fixture", contentRevision: revision, externalContentRevision: externalRevision,
+                caret: 0, language: "plain", colorScheme: .dark,
+                fontSize: 14, fontName: "", lineHeightMultiplier: 1, isReadOnly: false,
+                translucentBackgroundEnabled: false, showsLineNumbers: true, highlightCurrentLine: false,
+                lineWrapEnabled: true, showsInvisibleCharacters: false, showsIndentationGuides: false,
+                showsScopeGuides: false, highlightsScopeBackground: false, highlightsMatchingBrackets: false,
+                autoIndentEnabled: false, autoCloseBracketsEnabled: false,
+                onFontSizeChange: nil,
+                onTextMutation: { mutation in
+                    do {
+                        if let viewport = mutation.viewport {
+                            try document.replace(in: viewport, utf16Range: mutation.range, with: mutation.replacement)
+                        } else {
+                            try document.replace(utf16Range: mutation.range, with: mutation.replacement)
+                        }
+                        revision += 1
+                        return true
+                    } catch { return false }
+                }
+            )
+        }
+        configure()
+
+        // Native input can deliver several edits before SwiftUI configures again.
+        canvas.insertText("X", replacementRange: NSRange(location: 0, length: 0))
+        canvas.insertText("Y", replacementRange: NSRange(location: NSNotFound, length: 0))
+        configure()
+        XCTAssertEqual(document.string(), "XYabc\n")
+        XCTAssertTrue(canvas.undoManager?.canUndo == true, "The editor's own edits stay undoable")
+
+        // The other pane edits the same document.
+        try document.replace(utf16Range: NSRange(location: 0, length: 0), with: "--")
+        revision += 1
+        configure()
+        XCTAssertFalse(canvas.undoManager?.canUndo == true, "Stale undo would edit at the wrong offsets")
+        XCTAssertEqual(document.string(), "--XYabc\n")
+
+        canvas.insertText("Z", replacementRange: NSRange(location: NSNotFound, length: 0))
+        configure()
+        XCTAssertTrue(canvas.undoManager?.canUndo == true)
+        // A reload from disk.
+        externalRevision += 1
+        configure()
+        XCTAssertFalse(canvas.undoManager?.canUndo == true)
+
+        canvas.insertText("W", replacementRange: NSRange(location: NSNotFound, length: 0))
+        configure()
+        XCTAssertTrue(canvas.undoManager?.canUndo == true)
+        // Saving an untitled document changes its resource ID, not its text.
+        configure(resourceID: "file:///tmp/Saved.txt")
+        XCTAssertTrue(canvas.undoManager?.canUndo == true)
+        // The editor now shows another document.
+        configure(id: UUID())
+        XCTAssertFalse(canvas.undoManager?.canUndo == true)
+    }
+
     func testDenseMarkdownCanvasBoundsLayoutAcrossScrollAndEdit() throws {
         let source = String(repeating: "# x\n", count: 220_000)
         for wraps in [true, false] {

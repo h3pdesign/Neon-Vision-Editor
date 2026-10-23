@@ -884,6 +884,15 @@ class CloudCounterTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "active, queued or unknown"):
                     self.client.snapshot()
 
+    def test_ignored_running_run_still_counts_toward_maximum(self):
+        history = self.page(1123)
+        history['data'] += self.page(1124, 'RUNNING')['data']
+        with mock.patch.object(self.client, '_get', return_value=history):
+            with self.assertRaisesRegex(ValueError, r"\(1124\)"):
+                self.client.snapshot()
+            with mock.patch.dict(os.environ, {'ASC_IGNORE_CLOUD_RUN_NUMBERS': '1124'}):
+                self.assertEqual(self.client.snapshot()['max_number'], 1124)
+
     def test_old_testflight_distribution_does_not_block_counter(self):
         history = self.page(1028)
         history['data'] += self.page(968, 'RUNNING')['data']

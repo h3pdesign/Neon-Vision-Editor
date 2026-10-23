@@ -57,7 +57,7 @@
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: supported
 > Direct GitHub release: **v2.1.0** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-10-22** for latest release **v2.1.0**
+> Last updated (README): **2026-10-23** for latest release **v2.1.0**
 
 ## What's New Since v2.0.0
 

@@ -558,6 +558,21 @@ def shields_badge(label: str, message: str, color: str, style: str = "for-the-ba
     return f"https://img.shields.io/static/v1?{query}"
 
 
+def readme_last_updated_date(readme: str, latest_tag: str, today: str) -> str:
+    """Never move the README date backwards for the same release.
+
+    Scheduled runs use UTC, while release preparation records the release's
+    local date, so a same-night UTC run can otherwise be a day earlier.
+    """
+    match = re.search(
+        r"(?m)^> Last updated \(README\): \*\*(\d{4}-\d{2}-\d{2})\*\* for (?:release line|latest release) \*\*([^*]+)\*\*$",
+        readme,
+    )
+    if match and match.group(2) == latest_tag:
+        return max(today, match.group(1))
+    return today
+
+
 def update_readme(
     content: str,
     latest_tag: str,
@@ -685,7 +700,7 @@ def update_readme(
     )
     content = re.sub(
         r"(?m)^> Last updated \(README\): \*\*.*\*\* for (?:release line|latest release) \*\*.*\*\*$",
-        f"> Last updated (README): **{today}** for latest release **{latest_tag}**",
+        f"> Last updated (README): **{readme_last_updated_date(content, latest_tag, today)}** for latest release **{latest_tag}**",
         content,
     )
     content = re.sub(

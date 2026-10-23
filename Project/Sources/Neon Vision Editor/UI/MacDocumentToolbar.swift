@@ -146,7 +146,11 @@ struct MacDocumentToolbar: NSViewRepresentable {
                     if let definition = groups.first(where: { $0.id == group.itemIdentifier.rawValue }) {
                         updateGroup(definition, group: group)
                     }
-                    for item in group.subitems { item.label = configuration.label(item.itemIdentifier.rawValue) }
+                    // Label writes invalidate toolbar layout; this runs on every document update.
+                    for item in group.subitems {
+                        let label = configuration.label(item.itemIdentifier.rawValue)
+                        if item.label != label { item.label = label }
+                    }
                 }
             }
         }

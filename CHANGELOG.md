@@ -6,6 +6,37 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- Type or paste into a new Mac tab right away, without clicking into the editor first.
+- Mac tabs you return to always show their content, even after the window's first tab was closed.
+- Closed Mac tabs stop their background work and no longer reopen on the next launch.
+
+### Highlights
+
+- New native Mac tabs and newly opened documents put the cursor in the editor immediately.
+
+### Fixes
+
+- New native Mac tabs accept typing and paste immediately, without clicking into the editor first.
+- Returning to a native Mac tab always shows its content, including after the first tab of a window has been closed.
+- Closing a native Mac tab stops its background work and shared-import watcher, and a closed tab no longer reopens after its window's first tab was closed.
+- "Open files on current desktop" finds a file that is already open in a background tab instead of opening it twice.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, sessions, and preferences are preserved.
+
+### Maintenance
+
+- Avoids rewriting unchanged toolbar labels on every document update.
+- Tab switching no longer rescans every window once per tab.
+- Development version 2.1.1 (build 1123).
+
 ## [v2.1.0] - 2026-10-23
 
 ### Why Upgrade

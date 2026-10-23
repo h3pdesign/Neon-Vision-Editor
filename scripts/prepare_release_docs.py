@@ -647,6 +647,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v2.1.1": ("Sofort tippen in neuen Tabs", "Neue Mac-Tabs übernehmen Eingaben und Einfügen sofort, ohne zuerst in den Editor zu klicken. Zurückgewählte Tabs zeigen immer ihren Inhalt, geschlossene Tabs beenden ihre Hintergrundarbeit und öffnen sich nicht erneut.", ["Tabs", "Fokus", "Stabilität"]),
         "v2.1.0": ("Native Dokument-Tabs und unabhängige Vorschauen", "Ergänzt native Mac-Dokument-Tabs mit Dateinamen und Schließen per Doppelklick. Teilt die Projektseitenleiste, erhält unabhängige Dokumentvorschauen und schützt ungespeicherte Änderungen sowie die Reihenfolge und Zahlenwerte beim JSON-Formatieren.", ["Tabs", "Vorschau", "Dateisicherheit"]),
         "v2.0.0": ("Schneller wechseln und präziser bearbeiten", "Verbessert den Wechsel zwischen Mac-Dokumenten und Aktualisierungen der Markdown-Vorschau. Stabilisiert die Cursorposition auf iPhone und iPad, stellt gespeicherte Positionen nach dem Laden großer Dateien wieder her und ergänzt Pfeiltasten für überlaufende Mac-Tabs.", ["Leistung", "Cursor", "Tabs"]),
         "v1.9.3": ("Textansicht und übersichtliche Einstellungen", "Ergänzt einen macOS-Schalter für CSV/TSV-Tabellen, verhindert die Tabellenerkennung gewöhnlicher Notizen und hält lange Schriftnamen in ihren Auswahlfeldern. Ordnet Markdown- und KI-Einstellungen auf dem Mac in eigenen Bereichen an und stellt die native Fenstergröße wieder her.", ["Einstellungen", "Textansicht", "Schriften"]),
@@ -689,6 +690,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v2.1.1": ("Skriv straks i nye faner", "Nye Mac-faner modtager tastning og indsæt med det samme uden et klik i editoren først. Faner, du vender tilbage til, viser altid deres indhold, og lukkede faner stopper deres baggrundsarbejde og åbnes ikke igen.", ["Faner", "Fokus", "Stabilitet"]),
         "v2.1.0": ("Native dokumentfaner og uafhængige forhåndsvisninger", "Tilføjer native Mac-dokumentfaner med filnavne og lukning med dobbeltklik. Deler projektsidepanelet, bevarer uafhængige dokumentvisninger og beskytter ikke-gemte ændringer samt rækkefølge og talværdier ved JSON-formatering.", ["Faner", "Forhåndsvisning", "Filsikkerhed"]),
         "v2.0.0": ("Hurtigere skift og mere præcis redigering", "Forbedrer skift mellem dokumenter på Mac og opdateringer af Markdown-forhåndsvisningen. Stabiliserer markørplacering på iPhone og iPad, gendanner gemte positioner efter indlæsning af store filer og tilføjer pile til at gennemse Mac-faner.", ["Ydeevne", "Markør", "Faner"]),
         "v1.9.3": ("Tekstvisning og overskuelige indstillinger", "Tilføjer en macOS-indstilling til CSV/TSV-tabeller, undgår at almindelige noter vises som tabeller og holder lange skriftnavne inden for deres menuer. Samler Markdown- og AI-indstillinger i egne sektioner på Mac og gendanner vinduets native størrelse.", ["Indstillinger", "Tekstvisning", "Skrifttyper"]),
@@ -731,6 +733,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v2.1.1": ("Saisie immédiate dans les nouveaux onglets", "Les nouveaux onglets Mac acceptent la saisie et le collage immédiatement, sans cliquer d’abord dans l’éditeur. Un onglet resélectionné affiche toujours son contenu, et un onglet fermé arrête son travail en arrière-plan et ne se rouvre plus.", ["Onglets", "Focus", "Stabilité"]),
         "v2.1.0": ("Onglets natifs et aperçus indépendants", "Ajoute les onglets de documents natifs du Mac avec les noms de fichiers et la fermeture par double-clic. Partage le panneau de projet, conserve des aperçus indépendants et protège les modifications non enregistrées ainsi que l’ordre et les valeurs numériques du JSON.", ["Onglets", "Aperçus", "Sécurité des fichiers"]),
         "v2.0.0": ("Navigation plus rapide et édition plus précise", "Améliore le passage entre documents sur Mac et les mises à jour de l’aperçu Markdown. Stabilise le placement du curseur sur iPhone et iPad, restaure les positions enregistrées après le chargement de gros fichiers et ajoute des flèches pour parcourir les onglets Mac.", ["Performances", "Curseur", "Onglets"]),
         "v1.9.3": ("Vue texte et réglages mieux organisés", "Ajoute une option macOS pour les tableaux CSV/TSV, évite de traiter les notes ordinaires comme des tableaux et maintient les noms de polices longs dans leurs menus. Organise les réglages Markdown et IA dans des sections dédiées sur Mac et rétablit la taille native de la fenêtre.", ["Réglages", "Vue texte", "Polices"]),
@@ -773,6 +776,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v2.1.1": ("Escritura inmediata en pestañas nuevas", "Las pestañas nuevas en Mac aceptan escritura y pegado de inmediato, sin hacer clic antes en el editor. Al volver a una pestaña siempre se muestra su contenido, y las pestañas cerradas detienen su trabajo en segundo plano y ya no se vuelven a abrir.", ["Pestañas", "Foco", "Estabilidad"]),
         "v2.1.0": ("Pestañas nativas y vistas previas independientes", "Añade pestañas de documentos nativas en Mac con nombres de archivo y cierre con doble clic. Comparte el panel del proyecto, conserva vistas previas independientes y protege los cambios sin guardar, el orden y los valores numéricos al formatear JSON.", ["Pestañas", "Vista previa", "Seguridad de archivos"]),
         "v2.0.0": ("Cambios más rápidos y edición más precisa", "Mejora el cambio entre documentos en Mac y las actualizaciones de la vista previa de Markdown. Estabiliza la posición del cursor en iPhone y iPad, restaura las posiciones guardadas después de cargar archivos grandes y añade flechas para recorrer las pestañas de Mac.", ["Rendimiento", "Cursor", "Pestañas"]),
         "v1.9.3": ("Vista de texto y ajustes más claros", "Añade una opción de macOS para las tablas CSV/TSV, evita mostrar notas comunes como tablas y mantiene los nombres largos de fuentes dentro de sus menús. Organiza los ajustes de Markdown e IA en secciones propias en Mac y restaura el tamaño nativo de la ventana.", ["Ajustes", "Vista de texto", "Fuentes"]),
@@ -815,6 +819,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v2.1.1": ("新しいタブですぐに入力", "Mac の新しいタブで、エディタをクリックしなくてもすぐに入力やペーストができるようになりました。タブに戻ると常に内容が表示され、閉じたタブはバックグラウンド処理を停止し、再び開かなくなりました。", ["タブ", "フォーカス", "安定性"]),
         "v2.1.0": ("ネイティブの書類タブと独立したプレビュー", "Mac のネイティブ書類タブにファイル名を表示し、ダブルクリックで閉じられるようにしました。プロジェクトサイドバーを共有しながら書類ごとのプレビューを維持し、未保存の変更と JSON 整形時のキー順序・数値を保護します。", ["タブ", "プレビュー", "ファイルの安全性"]),
         "v2.0.0": ("すばやい切り替えと正確な編集", "Macでの文書切り替えとMarkdownプレビューの更新を改善。iPhoneとiPadでのカーソル位置を安定させ、大きなファイルの読み込み後に保存した位置を復元し、Macのタブを移動する矢印ボタンを追加します。", ["パフォーマンス", "カーソル", "タブ"]),
         "v1.9.3": ("テキスト表示と使いやすい設定", "macOSにCSV/TSVの表表示を切り替える設定を追加し、通常のメモが表として表示される問題を修正。長いフォント名を選択欄内に収め、MacのMarkdownとAI設定を専用セクションに整理し、設定ウィンドウ本来のサイズを復元します。", ["設定", "テキスト表示", "フォント"]),
@@ -857,6 +862,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v2.1.1": ("新标签页可立即输入", "Mac 新标签页无需先点按编辑器即可立即输入和粘贴。切换回标签页时始终显示其内容，关闭的标签页会停止后台工作且不再重新打开。", ["标签页", "焦点", "稳定性"]),
         "v2.1.0": ("原生文稿标签页与独立预览", "新增 Mac 原生文稿标签页，显示文件名并支持双击关闭。共享项目侧边栏，同时保留各文稿的独立预览，保护未保存的更改，并在 JSON 格式化时保留键顺序与精确数值。", ["标签页", "预览", "文件安全"]),
         "v2.0.0": ("更快切换，更精准编辑", "改进Mac文档切换和Markdown预览更新。稳定iPhone和iPad上的光标定位，在大文件加载完成后恢复已保存的位置，并新增箭头按钮以浏览超出可见区域的Mac标签页。", ["性能", "光标", "标签页"]),
         "v1.9.3": ("文本视图与更清晰的设置", "为macOS新增CSV/TSV表格视图开关，避免将普通笔记识别为表格，并让较长的字体名称保持在选择控件内。将Mac的Markdown与AI设置整理为独立分区，并恢复设置窗口的原生尺寸。", ["设置", "文本视图", "字体"]),

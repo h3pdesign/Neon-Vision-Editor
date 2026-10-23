@@ -2793,11 +2793,11 @@ struct WelcomeTourView: View {
             subtitle: "Release highlights for v2.1.0.",
             bullets: [
                 "Editor Improvements: Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing.",
-                "Editor Navigation: Keep project navigation shared while each document retains its own editing and preview state.",
+                "Workflow Refinements: Keep the iPhone Duo editor toolbar clear of your document when the phone is closed, open, or partially folded.",
                 "Reliable Saves: Preserve unsaved edits during external-file refreshes and exact JSON values when formatting.",
                 "Reliable Saves: Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation.",
-                "Editor Improvements: Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native…",
-                "Workflow Refinements: Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience."
+                "Editor Improvements: Makes native document tabs standard for macOS, replacing the previous in-editor tab strip. Native tabs show filenames…",
+                "Workflow Refinements: On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4519,7 +4519,7 @@ struct InAppChangelogView: View {
     private let releases: [Release] = [
         Release(id: "2.1.0", version: "2.1.0", date: "2026-10-23", highlights: [
             "Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing.",
-            "Keep project navigation shared while each document retains its own editing and preview state.",
+            "Keep the iPhone Duo editor toolbar clear of your document when the phone is closed, open, or partially folded.",
             "Preserve unsaved edits during external-file refreshes and exact JSON values when formatting."
         ]),
         Release(id: "2.0.0", version: "2.0.0", date: "2026-10-15", highlights: [

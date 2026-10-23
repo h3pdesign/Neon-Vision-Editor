@@ -5813,11 +5813,11 @@ struct ContentView: View {
             effectiveBracketHighlight: bracket, effectiveScopeGuides: scope,
             effectiveScopeBackground: scopeBackground))
         if effectiveShowCodeMinimap, supportsCodeMinimap(language: language),
-           viewModel.tabs.first(where: { $0.id == tabID })?.usesFileBackedStorage != true {
+           tabForID(tabID)?.usesFileBackedStorage != true {
             pane.minimap = {
                 AnyView(CodeMinimapView(documentID: tabID,
                     snapshotCacheKey: minimapSnapshotCacheKey(tabID: tabID, language: language),
-                    text: viewModel.tabs.first(where: { $0.id == tabID })?.document.string() ?? "",
+                    text: tabForID(tabID)?.document.string() ?? "",
                     language: language, colorScheme: effectiveEditorColorScheme,
                     isLargeFileMode: effectiveLargeFileModeEnabled || isLoading,
                     onSelectLine: { moveEditorFromMinimap(to: $0, tabID: tabID) },

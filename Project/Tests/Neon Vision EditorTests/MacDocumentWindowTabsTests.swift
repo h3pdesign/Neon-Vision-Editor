@@ -376,6 +376,43 @@ final class MacDocumentWindowTabsTests: XCTestCase {
         XCTAssertEqual(try String(contentsOf: firstFile, encoding: .utf8), "first\n")
         XCTAssertEqual(second.selectedTab?.isDirty, false)
 
+        // A conflict is presented by the owner's tab, which shows it only while
+        // selected. File-backed saves report it after the save has started.
+        firstWindow.tabGroup?.selectedWindow = firstWindow
+        XCTAssertTrue(second.applyTabContentEdit(tabID: secondID, range: NSRange(location: 0, length: 0), replacement: "more "))
+        XCTAssertTrue(store.saveFocusedSideBySideDocument(for: first, focusedDocumentID: secondID))
+        XCTAssertTrue(firstWindow.tabGroup?.selectedWindow === firstWindow, "A save without problems stays in place")
+        second.pendingExternalFileConflict = .init(tabID: secondID, fileURL: secondFile, diskModifiedAt: nil)
+        let asyncDeadline = ProcessInfo.processInfo.systemUptime + 5
+        while firstWindow.tabGroup?.selectedWindow !== secondWindow,
+              ProcessInfo.processInfo.systemUptime < asyncDeadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertTrue(firstWindow.tabGroup?.selectedWindow === secondWindow,
+                      "A conflict reported after the save started must select the owner's tab")
+        while second.selectedTab?.isDirty == true, ProcessInfo.processInfo.systemUptime < asyncDeadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        second.pendingExternalFileConflict = nil
+
+        // A conflict found before writing selects the owner's tab immediately.
+        firstWindow.tabGroup?.selectedWindow = firstWindow
+        try "changed on disk\n".write(to: secondFile, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(60)],
+                                              ofItemAtPath: secondFile.path)
+        XCTAssertTrue(second.applyTabContentEdit(tabID: secondID, range: NSRange(location: 0, length: 0), replacement: "again "))
+        XCTAssertTrue(store.saveFocusedSideBySideDocument(for: first, focusedDocumentID: secondID))
+        let conflictDeadline = ProcessInfo.processInfo.systemUptime + 5
+        while firstWindow.tabGroup?.selectedWindow !== secondWindow,
+              ProcessInfo.processInfo.systemUptime < conflictDeadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertNotNil(second.pendingExternalFileConflict)
+        XCTAssertTrue(firstWindow.tabGroup?.selectedWindow === secondWindow,
+                      "The owner's tab must be selected to present the conflict")
+        XCTAssertEqual(try String(contentsOf: secondFile, encoding: .utf8), "changed on disk\n",
+                       "A conflicting save must not overwrite the file")
+
         store.unregister(second)
         XCTAssertFalse(store.saveFocusedSideBySideDocument(for: first, focusedDocumentID: secondID),
                        "A closed tab's document is no longer a save target")

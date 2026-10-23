@@ -513,9 +513,28 @@ final class MacDocumentWindowTabs {
         } else {
             owner.saveFile(tabID: focusedDocumentID)
         }
-        // The owner's window presents a conflict with the file on disk.
-        if owner.pendingExternalFileConflict != nil { reveal(owner) }
+        revealWhenSaveNeedsAttention(owner)
         return true
+    }
+
+    /// The owner's window presents a conflict with the file on disk or a save
+    /// error, but only while it is the selected tab. File-backed saves report
+    /// either asynchronously, so watch the owner's next change.
+    private func revealWhenSaveNeedsAttention(_ owner: EditorViewModel) {
+        func needsAttention() -> Bool {
+            owner.pendingExternalFileConflict != nil || owner.fileEncodingErrorMessage != nil
+        }
+        guard !needsAttention() else { return reveal(owner) }
+        withObservationTracking {
+            _ = owner.pendingExternalFileConflict?.tabID
+            _ = owner.fileEncodingErrorMessage
+        } onChange: { [weak self, weak owner] in
+            Task { @MainActor [weak self, weak owner] in
+                guard let self, let owner, self.entries[ObjectIdentifier(owner)] != nil,
+                      owner.pendingExternalFileConflict != nil || owner.fileEncodingErrorMessage != nil else { return }
+                self.reveal(owner)
+            }
+        }
     }
 
     /// Group membership is window state, not observable model state. Deferred,

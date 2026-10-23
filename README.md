@@ -64,14 +64,13 @@
 ### Why Upgrade
 
 - v2.1.0: Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing.
-- v2.1.0: Keep project navigation shared while each document retains its own editing and preview state.
+- v2.1.0: Keep the iPhone Duo editor toolbar clear of your document when the phone is closed, open, or partially folded.
 - v2.1.0: Preserve unsaved edits during external-file refreshes and exact JSON values when formatting.
 
 ### v2.1.0 Highlights
 
 - Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation.
-- Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state.
-- Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience.
+- Makes native document tabs standard for macOS, replacing the previous in-editor tab strip. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state.
 - On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is closed, open, or partially folded, so it no longer covers the bottom of your document (#498).
 
 ## Start Here
@@ -363,7 +362,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - **Languages and structured documents:** Swift 6-ready highlighting includes TeX/LaTeX and Typst/CeTZ-aware editing; CSV/TSV, property lists, Apple crash reports, and recognized logs can switch between structured and raw-text views, and plain text can be transformed into validated JSON through an explicit AI-assisted action.
 - **Project and preview workflows:** project-level Markdown/PDF cards reuse the project index for bounded excerpts and thumbnails, while Markdown, HTML, SVG, PDF, and PNG previews remain integrated with the editor.
 - **macOS integration:** the embedded Quick Look extension previews supported Markdown and source files in Finder, and detached Markdown previews can use the same glass treatment without changing editor content.
-- **Latest stable additions (v2.1.0):** Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation; Makes native document tabs standard for macOS, replacing the previous in-editor tab strip and experimental setting. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state; Keeps the newer touch-friendly UIKit tabs standard on iPhone and iPad, and preserves visionOS's existing tab experience; On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is closed, open, or partially folded, so it no longer covers the bottom of your document (#498).
+- **Latest stable additions (v2.1.0):** Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation; Makes native document tabs standard for macOS, replacing the previous in-editor tab strip. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state; On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is closed, open, or partially folded, so it no longer covers the bottom of your document (#498).
 <!-- FEATURE_COVERAGE:END -->
 
 ### Editing Core
@@ -768,7 +767,7 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
-| [`v2.1.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.1.0) | **Release highlights** — Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing. | Keeps the Mac editor at full height when the code minimap is shown; short Swift, YAML, and other code files no longer collapse to a single centered… |
+| [`v2.1.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.1.0) | **Release highlights** — Use native Mac document tabs with filenames, active-tab highlighting, and double-click closing. | Rechecks document revisions before applying external file refreshes, so edits made while a refresh is pending are not replaced by stale content. |
 | [`v2.0.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.0.0) | **A more deliberate workflow** — Switch between open Mac documents with less waiting, including large Markdown and source files. | Detects external file rewrites even when file size and modification time are unchanged, preventing stale text indexes during background tab… |
 | [`v1.9.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v1.9.3) | **A more deliberate workflow** — Choose plain-text editing instead of CSV/TSV tables on macOS. | Prevents ordinary multiline notes containing commas from opening as CSV tables (#738). |
 

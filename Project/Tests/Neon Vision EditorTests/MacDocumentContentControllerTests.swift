@@ -137,6 +137,41 @@ final class MacDocumentContentControllerTests: XCTestCase {
         XCTAssertFalse(hit === overlay || hit?.isDescendant(of: overlay) == true)
     }
 
+    func testFormattingOverlayFollowsItsContentSizeAndStaysInsideTheEditor() throws {
+        // Same shape as the Markdown formatting bar: a collapsed button, or a
+        // fixed-width row with a scrolling fallback for narrow editors.
+        let buttons = HStack(spacing: 0) { ForEach(0..<10) { _ in Color.clear.frame(width: 30, height: 28) } }
+        let controller = MacDocumentContentController()
+        var configuration = sourceConfiguration()
+        configuration.formattingOverlay = { AnyView(Color.clear.frame(width: 80, height: 28)) }
+        controller.update(configuration)
+        controller.view.frame = NSRect(x: 0, y: 0, width: 800, height: 500)
+        controller.view.layoutSubtreeIfNeeded()
+        let overlay = try XCTUnwrap(descendants(controller.view).first { $0 is NSHostingView<AnyView> })
+        XCTAssertEqual(overlay.frame, NSRect(x: 720, y: 472, width: 80, height: 28))
+
+        // Expanding reuses the same host; its frame must follow the new size.
+        configuration.formattingOverlay = {
+            AnyView(ViewThatFits(in: .horizontal) {
+                buttons.fixedSize(horizontal: true, vertical: false)
+                ScrollView(.horizontal) { buttons }
+            })
+        }
+        controller.update(configuration)
+        controller.view.layoutSubtreeIfNeeded()
+        XCTAssertTrue(descendants(controller.view).first { $0 is NSHostingView<AnyView> } === overlay)
+        XCTAssertEqual(overlay.frame, NSRect(x: 500, y: 472, width: 300, height: 28))
+
+        controller.view.frame = NSRect(x: 0, y: 0, width: 200, height: 500)
+        controller.view.layoutSubtreeIfNeeded()
+        XCTAssertEqual(overlay.frame.minX, 0)
+        XCTAssertEqual(overlay.frame.width, 200)
+
+        controller.view.frame = NSRect(x: 0, y: 0, width: 800, height: 500)
+        controller.view.layoutSubtreeIfNeeded()
+        XCTAssertEqual(overlay.frame, NSRect(x: 500, y: 472, width: 300, height: 28))
+    }
+
     func testWindowLayoutCreatesOnlyVisibleRegionsAndKeepsPrimaryHost() throws {
         let controller = MacDocumentLayout.Controller()
         var constructed = 0

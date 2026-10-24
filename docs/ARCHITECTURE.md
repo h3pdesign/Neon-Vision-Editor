@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-10-23 (v2.1.1 release-aligned architecture)
+Last updated: 2026-10-24 (v2.1.2 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -9,6 +9,15 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
+### v2.1.2 (2026-10-24)
+
+- Side by Side is back on the Mac: choose Toggle Side by Side Editor (⌥⌘\) in the View menu or the Side by Side toolbar button, then pick which open tab to show next to the current one. Both panes are editable, and the Side by Side button is now part of the standard toolbar.
+- Adds Move Tab to New Window to the Window menu.
+- Side by Side and Compare Open Tabs find the other documents open in the same Mac window's tabs instead of reporting that no other tab is open.
+- Save and Save As apply to the Side by Side pane you are editing, and a file conflict or save error on that document brings its tab forward so you can resolve it.
+- The second Side by Side pane shows its own minimap, line navigation and cursor position.
+- Undo keeps your own edits after saving a new document, and starts fresh when the document changes elsewhere.
+
 ### v2.1.1 (2026-10-23)
 
 - New native Mac tabs and newly opened documents put the cursor in the editor immediately.
@@ -16,14 +25,6 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 - Returning to a native Mac tab always shows its content, including after the first tab of a window has been closed.
 - Closing a native Mac tab stops its background work and shared-import watcher, and a closed tab no longer reopens after its window's first tab was closed.
 - "Open files on current desktop" finds a file that is already open in a background tab instead of opening it twice.
-
-### v2.1.0 (2026-10-23)
-
-- Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation.
-- Makes native document tabs standard for macOS, replacing the previous in-editor tab strip. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state.
-- On iPhone Duo, moves the editor toolbar into a vertical column on the right edge, below the status bar, when the phone is closed, open, or partially folded, so it no longer covers the bottom of your document (#498).
-- Rechecks document revisions before applying external file refreshes, so edits made while a refresh is pending are not replaced by stale content.
-- Preserves JSON object member order, repeated keys, exact number tokens, and escaped strings when formatting or combining lines (#802).
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

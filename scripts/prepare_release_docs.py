@@ -87,7 +87,7 @@ def replace_or_insert_managed_block(
             rf"{re.escape(start_marker)}.*?{re.escape(end_marker)}",
             flags=re.S,
         )
-        return pattern.sub(replacement, content, count=1)
+        return pattern.sub(lambda _: replacement, content, count=1)
     anchor = content.find(insert_before)
     if anchor < 0:
         raise ValueError(f"Could not insert managed documentation block before: {insert_before.strip()}")
@@ -302,6 +302,9 @@ def shorten_for_welcome_tour_card(text: str, limit: int = WELCOME_TOUR_CARD_TEXT
 def welcome_feature_title(description: str, index: int) -> str:
     lowered = description.lower()
     rules = (
+        (("side by side",), "Side by Side"),
+        (("compare",), "Tab Comparison"),
+        (("own window", "new window"), "Window Tabs"),
         (("switch between open mac documents",), "Tab Switching"),
         (("cursor", "caret"), "Cursor Placement"),
         (("overflowing mac tabs",), "Tab Navigation"),
@@ -427,7 +430,7 @@ def update_welcome_tour_release_page(swift_source: str, tag: str, bullets: list[
 
     if not pattern.search(swift_source):
         raise ValueError("Could not find Welcome Tour 'What's New' page block to update.")
-    return pattern.sub(new_block, swift_source, count=1)
+    return pattern.sub(lambda _: new_block, swift_source, count=1)
 
 
 def update_in_app_changelog(swift_source: str, changelog: str, tag: str) -> str:
@@ -573,7 +576,7 @@ def rebuild_readme_release_timeline(readme: str, changelog: str, current_tag: st
     pattern = re.compile(r"<!-- RELEASE_TIMELINE:START -->.*?<!-- RELEASE_TIMELINE:END -->", flags=re.S)
     if not pattern.search(readme):
         raise ValueError("README missing release timeline markers")
-    return pattern.sub(replacement, readme, count=1)
+    return pattern.sub(lambda _: replacement, readme, count=1)
 
 
 def rebuild_website_release_timeline(website: str, changelog: str, current_tag: str) -> str:
@@ -600,7 +603,7 @@ def rebuild_website_release_timeline(website: str, changelog: str, current_tag: 
     pattern = re.compile(r"        <!-- RELEASE_TIMELINE:START -->.*?        <!-- RELEASE_TIMELINE:END -->", flags=re.S)
     if not pattern.search(website):
         raise ValueError("Website missing release timeline markers")
-    return pattern.sub(replacement, website, count=1)
+    return pattern.sub(lambda _: replacement, website, count=1)
 
 
 def changelog_badge_class(heading: str) -> str:
@@ -642,11 +645,12 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
     pattern = re.compile(r"    <!-- CHANGELOG_ENTRIES:START -->.*?    <!-- CHANGELOG_ENTRIES:END -->", flags=re.S)
     if not pattern.search(page):
         raise ValueError("Changelog page entry markers are missing")
-    return pattern.sub(replacement, page, count=1)
+    return pattern.sub(lambda _: replacement, page, count=1)
 
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v2.1.2": ("Nebeneinander bearbeiten in Mac-Tabs", "Zeigt zwei geöffnete Mac-Tabs wieder nebeneinander an, beide bearbeitbar, und vergleicht geöffnete Tabs wieder in der Diff-Ansicht. Sichern gilt für den bearbeiteten Bereich, und „Tab in neues Fenster bewegen“ ist im Menü „Fenster“ verfügbar.", ["Nebeneinander", "Tabs", "Vergleich"]),
         "v2.1.1": ("Sofort tippen in neuen Tabs", "Neue Mac-Tabs übernehmen Eingaben und Einfügen sofort, ohne zuerst in den Editor zu klicken. Zurückgewählte Tabs zeigen immer ihren Inhalt, geschlossene Tabs beenden ihre Hintergrundarbeit und öffnen sich nicht erneut.", ["Tabs", "Fokus", "Stabilität"]),
         "v2.1.0": ("Native Dokument-Tabs und unabhängige Vorschauen", "Ergänzt native Mac-Dokument-Tabs mit Dateinamen und Schließen per Doppelklick. Teilt die Projektseitenleiste, erhält unabhängige Dokumentvorschauen und schützt ungespeicherte Änderungen sowie die Reihenfolge und Zahlenwerte beim JSON-Formatieren.", ["Tabs", "Vorschau", "Dateisicherheit"]),
         "v2.0.0": ("Schneller wechseln und präziser bearbeiten", "Verbessert den Wechsel zwischen Mac-Dokumenten und Aktualisierungen der Markdown-Vorschau. Stabilisiert die Cursorposition auf iPhone und iPad, stellt gespeicherte Positionen nach dem Laden großer Dateien wieder her und ergänzt Pfeiltasten für überlaufende Mac-Tabs.", ["Leistung", "Cursor", "Tabs"]),
@@ -690,6 +694,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v2.1.2": ("Rediger side om side i Mac-faner", "Viser igen to åbne Mac-faner side om side, begge redigerbare, og sammenligner åbne faner i diff-visningen igen. Gem gælder den rude, du redigerer, og ”Flyt fane til nyt vindue” findes i menuen Vindue.", ["Side om side", "Faner", "Sammenligning"]),
         "v2.1.1": ("Skriv straks i nye faner", "Nye Mac-faner modtager tastning og indsæt med det samme uden et klik i editoren først. Faner, du vender tilbage til, viser altid deres indhold, og lukkede faner stopper deres baggrundsarbejde og åbnes ikke igen.", ["Faner", "Fokus", "Stabilitet"]),
         "v2.1.0": ("Native dokumentfaner og uafhængige forhåndsvisninger", "Tilføjer native Mac-dokumentfaner med filnavne og lukning med dobbeltklik. Deler projektsidepanelet, bevarer uafhængige dokumentvisninger og beskytter ikke-gemte ændringer samt rækkefølge og talværdier ved JSON-formatering.", ["Faner", "Forhåndsvisning", "Filsikkerhed"]),
         "v2.0.0": ("Hurtigere skift og mere præcis redigering", "Forbedrer skift mellem dokumenter på Mac og opdateringer af Markdown-forhåndsvisningen. Stabiliserer markørplacering på iPhone og iPad, gendanner gemte positioner efter indlæsning af store filer og tilføjer pile til at gennemse Mac-faner.", ["Ydeevne", "Markør", "Faner"]),
@@ -733,6 +738,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v2.1.2": ("Édition côte à côte dans les onglets Mac", "Affiche de nouveau deux onglets Mac ouverts côte à côte, tous deux modifiables, et compare de nouveau les onglets ouverts dans la vue des différences. L’enregistrement s’applique au volet en cours d’édition, et « Placer l’onglet dans une nouvelle fenêtre » est disponible dans le menu Fenêtre.", ["Côte à côte", "Onglets", "Comparaison"]),
         "v2.1.1": ("Saisie immédiate dans les nouveaux onglets", "Les nouveaux onglets Mac acceptent la saisie et le collage immédiatement, sans cliquer d’abord dans l’éditeur. Un onglet resélectionné affiche toujours son contenu, et un onglet fermé arrête son travail en arrière-plan et ne se rouvre plus.", ["Onglets", "Focus", "Stabilité"]),
         "v2.1.0": ("Onglets natifs et aperçus indépendants", "Ajoute les onglets de documents natifs du Mac avec les noms de fichiers et la fermeture par double-clic. Partage le panneau de projet, conserve des aperçus indépendants et protège les modifications non enregistrées ainsi que l’ordre et les valeurs numériques du JSON.", ["Onglets", "Aperçus", "Sécurité des fichiers"]),
         "v2.0.0": ("Navigation plus rapide et édition plus précise", "Améliore le passage entre documents sur Mac et les mises à jour de l’aperçu Markdown. Stabilise le placement du curseur sur iPhone et iPad, restaure les positions enregistrées après le chargement de gros fichiers et ajoute des flèches pour parcourir les onglets Mac.", ["Performances", "Curseur", "Onglets"]),
@@ -776,6 +782,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v2.1.2": ("Edición en paralelo en pestañas de Mac", "Vuelve a mostrar dos pestañas abiertas de Mac una al lado de la otra, ambas editables, y vuelve a comparar pestañas abiertas en la vista de diferencias. Guardar se aplica al panel que estás editando, y «Mover pestaña a una ventana nueva» está en el menú Ventana.", ["En paralelo", "Pestañas", "Comparación"]),
         "v2.1.1": ("Escritura inmediata en pestañas nuevas", "Las pestañas nuevas en Mac aceptan escritura y pegado de inmediato, sin hacer clic antes en el editor. Al volver a una pestaña siempre se muestra su contenido, y las pestañas cerradas detienen su trabajo en segundo plano y ya no se vuelven a abrir.", ["Pestañas", "Foco", "Estabilidad"]),
         "v2.1.0": ("Pestañas nativas y vistas previas independientes", "Añade pestañas de documentos nativas en Mac con nombres de archivo y cierre con doble clic. Comparte el panel del proyecto, conserva vistas previas independientes y protege los cambios sin guardar, el orden y los valores numéricos al formatear JSON.", ["Pestañas", "Vista previa", "Seguridad de archivos"]),
         "v2.0.0": ("Cambios más rápidos y edición más precisa", "Mejora el cambio entre documentos en Mac y las actualizaciones de la vista previa de Markdown. Estabiliza la posición del cursor en iPhone y iPad, restaura las posiciones guardadas después de cargar archivos grandes y añade flechas para recorrer las pestañas de Mac.", ["Rendimiento", "Cursor", "Pestañas"]),
@@ -819,6 +826,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v2.1.2": ("Mac のタブを左右に並べて編集", "Mac で開いている 2 つのタブを再び左右に並べて表示し、どちらも編集できます。開いているタブを差分ビューで比較する機能も復活しました。保存は編集中のパネルに適用され、「タブを新規ウインドウに移動」を「ウインドウ」メニューから使えます。", ["左右に並べて表示", "タブ", "比較"]),
         "v2.1.1": ("新しいタブですぐに入力", "Mac の新しいタブで、エディタをクリックしなくてもすぐに入力やペーストができるようになりました。タブに戻ると常に内容が表示され、閉じたタブはバックグラウンド処理を停止し、再び開かなくなりました。", ["タブ", "フォーカス", "安定性"]),
         "v2.1.0": ("ネイティブの書類タブと独立したプレビュー", "Mac のネイティブ書類タブにファイル名を表示し、ダブルクリックで閉じられるようにしました。プロジェクトサイドバーを共有しながら書類ごとのプレビューを維持し、未保存の変更と JSON 整形時のキー順序・数値を保護します。", ["タブ", "プレビュー", "ファイルの安全性"]),
         "v2.0.0": ("すばやい切り替えと正確な編集", "Macでの文書切り替えとMarkdownプレビューの更新を改善。iPhoneとiPadでのカーソル位置を安定させ、大きなファイルの読み込み後に保存した位置を復元し、Macのタブを移動する矢印ボタンを追加します。", ["パフォーマンス", "カーソル", "タブ"]),
@@ -862,6 +870,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v2.1.2": ("在 Mac 标签页中并排编辑", "再次支持将两个已打开的 Mac 标签页并排显示，两侧均可编辑，并可再次在差异视图中比较已打开的标签页。存储会应用到正在编辑的窗格，“将标签页移到新窗口”可在“窗口”菜单中使用。", ["并排", "标签页", "比较"]),
         "v2.1.1": ("新标签页可立即输入", "Mac 新标签页无需先点按编辑器即可立即输入和粘贴。切换回标签页时始终显示其内容，关闭的标签页会停止后台工作且不再重新打开。", ["标签页", "焦点", "稳定性"]),
         "v2.1.0": ("原生文稿标签页与独立预览", "新增 Mac 原生文稿标签页，显示文件名并支持双击关闭。共享项目侧边栏，同时保留各文稿的独立预览，保护未保存的更改，并在 JSON 格式化时保留键顺序与精确数值。", ["标签页", "预览", "文件安全"]),
         "v2.0.0": ("更快切换，更精准编辑", "改进Mac文档切换和Markdown预览更新。稳定iPhone和iPad上的光标定位，在大文件加载完成后恢复已保存的位置，并新增箭头按钮以浏览超出可见区域的Mac标签页。", ["性能", "光标", "标签页"]),
@@ -940,7 +949,7 @@ def rebuild_localized_website_release_timeline(website: str, changelog: str, cur
     pattern = re.compile(r"        <!-- RELEASE_TIMELINE:START -->.*?        <!-- RELEASE_TIMELINE:END -->", flags=re.S)
     if not pattern.search(website):
         raise ValueError(f"Localized website timeline markers are missing for {locale}.")
-    return pattern.sub(replacement, website, count=1)
+    return pattern.sub(lambda _: replacement, website, count=1)
 
 
 def validate_release_input(changelog: str, tag: str) -> None:
@@ -1315,7 +1324,7 @@ def update_readme_whats_new_section(
     )
     if not pattern.search(readme):
         raise ValueError("README missing What's New section before Start Here.")
-    return pattern.sub(replacement, readme, count=1)
+    return pattern.sub(lambda _: replacement, readme, count=1)
 
 
 def readme_previous_release_tag(changelog: str, current_tag: str) -> str | None:

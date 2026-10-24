@@ -199,7 +199,14 @@ extension ContentView {
 
     var comparableOpenTabs: [TabData] {
         guard let selectedID = viewModel.selectedTab?.id else { return [] }
+#if os(macOS)
+        // Each native tab is a window with its own model; offer the documents
+        // of the whole tab group, not only this window's.
+        _ = nativeTabGroupRevision
+        return MacDocumentWindowTabs.shared.openDocuments(inGroupOf: viewModel).filter { $0.id != selectedID }
+#else
         return viewModel.tabs.filter { $0.id != selectedID }
+#endif
     }
 
     var compareSheetBackgroundStyle: AnyShapeStyle {
@@ -368,8 +375,8 @@ extension ContentView {
 
     @MainActor
     func compareSelectedTab(with tabID: UUID) {
-        guard let selectedID = viewModel.selectedTab?.id,
-              let snapshot = viewModel.compareTabsSnapshot(leftTabID: selectedID, rightTabID: tabID) else { return }
+        guard let selected = viewModel.selectedTab, let other = tabForID(tabID),
+              let snapshot = EditorViewModel.compareTabsSnapshot(left: selected, right: other) else { return }
         showCompareTabsPicker = false
         Task { @MainActor in
             let diff = await Task.detached(priority: .userInitiated) {
@@ -397,9 +404,20 @@ extension ContentView {
             splitSecondaryTabID = nil
             return
         }
-        guard let selectedID = viewModel.selectedTab?.id,
-              let secondary = viewModel.tabs.first(where: { $0.id != selectedID }) else { return }
-        splitSecondaryTabID = secondary.id
+        let candidates = comparableOpenTabs
+        if candidates.count == 1 {
+            splitSecondaryTabID = candidates[0].id
+        } else {
+            // Several documents to choose from, or none: the picker explains.
+            showSplitTabPicker = true
+        }
+    }
+
+    @MainActor
+    func openSplitEditor(with tabID: UUID) {
+        showSplitTabPicker = false
+        guard tabID != viewModel.selectedTabID, tabForID(tabID) != nil else { return }
+        splitSecondaryTabID = tabID
     }
 
     @MainActor

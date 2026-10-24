@@ -386,7 +386,7 @@ enum ToolbarPreset: String, CaseIterable, Identifiable {
             return [
                 "openFile", "undo", "newTab", "closeAllTabs", "saveFile", "saveFileAs", "newWindow",
                 "markdownPreview", "codeMinimap", "previewActions", "markdownProjectPreview", "findReplace", "findInFiles",
-                "toggleSidebar", "toggleProjectSidebar", "brainDump", "help", "languageIndicator", "settings"
+                "splitEditor", "toggleSidebar", "toggleProjectSidebar", "brainDump", "help", "languageIndicator", "settings"
             ]
         case .writing:
             return ["openFile", "newTab", "saveFile", "findReplace", "editorLayout", "markdownPreview", "previewActions", "markdownProjectPreview", "settings", "help"]
@@ -414,7 +414,7 @@ enum ToolbarPreset: String, CaseIterable, Identifiable {
         switch self {
         case .standard:
             return [
-                "openFile", "undo", "newTab", "saveFile", "findReplace", "findInFiles", "markdownPreview",
+                "openFile", "undo", "newTab", "saveFile", "findReplace", "findInFiles", "splitEditor", "markdownPreview",
                 "markdownProjectPreview", "codeMinimap", "toggleSidebar", "toggleProjectSidebar", "brainDump", "gitChanges", "settings", "help"
             ]
         case .writing:

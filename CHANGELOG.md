@@ -6,6 +6,38 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.1.2] - 2026-10-24
+
+### Why Upgrade
+
+- Edit two open Mac documents side by side again, now that every document opens in its own native tab.
+- Compare any two open Mac tabs in the diff view again.
+- Move a native Mac tab into its own window from the Window menu.
+
+### Highlights
+
+- Side by Side is back on the Mac: choose Toggle Side by Side Editor (⌥⌘\) in the View menu or the Side by Side toolbar button, then pick which open tab to show next to the current one. Both panes are editable, and the Side by Side button is now part of the standard toolbar.
+- Adds Move Tab to New Window to the Window menu.
+
+### Fixes
+
+- Side by Side and Compare Open Tabs find the other documents open in the same Mac window's tabs instead of reporting that no other tab is open.
+- Save and Save As apply to the Side by Side pane you are editing, and a file conflict or save error on that document brings its tab forward so you can resolve it.
+- The second Side by Side pane shows its own minimap, line navigation and cursor position.
+- Undo keeps your own edits after saving a new document, and starts fresh when the document changes elsewhere.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, sessions, and preferences are preserved.
+
+### Maintenance
+
+- Development version 2.1.2 (build 1126).
+
 ## [v2.1.1] - 2026-10-23
 
 ### Why Upgrade

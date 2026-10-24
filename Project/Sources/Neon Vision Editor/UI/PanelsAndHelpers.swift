@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.1.1",
-            subtitle: "Release highlights for v2.1.1.",
+            title: "What’s New in v2.1.2",
+            subtitle: "Release highlights for v2.1.2.",
             bullets: [
-                "Editor Improvements: Type or paste into a new Mac tab right away, without clicking into the editor first.",
-                "Workflow Refinements: Mac tabs you return to always show their content, even after the window's first tab was closed.",
-                "Performance Updates: Closed Mac tabs stop their background work and no longer reopen on the next launch.",
-                "Cursor Placement: New native Mac tabs and newly opened documents put the cursor in the editor immediately.",
-                "Editor Improvements: New native Mac tabs accept typing and paste immediately, without clicking into the editor first.",
-                "Workflow Refinements: Returning to a native Mac tab always shows its content, including after the first tab of a window has been closed."
+                "Side by Side: Edit two open Mac documents side by side again, now that every document opens in its own native tab.",
+                "Tab Comparison: Compare any two open Mac tabs in the diff view again.",
+                "Window Tabs: Move a native Mac tab into its own window from the Window menu.",
+                "Side by Side: Side by Side is back on the Mac: choose Toggle Side by Side Editor (⌥⌘\\) in the View menu or the Side by Side toolbar…",
+                "Window Tabs: Adds Move Tab to New Window to the Window menu.",
+                "Side by Side: Side by Side and Compare Open Tabs find the other documents open in the same Mac window's tabs instead of reporting that no…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4452,6 +4452,7 @@ extension Notification.Name {
     static let showLanguageSearchRequested = Notification.Name("showLanguageSearchRequested")
     static let compareCurrentTabAgainstDiskRequested = Notification.Name("compareCurrentTabAgainstDiskRequested")
     static let compareOpenTabsRequested = Notification.Name("compareOpenTabsRequested")
+    static let toggleSplitEditorRequested = Notification.Name("toggleSplitEditorRequested")
     static let showWelcomeTourRequested = Notification.Name("showWelcomeTourRequested")
     static let showEditorHelpRequested = Notification.Name("showEditorHelpRequested")
     static let showSupportPromptRequested = Notification.Name("showSupportPromptRequested")
@@ -4517,6 +4518,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.1.2", version: "2.1.2", date: "2026-10-24", highlights: [
+            "Edit two open Mac documents side by side again, now that every document opens in its own native tab.",
+            "Compare any two open Mac tabs in the diff view again.",
+            "Move a native Mac tab into its own window from the Window menu."
+        ]),
         Release(id: "2.1.1", version: "2.1.1", date: "2026-10-23", highlights: [
             "Type or paste into a new Mac tab right away, without clicking into the editor first.",
             "Mac tabs you return to always show their content, even after the window's first tab was closed.",

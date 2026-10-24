@@ -82,12 +82,6 @@ struct NeonVisionMacAppCommands: Commands {
         activeEditorViewModel().selectedTab?.fileURL != nil
     }
 
-    private var hasComparableOpenTabs: Bool {
-        let current = activeEditorViewModel()
-        guard let selectedID = current.selectedTab?.id else { return false }
-        return current.tabs.contains { $0.id != selectedID }
-    }
-
     private var selectedTabIsJSON: Bool {
         guard let language = activeEditorViewModel().selectedTab?.language.lowercased() else { return false }
         return language == "json" || language == "jsonc" || language == "json5"
@@ -189,6 +183,10 @@ struct NeonVisionMacAppCommands: Commands {
         CommandGroup(replacing: .saveItem) {
             Button("Save") {
                 let current = activeEditorViewModel()
+                if MacDocumentWindowTabs.shared.saveFocusedSideBySideDocument(
+                    for: current, focusedDocumentID: MacDocumentWindowTabs.focusedEditorDocumentID(in: NSApp.keyWindow)) {
+                    return
+                }
                 if let tab = current.selectedTab {
                     current.saveFile(tabID: tab.id)
                 }
@@ -198,6 +196,11 @@ struct NeonVisionMacAppCommands: Commands {
 
             Button("Save As…") {
                 let current = activeEditorViewModel()
+                if MacDocumentWindowTabs.shared.saveFocusedSideBySideDocument(
+                    for: current, focusedDocumentID: MacDocumentWindowTabs.focusedEditorDocumentID(in: NSApp.keyWindow),
+                    saveAs: true) {
+                    return
+                }
                 if let tab = current.selectedTab {
                     current.saveFileAs(tabID: tab.id)
                 }
@@ -305,6 +308,13 @@ struct NeonVisionMacAppCommands: Commands {
 
     @CommandsBuilder
     private var viewCommands: some Commands {
+        CommandGroup(after: .windowArrangement) {
+            // AppKit omits its own item because automatic window tabbing is
+            // off for non-document windows.
+            Button("Move Tab to New Window") {
+                NSApp.keyWindow?.moveTabToNewWindow(nil)
+            }
+        }
         CommandGroup(after: .toolbar) {
             Button("Toggle Sidebar") {
                 post(.toggleSidebarRequested)
@@ -326,6 +336,12 @@ struct NeonVisionMacAppCommands: Commands {
                 post(.togglePreviewRequested)
             }
             .keyboardShortcut("p", modifiers: [.command, .shift])
+            .disabled(!hasSelectedTab)
+
+            Button("Toggle Side by Side Editor") {
+                post(.toggleSplitEditorRequested)
+            }
+            .keyboardShortcut("\\", modifiers: [.command, .option])
             .disabled(!hasSelectedTab)
 
             Button("Toggle Code Minimap") {
@@ -467,10 +483,12 @@ struct NeonVisionMacAppCommands: Commands {
             }
             .disabled(!hasSelectedTabWithFileURL)
 
+            // Tab group membership is window state these commands do not
+            // observe; the picker explains when no other tab is open.
             Button("Compare Open Tabs…") {
                 post(.compareOpenTabsRequested)
             }
-            .disabled(!hasComparableOpenTabs)
+            .disabled(!hasSelectedTab)
 
             Divider()
 

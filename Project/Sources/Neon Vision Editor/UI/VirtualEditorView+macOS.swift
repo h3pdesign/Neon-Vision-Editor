@@ -1015,12 +1015,36 @@ enum VirtualEditorSelectionPolicy {
     }
 
     static func autoScrollStep(at y: CGFloat, visibleRect: NSRect, lineHeight: CGFloat) -> CGFloat {
+        autoScrollStep(at: y, visibleMin: visibleRect.minY, visibleMax: visibleRect.maxY, lineHeight: lineHeight)
+    }
+
+    /// Unwrapped lines are wider than the viewport, so a drag past the left or
+    /// right edge must scroll horizontally to reveal the text being selected.
+    static func horizontalAutoScrollStep(at x: CGFloat, visibleRect: NSRect, lineHeight: CGFloat) -> CGFloat {
+        autoScrollStep(at: x, visibleMin: visibleRect.minX, visibleMax: visibleRect.maxX, lineHeight: lineHeight)
+    }
+
+    /// The clip origin after one drag auto-scroll tick, kept inside the document.
+    static func dragAutoScrollOrigin(
+        for point: NSPoint, visibleRect: NSRect, documentSize: NSSize, lineHeight: CGFloat
+    ) -> NSPoint {
+        let dx = horizontalAutoScrollStep(at: point.x, visibleRect: visibleRect, lineHeight: lineHeight)
+        let dy = autoScrollStep(at: point.y, visibleRect: visibleRect, lineHeight: lineHeight)
+        let maximumX = max(0, documentSize.width - visibleRect.width)
+        let maximumY = max(0, documentSize.height - visibleRect.height)
+        return NSPoint(x: min(max(0, visibleRect.minX + dx), maximumX),
+                       y: min(max(0, visibleRect.minY + dy), maximumY))
+    }
+
+    private static func autoScrollStep(
+        at value: CGFloat, visibleMin: CGFloat, visibleMax: CGFloat, lineHeight: CGFloat
+    ) -> CGFloat {
         let edge: CGFloat = 20
         let distance: CGFloat
-        if y < visibleRect.minY + edge {
-            distance = y - visibleRect.minY - edge
-        } else if y > visibleRect.maxY - edge {
-            distance = y - visibleRect.maxY + edge
+        if value < visibleMin + edge {
+            distance = value - visibleMin - edge
+        } else if value > visibleMax - edge {
+            distance = value - visibleMax + edge
         } else {
             return 0
         }
@@ -2433,9 +2457,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         guard selectionAnchor != nil else { return }
         let point = convert(event.locationInWindow, from: nil)
         updateDragSelection(at: point)
-        if VirtualEditorSelectionPolicy.autoScrollStep(
-            at: point.y, visibleRect: visibleRect, lineHeight: lineHeight
-        ) != 0 {
+        let visible = visibleRect
+        if VirtualEditorSelectionPolicy.autoScrollStep(at: point.y, visibleRect: visible, lineHeight: lineHeight) != 0
+            || VirtualEditorSelectionPolicy.horizontalAutoScrollStep(at: point.x, visibleRect: visible, lineHeight: lineHeight) != 0 {
             startDragAutoScroll()
         } else {
             stopDragAutoScroll()
@@ -2479,17 +2503,16 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             return
         }
         let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
-        let step = VirtualEditorSelectionPolicy.autoScrollStep(
-            at: point.y, visibleRect: visibleRect, lineHeight: lineHeight
+        let clipView = scrollView.contentView
+        let next = VirtualEditorSelectionPolicy.dragAutoScrollOrigin(
+            for: point, visibleRect: clipView.bounds,
+            documentSize: NSSize(width: contentWidth, height: logicalHeight), lineHeight: lineHeight
         )
-        guard step != 0 else {
+        guard next != clipView.bounds.origin else {
             stopDragAutoScroll()
             return
         }
-        let clipView = scrollView.contentView
-        let maximumY = max(0, logicalHeight - clipView.bounds.height)
-        let nextY = min(max(0, clipView.bounds.minY + step), maximumY)
-        clipView.scroll(to: NSPoint(x: clipView.bounds.minX, y: nextY))
+        clipView.scroll(to: next)
         scrollView.reflectScrolledClipView(clipView)
         scrollView.updateForVisibleBoundsChange()
         updateDragSelection(at: point)

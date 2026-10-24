@@ -288,6 +288,34 @@ final class MacDocumentContentControllerTests: XCTestCase {
         XCTAssertNil(replacement)
     }
 
+    func testScrollingOverTheMinimapScrollsTheEditor() throws {
+        final class ScrollSpy: NSScrollView {
+            var received: [NSEvent] = []
+            override func scrollWheel(with event: NSEvent) { received.append(event) }
+        }
+        let controller = MacDocumentContentController()
+        var configuration = sourceConfiguration()
+        configuration.primary?.minimap = { AnyView(Color.clear.frame(width: 144)) }
+        controller.update(configuration)
+        let editor = try XCTUnwrap(controller.primaryController?.editorView)
+        let minimap = try XCTUnwrap(descendants(controller.view)
+            .compactMap { $0 as? MacDocumentContentController.MinimapHostingView }.first)
+        XCTAssertTrue(minimap.scrollTarget === editor)
+
+        let spy = ScrollSpy()
+        minimap.scrollTarget = spy
+        let scroll = try XCTUnwrap(CGEvent(scrollWheelEvent2Source: nil, units: .pixel,
+            wheelCount: 1, wheel1: -120, wheel2: 0, wheel3: 0))
+        let event = try XCTUnwrap(NSEvent(cgEvent: scroll))
+        minimap.scrollWheel(with: event)
+        XCTAssertEqual(spy.received.count, 1)
+        XCTAssertTrue(spy.received.first === event)
+
+        // Updating the pane keeps the same minimap pointed at its editor.
+        controller.update(configuration)
+        XCTAssertTrue(minimap.scrollTarget === editor)
+    }
+
     func testMinimapAndStatusHostsAreAbsentUntilRequestedAndReleasedWhenHidden() throws {
         let controller = MacDocumentContentController()
         var configuration = sourceConfiguration()

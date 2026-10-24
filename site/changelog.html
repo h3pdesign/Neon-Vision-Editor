@@ -118,7 +118,18 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v2.1.0</h2><span class="date">23 October 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v2.1.1</h2><span class="date">23 October 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>New native Mac tabs and newly opened documents put the cursor in the editor immediately.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>New native Mac tabs accept typing and paste immediately, without clicking into the editor first.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Returning to a native Mac tab always shows its content, including after the first tab of a window has been closed.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Closing a native Mac tab stops its background work and shared-import watcher, and a closed tab no longer reopens after its window&#x27;s first tab was closed.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>&quot;Open files on current desktop&quot; finds a file that is already open in a background tab instead of opening it twice.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v2.1.0</h2><span class="date">23 October 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Double-click a native Mac document tab to close it, with the existing unsaved-change confirmation.</p></div>
           <div class="item"><span class="badge new">New</span><p>Makes native document tabs standard for macOS, replacing the previous in-editor tab strip. Native tabs show filenames, highlight the active document, and share the project sidebar without sharing document contents or preview state.</p></div>

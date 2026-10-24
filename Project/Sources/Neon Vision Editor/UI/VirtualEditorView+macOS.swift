@@ -2509,13 +2509,16 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             documentSize: NSSize(width: contentWidth, height: logicalHeight), lineHeight: lineHeight
         )
         guard next != clipView.bounds.origin else {
+            // At the document boundary: still extend the selection to the pointer.
+            updateDragSelection(at: point)
             stopDragAutoScroll()
             return
         }
         clipView.scroll(to: next)
         scrollView.reflectScrolledClipView(clipView)
         scrollView.updateForVisibleBoundsChange()
-        updateDragSelection(at: point)
+        // Scrolling moved the document under the pointer; select up to where it is now.
+        updateDragSelection(at: convert(window.mouseLocationOutsideOfEventStream, from: nil))
     }
 
     override func mouseUp(with event: NSEvent) {

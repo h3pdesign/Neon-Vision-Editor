@@ -87,7 +87,7 @@ def replace_or_insert_managed_block(
             rf"{re.escape(start_marker)}.*?{re.escape(end_marker)}",
             flags=re.S,
         )
-        return pattern.sub(replacement, content, count=1)
+        return pattern.sub(lambda _: replacement, content, count=1)
     anchor = content.find(insert_before)
     if anchor < 0:
         raise ValueError(f"Could not insert managed documentation block before: {insert_before.strip()}")
@@ -427,7 +427,7 @@ def update_welcome_tour_release_page(swift_source: str, tag: str, bullets: list[
 
     if not pattern.search(swift_source):
         raise ValueError("Could not find Welcome Tour 'What's New' page block to update.")
-    return pattern.sub(new_block, swift_source, count=1)
+    return pattern.sub(lambda _: new_block, swift_source, count=1)
 
 
 def update_in_app_changelog(swift_source: str, changelog: str, tag: str) -> str:
@@ -573,7 +573,7 @@ def rebuild_readme_release_timeline(readme: str, changelog: str, current_tag: st
     pattern = re.compile(r"<!-- RELEASE_TIMELINE:START -->.*?<!-- RELEASE_TIMELINE:END -->", flags=re.S)
     if not pattern.search(readme):
         raise ValueError("README missing release timeline markers")
-    return pattern.sub(replacement, readme, count=1)
+    return pattern.sub(lambda _: replacement, readme, count=1)
 
 
 def rebuild_website_release_timeline(website: str, changelog: str, current_tag: str) -> str:
@@ -600,7 +600,7 @@ def rebuild_website_release_timeline(website: str, changelog: str, current_tag: 
     pattern = re.compile(r"        <!-- RELEASE_TIMELINE:START -->.*?        <!-- RELEASE_TIMELINE:END -->", flags=re.S)
     if not pattern.search(website):
         raise ValueError("Website missing release timeline markers")
-    return pattern.sub(replacement, website, count=1)
+    return pattern.sub(lambda _: replacement, website, count=1)
 
 
 def changelog_badge_class(heading: str) -> str:
@@ -642,7 +642,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
     pattern = re.compile(r"    <!-- CHANGELOG_ENTRIES:START -->.*?    <!-- CHANGELOG_ENTRIES:END -->", flags=re.S)
     if not pattern.search(page):
         raise ValueError("Changelog page entry markers are missing")
-    return pattern.sub(replacement, page, count=1)
+    return pattern.sub(lambda _: replacement, page, count=1)
 
 
 LOCALIZED_TIMELINE_COPY = {
@@ -946,7 +946,7 @@ def rebuild_localized_website_release_timeline(website: str, changelog: str, cur
     pattern = re.compile(r"        <!-- RELEASE_TIMELINE:START -->.*?        <!-- RELEASE_TIMELINE:END -->", flags=re.S)
     if not pattern.search(website):
         raise ValueError(f"Localized website timeline markers are missing for {locale}.")
-    return pattern.sub(replacement, website, count=1)
+    return pattern.sub(lambda _: replacement, website, count=1)
 
 
 def validate_release_input(changelog: str, tag: str) -> None:
@@ -1321,7 +1321,7 @@ def update_readme_whats_new_section(
     )
     if not pattern.search(readme):
         raise ValueError("README missing What's New section before Start Here.")
-    return pattern.sub(replacement, readme, count=1)
+    return pattern.sub(lambda _: replacement, readme, count=1)
 
 
 def readme_previous_release_tag(changelog: str, current_tag: str) -> str | None:

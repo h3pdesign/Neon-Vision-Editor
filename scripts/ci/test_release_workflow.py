@@ -52,6 +52,11 @@ def fixture(root):
 
 
 class ReleaseWorkflowTests(unittest.TestCase):
+    def test_generated_swift_release_notes_keep_backslashes_escaped(self):
+        swift = (ROOT / "Project/Sources/Neon Vision Editor/UI/PanelsAndHelpers.swift").read_text(encoding="utf-8")
+        updated = docs.update_welcome_tour_release_page(swift, "v9.9.9", ['- Press \u2325\u2318\\ for "Side by Side".'])
+        self.assertIn('"Press \u2325\u2318\\\\ for \\"Side by Side\\"."', updated)
+
     def test_welcome_headings_describe_configuration_changes_without_claiming_timeouts_or_performance(self):
         descriptions = [
             ("Choose plain-text editing instead of CSV/TSV tables on macOS.", "CSV/TSV Editing"),

@@ -37,6 +37,22 @@ class ReadmeLastUpdatedTests(unittest.TestCase):
                 legacy = README.replace("latest release", "release line")
                 self.assertEqual(module.readme_last_updated_date(legacy, "v2.1.0", "2026-10-22"), "2026-10-23")
 
+    def test_store_sync_updates_the_readme_without_claiming_unverified_store_status(self):
+        module = load("sync_readme_appstore_versions")
+        readme = (SCRIPTS.parent / "README.md").read_text(encoding="utf-8")
+        for store_tag in ("v1.9.2", "v9.9.9"):
+            with self.subTest(store=store_tag):
+                updated = module.sync_readme_versions(readme, "v9.9.9", store_tag, "2026-10-24")
+                self.assertIn("> Direct GitHub release: **v9.9.9**", updated)
+                self.assertIn(f"| **{store_tag}** | Current public App Store listing |", updated)
+                self.assertNotIn("In Apple review", updated)
+                self.assertNotIn("currently in Apple review", updated)
+                for row in ("| **Store status** | macOS |", "| **Beta** | iOS / iPadOS / macOS |"):
+                    line = next(line for line in updated.splitlines() if line.startswith(row))
+                    self.assertIn("**Not verified**", line)
+                # A second sync is a no-op.
+                self.assertEqual(module.sync_readme_versions(updated, "v9.9.9", store_tag, "2026-10-24"), updated)
+
 
 if __name__ == "__main__":
     unittest.main()

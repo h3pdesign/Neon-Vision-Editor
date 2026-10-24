@@ -108,9 +108,10 @@ def sync_readme_versions(readme: str, latest_tag: str, public_store_tag: str, to
     next_tag = next_patch_tag(latest_tag)
     store_is_current = public_store_tag == latest_tag
 
+    # GitHub publication does not show macOS App Store or TestFlight status,
+    # so those rows stay "Not verified" and the note makes no review claim.
     availability_note = (
-        "The iOS/iPadOS App Store listing is currently aligned with the direct GitHub release. "
-        "The macOS App Store update is currently in Apple review."
+        "The iOS/iPadOS App Store listing is currently aligned with the direct GitHub release."
         if store_is_current
         else (
             "The direct GitHub release is currently ahead of the iOS/iPadOS App Store version. "
@@ -137,7 +138,7 @@ def sync_readme_versions(readme: str, latest_tag: str, public_store_tag: str, to
         "last updated status",
     )
     readme = replace_required(
-        r"^(?:The direct GitHub release and public App Store listing are currently aligned\.|The iOS/iPadOS App Store listing is currently aligned with the direct GitHub release\. The macOS App Store update is currently in Apple review\.|The direct GitHub release is currently ahead of the iOS/iPadOS App Store version\. The App Store version may temporarily lag while updates are in Apple review\.)$",
+        r"^(?:The direct GitHub release and public App Store listing are currently aligned\.|The iOS/iPadOS App Store listing is currently aligned with the direct GitHub release\.(?: The macOS App Store update is currently in Apple review\.)?|The direct GitHub release is currently ahead of the iOS/iPadOS App Store version\. The App Store version may temporarily lag while updates are in Apple review\.)$",
         availability_note,
         readme,
         "download availability note",
@@ -153,18 +154,6 @@ def sync_readme_versions(readme: str, latest_tag: str, public_store_tag: str, to
         rf"\1**{public_store_tag}**\2Current public App Store listing |",
         readme,
         "iOS App Store table row",
-    )
-    readme = replace_required(
-        r"^(\| \*\*Store Review\*\* \| macOS \| [^|]+ \| App Store Connect review \| )\*\*[^*]+\*\*( \| ).*$",
-        rf"\1**{latest_tag}**\2In Apple review |",
-        readme,
-        "macOS App Store review row",
-    )
-    readme = replace_required(
-        r"^(\| \*\*Beta\*\* \| iOS / iPadOS / macOS \| [^|]+ \| \[TestFlight Invite\]\(https://testflight\.apple\.com/join/YWB2fGAP\) \| )\*\*[^*]+\*\*( \| ).*$",
-        rf"\1**{latest_tag}**\2Early access builds for feedback; availability may vary by review state |",
-        readme,
-        "TestFlight table row",
     )
     return readme
 

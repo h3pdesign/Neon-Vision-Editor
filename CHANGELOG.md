@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.1.3] - 2026-10-25
+
 ### Why Upgrade
 
 - Select long, unwrapped lines on the Mac by dragging: the editor now scrolls sideways to follow the selection.

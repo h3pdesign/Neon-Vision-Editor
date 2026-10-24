@@ -71,6 +71,9 @@ class ReleaseWorkflowTests(unittest.TestCase):
             ("Keeps compatible Markdown previews up to date.", "Markdown Preview"),
             ("Stops obsolete folder scans when you cancel project indexing.", "Project Indexing"),
             ("Adapts the phone toolbar when the available layout changes.", "Adaptive Toolbar"),
+            ("Edit two open Mac documents side by side again.", "Side by Side"),
+            ("Compare any two open Mac tabs in the diff view again.", "Tab Comparison"),
+            ("Move a native Mac tab into its own window from the Window menu.", "Window Tabs"),
         ]
         for description, expected in descriptions:
             with self.subTest(description=description):

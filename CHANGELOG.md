@@ -6,6 +6,10 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixed
+
+- The Mac Markdown formatting bar sits in the editor's top-right corner again, shows all its buttons when there is room, and no longer covers the first lines of text.
+
 ## [v2.1.2] - 2026-10-24
 
 ### Why Upgrade

@@ -197,9 +197,12 @@ final class MacDocumentContentController: NSViewController {
             super.layout()
             content.frame = bounds
             if let overlay {
+                // Never wider than the editor: a narrower frame lets the bar
+                // switch to its scrolling layout instead of overflowing left.
                 let size = overlay.fittingSize
-                overlay.frame = NSRect(x: bounds.maxX - size.width, y: bounds.maxY - size.height,
-                    width: size.width, height: size.height)
+                let width = min(size.width, bounds.width)
+                overlay.frame = NSRect(x: bounds.maxX - width, y: bounds.maxY - size.height,
+                    width: width, height: size.height)
             }
         }
     }

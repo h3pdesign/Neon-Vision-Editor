@@ -204,7 +204,8 @@ extension ContentView {
 
     var markdownFormattingOverlayTopInset: CGFloat {
 #if os(macOS)
-        54
+        // Native tabs sit outside the editor, so the bar starts at its top edge.
+        8
 #else
         0
 #endif

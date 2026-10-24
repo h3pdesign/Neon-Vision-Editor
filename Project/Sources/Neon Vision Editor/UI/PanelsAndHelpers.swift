@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.1.2",
-            subtitle: "Release highlights for v2.1.2.",
+            title: "What’s New in v2.1.3",
+            subtitle: "Release highlights for v2.1.3.",
             bullets: [
-                "Side by Side: Edit two open Mac documents side by side again, now that every document opens in its own native tab.",
-                "Tab Comparison: Compare any two open Mac tabs in the diff view again.",
-                "Window Tabs: Move a native Mac tab into its own window from the Window menu.",
-                "Side by Side: Side by Side is back on the Mac: choose Toggle Side by Side Editor (⌥⌘\\) in the View menu or the Side by Side toolbar…",
-                "Window Tabs: Adds Move Tab to New Window to the Window menu.",
-                "Side by Side: Side by Side and Compare Open Tabs find the other documents open in the same Mac window's tabs instead of reporting that no…"
+                "Text Selection: Select long, unwrapped lines on the Mac by dragging: the editor now scrolls sideways to follow the selection.",
+                "Markdown Formatting: The Mac Markdown formatting bar is back in the editor's top-right corner with all its buttons.",
+                "Minimap Scrolling: Scroll the editor from the Mac minimap with the mouse wheel or trackpad.",
+                "Minimap Scrolling: Scrolling with the mouse wheel or trackpad while the pointer is over the Mac minimap scrolls the editor.",
+                "Text Selection: Dragging a selection past the left or right edge of a long unwrapped line on the Mac scrolls the editor sideways, so the…",
+                "Markdown Formatting: The Mac Markdown formatting bar sits in the editor's top-right corner again, shows all its buttons when there is room, and…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4518,6 +4518,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.1.3", version: "2.1.3", date: "2026-10-25", highlights: [
+            "Select long, unwrapped lines on the Mac by dragging: the editor now scrolls sideways to follow the selection.",
+            "The Mac Markdown formatting bar is back in the editor's top-right corner with all its buttons.",
+            "Scroll the editor from the Mac minimap with the mouse wheel or trackpad."
+        ]),
         Release(id: "2.1.2", version: "2.1.2", date: "2026-10-24", highlights: [
             "Edit two open Mac documents side by side again, now that every document opens in its own native tab.",
             "Compare any two open Mac tabs in the diff view again.",

@@ -197,10 +197,24 @@ final class MacDocumentContentController: NSViewController {
             super.layout()
             content.frame = bounds
             if let overlay {
+                // Never wider than the editor: a narrower frame lets the bar
+                // switch to its scrolling layout instead of overflowing left.
                 let size = overlay.fittingSize
-                overlay.frame = NSRect(x: bounds.maxX - size.width, y: bounds.maxY - size.height,
-                    width: size.width, height: size.height)
+                let width = min(size.width, bounds.width)
+                overlay.frame = NSRect(x: bounds.maxX - width, y: bounds.maxY - size.height,
+                    width: width, height: size.height)
             }
+        }
+    }
+
+    /// The minimap has no scroll view of its own: wheel and trackpad scrolling
+    /// over it scrolls the editor it summarizes.
+    final class MinimapHostingView: NSHostingView<AnyView> {
+        weak var scrollTarget: NSScrollView?
+
+        override func scrollWheel(with event: NSEvent) {
+            guard let scrollTarget else { return super.scrollWheel(with: event) }
+            scrollTarget.scrollWheel(with: event)
         }
     }
 
@@ -237,7 +251,7 @@ final class MacDocumentContentController: NSViewController {
             if let makeMinimap = configuration.minimap {
                 if let minimap { minimap.rootView = hostContent(makeMinimap()) }
                 else {
-                    let host = NSHostingView(rootView: hostContent(makeMinimap()))
+                    let host = MinimapHostingView(rootView: hostContent(makeMinimap()))
                     host.sceneBridgingOptions = []
                     host.sizingOptions = [.intrinsicContentSize]
                     host.setContentHuggingPriority(.required, for: .horizontal)
@@ -249,6 +263,7 @@ final class MacDocumentContentController: NSViewController {
                     host.setContentCompressionResistancePriority(.init(1), for: .vertical)
                     minimap = host
                 }
+                (minimap as? MinimapHostingView)?.scrollTarget = editor
             } else {
                 minimap?.removeFromSuperview()
                 minimap = nil

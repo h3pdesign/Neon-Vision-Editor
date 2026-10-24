@@ -164,6 +164,33 @@ final class VirtualEditorLayoutTests: XCTestCase {
         ), 60)
     }
 
+    func testDragAutoScrollRevealsTextBeyondTheRightEdgeOfAnUnwrappedLine() {
+        // Issue #854: a drag past the right edge of a long line must scroll it.
+        let visible = NSRect(x: 0, y: 200, width: 800, height: 600)
+        let document = NSSize(width: 3_000, height: 2_000)
+        let right = VirtualEditorSelectionPolicy.dragAutoScrollOrigin(
+            for: NSPoint(x: 1_000, y: 500), visibleRect: visible, documentSize: document, lineHeight: 20)
+        XCTAssertEqual(right, NSPoint(x: 60, y: 200))
+
+        let scrolled = NSRect(x: 100, y: 200, width: 800, height: 600)
+        let left = VirtualEditorSelectionPolicy.dragAutoScrollOrigin(
+            for: NSPoint(x: 90, y: 500), visibleRect: scrolled, documentSize: document, lineHeight: 20)
+        XCTAssertEqual(left, NSPoint(x: 80, y: 200))
+
+        let atEnd = NSRect(x: 2_200, y: 200, width: 800, height: 600)
+        XCTAssertEqual(VirtualEditorSelectionPolicy.dragAutoScrollOrigin(
+            for: NSPoint(x: 3_100, y: 500), visibleRect: atEnd, documentSize: document, lineHeight: 20), atEnd.origin)
+
+        // Wrapped text is never wider than the viewport, so only vertical drags scroll.
+        let wrapped = NSSize(width: 800, height: 2_000)
+        XCTAssertEqual(VirtualEditorSelectionPolicy.dragAutoScrollOrigin(
+            for: NSPoint(x: 1_000, y: 1_000), visibleRect: visible, documentSize: wrapped, lineHeight: 20),
+            NSPoint(x: 0, y: 260))
+        XCTAssertEqual(VirtualEditorSelectionPolicy.dragAutoScrollOrigin(
+            for: NSPoint(x: 400, y: 500), visibleRect: visible, documentSize: document, lineHeight: 20),
+            visible.origin)
+    }
+
     func testFindReplaceEscapePolicyDismissesOnlyEscape() {
         let escape = try! XCTUnwrap(NSEvent.keyEvent(
             with: .keyDown,

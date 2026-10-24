@@ -668,6 +668,63 @@ final class VirtualEditorLayoutTests: XCTestCase {
     /// Side by Side can show one document in two editors. Undo entries hold
     /// ranges into the text the editor last saw, so an edit made anywhere
     /// else must clear them instead of undoing at stale offsets.
+    func testWindowCommandsWithoutADocumentTargetOnlyTheFocusedSideBySideEditor() throws {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        window.contentView = container
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 100, height: 20))
+        container.addSubview(field)
+        var documents: [FileBackedTextDocument] = []
+        var canvases: [VirtualEditorCanvas] = []
+        for (index, text) in ["left\n", "right\n"].enumerated() {
+            let document = FileBackedTextDocument(content: text)
+            let canvas = VirtualEditorCanvas(frame: NSRect(x: index * 400, y: 0, width: 400, height: 600))
+            _ = canvas.setViewportSize(CGSize(width: 400, height: 600))
+            let id = UUID()
+            canvas.configure(
+                document: document, documentID: id, resourceID: id.uuidString,
+                displayName: "fixture", contentRevision: 0, externalContentRevision: 0,
+                caret: 0, language: "plain", colorScheme: .dark,
+                fontSize: 14, fontName: "", lineHeightMultiplier: 1, isReadOnly: false,
+                translucentBackgroundEnabled: false, showsLineNumbers: true, highlightCurrentLine: false,
+                lineWrapEnabled: true, showsInvisibleCharacters: false, showsIndentationGuides: false,
+                showsScopeGuides: false, highlightsScopeBackground: false, highlightsMatchingBrackets: false,
+                autoIndentEnabled: false, autoCloseBracketsEnabled: false,
+                onFontSizeChange: nil,
+                onTextMutation: { mutation in
+                    (try? document.replace(utf16Range: mutation.range, with: mutation.replacement)) != nil
+                }
+            )
+            container.addSubview(canvas)
+            documents.append(document)
+            canvases.append(canvas)
+        }
+        func insert(_ token: String) {
+            NotificationCenter.default.post(name: .insertBracketHelperTokenRequested, object: nil, userInfo: [
+                EditorCommandUserInfo.windowNumber: window.windowNumber,
+                EditorCommandUserInfo.bracketToken: token
+            ])
+        }
+
+        XCTAssertTrue(window.makeFirstResponder(canvases[1]))
+        insert("(")
+        XCTAssertEqual(documents.map { $0.string() }, ["left\n", "(right\n"],
+                       "Only the focused pane's document is edited")
+
+        // Focus moved to a field in the same window, e.g. the bracket helper bar.
+        XCTAssertTrue(window.makeFirstResponder(field))
+        insert("[")
+        XCTAssertEqual(documents.map { $0.string() }, ["left\n", "([right\n"])
+
+        // Closing the focused pane leaves the remaining editor as the target.
+        canvases[1].removeFromSuperview()
+        insert("{")
+        XCTAssertEqual(documents.map { $0.string() }, ["{left\n", "([right\n"])
+    }
+
     func testUndoKeepsOwnEditsAndClearsAfterTheDocumentChangesElsewhere() throws {
         let document = FileBackedTextDocument(content: "abc\n")
         let documentID = UUID()

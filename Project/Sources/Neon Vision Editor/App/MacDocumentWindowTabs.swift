@@ -495,9 +495,9 @@ final class MacDocumentWindowTabs {
         models(inGroupOf: model).first { $0.tabs.contains { $0.id == tabID } }
     }
 
-    /// The document of the editor that has keyboard focus in `window`.
+    /// The document of the editor that has, or last had, keyboard focus in `window`.
     static func focusedEditorDocumentID(in window: NSWindow?) -> UUID? {
-        (window?.firstResponder as? VirtualEditorCanvas)?.documentIdentifier.flatMap(UUID.init(uuidString:))
+        VirtualEditorCanvas.activeCanvas(in: window)?.documentIdentifier.flatMap(UUID.init(uuidString:))
     }
 
     /// Saves the focused Side by Side document through the window that owns
@@ -513,26 +513,30 @@ final class MacDocumentWindowTabs {
         } else {
             owner.saveFile(tabID: focusedDocumentID)
         }
-        revealWhenSaveNeedsAttention(owner)
+        revealWhenSaveNeedsAttention(owner, tabID: focusedDocumentID)
         return true
     }
 
     /// The owner's window presents a conflict with the file on disk or a save
-    /// error, but only while it is the selected tab. File-backed saves report
-    /// either asynchronously, so watch the owner's next change.
-    private func revealWhenSaveNeedsAttention(_ owner: EditorViewModel) {
-        func needsAttention() -> Bool {
-            owner.pendingExternalFileConflict != nil || owner.fileEncodingErrorMessage != nil
+    /// error, but only while it is the selected tab. Saves report either
+    /// asynchronously, so keep watching the owner until this save finishes.
+    private func revealWhenSaveNeedsAttention(_ owner: EditorViewModel, tabID: UUID) {
+        guard entries[ObjectIdentifier(owner)] != nil else { return }
+        if owner.pendingExternalFileConflict != nil || owner.fileEncodingErrorMessage != nil
+            || owner.pendingRemoteSaveIssue != nil {
+            return reveal(owner)
         }
-        guard !needsAttention() else { return reveal(owner) }
+        // A cancelled Save As or a refused save starts nothing to wait for.
+        guard owner.hasSaveInFlight(tabID: tabID) else { return }
         withObservationTracking {
             _ = owner.pendingExternalFileConflict?.tabID
             _ = owner.fileEncodingErrorMessage
+            _ = owner.pendingRemoteSaveIssue?.tabID
+            _ = owner.tabs
         } onChange: { [weak self, weak owner] in
             Task { @MainActor [weak self, weak owner] in
-                guard let self, let owner, self.entries[ObjectIdentifier(owner)] != nil,
-                      owner.pendingExternalFileConflict != nil || owner.fileEncodingErrorMessage != nil else { return }
-                self.reveal(owner)
+                guard let self, let owner else { return }
+                self.revealWhenSaveNeedsAttention(owner, tabID: tabID)
             }
         }
     }

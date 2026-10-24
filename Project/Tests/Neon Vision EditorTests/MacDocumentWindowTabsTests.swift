@@ -376,6 +376,18 @@ final class MacDocumentWindowTabsTests: XCTestCase {
         XCTAssertEqual(try String(contentsOf: firstFile, encoding: .utf8), "first\n")
         XCTAssertEqual(second.selectedTab?.isDirty, false)
 
+        // A finished save leaves nothing watching the owner.
+        firstWindow.tabGroup?.selectedWindow = firstWindow
+        while second.hasSaveInFlight(tabID: secondID), ProcessInfo.processInfo.systemUptime < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        try await Task.sleep(for: .milliseconds(20))
+        second.pendingExternalFileConflict = .init(tabID: secondID, fileURL: secondFile, diskModifiedAt: nil)
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertTrue(firstWindow.tabGroup?.selectedWindow === firstWindow,
+                      "A later conflict, not caused by a Side by Side save, must not switch tabs")
+        second.pendingExternalFileConflict = nil
+
         // A conflict is presented by the owner's tab, which shows it only while
         // selected. File-backed saves report it after the save has started.
         firstWindow.tabGroup?.selectedWindow = firstWindow

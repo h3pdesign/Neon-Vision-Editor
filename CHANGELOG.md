@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.1.2] - 2026-10-24
+
 ### Why Upgrade
 
 - Edit two open Mac documents side by side again, now that every document opens in its own native tab.

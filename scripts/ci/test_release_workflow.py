@@ -74,6 +74,9 @@ class ReleaseWorkflowTests(unittest.TestCase):
             ("Edit two open Mac documents side by side again.", "Side by Side"),
             ("Compare any two open Mac tabs in the diff view again.", "Tab Comparison"),
             ("Move a native Mac tab into its own window from the Window menu.", "Window Tabs"),
+            ("Scroll the editor from the Mac minimap with the mouse wheel or trackpad.", "Minimap Scrolling"),
+            ("The Mac Markdown formatting bar is back in the editor's top-right corner.", "Markdown Formatting"),
+            ("Select long, unwrapped lines on the Mac by dragging.", "Text Selection"),
         ]
         for description, expected in descriptions:
             with self.subTest(description=description):

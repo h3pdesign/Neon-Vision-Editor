@@ -6,9 +6,32 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
-### Fixed
+### Why Upgrade
 
+- Select long, unwrapped lines on the Mac by dragging: the editor now scrolls sideways to follow the selection.
+- The Mac Markdown formatting bar is back in the editor's top-right corner with all its buttons.
+- Scroll the editor from the Mac minimap with the mouse wheel or trackpad.
+
+### Highlights
+
+- Scrolling with the mouse wheel or trackpad while the pointer is over the Mac minimap scrolls the editor.
+
+### Fixes
+
+- Dragging a selection past the left or right edge of a long unwrapped line on the Mac scrolls the editor sideways, so the text being selected stays visible (#854).
 - The Mac Markdown formatting bar sits in the editor's top-right corner again, shows all its buttons when there is room, and no longer covers the first lines of text.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, sessions, and preferences are preserved.
+
+### Maintenance
+
+- Development version 2.1.3 (build 1129).
 
 ## [v2.1.2] - 2026-10-24
 

@@ -4452,6 +4452,7 @@ extension Notification.Name {
     static let showLanguageSearchRequested = Notification.Name("showLanguageSearchRequested")
     static let compareCurrentTabAgainstDiskRequested = Notification.Name("compareCurrentTabAgainstDiskRequested")
     static let compareOpenTabsRequested = Notification.Name("compareOpenTabsRequested")
+    static let toggleSplitEditorRequested = Notification.Name("toggleSplitEditorRequested")
     static let showWelcomeTourRequested = Notification.Name("showWelcomeTourRequested")
     static let showEditorHelpRequested = Notification.Name("showEditorHelpRequested")
     static let showSupportPromptRequested = Notification.Name("showSupportPromptRequested")

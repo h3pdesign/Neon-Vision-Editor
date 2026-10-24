@@ -779,6 +779,7 @@ class EditorViewModel {
     @ObservationIgnored private let tabCommandQueue = TabCommandQueue()
     @ObservationIgnored private var pendingLanguageDetectionTasks: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored private var localSaveTasks: [UUID: (id: UUID, task: Task<Void, Never>)] = [:]
+    @ObservationIgnored private var remoteSaveTabIDs: [UUID: Int] = [:]
     @ObservationIgnored private var pendingExternalFileRefreshTasks: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored private var pendingExternalRefreshTabIDs: Set<UUID> = []
     @ObservationIgnored private var refreshedExternalTabIDs: Set<UUID> = []
@@ -1865,6 +1866,11 @@ class EditorViewModel {
         saveFile(tabID: tab.id)
     }
 
+    /// True while a save of `tabID` has been started and not yet finished.
+    func hasSaveInFlight(tabID: UUID) -> Bool {
+        localSaveTasks[tabID] != nil || remoteSaveTabIDs[tabID] != nil
+    }
+
     /// Immediately transcodes the document. The persistent descriptor changes only after
     /// the atomic write succeeds, so failed conversions leave both disk and tab state intact.
     func saveFile(tabID: UUID, using encoding: TextEncodingDescriptor) {
@@ -2126,11 +2132,15 @@ class EditorViewModel {
 
     func compareTabsSnapshot(leftTabID: UUID, rightTabID: UUID) -> DocumentComparisonSnapshot? {
         guard let leftIndex = tabIndex(for: leftTabID),
-              let rightIndex = tabIndex(for: rightTabID),
-              leftTabID != rightTabID else { return nil }
-        let left = tabs[leftIndex]
-        let right = tabs[rightIndex]
-        guard !left.usesFileBackedStorage, !right.usesFileBackedStorage else { return nil }
+              let rightIndex = tabIndex(for: rightTabID) else { return nil }
+        return Self.compareTabsSnapshot(left: tabs[leftIndex], right: tabs[rightIndex])
+    }
+
+    /// The tabs may belong to different models: on macOS each native tab's
+    /// window owns its own document.
+    static func compareTabsSnapshot(left: TabData, right: TabData) -> DocumentComparisonSnapshot? {
+        guard left.id != right.id,
+              !left.usesFileBackedStorage, !right.usesFileBackedStorage else { return nil }
         return DocumentComparisonSnapshot(
             title: "Compare Open Tabs",
             leftTitle: left.name,
@@ -2428,8 +2438,16 @@ class EditorViewModel {
         let snapshotLineEnding = tabs[index].lineEnding
         let trimTrailingWhitespace = UserDefaults.standard.bool(forKey: "SettingsTrimTrailingWhitespace")
 
+        remoteSaveTabIDs[tabID, default: 0] += 1
         Task { [weak self] in
             guard let self else { return }
+            defer {
+                if let count = self.remoteSaveTabIDs[tabID], count > 1 {
+                    self.remoteSaveTabIDs[tabID] = count - 1
+                } else {
+                    self.remoteSaveTabIDs[tabID] = nil
+                }
+            }
             let saveInterval = Self.saveSignposter.beginInterval(signpostName)
             defer { Self.saveSignposter.endInterval(signpostName, saveInterval) }
 

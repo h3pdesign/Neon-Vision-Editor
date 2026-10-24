@@ -266,6 +266,8 @@ struct CompareTabsPickerView: View {
     let backgroundStyle: AnyShapeStyle
     let onSelect: @MainActor (UUID) -> Void
     let onCancel: @MainActor () -> Void
+    /// The same list chooses the document for the Side by Side editor.
+    var opensSideBySide = false
 #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 #endif
@@ -294,7 +296,7 @@ struct CompareTabsPickerView: View {
         VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Compare with Tab")
+                    Text(opensSideBySide ? LocalizedStringKey("Open Two Tabs Side by Side") : LocalizedStringKey("Compare with Tab"))
                         .font(.title3.weight(.semibold))
                     Text(hasComparableTabs ? "Choose another open tab." : "Open another tab first.")
                         .font(.caption)
@@ -347,7 +349,7 @@ struct CompareTabsPickerView: View {
                                 .background(.quaternary.opacity(0.42), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Compare with \(tab.name)")
+                            .accessibilityLabel(opensSideBySide ? Text("Show \(tab.name) side by side") : Text("Compare with \(tab.name)"))
                         }
                     }
                     .padding(20)
@@ -360,7 +362,9 @@ struct CompareTabsPickerView: View {
                         .foregroundStyle(.secondary)
                     Text("No other open tabs")
                         .font(.headline)
-                    Text("Compare with Tab compares the current tab against a second tab that is already open.")
+                    Text(opensSideBySide
+                         ? LocalizedStringKey("Open another tab first.")
+                         : LocalizedStringKey("Compare with Tab compares the current tab against a second tab that is already open."))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -369,7 +373,9 @@ struct CompareTabsPickerView: View {
                 .padding(32)
                 .background(backgroundStyle)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("No other open tabs. Compare with Tab compares the current tab against a second tab that is already open.")
+                .accessibilityLabel(opensSideBySide
+                    ? Text("No other open tabs. Open another tab first.")
+                    : Text("No other open tabs. Compare with Tab compares the current tab against a second tab that is already open."))
             }
         }
         .frame(minWidth: contentMinWidth, minHeight: contentMinHeight)

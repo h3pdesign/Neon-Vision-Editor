@@ -416,6 +416,10 @@
 "Compare Open Tabs…" = "Sammenlign åbne faner…";
 "Compare Tabs" = "Sammenlign faner";
 "Compare with %@" = "Sammenlign med %@";
+"Toggle Side by Side Editor" = "Slå Side om side-editor til/fra";
+"Move Tab to New Window" = "Flyt fane til nyt vindue";
+"Show %@ side by side" = "Vis %@ side om side";
+"No other open tabs. Open another tab first." = "Ingen andre åbne faner. Åbn en anden fane først.";
 "Compare with Disk" = "Sammenlign med Disk";
 "Compare with Tab" = "Sammenlign med fane";
 "Compare with Tab compares the current tab against a second tab that is already open." = "Sammenlign med Tab sammenligner den aktuelle fane med en anden fane, der allerede er åben.";

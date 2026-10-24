@@ -416,6 +416,10 @@
 "Compare Open Tabs…" = "Comparar pestañas abiertas…";
 "Compare Tabs" = "Pestañas Comparar";
 "Compare with %@" = "Comparar con %@";
+"Toggle Side by Side Editor" = "Activar o desactivar editor lado a lado";
+"Move Tab to New Window" = "Mover pestaña a una ventana nueva";
+"Show %@ side by side" = "Mostrar %@ lado a lado";
+"No other open tabs. Open another tab first." = "No hay otras pestañas abiertas. Abre otra pestaña primero.";
 "Compare with Disk" = "Comparar con Disco";
 "Compare with Tab" = "Comparar con pestaña";
 "Compare with Tab compares the current tab against a second tab that is already open." = "Comparar con Tab compara la pestaña actual con una segunda pestaña que ya está abierta.";

@@ -277,6 +277,159 @@ final class MacDocumentWindowTabsTests: XCTestCase {
         XCTAssertNil(lateToolbarWindow.toolbar, "A closed document must not bind a new toolbar coordinator")
     }
 
+    /// Each native tab's window owns one document, so Side by Side and Compare
+    /// Open Tabs must find the other documents through the tab group.
+    func testSideBySideFindsOtherDocumentsOnlyInTheSameTabGroup() throws {
+        let store = immediateStore()
+        let first = MacDocumentTabPolicy.makeWindowModel()
+        let second = MacDocumentTabPolicy.makeWindowModel()
+        let standalone = MacDocumentTabPolicy.makeWindowModel()
+        let firstWindow = window("First.swift")
+        let secondWindow = window("Second.swift")
+        let standaloneWindow = window("Standalone.swift")
+        defer {
+            store.unregister(first); store.unregister(second); store.unregister(standalone)
+            firstWindow.close(); secondWindow.close(); standaloneWindow.close()
+        }
+        store.register(first, window: firstWindow) { _ in }
+        store.register(second, window: secondWindow) { _ in }
+        store.register(standalone, window: standaloneWindow) { _ in }
+        firstWindow.addTabbedWindow(secondWindow, ordered: .above)
+        let firstID = try XCTUnwrap(first.selectedTabID)
+        let secondID = try XCTUnwrap(second.selectedTabID)
+        let standaloneID = try XCTUnwrap(standalone.selectedTabID)
+
+        // The 2.1.0 candidates came from this window's model only.
+        XCTAssertEqual(first.tabs.map(\.id), [firstID], "A native tab's model holds only its own document")
+        XCTAssertEqual(store.openDocuments(inGroupOf: first).map(\.id), [firstID, secondID])
+        XCTAssertTrue(store.owner(ofDocument: secondID, inGroupOf: first) === second)
+        XCTAssertTrue(store.owner(ofDocument: firstID, inGroupOf: second) === first)
+        XCTAssertNil(store.owner(ofDocument: standaloneID, inGroupOf: first),
+                     "A separate window is not one of this window's tabs")
+
+        secondWindow.moveTabToNewWindow(nil)
+        XCTAssertNil(store.owner(ofDocument: secondID, inGroupOf: first), "A tab moved out leaves the group")
+        firstWindow.addTabbedWindow(secondWindow, ordered: .above)
+        XCTAssertTrue(store.owner(ofDocument: secondID, inGroupOf: first) === second)
+
+        store.unregister(second)
+        XCTAssertNil(store.owner(ofDocument: secondID, inGroupOf: first), "A closed tab's document is gone")
+        XCTAssertEqual(store.openDocuments(inGroupOf: first).map(\.id), [firstID])
+    }
+
+    func testTabGroupMembershipChangesAreAnnounced() {
+        let store = immediateStore()
+        let model = MacDocumentTabPolicy.makeWindowModel()
+        let documentWindow = window("Announced.swift")
+        defer { documentWindow.close() }
+        let registered = expectation(forNotification: .nativeDocumentTabGroupDidChange, object: nil)
+        store.register(model, window: documentWindow) { _ in }
+        wait(for: [registered], timeout: 2)
+        let closed = expectation(forNotification: .nativeDocumentTabGroupDidChange, object: nil)
+        store.unregister(model)
+        wait(for: [closed], timeout: 2)
+    }
+
+    /// Save applies to the Side by Side pane being typed in, whose document
+    /// another window owns.
+    func testSaveWritesTheFocusedSideBySideDocumentThroughItsOwner() async throws {
+        let store = immediateStore()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let firstFile = root.appendingPathComponent("First.txt")
+        let secondFile = root.appendingPathComponent("Second.txt")
+        try "first\n".write(to: firstFile, atomically: true, encoding: .utf8)
+        try "second\n".write(to: secondFile, atomically: true, encoding: .utf8)
+        let first = MacDocumentTabPolicy.makeWindowModel()
+        let second = MacDocumentTabPolicy.makeWindowModel()
+        // Opened before registration, so each file stays in its own model.
+        XCTAssertTrue(first.openFile(url: firstFile))
+        XCTAssertTrue(second.openFile(url: secondFile))
+        let firstWindow = window("First.txt")
+        let secondWindow = window("Second.txt")
+        defer {
+            store.unregister(first); store.unregister(second)
+            firstWindow.close(); secondWindow.close()
+            try? FileManager.default.removeItem(at: root)
+        }
+        let deadline = ProcessInfo.processInfo.systemUptime + 5
+        while first.selectedTab?.isLoadingContent != false || second.selectedTab?.isLoadingContent != false,
+              ProcessInfo.processInfo.systemUptime < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        store.register(first, window: firstWindow) { _ in }
+        store.register(second, window: secondWindow) { _ in }
+        firstWindow.addTabbedWindow(secondWindow, ordered: .above)
+        let firstID = try XCTUnwrap(first.selectedTabID)
+        let secondID = try XCTUnwrap(second.selectedTabID)
+        XCTAssertTrue(second.applyTabContentEdit(tabID: secondID, range: NSRange(location: 0, length: 0), replacement: "edited "))
+
+        XCTAssertFalse(store.saveFocusedSideBySideDocument(for: first, focusedDocumentID: nil))
+        XCTAssertFalse(store.saveFocusedSideBySideDocument(for: first, focusedDocumentID: firstID),
+                       "The window's own document is saved by the normal path")
+        XCTAssertTrue(store.saveFocusedSideBySideDocument(for: first, focusedDocumentID: secondID))
+        while (try? String(contentsOf: secondFile, encoding: .utf8)) != "edited second\n",
+              ProcessInfo.processInfo.systemUptime < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertEqual(try String(contentsOf: secondFile, encoding: .utf8), "edited second\n")
+        XCTAssertEqual(try String(contentsOf: firstFile, encoding: .utf8), "first\n")
+        XCTAssertEqual(second.selectedTab?.isDirty, false)
+
+        // A finished save leaves nothing watching the owner.
+        firstWindow.tabGroup?.selectedWindow = firstWindow
+        while second.hasSaveInFlight(tabID: secondID), ProcessInfo.processInfo.systemUptime < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        try await Task.sleep(for: .milliseconds(20))
+        second.pendingExternalFileConflict = .init(tabID: secondID, fileURL: secondFile, diskModifiedAt: nil)
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertTrue(firstWindow.tabGroup?.selectedWindow === firstWindow,
+                      "A later conflict, not caused by a Side by Side save, must not switch tabs")
+        second.pendingExternalFileConflict = nil
+
+        // A conflict is presented by the owner's tab, which shows it only while
+        // selected. File-backed saves report it after the save has started.
+        firstWindow.tabGroup?.selectedWindow = firstWindow
+        XCTAssertTrue(second.applyTabContentEdit(tabID: secondID, range: NSRange(location: 0, length: 0), replacement: "more "))
+        XCTAssertTrue(store.saveFocusedSideBySideDocument(for: first, focusedDocumentID: secondID))
+        XCTAssertTrue(firstWindow.tabGroup?.selectedWindow === firstWindow, "A save without problems stays in place")
+        second.pendingExternalFileConflict = .init(tabID: secondID, fileURL: secondFile, diskModifiedAt: nil)
+        let asyncDeadline = ProcessInfo.processInfo.systemUptime + 5
+        while firstWindow.tabGroup?.selectedWindow !== secondWindow,
+              ProcessInfo.processInfo.systemUptime < asyncDeadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertTrue(firstWindow.tabGroup?.selectedWindow === secondWindow,
+                      "A conflict reported after the save started must select the owner's tab")
+        while second.selectedTab?.isDirty == true, ProcessInfo.processInfo.systemUptime < asyncDeadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        second.pendingExternalFileConflict = nil
+
+        // A conflict found before writing selects the owner's tab immediately.
+        firstWindow.tabGroup?.selectedWindow = firstWindow
+        try "changed on disk\n".write(to: secondFile, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(60)],
+                                              ofItemAtPath: secondFile.path)
+        XCTAssertTrue(second.applyTabContentEdit(tabID: secondID, range: NSRange(location: 0, length: 0), replacement: "again "))
+        XCTAssertTrue(store.saveFocusedSideBySideDocument(for: first, focusedDocumentID: secondID))
+        let conflictDeadline = ProcessInfo.processInfo.systemUptime + 5
+        while firstWindow.tabGroup?.selectedWindow !== secondWindow,
+              ProcessInfo.processInfo.systemUptime < conflictDeadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertNotNil(second.pendingExternalFileConflict)
+        XCTAssertTrue(firstWindow.tabGroup?.selectedWindow === secondWindow,
+                      "The owner's tab must be selected to present the conflict")
+        XCTAssertEqual(try String(contentsOf: secondFile, encoding: .utf8), "changed on disk\n",
+                       "A conflicting save must not overwrite the file")
+
+        store.unregister(second)
+        XCTAssertFalse(store.saveFocusedSideBySideDocument(for: first, focusedDocumentID: secondID),
+                       "A closed tab's document is no longer a save target")
+    }
+
     /// Unselected tabs hide their content so their layer backing can be
     /// released; selecting a tab, or leaving the group, reveals it again.
     func testOnlyTheSelectedNativeTabKeepsVisibleContent() throws {

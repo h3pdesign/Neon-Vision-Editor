@@ -433,6 +433,13 @@ extension ContentView {
     }
 
     func saveCurrentTabFromToolbar() {
+#if os(macOS)
+        let focusedWindow = hostWindowNumber.flatMap { NSApp.window(withWindowNumber: $0) } ?? NSApp.keyWindow
+        if MacDocumentWindowTabs.shared.saveFocusedSideBySideDocument(
+            for: viewModel, focusedDocumentID: MacDocumentWindowTabs.focusedEditorDocumentID(in: focusedWindow)) {
+            return
+        }
+#endif
         guard let tab = viewModel.selectedTab else { return }
         guard !tab.isReadOnlyPreview else { return }
         if isPDFNoteEditorActive,
@@ -459,6 +466,14 @@ extension ContentView {
     }
 
     func saveCurrentTabAsFromToolbar() {
+#if os(macOS)
+        let focusedWindow = hostWindowNumber.flatMap { NSApp.window(withWindowNumber: $0) } ?? NSApp.keyWindow
+        if MacDocumentWindowTabs.shared.saveFocusedSideBySideDocument(
+            for: viewModel, focusedDocumentID: MacDocumentWindowTabs.focusedEditorDocumentID(in: focusedWindow),
+            saveAs: true) {
+            return
+        }
+#endif
         guard let tab = viewModel.selectedTab else { return }
         guard !tab.isReadOnlyPreview else { return }
         if tab.remotePreviewPath != nil {

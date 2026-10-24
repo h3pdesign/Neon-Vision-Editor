@@ -45,6 +45,11 @@ enum MacDocumentTabPolicy {
     }
 }
 
+extension Notification.Name {
+    /// A document window joined or left a native tab group.
+    static let nativeDocumentTabGroupDidChange = Notification.Name("nativeDocumentTabGroupDidChange")
+}
+
 /// Native tabs group windows, not editor buffers. A destination model is created
 /// before opening a file so asynchronous loads/saves never change document owner.
 @MainActor
@@ -398,6 +403,7 @@ final class MacDocumentWindowTabs {
             selectedWindow.makeKeyAndOrderFront(nil)
         }
         updateTabAppearance(for: model)
+        noteGroupMembershipChanged()
     }
 
     func unregister(_ model: EditorViewModel) {
@@ -424,6 +430,7 @@ final class MacDocumentWindowTabs {
         model.nativeDocumentDestination = nil
         model.nativeFocusFile = nil
         model.nativeRevealWindow = nil
+        noteGroupMembershipChanged()
     }
 
     func beginTermination() {
@@ -475,6 +482,71 @@ final class MacDocumentWindowTabs {
         guard let window = entries[ObjectIdentifier(source)]?.window else { return [source] }
         let byWindow = modelsByWindow()
         return (window.tabbedWindows ?? [window]).compactMap { byWindow[ObjectIdentifier($0)] }
+    }
+
+    /// Documents open in `model`'s native tab group, in tab-bar order. Each
+    /// window keeps owning its document: Side by Side and Compare Open Tabs
+    /// show another tab's document without moving it.
+    func openDocuments(inGroupOf model: EditorViewModel) -> [TabData] {
+        models(inGroupOf: model).flatMap(\.tabs)
+    }
+
+    func owner(ofDocument tabID: UUID, inGroupOf model: EditorViewModel) -> EditorViewModel? {
+        models(inGroupOf: model).first { $0.tabs.contains { $0.id == tabID } }
+    }
+
+    /// The document of the editor that has, or last had, keyboard focus in `window`.
+    static func focusedEditorDocumentID(in window: NSWindow?) -> UUID? {
+        VirtualEditorCanvas.activeCanvas(in: window)?.documentIdentifier.flatMap(UUID.init(uuidString:))
+    }
+
+    /// Saves the focused Side by Side document through the window that owns
+    /// it. False when the target is `model`'s own document.
+    @discardableResult
+    func saveFocusedSideBySideDocument(for model: EditorViewModel, focusedDocumentID: UUID?,
+                                       saveAs: Bool = false) -> Bool {
+        guard let focusedDocumentID, !model.tabs.contains(where: { $0.id == focusedDocumentID }),
+              let owner = owner(ofDocument: focusedDocumentID, inGroupOf: model) else { return false }
+        let isRemote = owner.tabs.first { $0.id == focusedDocumentID }?.remotePreviewPath != nil
+        if saveAs, !isRemote {
+            owner.saveFileAs(tabID: focusedDocumentID)
+        } else {
+            owner.saveFile(tabID: focusedDocumentID)
+        }
+        revealWhenSaveNeedsAttention(owner, tabID: focusedDocumentID)
+        return true
+    }
+
+    /// The owner's window presents a conflict with the file on disk or a save
+    /// error, but only while it is the selected tab. Saves report either
+    /// asynchronously, so keep watching the owner until this save finishes.
+    private func revealWhenSaveNeedsAttention(_ owner: EditorViewModel, tabID: UUID) {
+        guard entries[ObjectIdentifier(owner)] != nil else { return }
+        if owner.pendingExternalFileConflict != nil || owner.fileEncodingErrorMessage != nil
+            || owner.pendingRemoteSaveIssue != nil {
+            return reveal(owner)
+        }
+        // A cancelled Save As or a refused save starts nothing to wait for.
+        guard owner.hasSaveInFlight(tabID: tabID) else { return }
+        withObservationTracking {
+            _ = owner.pendingExternalFileConflict?.tabID
+            _ = owner.fileEncodingErrorMessage
+            _ = owner.pendingRemoteSaveIssue?.tabID
+            _ = owner.tabs
+        } onChange: { [weak self, weak owner] in
+            Task { @MainActor [weak self, weak owner] in
+                guard let self, let owner else { return }
+                self.revealWhenSaveNeedsAttention(owner, tabID: tabID)
+            }
+        }
+    }
+
+    /// Group membership is window state, not observable model state. Deferred,
+    /// because registration runs during SwiftUI updates.
+    fileprivate func noteGroupMembershipChanged() {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .nativeDocumentTabGroupDidChange, object: nil)
+        }
     }
 
     private func modelsByWindow() -> [ObjectIdentifier: EditorViewModel] {
@@ -671,7 +743,10 @@ private final class NativeDocumentContentHost: NSView {
             MainActor.assumeIsolated { self?.installIfSelected() }
         })
         groupObservation = window.observe(\.tabGroup, options: [.new]) { [weak self] _, _ in
-            MainActor.assumeIsolated { self?.observeSelection() }
+            MainActor.assumeIsolated {
+                self?.observeSelection()
+                self?.store?.noteGroupMembershipChanged()
+            }
         }
         observeSelection()
     }

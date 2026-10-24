@@ -416,6 +416,10 @@
 "Compare Open Tabs…" = "Compare Open Tabs…";
 "Compare Tabs" = "Compare Tabs";
 "Compare with %@" = "Compare with %@";
+"Toggle Side by Side Editor" = "Toggle Side by Side Editor";
+"Move Tab to New Window" = "Move Tab to New Window";
+"Show %@ side by side" = "Show %@ side by side";
+"No other open tabs. Open another tab first." = "No other open tabs. Open another tab first.";
 "Compare with Disk" = "Compare with Disk";
 "Compare with Tab" = "Compare with Tab";
 "Compare with Tab compares the current tab against a second tab that is already open." = "Compare with Tab compares the current tab against a second tab that is already open.";

@@ -416,6 +416,10 @@
 "Compare Open Tabs…" = "開いているタブを比較する…";
 "Compare Tabs" = "タブ比較";
 "Compare with %@" = "%@ と比較する";
+"Toggle Side by Side Editor" = "左右に並べたエディタを切り替え";
+"Move Tab to New Window" = "タブを新規ウインドウに移動";
+"Show %@ side by side" = "%@ を左右に並べて表示";
+"No other open tabs. Open another tab first." = "ほかに開いているタブはありません。先に別のタブを開いてください。";
 "Compare with Disk" = "ディスクとの比較";
 "Compare with Tab" = "タブとの比較";
 "Compare with Tab compares the current tab against a second tab that is already open." = "タブとの比較は、現在のタブをすでに開いている2番目のタブと比較します。";

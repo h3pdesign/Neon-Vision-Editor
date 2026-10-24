@@ -1060,6 +1060,19 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         static let lineNumberTrailingInset: CGFloat = 8
     }
 
+    /// The editor each window last focused. Side by Side puts two canvases in
+    /// one window, so commands without a document ID target this one.
+    private static let activeCanvasByWindow = NSMapTable<NSWindow, VirtualEditorCanvas>.weakToWeakObjects()
+
+    /// The focused editor in `window`, or the one it last focused while focus
+    /// is in a surrounding panel or field.
+    static func activeCanvas(in window: NSWindow?) -> VirtualEditorCanvas? {
+        guard let window else { return nil }
+        if let focused = window.firstResponder as? VirtualEditorCanvas { return focused }
+        guard let canvas = activeCanvasByWindow.object(forKey: window), canvas.window === window else { return nil }
+        return canvas
+    }
+
     private var document: (any EditorDocument)?
     private var documentID: UUID?
     private var resourceID = ""
@@ -1108,6 +1121,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var pendingDragPublication: DispatchWorkItem?
     private var dragAutoScrollTimer: Timer?
     private let documentUndoManager = UndoManager()
+    /// Edits this view applied that a configured content revision has not yet
+    /// reflected. A larger revision step means the text changed elsewhere.
+    private var pendingOwnMutationCount = 0
     private var lastConfigurationKey = ""
     private var lastStructuralConfigurationKey = ""
     private var lastThemeConfigurationKey = ""
@@ -1539,7 +1555,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
            window?.windowNumber != requestedWindow {
             return false
         }
-        guard let requestedID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String else { return true }
+        guard let requestedID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String else {
+            return Self.activeCanvas(in: window).map { $0 === self } ?? true
+        }
         return requestedID == documentIdentifier
     }
 
@@ -1595,6 +1613,23 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let themeConfigurationKey = "\(themeRefreshToken)|\(syntaxThemeKey(for: resolvedTheme))|\(editorBaseThemeKey(for: resolvedTheme))"
         let key = "\(structuralConfigurationKey)|\(themeConfigurationKey)"
         let contentChanged = configuredContentRevision != contentRevision || configuredExternalContentRevision != externalContentRevision
+        // Undo entries hold ranges into the text this view last saw. Another
+        // document, or an edit made elsewhere (the other Side by Side pane, a
+        // command, a reload from disk), invalidates them. Saving an untitled
+        // document changes only its resource ID, not its text.
+        if previousDocumentID != documentID {
+            pendingOwnMutationCount = 0
+            documentUndoManager.removeAllActions()
+        } else if contentChanged {
+            let revisionStep = contentRevision &- (configuredContentRevision ?? contentRevision)
+            if configuredExternalContentRevision != externalContentRevision
+                || revisionStep < 0 || revisionStep > pendingOwnMutationCount {
+                pendingOwnMutationCount = 0
+                documentUndoManager.removeAllActions()
+            } else {
+                pendingOwnMutationCount -= revisionStep
+            }
+        }
         let themeOnlyChanged = !isNewDocument && !lastConfigurationKey.isEmpty
             && structuralConfigurationKey == lastStructuralConfigurationKey
             && themeConfigurationKey != lastThemeConfigurationKey
@@ -1627,7 +1662,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         self.indentStyle = indentStyle
         self.indentWidth = max(1, indentWidth)
         self.onFontSizeChange = onFontSizeChange
-        self.onTextMutation = onTextMutation
+        self.onTextMutation = onTextMutation.map { apply in
+            { [weak self] mutation in
+                let applied = apply(mutation)
+                if applied { self?.pendingOwnMutationCount += 1 }
+                return applied
+            }
+        }
         if isNewDocument {
             colorPickerPopover?.close()
             colorPickerPopover = nil
@@ -2595,6 +2636,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     override func becomeFirstResponder() -> Bool {
         let accepted = super.becomeFirstResponder()
+        if accepted, let window { Self.activeCanvasByWindow.setObject(self, forKey: window) }
         if accepted, vimModeIsEnabled {
             isVimInsertMode = false
             postVimModeState()

@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.1.1] - 2026-10-23
+
 ### Why Upgrade
 
 - Type or paste into a new Mac tab right away, without clicking into the editor first.

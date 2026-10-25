@@ -102,7 +102,7 @@ jobs:
 
       - name: Upload virtual editor performance results
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: virtual-editor-performance-${{ github.run_id }}
           path: ${{ runner.temp }}/VirtualEditorPerformance.xcresult

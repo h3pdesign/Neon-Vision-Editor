@@ -807,43 +807,36 @@ extension ContentView {
 #else
         VStack(spacing: 0) {
 #if os(iOS)
-            GlassSurface(
-                // Keep the tab strip tied to the editor theme. Window
-                // translucency should apply to the tab strip as well.
-                enabled: enableTranslucentWindow,
-                material: primaryGlassMaterial,
-                fallbackColor: iOSNonTranslucentSurfaceColor,
-                shape: .rounded(18),
-                chromeStyle: .single
-            ) {
-                MobileNativeFileTabBar(
-                    tabs: viewModel.tabs.map {
-                        MobileNativeFileTabSnapshot(
-                            id: $0.id,
-                            title: $0.name,
-                            isDirty: $0.isDirty,
-                            isRemote: $0.isRemoteDocument,
-                            isReadOnly: $0.isReadOnlyPreview
-                        )
-                    },
-                    selectedTabID: viewModel.selectedTabID,
-                    transitionColor: UIColor(iOSNonTranslucentSurfaceColor),
-                    transitionOpacity: enableTranslucentWindow ? 0.35 : 1,
-                    onSelect: { viewModel.selectTab(id: $0) },
-                    onClose: { tabID in
-                        guard let tab = viewModel.tabs.first(where: { $0.id == tabID }) else { return }
-                        requestCloseTab(tab)
-                    },
-                    onMove: { sourceID, destinationID, insertBefore in
-                        reorderDroppedTab(
-                            draggedTabID: sourceID,
-                            destinationTabID: destinationID,
-                            insertBefore: insertBefore
-                        )
-                    },
-                    onAdd: { viewModel.addNewTab() }
-                )
-            }
+            // The strip's background below follows window translucency. Only
+            // the selected tab is highlighted: a glass panel around the whole
+            // strip turns it into one grey bar on iOS 26 and later.
+            MobileNativeFileTabBar(
+                tabs: viewModel.tabs.map {
+                    MobileNativeFileTabSnapshot(
+                        id: $0.id,
+                        title: $0.name,
+                        isDirty: $0.isDirty,
+                        isRemote: $0.isRemoteDocument,
+                        isReadOnly: $0.isReadOnlyPreview
+                    )
+                },
+                selectedTabID: viewModel.selectedTabID,
+                transitionColor: UIColor(iOSNonTranslucentSurfaceColor),
+                transitionOpacity: enableTranslucentWindow ? 0.35 : 1,
+                onSelect: { viewModel.selectTab(id: $0) },
+                onClose: { tabID in
+                    guard let tab = viewModel.tabs.first(where: { $0.id == tabID }) else { return }
+                    requestCloseTab(tab)
+                },
+                onMove: { sourceID, destinationID, insertBefore in
+                    reorderDroppedTab(
+                        draggedTabID: sourceID,
+                        destinationTabID: destinationID,
+                        insertBefore: insertBefore
+                    )
+                },
+                onAdd: { viewModel.addNewTab() }
+            )
 #elseif os(visionOS)
             GlassSurface(
                 enabled: visionOSSystemGlassEnabled,

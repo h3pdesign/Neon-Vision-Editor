@@ -6,6 +6,34 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- Close Settings on iPhone and iPad with a Close button, including on iPhone Duo's outer display.
+- The iPhone and iPad tab bar highlights only the active tab again.
+- The iPhone editor status no longer covers the keyboard shortcut bar.
+
+### Highlights
+
+- Fixes for iPhone Duo: Settings can be closed, the tab bar highlights only the active tab, and the editor status stays above the keyboard shortcut bar.
+
+### Fixes
+
+- Settings on iPhone and iPad has a Close button in its top-right corner. On iPhone Duo's outer display the sheet could not be closed (#867).
+- With Translucent Window turned on, the iPhone and iPad tab bar no longer turns into one solid grey bar; only the active tab is highlighted (#868).
+- On iPhone, the editor status (line, column) sits above the keyboard shortcut bar again instead of covering it while the software keyboard is open.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, sessions, and preferences are preserved.
+
+### Maintenance
+
+- Development version 2.1.4 (build 1131).
+
 ## [v2.1.3] - 2026-10-25
 
 ### Why Upgrade

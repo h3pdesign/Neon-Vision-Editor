@@ -237,6 +237,19 @@ enum IOSVerticalToolbarPolicy {
 }
 
 enum IOSFloatingStatusPolicy {
+    /// On iPhone the keyboard shortcut bar is drawn inside the editor, above
+    /// the keyboard, so the keyboard safe area does not include it. Lift the
+    /// bottom status by the bar's height while it is shown. On iPad the bar is
+    /// the keyboard's input accessory and is already part of that safe area.
+    nonisolated static func bottomInset(
+        isPhone: Bool,
+        keyboardVisible: Bool,
+        accessoryBarShown: Bool,
+        accessoryBarHeight: CGFloat
+    ) -> CGFloat {
+        isPhone && keyboardVisible && accessoryBarShown ? accessoryBarHeight : 0
+    }
+
     nonisolated static func isVisible(
         brainDumpLayoutEnabled: Bool,
         shouldPinToTop: Bool,
@@ -6399,7 +6412,18 @@ struct ContentView: View {
                     phoneToolbarMinimized: usesIOSBottomToolbar && isPhoneBottomToolbarMinimized
                 ),
                 centered: usesIOSBottomToolbar,
-                bottomInset: 0,
+                bottomInset: {
+#if os(iOS)
+                    IOSFloatingStatusPolicy.bottomInset(
+                        isPhone: UIDevice.current.userInterfaceIdiom == .phone,
+                        keyboardVisible: isPhoneSoftwareKeyboardVisible,
+                        accessoryBarShown: showKeyboardAccessoryBarIOS,
+                        accessoryBarHeight: EditorInputTextView.keyboardToolbarHeight
+                    )
+#else
+                    0
+#endif
+                }(),
                 status: AnyView(floatingStatusPill),
                 bottomToolbar: { width in mobileBottomToolbarOverlay(availableWidth: width) },
                 verticalToolbar: { length in mobileVerticalToolbarOverlay(availableLength: length) }

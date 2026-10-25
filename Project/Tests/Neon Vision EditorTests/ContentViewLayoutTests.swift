@@ -124,6 +124,19 @@ final class ContentViewLayoutTests: XCTestCase {
         }
     }
 
+    func testPhoneStatusClearsTheKeyboardShortcutBarOnlyWhileItIsShown() {
+        // iPhone draws the shortcut bar inside the editor above the keyboard.
+        XCTAssertEqual(IOSFloatingStatusPolicy.bottomInset(
+            isPhone: true, keyboardVisible: true, accessoryBarShown: true, accessoryBarHeight: 46), 46)
+        XCTAssertEqual(IOSFloatingStatusPolicy.bottomInset(
+            isPhone: true, keyboardVisible: true, accessoryBarShown: false, accessoryBarHeight: 46), 0)
+        XCTAssertEqual(IOSFloatingStatusPolicy.bottomInset(
+            isPhone: true, keyboardVisible: false, accessoryBarShown: true, accessoryBarHeight: 46), 0)
+        // iPad uses the keyboard's input accessory, already inside the keyboard safe area.
+        XCTAssertEqual(IOSFloatingStatusPolicy.bottomInset(
+            isPhone: false, keyboardVisible: true, accessoryBarShown: true, accessoryBarHeight: 46), 0)
+    }
+
     @MainActor
     func testKeyboardChromeDoesNotAddAccessoryHeightTwice() async {
         let frames = await bottomChromeFrames(toolbarHeight: nil)

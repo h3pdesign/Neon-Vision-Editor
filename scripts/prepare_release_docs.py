@@ -302,6 +302,10 @@ def shorten_for_welcome_tour_card(text: str, limit: int = WELCOME_TOUR_CARD_TEXT
 def welcome_feature_title(description: str, index: int) -> str:
     lowered = description.lower()
     rules = (
+        (("close button",), "Closing Settings"),
+        (("iphone duo",), "iPhone Duo"),
+        (("tab bar",), "Tab Bar"),
+        (("keyboard shortcut bar",), "Keyboard Shortcut Bar"),
         (("side by side",), "Side by Side"),
         (("compare",), "Tab Comparison"),
         (("own window", "new window"), "Window Tabs"),
@@ -653,6 +657,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v2.1.4": ("Korrekturen für iPhone Duo", "Die Einstellungen auf iPhone und iPad haben eine Schließen-Taste, auch auf dem Außendisplay des iPhone Duo. Die Tableiste hebt wieder nur den aktiven Tab hervor, und der Editorstatus verdeckt die Tastaturkurzbefehlsleiste nicht mehr.", ["iPhone Duo", "Einstellungen", "Tastatur"]),
         "v2.1.3": ("Auswahl folgt langen Zeilen", "Beim Auswählen mit der Maus über den linken oder rechten Rand einer langen, nicht umbrochenen Zeile scrollt der Mac-Editor jetzt seitwärts mit. Die Markdown-Formatierungsleiste sitzt wieder oben rechts im Editor, und über der Minimap scrollt das Mausrad den Editor.", ["Auswahl", "Scrollen", "Markdown"]),
         "v2.1.2": ("Nebeneinander bearbeiten in Mac-Tabs", "Zeigt zwei geöffnete Mac-Tabs wieder nebeneinander an, beide bearbeitbar, und vergleicht geöffnete Tabs wieder in der Diff-Ansicht. Sichern gilt für den bearbeiteten Bereich, und „Tab in neues Fenster bewegen“ ist im Menü „Fenster“ verfügbar.", ["Nebeneinander", "Tabs", "Vergleich"]),
         "v2.1.1": ("Sofort tippen in neuen Tabs", "Neue Mac-Tabs übernehmen Eingaben und Einfügen sofort, ohne zuerst in den Editor zu klicken. Zurückgewählte Tabs zeigen immer ihren Inhalt, geschlossene Tabs beenden ihre Hintergrundarbeit und öffnen sich nicht erneut.", ["Tabs", "Fokus", "Stabilität"]),
@@ -698,6 +703,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v2.1.4": ("Rettelser til iPhone Duo", "Indstillinger på iPhone og iPad har en Luk-knap, også på iPhone Duos ydre skærm. Fanelinjen fremhæver igen kun den aktive fane, og editorstatus dækker ikke længere tastaturgenvejslinjen.", ["iPhone Duo", "Indstillinger", "Tastatur"]),
         "v2.1.3": ("Markering følger lange linjer", "Når du markerer med musen forbi venstre eller højre kant af en lang linje uden ombrydning, ruller Mac-editoren nu sidelæns med. Markdown-formateringslinjen sidder igen øverst til højre i editoren, og rullehjulet over minikortet ruller editoren.", ["Markering", "Rulning", "Markdown"]),
         "v2.1.2": ("Rediger side om side i Mac-faner", "Viser igen to åbne Mac-faner side om side, begge redigerbare, og sammenligner åbne faner i diff-visningen igen. Gem gælder den rude, du redigerer, og ”Flyt fane til nyt vindue” findes i menuen Vindue.", ["Side om side", "Faner", "Sammenligning"]),
         "v2.1.1": ("Skriv straks i nye faner", "Nye Mac-faner modtager tastning og indsæt med det samme uden et klik i editoren først. Faner, du vender tilbage til, viser altid deres indhold, og lukkede faner stopper deres baggrundsarbejde og åbnes ikke igen.", ["Faner", "Fokus", "Stabilitet"]),
@@ -743,6 +749,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v2.1.4": ("Corrections pour iPhone Duo", "Les Réglages sur iPhone et iPad disposent d’un bouton Fermer, y compris sur l’écran extérieur de l’iPhone Duo. La barre d’onglets ne met de nouveau en évidence que l’onglet actif, et l’état de l’éditeur ne masque plus la barre de raccourcis du clavier.", ["iPhone Duo", "Réglages", "Clavier"]),
         "v2.1.3": ("La sélection suit les longues lignes", "Lorsque vous sélectionnez à la souris au-delà du bord gauche ou droit d’une longue ligne non renvoyée, l’éditeur Mac défile désormais latéralement. La barre de mise en forme Markdown retrouve le coin supérieur droit de l’éditeur, et la molette au-dessus de la minicarte fait défiler l’éditeur.", ["Sélection", "Défilement", "Markdown"]),
         "v2.1.2": ("Édition côte à côte dans les onglets Mac", "Affiche de nouveau deux onglets Mac ouverts côte à côte, tous deux modifiables, et compare de nouveau les onglets ouverts dans la vue des différences. L’enregistrement s’applique au volet en cours d’édition, et « Placer l’onglet dans une nouvelle fenêtre » est disponible dans le menu Fenêtre.", ["Côte à côte", "Onglets", "Comparaison"]),
         "v2.1.1": ("Saisie immédiate dans les nouveaux onglets", "Les nouveaux onglets Mac acceptent la saisie et le collage immédiatement, sans cliquer d’abord dans l’éditeur. Un onglet resélectionné affiche toujours son contenu, et un onglet fermé arrête son travail en arrière-plan et ne se rouvre plus.", ["Onglets", "Focus", "Stabilité"]),
@@ -788,6 +795,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v2.1.4": ("Correcciones para iPhone Duo", "Los Ajustes en iPhone y iPad tienen un botón Cerrar, también en la pantalla exterior del iPhone Duo. La barra de pestañas vuelve a resaltar solo la pestaña activa, y el estado del editor ya no tapa la barra de atajos del teclado.", ["iPhone Duo", "Ajustes", "Teclado"]),
         "v2.1.3": ("La selección sigue las líneas largas", "Al seleccionar con el ratón más allá del borde izquierdo o derecho de una línea larga sin ajuste, el editor de Mac ahora se desplaza de lado. La barra de formato Markdown vuelve a la esquina superior derecha del editor, y la rueda sobre el minimapa desplaza el editor.", ["Selección", "Desplazamiento", "Markdown"]),
         "v2.1.2": ("Edición en paralelo en pestañas de Mac", "Vuelve a mostrar dos pestañas abiertas de Mac una al lado de la otra, ambas editables, y vuelve a comparar pestañas abiertas en la vista de diferencias. Guardar se aplica al panel que estás editando, y «Mover pestaña a una ventana nueva» está en el menú Ventana.", ["En paralelo", "Pestañas", "Comparación"]),
         "v2.1.1": ("Escritura inmediata en pestañas nuevas", "Las pestañas nuevas en Mac aceptan escritura y pegado de inmediato, sin hacer clic antes en el editor. Al volver a una pestaña siempre se muestra su contenido, y las pestañas cerradas detienen su trabajo en segundo plano y ya no se vuelven a abrir.", ["Pestañas", "Foco", "Estabilidad"]),
@@ -833,6 +841,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v2.1.4": ("iPhone Duoの修正", "iPhoneとiPadの設定に、iPhone Duoの外側ディスプレイを含めて閉じるボタンが付きました。タブバーは再びアクティブなタブだけを強調表示し、エディタのステータスがキーボードショートカットバーを覆わなくなりました。", ["iPhone Duo", "設定", "キーボード"]),
         "v2.1.3": ("長い行の選択に追従", "折り返さない長い行で、マウスで左右の端を越えて選択すると、Mac のエディタが横方向にスクロールするようになりました。Markdown 書式バーはエディタの右上に戻り、ミニマップ上でのホイール操作でエディタをスクロールできます。", ["選択", "スクロール", "Markdown"]),
         "v2.1.2": ("Mac のタブを左右に並べて編集", "Mac で開いている 2 つのタブを再び左右に並べて表示し、どちらも編集できます。開いているタブを差分ビューで比較する機能も復活しました。保存は編集中のパネルに適用され、「タブを新規ウインドウに移動」を「ウインドウ」メニューから使えます。", ["左右に並べて表示", "タブ", "比較"]),
         "v2.1.1": ("新しいタブですぐに入力", "Mac の新しいタブで、エディタをクリックしなくてもすぐに入力やペーストができるようになりました。タブに戻ると常に内容が表示され、閉じたタブはバックグラウンド処理を停止し、再び開かなくなりました。", ["タブ", "フォーカス", "安定性"]),
@@ -878,6 +887,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v2.1.4": ("iPhone Duo 修复", "iPhone 和 iPad 上的设置现在有关闭按钮，在 iPhone Duo 的外屏上也是如此。标签栏重新只突出显示当前标签，编辑器状态不再遮挡键盘快捷键栏。", ["iPhone Duo", "设置", "键盘"]),
         "v2.1.3": ("选择跟随长行", "在未换行的长行中用鼠标拖动选择并越过左右边缘时，Mac 编辑器现在会横向滚动。Markdown 格式栏回到编辑器右上角，在迷你地图上滚动鼠标滚轮即可滚动编辑器。", ["选择", "滚动", "Markdown"]),
         "v2.1.2": ("在 Mac 标签页中并排编辑", "再次支持将两个已打开的 Mac 标签页并排显示，两侧均可编辑，并可再次在差异视图中比较已打开的标签页。存储会应用到正在编辑的窗格，“将标签页移到新窗口”可在“窗口”菜单中使用。", ["并排", "标签页", "比较"]),
         "v2.1.1": ("新标签页可立即输入", "Mac 新标签页无需先点按编辑器即可立即输入和粘贴。切换回标签页时始终显示其内容，关闭的标签页会停止后台工作且不再重新打开。", ["标签页", "焦点", "稳定性"]),

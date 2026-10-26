@@ -1392,7 +1392,7 @@ extension ContentView {
         let fullRange = NSRange(escaped.startIndex..., in: escaped)
         var selected: [HighlightRange] = []
         for pattern in patterns {
-            guard let regex = try? NSRegularExpression(pattern: pattern.pattern, options: [.anchorsMatchLines]) else { continue }
+            guard let regex = cachedSyntaxRegex(pattern: pattern.pattern, options: [.anchorsMatchLines]) else { continue }
             for match in regex.matches(in: escaped, options: [], range: fullRange) {
                 guard match.range.location != NSNotFound,
                       match.range.length > 0,
@@ -1949,7 +1949,7 @@ extension ContentView {
             .standardizedFileURL
         let basePath = baseDirectory.path.hasSuffix("/") ? baseDirectory.path : baseDirectory.path + "/"
         let pattern = #"(?i)(<(?:img|source)\b[^>]*\b(?:src|srcset)\s*=\s*[\"'])([^\"']+\.(?:svg|png|jpe?g|gif|webp|avif)(?:[?#][^\"']*)?)([\"'])"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return html }
+        guard let regex = cachedSyntaxRegex(pattern: pattern) else { return html }
         let matches = regex.matches(in: html, range: NSRange(html.startIndex..., in: html))
         guard !matches.isEmpty else { return html }
 
@@ -2015,7 +2015,7 @@ extension ContentView {
     }
 
     nonisolated static func markdownPreviewRegexMatches(_ text: String, pattern: String) -> Bool {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
+        guard let regex = cachedSyntaxRegex(pattern: pattern) else { return false }
         return regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
     }
 

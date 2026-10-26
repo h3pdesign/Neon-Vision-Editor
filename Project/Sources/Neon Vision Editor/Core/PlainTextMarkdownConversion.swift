@@ -136,7 +136,7 @@ enum PlainTextMarkdownRenderer {
 
     private static func addingAutolinks(to line: String) -> String {
         let pattern = #"(?<![<(\[])((?:https?://|mailto:)[^\s<>\])]+)"#
-        guard let expression = try? NSRegularExpression(pattern: pattern) else { return line }
+        guard let expression = cachedSyntaxRegex(pattern: pattern) else { return line }
         let fullRange = NSRange(location: 0, length: (line as NSString).length)
         return expression.stringByReplacingMatches(
             in: line,

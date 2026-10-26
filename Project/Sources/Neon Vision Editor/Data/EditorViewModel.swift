@@ -3911,8 +3911,20 @@ class EditorViewModel {
     }
 
     // Returns whitespace-delimited word count for status display.
-    func wordCount(for text: String) -> Int {
-        text.split(whereSeparator: \.isWhitespace).count
+    nonisolated static func wordCount(for text: String) -> Int {
+        // Same result as `split(whereSeparator: \.isWhitespace).count` without
+        // allocating a substring per word.
+        var count = 0
+        var isInWord = false
+        for character in text {
+            if character.isWhitespace {
+                isInWord = false
+            } else if !isInWord {
+                isInWord = true
+                count += 1
+            }
+        }
+        return count
     }
 
     private func debugLog(_ message: String) {

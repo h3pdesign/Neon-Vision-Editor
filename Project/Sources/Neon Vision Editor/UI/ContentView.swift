@@ -1015,6 +1015,9 @@ struct ContentView: View {
     @State var goToLineInput: String = ""
     @State var showGoToSymbol: Bool = false
     @State var goToSymbolQuery: String = ""
+    // Symbols are captured when Go to Symbol opens so each query keystroke
+    // filters this list instead of rescanning the whole document.
+    @State var goToSymbolItems: [DocumentSymbolItem] = []
     @State var quickSwitcherProjectFileURLs: [URL] = []
     @State var quickSwitcherProjectFileURLRefreshTask: Task<Void, Never>? = nil
     @State var projectFileIndexSnapshot: ProjectFileIndex.Snapshot = .empty
@@ -2963,6 +2966,7 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .showGoToSymbolRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 goToSymbolQuery = ""
+                goToSymbolItems = documentSymbols
                 showGoToSymbol = true
             }
             .onReceive(NotificationCenter.default.publisher(for: .compareCurrentTabAgainstDiskRequested)) { notif in

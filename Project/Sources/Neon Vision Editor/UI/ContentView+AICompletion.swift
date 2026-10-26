@@ -183,8 +183,11 @@ extension ContentView {
     /// user's Text Replacements and the macOS spelling dictionary. Returns
     /// whether a suggestion was shown, so the model request can be skipped.
     @MainActor
-    func performSystemWordCompletion(tabID: UUID, caretLocation: Int, context: String) -> Bool {
-        guard !effectiveLargeFileModeEnabled,
+    func performSystemWordCompletion(tabID: UUID, caretLocation: Int, context: String, nextCharacter: String) -> Bool {
+        // Editing inside a word must not suggest a suffix that duplicates
+        // the text after the caret.
+        guard !SystemWordCompletion.continuesWord(nextCharacter),
+              !effectiveLargeFileModeEnabled,
               CompletionHeuristics.usesNaturalLanguageCompletion(for: currentLanguage),
               viewModel.selectedTab?.id == tabID else { return false }
         let source = context as NSString

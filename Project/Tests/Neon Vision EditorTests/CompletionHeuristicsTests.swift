@@ -171,5 +171,13 @@ final class CompletionHeuristicsTests: XCTestCase {
         XCTAssertNil(SystemWordCompletion.suffix(forWordPrefix: "a"))
         XCTAssertNil(SystemWordCompletion.suffix(forWordPrefix: "ab1"))
     }
+
+    func testSystemWordCompletionIsSuppressedInsideAWord() {
+        XCTAssertTrue(SystemWordCompletion.continuesWord("o"))
+        XCTAssertTrue(SystemWordCompletion.continuesWord("é"))
+        XCTAssertFalse(SystemWordCompletion.continuesWord(""))
+        XCTAssertFalse(SystemWordCompletion.continuesWord(" "))
+        XCTAssertFalse(SystemWordCompletion.continuesWord("."))
+    }
 #endif
 }

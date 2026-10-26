@@ -3133,6 +3133,7 @@ struct ContentView: View {
                       tabID == viewModel.selectedTab?.id,
                       let caret = notification.userInfo?[EditorCommandUserInfo.completionCaretOffset] as? Int,
                       let context = notification.userInfo?[EditorCommandUserInfo.completionContext] as? String else { return }
+                let nextCharacter = notification.userInfo?[EditorCommandUserInfo.completionNextCharacter] as? String ?? ""
                 let signature = "\(tabID.uuidString)|\(caret)|\(context.suffix(32))"
                 guard signature != lastCompletionTriggerSignature else { return }
                 lastCompletionTriggerSignature = signature
@@ -3145,7 +3146,8 @@ struct ContentView: View {
                         // well before the model debounce elapses.
                         try? await Task.sleep(nanoseconds: SystemWordCompletion.debounceNanoseconds)
                         guard !Task.isCancelled else { return }
-                        if performSystemWordCompletion(tabID: tabID, caretLocation: caret, context: context) {
+                        if performSystemWordCompletion(tabID: tabID, caretLocation: caret, context: context,
+                                                       nextCharacter: nextCharacter) {
                             lastCompletionTriggerSignature = ""
                             return
                         }

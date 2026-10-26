@@ -382,6 +382,10 @@ enum SystemWordCompletion {
     static let debounceNanoseconds: UInt64 = 150_000_000
     static let minimumPrefixLength = 2
 
+    static func continuesWord(_ nextCharacter: String) -> Bool {
+        nextCharacter.first.map { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "'" } ?? false
+    }
+
     static func suffix(forWordPrefix prefix: String) -> String? {
         guard prefix.count >= minimumPrefixLength,
               prefix.unicodeScalars.allSatisfy({ CharacterSet.letters.contains($0) }) else { return nil }

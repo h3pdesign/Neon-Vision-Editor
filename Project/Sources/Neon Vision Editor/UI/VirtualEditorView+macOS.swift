@@ -3905,14 +3905,19 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let localCaret = absoluteCaret - viewportLineOriginStartUTF16
         guard localCaret > 0, localCaret <= viewportText.utf16.count else { return }
         let start = max(0, localCaret - 1_200)
-        let context = (viewportText as NSString).substring(with: NSRange(location: start, length: localCaret - start))
+        let nsViewportText = viewportText as NSString
+        let context = nsViewportText.substring(with: NSRange(location: start, length: localCaret - start))
+        let nextCharacter = localCaret < nsViewportText.length
+            ? nsViewportText.substring(with: nsViewportText.rangeOfComposedCharacterSequence(at: localCaret))
+            : ""
         NotificationCenter.default.post(
             name: .virtualEditorTextDidChange,
             object: nil,
             userInfo: [
                 EditorCommandUserInfo.documentID: documentID.uuidString,
                 EditorCommandUserInfo.completionCaretOffset: absoluteCaret,
-                EditorCommandUserInfo.completionContext: context
+                EditorCommandUserInfo.completionContext: context,
+                EditorCommandUserInfo.completionNextCharacter: nextCharacter
             ]
         )
     }

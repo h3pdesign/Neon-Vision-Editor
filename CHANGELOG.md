@@ -28,6 +28,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Folder Compare is no longer offered in the iPhone and iPad command palette, where its folder pickers could not open.
 - The Folder Compare clear-folder button has a VoiceOver label and tooltip.
 - The Mac toolbar symbols have more room between them.
+- The outline sidebar builds its table of contents on a background thread, so pausing while typing in larger code files no longer stalls the editor.
+- Quick Open loads recent files once when it opens instead of rereading them and resolving their bookmarks on every keystroke.
 
 ### Breaking changes
 
@@ -39,7 +41,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Maintenance
 
-- Development version 2.1.4 (build 1132).
+- Development version 2.1.4 (build 1133).
 
 ## [v2.1.3] - 2026-10-25
 

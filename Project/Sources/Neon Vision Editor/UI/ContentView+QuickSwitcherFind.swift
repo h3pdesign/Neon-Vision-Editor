@@ -11,6 +11,26 @@ struct FindInFilesReplacementPreview: Identifiable {
     var fileCount: Int { Set(matches.map { $0.fileURL.standardizedFileURL.path }).count }
 }
 
+/// Holds Quick Open's recent files between query keystrokes. Loading them
+/// reads preferences, checks each path on disk, and resolves bookmarks, so it
+/// only reruns when the recents change or the switcher is opened again.
+final class QuickSwitcherRecentFilesCache {
+    private var token: UUID?
+    private var items: [RecentFilesStore.Item] = []
+
+    func items(for token: UUID) -> [RecentFilesStore.Item] {
+        if self.token != token {
+            items = RecentFilesStore.items(limit: 12)
+            self.token = token
+        }
+        return items
+    }
+
+    func invalidate() {
+        token = nil
+    }
+}
+
 // MARK: - Quick Switcher, Compare, and Find in Files
 
 extension ContentView {
@@ -46,7 +66,7 @@ extension ContentView {
     }
 
     var quickSwitcherItems: [QuickFileSwitcherPanel.Item] {
-        _ = recentFilesRefreshToken
+        let recentFiles = quickSwitcherRecentFilesCache.items(for: recentFilesRefreshToken)
         var items: [QuickFileSwitcherPanel.Item] = []
         let fileURLSet = Set(viewModel.tabs.compactMap { $0.fileURL?.standardizedFileURL.path })
         let commandItems: [QuickFileSwitcherPanel.Item] = [
@@ -108,7 +128,7 @@ extension ContentView {
         // Tracks appended "file:" IDs so project-file deduplication stays O(1)
         // per entry instead of rescanning `items` for every indexed file.
         var fileItemIDs = Set<String>()
-        for recent in RecentFilesStore.items(limit: 12) {
+        for recent in recentFiles {
             let standardized = recent.url.standardizedFileURL.path
             if fileURLSet.contains(standardized) { continue }
             fileItemIDs.insert("file:\(standardized)")

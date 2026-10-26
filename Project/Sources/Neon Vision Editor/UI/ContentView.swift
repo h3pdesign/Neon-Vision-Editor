@@ -1071,6 +1071,7 @@ struct ContentView: View {
     @State var pendingProjectFolderRefreshWorkItem: DispatchWorkItem? = nil
     @State var quickSwitcherRecentItemIDs: [String] = []
     @State var recentFilesRefreshToken: UUID = UUID()
+    @State var quickSwitcherRecentFilesCache = QuickSwitcherRecentFilesCache()
     @State var sharedImportsRefreshToken: UUID = UUID()
     @State var currentSelectionSnapshotText: String = ""
     @State var currentSelectionSnapshotRange: NSRange? = nil
@@ -2956,6 +2957,7 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .showQuickSwitcherRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 quickSwitcherQuery = ""
+                quickSwitcherRecentFilesCache.invalidate()
                 showQuickSwitcher = true
             }
             .onReceive(NotificationCenter.default.publisher(for: .showGoToLineRequested)) { notif in

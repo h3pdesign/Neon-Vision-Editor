@@ -318,6 +318,7 @@ extension ContentView {
             showGoToSymbol = true
         case .quickOpen:
             quickSwitcherQuery = ""
+            quickSwitcherRecentFilesCache.invalidate()
             showQuickSwitcher = true
         case .toggleSidebar: toggleSidebarFromToolbar()
         case .toggleProjectSidebar: toggleProjectSidebarFromToolbar()

@@ -140,4 +140,36 @@ final class CompletionHeuristicsTests: XCTestCase {
         XCTAssertEqual(caret.line, 2)
         XCTAssertEqual(caret.column, 3)
     }
+
+#if os(macOS)
+    func testSystemWordCompletionPrefersTextReplacementPhrase() {
+        let suffix = SystemWordCompletion.bestSuffix(
+            forWordPrefix: "Neo",
+            replacementPhrases: ["Neon Vision Editor", "Neon", "On my way!"],
+            dictionaryWords: ["neon", "neophyte"]
+        )
+
+        XCTAssertEqual(suffix, "n")
+    }
+
+    func testSystemWordCompletionKeepsDictionaryRankingAndTypedCase() {
+        let suffix = SystemWordCompletion.bestSuffix(
+            forWordPrefix: "Hel",
+            replacementPhrases: ["On my way!"],
+            dictionaryWords: ["hello", "help"]
+        )
+
+        XCTAssertEqual(suffix, "lo")
+    }
+
+    func testSystemWordCompletionRejectsExactAndMultilineCandidates() {
+        XCTAssertNil(SystemWordCompletion.bestSuffix(
+            forWordPrefix: "word",
+            replacementPhrases: ["word\nwrap"],
+            dictionaryWords: ["word", "sword"]
+        ))
+        XCTAssertNil(SystemWordCompletion.suffix(forWordPrefix: "a"))
+        XCTAssertNil(SystemWordCompletion.suffix(forWordPrefix: "ab1"))
+    }
+#endif
 }

@@ -168,6 +168,9 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsCompletionEnabled") private var completionEnabled: Bool = false
     @AppStorage("SettingsCompletionFromDocument") private var completionFromDocument: Bool = false
     @AppStorage("SettingsCompletionFromSyntax") private var completionFromSyntax: Bool = false
+#if os(macOS)
+    @AppStorage(SystemWordCompletion.enabledDefaultsKey) private var systemWordCompletionEnabled: Bool = false
+#endif
     @AppStorage("SelectedAIModel") private var selectedAIModelRaw: String = AIModel.appleIntelligence.rawValue
     @AppStorage("OpenCodeGoModelID") private var openCodeGoModelID: String = OpenCodeGoConfig.defaultModel
 #if os(macOS)
@@ -3808,6 +3811,10 @@ struct NeonSettingsView: View {
                     Toggle("Include Words in Document", isOn: $completionFromDocument)
                     Toggle("Include Syntax Keywords", isOn: $completionFromSyntax)
                     Text("For lower latency on large files, keep only one completion source enabled.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                    Toggle("Suggest Words from System Dictionary", isOn: $systemWordCompletionEnabled)
+                    Text("In plain text and Markdown, suggests words from the macOS dictionary and your Text Replacements. Press Tab or Right Arrow to accept.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                 }

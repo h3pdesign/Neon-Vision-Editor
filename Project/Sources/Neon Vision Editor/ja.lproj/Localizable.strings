@@ -687,6 +687,8 @@
 "Font Size" = "フォントサイズ";
 "Font −" = "フォント −";
 "For lower latency on large files, keep only one completion source enabled." = "大ファイルでの低遅延のため、完了ソースを1つだけ有効にしてください。";
+"Suggest Words from System Dictionary" = "システム辞書から単語を候補表示";
+"In plain text and Markdown, suggests words from the macOS dictionary and your Text Replacements. Press Tab or Right Arrow to accept." = "プレーンテキストとMarkdownで、macOSの辞書とユーザ辞書（テキスト置換）から単語を候補表示します。Tabキーまたは右矢印キーで確定します。";
 "Format JSON" = "JSONフォーマット";
 "Format: cmd+<key>, optional shift/alt/ctrl. Example: cmd+shift+f" = "フォーマット: cmd+<key>, オプションでshift/alt/ctrl。例: cmd+shift+f";
 "Formatting" = "フォーマット";

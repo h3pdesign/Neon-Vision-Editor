@@ -103,12 +103,7 @@ extension ContentView {
             .init(id: "cmd:preset_large_files", title: "Performance: Large Files", subtitle: "Prioritize responsiveness for large documents", isPinned: false, canTogglePin: false),
             .init(id: "cmd:preset_battery", title: "Performance: Battery", subtitle: "Reduce background work for lower power use", isPinned: false, canTogglePin: false)
         ]
-#if os(macOS)
         items.append(contentsOf: commandItems)
-#else
-        // Folder Compare's folder pickers use NSOpenPanel, so the sheet would be a dead end here.
-        items.append(contentsOf: commandItems.filter { $0.id != "cmd:folder_compare" })
-#endif
 
         for tab in viewModel.tabs {
             let subtitle = tab.fileURL?.path ?? "Open tab"

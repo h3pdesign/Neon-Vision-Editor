@@ -830,6 +830,9 @@ struct ContentView: View {
     @AppStorage("SettingsCompletionEnabled") var isAutoCompletionEnabled: Bool = false
     @AppStorage("SettingsCompletionFromDocument") var completionFromDocument: Bool = false
     @AppStorage("SettingsCompletionFromSyntax") var completionFromSyntax: Bool = false
+#if os(macOS)
+    @AppStorage(SystemWordCompletion.enabledDefaultsKey) var isSystemWordCompletionEnabled: Bool = false
+#endif
     @AppStorage("SettingsReopenLastSession") var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") var openWithBlankDocument: Bool = true
     @AppStorage("SettingsShowRecentFilesOnEmptyDocuments") var showRecentFilesOnEmptyDocuments: Bool = true
@@ -3122,7 +3125,7 @@ struct ContentView: View {
 #if os(macOS)
         view
             .onReceive(NotificationCenter.default.publisher(for: .virtualEditorTextDidChange)) { notification in
-                guard isAutoCompletionEnabled,
+                guard isAutoCompletionEnabled || isSystemWordCompletionEnabled,
                       !viewModel.isBrainDumpMode,
                       !isApplyingCompletion,
                       let rawID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
@@ -3130,6 +3133,7 @@ struct ContentView: View {
                       tabID == viewModel.selectedTab?.id,
                       let caret = notification.userInfo?[EditorCommandUserInfo.completionCaretOffset] as? Int,
                       let context = notification.userInfo?[EditorCommandUserInfo.completionContext] as? String else { return }
+                let nextCharacter = notification.userInfo?[EditorCommandUserInfo.completionNextCharacter] as? String ?? ""
                 let signature = "\(tabID.uuidString)|\(caret)|\(context.suffix(32))"
                 guard signature != lastCompletionTriggerSignature else { return }
                 lastCompletionTriggerSignature = signature
@@ -3137,6 +3141,18 @@ struct ContentView: View {
                 completionTask?.cancel()
                 let debounce: TimeInterval = context.utf16.count >= 80_000 ? 0.9 : (context.utf16.count >= 25_000 ? 0.7 : 0.45)
                 completionDebounceTask = Task { @MainActor in
+                    if isSystemWordCompletionEnabled {
+                        // The local dictionary lookup is cheap, so it answers
+                        // well before the model debounce elapses.
+                        try? await Task.sleep(nanoseconds: SystemWordCompletion.debounceNanoseconds)
+                        guard !Task.isCancelled else { return }
+                        if performSystemWordCompletion(tabID: tabID, caretLocation: caret, context: context,
+                                                       nextCharacter: nextCharacter) {
+                            lastCompletionTriggerSignature = ""
+                            return
+                        }
+                        guard isAutoCompletionEnabled else { return }
+                    }
                     let delay = UInt64((debounce * 1_000_000_000).rounded())
                     try? await Task.sleep(nanoseconds: delay)
                     guard !Task.isCancelled else { return }
@@ -3716,11 +3732,15 @@ struct ContentView: View {
 
         if !didRunInitialWindowLayoutSetup {
             // Start with sidebars collapsed only once; otherwise toggles can get reset on layout transitions.
-            viewModel.showSidebar = false
+            // On macOS the window attachment can apply the startup restore
+            // before this task runs; collapsing then would discard it.
+            if !didApplyStartupBehavior {
+                viewModel.showSidebar = false
 #if !os(macOS)
-            // macOS document tabs share the project sidebar's visibility.
-            showProjectStructureSidebar = false
+                // macOS document tabs share the project sidebar's visibility.
+                showProjectStructureSidebar = false
 #endif
+            }
 #if os(macOS)
             isToolbarCollapsed = startsWithToolbarCollapsed
 #endif

@@ -687,6 +687,8 @@
 "Font Size" = "字号";
 "Font −" = "字体−";
 "For lower latency on large files, keep only one completion source enabled." = "为降低大文件延迟，请仅启用一个补全来源。";
+"Suggest Words from System Dictionary" = "从系统词典建议单词";
+"In plain text and Markdown, suggests words from the macOS dictionary and your Text Replacements. Press Tab or Right Arrow to accept." = "在纯文本和 Markdown 中，根据 macOS 词典和你的文本替换建议单词。按 Tab 或右箭头键接受。";
 "Format JSON" = "格式 JSON";
 "Format: cmd+<key>, optional shift/alt/ctrl. Example: cmd+shift+f" = "格式：cmd+<键>，可选 shift/alt/ctrl。示例：cmd+shift+f";
 "Formatting" = "格式化";

@@ -687,6 +687,8 @@
 "Font Size" = "Taille de police";
 "Font −" = "Police −";
 "For lower latency on large files, keep only one completion source enabled." = "Pour une latence inférieure sur de gros fichiers, gardez une seule source de complétion activée.";
+"Suggest Words from System Dictionary" = "Suggérer des mots du dictionnaire système";
+"In plain text and Markdown, suggests words from the macOS dictionary and your Text Replacements. Press Tab or Right Arrow to accept." = "En texte brut et en Markdown, suggère des mots du dictionnaire de macOS et de vos remplacements de texte. Appuyez sur Tab ou Flèche droite pour accepter.";
 "Format JSON" = "Formater JSON";
 "Format: cmd+<key>, optional shift/alt/ctrl. Example: cmd+shift+f" = "Formater : cmd+<clé>, déplacement/basculer/contrôle facultatif. Exemple : cmd+shift+f";
 "Formatting" = "Mise en forme";

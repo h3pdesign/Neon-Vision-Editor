@@ -4685,6 +4685,7 @@ enum EditorCommandUserInfo {
     nonisolated static let bracketToken = "bracketToken"
     nonisolated static let sourceTextView = "sourceTextView"
     nonisolated static let completionContext = "completionContext"
+    nonisolated static let completionNextCharacter = "completionNextCharacter"
     nonisolated static let completionCaretOffset = "completionCaretOffset"
     static let updaterCheckNow = "updaterCheckNow"
 }

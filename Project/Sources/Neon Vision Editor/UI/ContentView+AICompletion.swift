@@ -179,6 +179,32 @@ extension ContentView {
         }
     }
 
+    /// Shows an offline word completion for prose documents, drawn from the
+    /// user's Text Replacements and the macOS spelling dictionary. Returns
+    /// whether a suggestion was shown, so the model request can be skipped.
+    @MainActor
+    func performSystemWordCompletion(tabID: UUID, caretLocation: Int, context: String, nextCharacter: String) -> Bool {
+        // Editing inside a word must not suggest a suffix that duplicates
+        // the text after the caret.
+        guard !SystemWordCompletion.continuesWord(nextCharacter),
+              !effectiveLargeFileModeEnabled,
+              CompletionHeuristics.usesNaturalLanguageCompletion(for: currentLanguage),
+              viewModel.selectedTab?.id == tabID else { return false }
+        let source = context as NSString
+        let prefix = CompletionHeuristics.tokenContext(in: source, caretLocation: source.length).prefix
+        guard let suffix = SystemWordCompletion.suffix(forWordPrefix: prefix) else { return false }
+        NotificationCenter.default.post(
+            name: .showVirtualEditorInlineSuggestion,
+            object: nil,
+            userInfo: [
+                EditorCommandUserInfo.documentID: tabID.uuidString,
+                EditorCommandUserInfo.completionCaretOffset: caretLocation,
+                EditorCommandUserInfo.replacementText: suffix
+            ]
+        )
+        return true
+    }
+
     // MARK: - Completion Context and Cache
 
     func completionContextPrefix(in nsDoc: NSString, caretLocation: Int, maxUTF16: Int = 1200, maxLines: Int = 16) -> String {

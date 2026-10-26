@@ -15,6 +15,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Highlights
 
 - Fixes for iPhone Duo: Settings can be closed, the tab bar highlights only the active tab, and the editor status stays above the keyboard shortcut bar.
+- On the Mac, finish words from the macOS dictionary and your Text Replacements with Tab in plain text and Markdown.
 
 ### Fixes
 
@@ -30,6 +31,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - The Mac toolbar symbols have more room between them.
 - The outline sidebar builds its table of contents on a background thread, so pausing while typing in larger code files no longer stalls the editor.
 - Quick Open loads recent files once when it opens instead of rereading them and resolving their bookmarks on every keystroke.
+- The Mac table of contents sidebar reopens in the state you left it after quitting, in every restored document tab, instead of always starting closed (#876).
+- New Mac setting, Suggest Words from System Dictionary: while typing plain text or Markdown, the editor suggests words from the macOS dictionary and your Text Replacements. Press Tab or Right Arrow to accept (#877).
 
 ### Breaking changes
 
@@ -41,7 +44,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Maintenance
 
-- Development version 2.1.4 (build 1134).
+- Development version 2.1.4 (build 1135).
 
 ## [v2.1.3] - 2026-10-25
 

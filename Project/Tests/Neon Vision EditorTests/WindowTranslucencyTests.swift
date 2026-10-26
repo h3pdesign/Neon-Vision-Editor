@@ -132,6 +132,32 @@ final class WindowTranslucencyTests: XCTestCase {
         XCTAssertLessThanOrEqual(try XCTUnwrap(buttons.last).frame.maxX, stack.bounds.width - padding + 0.5)
     }
 
+    /// Neighbouring symbols keep a visible gap instead of crowding together.
+    func testNativeToolbarGroupSpacesNeighbouringSymbols() throws {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+            styleMask: [.titled, .closable], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        let configuration = MacDocumentToolbar(owner: MacDocumentTabPolicy.makeWindowModel(),
+            groups: [.init(id: "primary", items: ["open", "save", "find"])],
+            isVisible: true, label: { $0 }, control: { AnyView(Text($0)) }, overflow: { AnyView(Text($0)) },
+            nativeButton: { .init(symbol: "folder", title: $0, help: $0) })
+        let coordinator = MacDocumentToolbar.ToolbarCoordinator(configuration)
+        defer { coordinator.release(); window.close() }
+        coordinator.bind(window)
+        let group = try XCTUnwrap(window.toolbar?.items.compactMap { $0 as? NSToolbarItemGroup }.first)
+        let stack = try XCTUnwrap(group.view as? NSStackView)
+        stack.frame.size = stack.fittingSize
+        stack.layoutSubtreeIfNeeded()
+        let buttons = stack.arrangedSubviews
+        XCTAssertEqual(buttons.count, 3)
+        for button in buttons {
+            XCTAssertGreaterThanOrEqual(button.frame.width, MacDocumentToolbar.nativeButtonMinimumWidth - 0.5)
+        }
+        for (left, right) in zip(buttons, buttons.dropFirst()) {
+            XCTAssertGreaterThanOrEqual(right.frame.minX - left.frame.maxX, MacDocumentToolbar.itemSpacing - 0.5)
+        }
+    }
+
     func testNativeToolbarActionChangesRetainUnchangedGroupsAndHostingViews() throws {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
             styleMask: [.titled, .closable], backing: .buffered, defer: true)

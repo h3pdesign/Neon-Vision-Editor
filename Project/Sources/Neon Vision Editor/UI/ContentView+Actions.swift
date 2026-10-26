@@ -314,6 +314,7 @@ extension ContentView {
             showGoToLine = true
         case .goToSymbol:
             goToSymbolQuery = ""
+            goToSymbolItems = documentSymbols
             showGoToSymbol = true
         case .quickOpen:
             quickSwitcherQuery = ""

@@ -21,6 +21,13 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Settings on iPhone and iPad has a Close button in its top-right corner. On iPhone Duo's outer display the sheet could not be closed (#867).
 - With Translucent Window turned on, the iPhone and iPad tab bar no longer turns into one solid grey bar; only the active tab is highlighted (#868).
 - On iPhone, the editor status (line, column) sits above the keyboard shortcut bar again instead of covering it while the software keyboard is open.
+- Quick Open stays responsive in large projects: deduplicating indexed files and ranking by recency no longer slow down with every file in the index.
+- Go to Symbol filters the symbols captured when it opens instead of rescanning the whole document on every keystroke.
+- The status bar's line and word counts are computed off the main thread, so pausing while typing in larger documents no longer stalls the editor.
+- Markdown preview and log summary reuse compiled regular expressions instead of recompiling them per code block, table row, or line.
+- Folder Compare is no longer offered in the iPhone and iPad command palette, where its folder pickers could not open.
+- The Folder Compare clear-folder button has a VoiceOver label and tooltip.
+- The Mac toolbar symbols have more room between them.
 
 ### Breaking changes
 
@@ -32,7 +39,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Maintenance
 
-- Development version 2.1.4 (build 1131).
+- Development version 2.1.4 (build 1132).
 
 ## [v2.1.3] - 2026-10-25
 

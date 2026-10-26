@@ -146,6 +146,8 @@ struct FolderCompareView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Clear")
+                .help("Clear")
             }
         }
     }

@@ -53,8 +53,8 @@ enum StructuredLogParser {
         let lines = source.components(separatedBy: .newlines)
         let severityPattern = #"\b(FATAL|CRITICAL|FAULT|ERROR|ERR|WARN|WARNING|NOTICE|INFO|DEFAULT|DEBUG|TRACE|VERBOSE)\b"#
         let timestampPattern = #"^\s*(?:\[)?(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?|[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})(?:\])?"#
-        let severityRegex = try? NSRegularExpression(pattern: severityPattern, options: [.caseInsensitive])
-        let timestampRegex = try? NSRegularExpression(pattern: timestampPattern)
+        let severityRegex = cachedSyntaxRegex(pattern: severityPattern, options: [.caseInsensitive])
+        let timestampRegex = cachedSyntaxRegex(pattern: timestampPattern)
 
         var totalEntries = 0
         var entriesBySeverity: [StructuredLogSeverity: [StructuredLogEntry]] = [:]

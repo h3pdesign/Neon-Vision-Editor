@@ -27,6 +27,11 @@ struct MacDocumentToolbar: NSViewRepresentable {
     final class Toolbar: NSToolbar {}
     /// Space between a group's capsule edge and its first and last symbol.
     static let groupEdgePadding: CGFloat = 10
+    /// Space between neighbouring controls in a group.
+    static let itemSpacing: CGFloat = 8
+    /// Minimum width of a native symbol button; the extra width around a
+    /// 17-point symbol keeps neighbouring symbols visually separated.
+    static let nativeButtonMinimumWidth: CGFloat = 28
     let owner: EditorViewModel
     let groups: [Group]
     let isVisible: Bool
@@ -165,7 +170,7 @@ struct MacDocumentToolbar: NSViewRepresentable {
                 let stack = NSStackView()
                 stack.orientation = .horizontal
                 stack.alignment = .centerY
-                stack.spacing = 4
+                stack.spacing = MacDocumentToolbar.itemSpacing
                 stack.edgeInsets = NSEdgeInsets(top: 0, left: MacDocumentToolbar.groupEdgePadding,
                     bottom: 0, right: MacDocumentToolbar.groupEdgePadding)
                 group.view = stack
@@ -192,7 +197,7 @@ struct MacDocumentToolbar: NSViewRepresentable {
                     else {
                         button = NSButton()
                         NSLayoutConstraint.activate([
-                            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 24),
+                            button.widthAnchor.constraint(greaterThanOrEqualToConstant: MacDocumentToolbar.nativeButtonMinimumWidth),
                             button.heightAnchor.constraint(greaterThanOrEqualToConstant: 24)
                         ])
                     }
@@ -253,7 +258,7 @@ struct MacDocumentToolbar: NSViewRepresentable {
 
         private func groupControls(_ definition: Group) -> AnyView {
             let control = configuration.control
-            return AnyView(HStack(spacing: 4) {
+            return AnyView(HStack(spacing: MacDocumentToolbar.itemSpacing) {
                 ForEach(definition.items, id: \.self) { id in control(id) }
             }
             .padding(.horizontal, MacDocumentToolbar.groupEdgePadding)

@@ -8,14 +8,15 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Why Upgrade
 
-- Close Settings on iPhone and iPad with a Close button, including on iPhone Duo's outer display.
-- The iPhone and iPad tab bar highlights only the active tab again.
-- The iPhone editor status no longer covers the keyboard shortcut bar.
+- Finish words on the Mac from the macOS dictionary and your Text Replacements by pressing Tab.
+- Quick Open, Go to Symbol, and the outline no longer rescan your project or document on every keystroke.
+- Compare two folders on iPhone and iPad, and open a changed file's diff in the editor.
 
 ### Highlights
 
-- Fixes for iPhone Duo: Settings can be closed, the tab bar highlights only the active tab, and the editor status stays above the keyboard shortcut bar.
-- On the Mac, finish words from the macOS dictionary and your Text Replacements with Tab in plain text and Markdown.
+- The Mac table of contents sidebar reopens the way you left it after quitting.
+- Settings on iPhone and iPad has a Close button, including on iPhone Duo's outer display.
+- On iPhone, the editor status stays above the keyboard shortcut bar again.
 
 ### Fixes
 
@@ -44,7 +45,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Maintenance
 
-- Development version 2.1.4 (build 1135).
+- Development version 2.1.5 (build 1135).
 
 ## [v2.1.3] - 2026-10-25
 

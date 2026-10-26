@@ -59,7 +59,7 @@ struct NeonSettingsView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
-#if os(visionOS)
+#if os(iOS) || os(visionOS)
     @Environment(\.dismiss) private var dismiss
 #endif
     @AppStorage(SettingsPreferenceKey.editorFontName) private var editorFontName: String = ""
@@ -168,6 +168,9 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsCompletionEnabled") private var completionEnabled: Bool = false
     @AppStorage("SettingsCompletionFromDocument") private var completionFromDocument: Bool = false
     @AppStorage("SettingsCompletionFromSyntax") private var completionFromSyntax: Bool = false
+#if os(macOS)
+    @AppStorage(SystemWordCompletion.enabledDefaultsKey) private var systemWordCompletionEnabled: Bool = false
+#endif
     @AppStorage("SelectedAIModel") private var selectedAIModelRaw: String = AIModel.appleIntelligence.rawValue
     @AppStorage("OpenCodeGoModelID") private var openCodeGoModelID: String = OpenCodeGoConfig.defaultModel
 #if os(macOS)
@@ -1337,6 +1340,14 @@ struct NeonSettingsView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
 #if os(iOS)
+        // Swiping the sheet down is not the only way out: on iPhone Duo's
+        // outer display the settings tabs move into a vertical bar and the
+        // sheet offers no other visible way to close it.
+        .overlay(alignment: .topTrailing) {
+            settingsCloseButton
+                .padding(.top, UI.space12)
+                .padding(.trailing, UI.space12)
+        }
         .background(
             SettingsKeyboardShortcutBridge(
                 onMoveToPreviousTab: { moveSettingsTabSelection(by: -1) },
@@ -3800,6 +3811,10 @@ struct NeonSettingsView: View {
                     Toggle("Include Words in Document", isOn: $completionFromDocument)
                     Toggle("Include Syntax Keywords", isOn: $completionFromSyntax)
                     Text("For lower latency on large files, keep only one completion source enabled.")
+                        .font(Typography.footnote)
+                        .foregroundStyle(.secondary)
+                    Toggle("Suggest Words from System Dictionary", isOn: $systemWordCompletionEnabled)
+                    Text("In plain text and Markdown, suggests words from the macOS dictionary and your Text Replacements. Press Tab or Right Arrow to accept.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -6695,7 +6710,7 @@ struct NeonSettingsView: View {
 #endif
     }
 
-#if os(visionOS)
+#if os(iOS) || os(visionOS)
     private var settingsCloseButton: some View {
         Button {
             dismiss()
@@ -6704,7 +6719,12 @@ struct NeonSettingsView: View {
                 .font(.subheadline.weight(.semibold))
                 .frame(width: 30, height: 30)
         }
+#if os(visionOS)
         .buttonStyle(.borderedProminent)
+#else
+        .buttonStyle(.bordered)
+        .keyboardShortcut(.cancelAction)
+#endif
         .buttonBorderShape(.circle)
         .accessibilityLabel("Close Settings")
     }

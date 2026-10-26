@@ -4,7 +4,7 @@ import Foundation
 // MARK: - Sidebar Table of Contents
 
 struct SidebarView: View {
-    private enum TOCItemKind: String, Hashable {
+    nonisolated private enum TOCItemKind: String, Hashable, Sendable {
         case heading
         case type
         case function
@@ -14,7 +14,7 @@ struct SidebarView: View {
         case placeholder
     }
 
-    private struct TOCItem: Identifiable, Hashable {
+    nonisolated private struct TOCItem: Identifiable, Hashable, Sendable {
         let id: String
         let title: String
         let line: Int?
@@ -377,7 +377,11 @@ struct SidebarView: View {
         tocRefreshTask = Task(priority: .utility) {
             try? await Task.sleep(nanoseconds: 120_000_000)
             guard !Task.isCancelled else { return }
-            let generated = SidebarView.generateTableOfContents(content: snapshotContent, language: snapshotLanguage)
+            // This Task inherits the main actor; scan the document on a background thread.
+            let generated = await Task.detached(priority: .utility) {
+                SidebarView.generateTableOfContents(content: snapshotContent, language: snapshotLanguage)
+            }.value
+            guard !Task.isCancelled else { return }
             await MainActor.run {
                 tocItems = generated
             }
@@ -385,7 +389,7 @@ struct SidebarView: View {
     }
 
     // Naive line-scanning TOC: looks for language-specific declarations or headers.
-    private static func generateTableOfContents(content: String, language: String) -> [TOCItem] {
+    nonisolated private static func generateTableOfContents(content: String, language: String) -> [TOCItem] {
         guard !content.isEmpty else {
             return [placeholderTOCItem(id: "empty", title: "No content available")]
         }
@@ -490,7 +494,7 @@ struct SidebarView: View {
             : toc
     }
 
-    private static func swiftTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+    nonisolated private static func swiftTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
         let leadingSpaces = line.prefix { $0 == " " || $0 == "\t" }.reduce(0) { total, character in
             total + (character == "\t" ? 4 : 1)
         }
@@ -545,7 +549,7 @@ struct SidebarView: View {
         return nil
     }
 
-    private static func pythonTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+    nonisolated private static func pythonTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
         if trimmed.hasPrefix("# MARK:") || trimmed.hasPrefix("# region") {
@@ -558,7 +562,7 @@ struct SidebarView: View {
         return nil
     }
 
-    private static func scriptTOCItem(for line: String, index: Int, language: String, idPrefix: String) -> TOCItem? {
+    nonisolated private static func scriptTOCItem(for line: String, index: Int, language: String, idPrefix: String) -> TOCItem? {
         let leadingSpaces = leadingIndentSpaces(in: line)
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
@@ -579,7 +583,7 @@ struct SidebarView: View {
         return nil
     }
 
-    private static func jvmTOCItem(for line: String, index: Int, language: String, idPrefix: String) -> TOCItem? {
+    nonisolated private static func jvmTOCItem(for line: String, index: Int, language: String, idPrefix: String) -> TOCItem? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
         if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("// region") {
@@ -595,7 +599,7 @@ struct SidebarView: View {
         return nil
     }
 
-    private static func kotlinTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+    nonisolated private static func kotlinTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
         if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("// region") {
@@ -612,7 +616,7 @@ struct SidebarView: View {
         return nil
     }
 
-    private static func goTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+    nonisolated private static func goTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
         if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("// region") {
@@ -626,7 +630,7 @@ struct SidebarView: View {
         return nil
     }
 
-    private static func rubyTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+    nonisolated private static func rubyTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
         if trimmed.hasPrefix("# MARK:") || trimmed.hasPrefix("# region") {
@@ -638,7 +642,7 @@ struct SidebarView: View {
         return nil
     }
 
-    private static func rustTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+    nonisolated private static func rustTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
         if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("// region") {
@@ -654,7 +658,7 @@ struct SidebarView: View {
         return nil
     }
 
-    private static func phpTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+    nonisolated private static func phpTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
         if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("// region") {
@@ -670,7 +674,7 @@ struct SidebarView: View {
         return nil
     }
 
-    private static func objectiveCTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+    nonisolated private static func objectiveCTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
         if trimmed.hasPrefix("#pragma mark") || trimmed.hasPrefix("// MARK:") {
@@ -683,7 +687,7 @@ struct SidebarView: View {
         return nil
     }
 
-    private static func cFamilyTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+    nonisolated private static func cFamilyTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
         if trimmed.hasPrefix("#pragma mark") || trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("// region") {
@@ -699,7 +703,7 @@ struct SidebarView: View {
         return nil
     }
 
-    private static func csharpTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
+    nonisolated private static func csharpTOCItem(for line: String, index: Int, language: String) -> TOCItem? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
         if trimmed.hasPrefix("// MARK:") || trimmed.hasPrefix("#region") {
@@ -716,7 +720,7 @@ struct SidebarView: View {
         return nil
     }
 
-    private static func markupTOCItem(for line: String, previousLine: String?, index: Int, language: String) -> TOCItem? {
+    nonisolated private static func markupTOCItem(for line: String, previousLine: String?, index: Int, language: String) -> TOCItem? {
         let trimmed = line
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "\u{FEFF}"))
@@ -758,28 +762,28 @@ struct SidebarView: View {
         return nil
     }
 
-    static func tocItemsForTesting(content: String, language: String) -> [(line: Int?, title: String)] {
+    nonisolated static func tocItemsForTesting(content: String, language: String) -> [(line: Int?, title: String)] {
         generateTableOfContents(content: content, language: language).map { ($0.line, $0.title) }
     }
 
-    private static func leadingIndentSpaces(in line: String) -> Int {
+    nonisolated private static func leadingIndentSpaces(in line: String) -> Int {
         line.prefix { $0 == " " || $0 == "\t" }.reduce(0) { total, character in
             total + (character == "\t" ? 4 : 1)
         }
     }
 
-    private static func swiftLineLooksLikeProperty(_ trimmed: String) -> Bool {
+    nonisolated private static func swiftLineLooksLikeProperty(_ trimmed: String) -> Bool {
         trimmed.hasPrefix("var ") || trimmed.hasPrefix("let ")
     }
 
-    private static func placeholderTOCItem(id: String, title: String) -> TOCItem {
+    nonisolated private static func placeholderTOCItem(id: String, title: String) -> TOCItem {
         TOCItem(id: id, title: title, line: nil, level: 1, kind: .placeholder)
     }
 
-    private static let tocLargeContentUTF16Threshold = 400_000
-    private static let tocLargeLineCountThreshold = 10_000
+    nonisolated private static let tocLargeContentUTF16Threshold = 400_000
+    nonisolated private static let tocLargeLineCountThreshold = 10_000
 
-    private static func makeTOCItem(id: String, title: String, line: Int, language: String) -> TOCItem {
+    nonisolated private static func makeTOCItem(id: String, title: String, line: Int, language: String) -> TOCItem {
         let metadata = tocMetadata(for: title, language: language)
         return TOCItem(
             id: id,
@@ -790,7 +794,7 @@ struct SidebarView: View {
         )
     }
 
-    private static func tocMetadata(for rawTitle: String, language: String) -> (title: String, level: Int, kind: TOCItemKind) {
+    nonisolated private static func tocMetadata(for rawTitle: String, language: String) -> (title: String, level: Int, kind: TOCItemKind) {
         let title = rawTitle.trimmingCharacters(in: .whitespaces)
         if language == "markdown", title.hasPrefix("#") {
             let level = min(max(title.prefix { $0 == "#" }.count, 1), 6)

@@ -1,4 +1,7 @@
 import SwiftUI
+#if !os(macOS)
+import UniformTypeIdentifiers
+#endif
 
 // MARK: - Folder Compare Models
 
@@ -46,6 +49,14 @@ struct FolderCompareView: View {
     @State private var selectedFilter: FolderCompareFilter = .all
     @State private var selectedFile: FolderCompareFile?
 
+#if !os(macOS)
+    // The folder picker returns security-scoped URLs. Access is held while the
+    // sheet is open so scanning and per-file diffs can read the folders' files.
+    @State private var pendingFolderSelection: Binding<URL?>?
+    @State private var isFolderImporterPresented = false
+    @State private var accessedFolderURLs: [URL] = []
+#endif
+
     private let pageSize = 50
     @State private var currentPage = 0
 
@@ -84,6 +95,18 @@ struct FolderCompareView: View {
 #else
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .fileImporter(isPresented: $isFolderImporterPresented, allowedContentTypes: [.folder]) { result in
+            defer { pendingFolderSelection = nil }
+            guard case .success(let selected) = result else { return }
+            if selected.startAccessingSecurityScopedResource() {
+                accessedFolderURLs.append(selected)
+            }
+            pendingFolderSelection?.wrappedValue = selected
+        }
+        .onDisappear {
+            accessedFolderURLs.forEach { $0.stopAccessingSecurityScopedResource() }
+            accessedFolderURLs.removeAll()
+        }
 #endif
     }
 
@@ -146,6 +169,8 @@ struct FolderCompareView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Clear")
+                .help("Clear")
             }
         }
     }
@@ -162,6 +187,9 @@ struct FolderCompareView: View {
                 url.wrappedValue = selected
             }
         }
+        #else
+        pendingFolderSelection = url
+        isFolderImporterPresented = true
         #endif
     }
 
@@ -402,6 +430,11 @@ struct FolderCompareView: View {
             }
         }
         .buttonStyle(.plain)
+#if !os(macOS)
+        // Files opened from here would lose access once the folder scope is
+        // released, so only diffs are offered on iPhone and iPad.
+        .disabled(!isModified)
+#endif
     }
 
     // MARK: - File Actions
@@ -416,6 +449,10 @@ struct FolderCompareView: View {
             )
             await MainActor.run {
                 onShowDiff(presentation)
+#if !os(macOS)
+                // The diff opens in the editor area, which this full-height sheet covers.
+                dismiss()
+#endif
             }
         }
     }

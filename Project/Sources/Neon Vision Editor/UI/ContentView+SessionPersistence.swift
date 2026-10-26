@@ -134,6 +134,11 @@ extension ContentView {
             applyDefaultMarkdownPreviewOpenMode()
             if !viewModel.isSafeModeRecoveryWindow {
                 restoreLastSessionViewContextIfAvailable(restoresPresentation: false)
+                // Native tabs are separate windows. Like the shared project
+                // sidebar, each one carries the last table-of-contents state;
+                // otherwise every restored document reopens it collapsed and
+                // persists that collapsed state over the user's choice.
+                restoreLastSessionEditorSidebarVisibility()
                 if let folder = markdownProjectPreviewSession.projectRoot ?? restoredLastSessionProjectFolderURL() {
                     setProjectFolder(folder, synchronizeNativeTabs: false)
                 }
@@ -490,9 +495,7 @@ extension ContentView {
     func restoreLastSessionViewContextIfAvailable(restoresPresentation: Bool = true) {
         let defaults = sessionPreferences
         if restoresPresentation {
-            if let visible = defaults.object(forKey: lastSessionShowSidebarKey) as? Bool {
-                viewModel.showSidebar = visible
-            }
+            restoreLastSessionEditorSidebarVisibility()
 #if !os(macOS)
             if let visible = defaults.object(forKey: lastSessionShowProjectSidebarKey) as? Bool {
                 showProjectStructureSidebar = visible
@@ -506,6 +509,12 @@ extension ContentView {
             }
         }
         sessionCaretByFileURL = defaults.object(forKey: lastSessionCaretByFileURLKey) as? [String: Int] ?? [:]
+    }
+
+    func restoreLastSessionEditorSidebarVisibility() {
+        if let visible = sessionPreferences.object(forKey: lastSessionShowSidebarKey) as? Bool {
+            viewModel.showSidebar = visible
+        }
     }
 
     func persistLastSessionProjectFolderReference(_ folderURL: URL?) {

@@ -237,6 +237,19 @@ enum IOSVerticalToolbarPolicy {
 }
 
 enum IOSFloatingStatusPolicy {
+    /// On iPhone the keyboard shortcut bar is drawn inside the editor, above
+    /// the keyboard, so the keyboard safe area does not include it. Lift the
+    /// bottom status by the bar's height while it is shown. On iPad the bar is
+    /// the keyboard's input accessory and is already part of that safe area.
+    nonisolated static func bottomInset(
+        isPhone: Bool,
+        keyboardVisible: Bool,
+        accessoryBarShown: Bool,
+        accessoryBarHeight: CGFloat
+    ) -> CGFloat {
+        isPhone && keyboardVisible && accessoryBarShown ? accessoryBarHeight : 0
+    }
+
     nonisolated static func isVisible(
         brainDumpLayoutEnabled: Bool,
         shouldPinToTop: Bool,
@@ -817,6 +830,9 @@ struct ContentView: View {
     @AppStorage("SettingsCompletionEnabled") var isAutoCompletionEnabled: Bool = false
     @AppStorage("SettingsCompletionFromDocument") var completionFromDocument: Bool = false
     @AppStorage("SettingsCompletionFromSyntax") var completionFromSyntax: Bool = false
+#if os(macOS)
+    @AppStorage(SystemWordCompletion.enabledDefaultsKey) var isSystemWordCompletionEnabled: Bool = false
+#endif
     @AppStorage("SettingsReopenLastSession") var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") var openWithBlankDocument: Bool = true
     @AppStorage("SettingsShowRecentFilesOnEmptyDocuments") var showRecentFilesOnEmptyDocuments: Bool = true
@@ -1002,6 +1018,9 @@ struct ContentView: View {
     @State var goToLineInput: String = ""
     @State var showGoToSymbol: Bool = false
     @State var goToSymbolQuery: String = ""
+    // Symbols are captured when Go to Symbol opens so each query keystroke
+    // filters this list instead of rescanning the whole document.
+    @State var goToSymbolItems: [DocumentSymbolItem] = []
     @State var quickSwitcherProjectFileURLs: [URL] = []
     @State var quickSwitcherProjectFileURLRefreshTask: Task<Void, Never>? = nil
     @State var projectFileIndexSnapshot: ProjectFileIndex.Snapshot = .empty
@@ -1055,6 +1074,7 @@ struct ContentView: View {
     @State var pendingProjectFolderRefreshWorkItem: DispatchWorkItem? = nil
     @State var quickSwitcherRecentItemIDs: [String] = []
     @State var recentFilesRefreshToken: UUID = UUID()
+    @State var quickSwitcherRecentFilesCache = QuickSwitcherRecentFilesCache()
     @State var sharedImportsRefreshToken: UUID = UUID()
     @State var currentSelectionSnapshotText: String = ""
     @State var currentSelectionSnapshotRange: NSRange? = nil
@@ -2940,6 +2960,7 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .showQuickSwitcherRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 quickSwitcherQuery = ""
+                quickSwitcherRecentFilesCache.invalidate()
                 showQuickSwitcher = true
             }
             .onReceive(NotificationCenter.default.publisher(for: .showGoToLineRequested)) { notif in
@@ -2950,6 +2971,7 @@ struct ContentView: View {
             .onReceive(NotificationCenter.default.publisher(for: .showGoToSymbolRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
                 goToSymbolQuery = ""
+                goToSymbolItems = documentSymbols
                 showGoToSymbol = true
             }
             .onReceive(NotificationCenter.default.publisher(for: .compareCurrentTabAgainstDiskRequested)) { notif in
@@ -3103,7 +3125,7 @@ struct ContentView: View {
 #if os(macOS)
         view
             .onReceive(NotificationCenter.default.publisher(for: .virtualEditorTextDidChange)) { notification in
-                guard isAutoCompletionEnabled,
+                guard isAutoCompletionEnabled || isSystemWordCompletionEnabled,
                       !viewModel.isBrainDumpMode,
                       !isApplyingCompletion,
                       let rawID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
@@ -3111,6 +3133,7 @@ struct ContentView: View {
                       tabID == viewModel.selectedTab?.id,
                       let caret = notification.userInfo?[EditorCommandUserInfo.completionCaretOffset] as? Int,
                       let context = notification.userInfo?[EditorCommandUserInfo.completionContext] as? String else { return }
+                let nextCharacter = notification.userInfo?[EditorCommandUserInfo.completionNextCharacter] as? String ?? ""
                 let signature = "\(tabID.uuidString)|\(caret)|\(context.suffix(32))"
                 guard signature != lastCompletionTriggerSignature else { return }
                 lastCompletionTriggerSignature = signature
@@ -3118,6 +3141,18 @@ struct ContentView: View {
                 completionTask?.cancel()
                 let debounce: TimeInterval = context.utf16.count >= 80_000 ? 0.9 : (context.utf16.count >= 25_000 ? 0.7 : 0.45)
                 completionDebounceTask = Task { @MainActor in
+                    if isSystemWordCompletionEnabled {
+                        // The local dictionary lookup is cheap, so it answers
+                        // well before the model debounce elapses.
+                        try? await Task.sleep(nanoseconds: SystemWordCompletion.debounceNanoseconds)
+                        guard !Task.isCancelled else { return }
+                        if performSystemWordCompletion(tabID: tabID, caretLocation: caret, context: context,
+                                                       nextCharacter: nextCharacter) {
+                            lastCompletionTriggerSignature = ""
+                            return
+                        }
+                        guard isAutoCompletionEnabled else { return }
+                    }
                     let delay = UInt64((debounce * 1_000_000_000).rounded())
                     try? await Task.sleep(nanoseconds: delay)
                     guard !Task.isCancelled else { return }
@@ -3697,11 +3732,15 @@ struct ContentView: View {
 
         if !didRunInitialWindowLayoutSetup {
             // Start with sidebars collapsed only once; otherwise toggles can get reset on layout transitions.
-            viewModel.showSidebar = false
+            // On macOS the window attachment can apply the startup restore
+            // before this task runs; collapsing then would discard it.
+            if !didApplyStartupBehavior {
+                viewModel.showSidebar = false
 #if !os(macOS)
-            // macOS document tabs share the project sidebar's visibility.
-            showProjectStructureSidebar = false
+                // macOS document tabs share the project sidebar's visibility.
+                showProjectStructureSidebar = false
 #endif
+            }
 #if os(macOS)
             isToolbarCollapsed = startsWithToolbarCollapsed
 #endif
@@ -6399,7 +6438,18 @@ struct ContentView: View {
                     phoneToolbarMinimized: usesIOSBottomToolbar && isPhoneBottomToolbarMinimized
                 ),
                 centered: usesIOSBottomToolbar,
-                bottomInset: 0,
+                bottomInset: {
+#if os(iOS)
+                    IOSFloatingStatusPolicy.bottomInset(
+                        isPhone: UIDevice.current.userInterfaceIdiom == .phone,
+                        keyboardVisible: isPhoneSoftwareKeyboardVisible,
+                        accessoryBarShown: showKeyboardAccessoryBarIOS,
+                        accessoryBarHeight: EditorInputTextView.keyboardToolbarHeight
+                    )
+#else
+                    0
+#endif
+                }(),
                 status: AnyView(floatingStatusPill),
                 bottomToolbar: { width in mobileBottomToolbarOverlay(availableWidth: width) },
                 verticalToolbar: { length in mobileVerticalToolbarOverlay(availableLength: length) }

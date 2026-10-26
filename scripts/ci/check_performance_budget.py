@@ -94,7 +94,7 @@ def main() -> None:
     for required_trend_export in (
         "VirtualEditorPerformanceTests",
         "VirtualEditorPerformance.xcresult",
-        "actions/upload-artifact@v4",
+        "actions/upload-artifact@v6",
     ):
         if required_trend_export not in runtime_workflow:
             fail(f"Swift CI does not export {required_trend_export}")

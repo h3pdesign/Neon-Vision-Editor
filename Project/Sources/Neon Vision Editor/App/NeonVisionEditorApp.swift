@@ -603,6 +603,7 @@ struct NeonVisionEditorApp: App {
             "SettingsCompletionEnabled": false,
             "SettingsCompletionFromDocument": false,
             "SettingsCompletionFromSyntax": false,
+            "SettingsSystemWordCompletionEnabled": false,
             "SettingsReopenLastSession": true,
             "SettingsOpenWithBlankDocument": false,
             "SettingsShareImportsAutoOpen": true,

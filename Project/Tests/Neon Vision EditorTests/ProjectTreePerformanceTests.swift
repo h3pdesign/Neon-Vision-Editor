@@ -137,6 +137,17 @@ final class ProjectTreePerformanceTests: XCTestCase {
         XCTAssertTrue(items[0].title.contains("TOC disabled"))
     }
 
+    /// The sidebar builds its table of contents off the main actor, so generation must be nonisolated.
+    func testTOCGenerationRunsOffMainActor() async {
+        let content = "struct Editor {\n    func open() {}\n}\n"
+        let items = await Task.detached {
+            SidebarView.tocItemsForTesting(content: content, language: "swift")
+        }.value
+
+        XCTAssertEqual(items.map(\.line), [1, 2])
+        XCTAssertEqual(items.map(\.title), ["struct Editor {", "func open() {}"])
+    }
+
     func testProjectFileIndexSkipsGeneratedBuildDirectoryByDefault() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("project-index-\(UUID().uuidString)", isDirectory: true)

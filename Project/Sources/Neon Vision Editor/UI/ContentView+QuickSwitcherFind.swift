@@ -11,6 +11,26 @@ struct FindInFilesReplacementPreview: Identifiable {
     var fileCount: Int { Set(matches.map { $0.fileURL.standardizedFileURL.path }).count }
 }
 
+/// Holds Quick Open's recent files between query keystrokes. Loading them
+/// reads preferences, checks each path on disk, and resolves bookmarks, so it
+/// only reruns when the recents change or the switcher is opened again.
+final class QuickSwitcherRecentFilesCache {
+    private var token: UUID?
+    private var items: [RecentFilesStore.Item] = []
+
+    func items(for token: UUID) -> [RecentFilesStore.Item] {
+        if self.token != token {
+            items = RecentFilesStore.items(limit: 12)
+            self.token = token
+        }
+        return items
+    }
+
+    func invalidate() {
+        token = nil
+    }
+}
+
 // MARK: - Quick Switcher, Compare, and Find in Files
 
 extension ContentView {
@@ -38,15 +58,15 @@ extension ContentView {
 
     var filteredDocumentSymbols: [DocumentSymbolItem] {
         let query = goToSymbolQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return documentSymbols }
-        return documentSymbols.filter { item in
+        guard !query.isEmpty else { return goToSymbolItems }
+        return goToSymbolItems.filter { item in
             item.title.localizedCaseInsensitiveContains(query)
                 || (item.line.map { String($0).contains(query) } ?? false)
         }
     }
 
     var quickSwitcherItems: [QuickFileSwitcherPanel.Item] {
-        _ = recentFilesRefreshToken
+        let recentFiles = quickSwitcherRecentFilesCache.items(for: recentFilesRefreshToken)
         var items: [QuickFileSwitcherPanel.Item] = []
         let fileURLSet = Set(viewModel.tabs.compactMap { $0.fileURL?.standardizedFileURL.path })
         let commandItems: [QuickFileSwitcherPanel.Item] = [
@@ -100,9 +120,13 @@ extension ContentView {
             )
         }
 
-        for recent in RecentFilesStore.items(limit: 12) {
+        // Tracks appended "file:" IDs so project-file deduplication stays O(1)
+        // per entry instead of rescanning `items` for every indexed file.
+        var fileItemIDs = Set<String>()
+        for recent in recentFiles {
             let standardized = recent.url.standardizedFileURL.path
             if fileURLSet.contains(standardized) { continue }
+            fileItemIDs.insert("file:\(standardized)")
             items.append(
                 QuickFileSwitcherPanel.Item(
                     id: "file:\(standardized)",
@@ -118,7 +142,7 @@ extension ContentView {
             for url in quickSwitcherProjectFileURLs {
                 let standardized = url.standardizedFileURL.path
                 if fileURLSet.contains(standardized) { continue }
-                if items.contains(where: { $0.id == "file:\(standardized)" }) { continue }
+                guard fileItemIDs.insert("file:\(standardized)").inserted else { continue }
                 items.append(
                     QuickFileSwitcherPanel.Item(
                         id: "file:\(standardized)",
@@ -134,7 +158,7 @@ extension ContentView {
                 let standardized = entry.standardizedPath
                 let subtitle = entry.relativePath == entry.displayName ? standardized : entry.relativePath
                 if fileURLSet.contains(standardized) { continue }
-                if items.contains(where: { $0.id == "file:\(standardized)" }) { continue }
+                guard fileItemIDs.insert("file:\(standardized)").inserted else { continue }
                 items.append(
                     QuickFileSwitcherPanel.Item(
                         id: "file:\(standardized)",
@@ -147,6 +171,11 @@ extension ContentView {
             }
         }
 
+        // Resolve recency once instead of scanning the recents list per sort comparison.
+        let recencyScores = Dictionary(
+            quickSwitcherRecentItemIDs.enumerated().map { ($0.element, max(0, 120 - ($0.offset * 5))) },
+            uniquingKeysWith: { first, _ in first }
+        )
         let query = quickSwitcherQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         if query.isEmpty {
             return Array(
@@ -157,7 +186,7 @@ extension ContentView {
                         if leftPinned != rightPinned {
                             return leftPinned > rightPinned
                         }
-                        return quickSwitcherRecencyScore(for: $0.id) > quickSwitcherRecencyScore(for: $1.id)
+                        return recencyScores[$0.id, default: 0] > recencyScores[$1.id, default: 0]
                     }
                     .prefix(300)
             )
@@ -166,7 +195,7 @@ extension ContentView {
         let ranked = items.compactMap { item -> (QuickFileSwitcherPanel.Item, Int)? in
             guard let score = quickSwitcherMatchScore(for: item, query: query) else { return nil }
             let pinBoost = item.isPinned ? 400 : 0
-            return (item, score + quickSwitcherRecencyScore(for: item.id) + pinBoost)
+            return (item, score + recencyScores[item.id, default: 0] + pinBoost)
         }
         .sorted {
             if $0.1 == $1.1 {
@@ -296,6 +325,7 @@ extension ContentView {
             showGoToLine = true
         case "cmd:goto_symbol":
             goToSymbolQuery = ""
+            goToSymbolItems = documentSymbols
             showGoToSymbol = true
         case "cmd:compare_disk":
             compareCurrentTabAgainstDisk()
@@ -461,11 +491,6 @@ extension ContentView {
             quickSwitcherRecentItemIDs = Array(quickSwitcherRecentItemIDs.prefix(30))
         }
         UserDefaults.standard.set(quickSwitcherRecentItemIDs, forKey: quickSwitcherRecentsDefaultsKey)
-    }
-
-    func quickSwitcherRecencyScore(for itemID: String) -> Int {
-        guard let index = quickSwitcherRecentItemIDs.firstIndex(of: itemID) else { return 0 }
-        return max(0, 120 - (index * 5))
     }
 
     func quickSwitcherPathComponents(for item: QuickFileSwitcherPanel.Item) -> [String] {
@@ -1051,8 +1076,11 @@ extension ContentView {
         wordCountTask = Task(priority: .utility) {
             try? await Task.sleep(nanoseconds: 80_000_000)
             guard !Task.isCancelled else { return }
-            let lineCount = Self.lineCount(for: snapshot)
-            let wordCount = shouldSkipWordCount ? 0 : viewModel.wordCount(for: snapshot)
+            // Count off the main actor; documents here can reach 280K UTF-16 units.
+            let (lineCount, wordCount) = await Task.detached(priority: .utility) {
+                (Self.lineCount(for: snapshot), shouldSkipWordCount ? 0 : EditorViewModel.wordCount(for: snapshot))
+            }.value
+            guard !Task.isCancelled else { return }
             await MainActor.run {
                 guard viewModel.selectedTabID == expectedTabID else { return }
                 if let expectedContentRevision,

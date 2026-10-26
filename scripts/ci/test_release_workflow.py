@@ -77,6 +77,10 @@ class ReleaseWorkflowTests(unittest.TestCase):
             ("Scroll the editor from the Mac minimap with the mouse wheel or trackpad.", "Minimap Scrolling"),
             ("The Mac Markdown formatting bar is back in the editor's top-right corner.", "Markdown Formatting"),
             ("Select long, unwrapped lines on the Mac by dragging.", "Text Selection"),
+            ("Close Settings on iPhone and iPad with a Close button.", "Closing Settings"),
+            ("Fixes for iPhone Duo: Settings can be closed and the tab bar highlights only the active tab.", "iPhone Duo"),
+            ("The iPhone and iPad tab bar highlights only the active tab again.", "Tab Bar"),
+            ("The iPhone editor status no longer covers the keyboard shortcut bar.", "Keyboard Shortcut Bar"),
         ]
         for description, expected in descriptions:
             with self.subTest(description=description):

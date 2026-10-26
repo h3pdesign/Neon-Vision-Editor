@@ -1,4 +1,7 @@
 import Foundation
+#if os(macOS)
+import AppKit
+#endif
 
 enum CompletionHeuristics {
     private static let identifierCharacters = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_"))
@@ -369,3 +372,52 @@ enum CompletionHeuristics {
         return suggestion
     }
 }
+
+#if os(macOS)
+/// Offline prose completion from the user's Text Replacements and the macOS
+/// spelling dictionary. Suggestions use the editor's inline completion, so
+/// Tab or Right Arrow accepts them.
+enum SystemWordCompletion {
+    static let enabledDefaultsKey = "SettingsSystemWordCompletionEnabled"
+    static let debounceNanoseconds: UInt64 = 150_000_000
+    static let minimumPrefixLength = 2
+
+    static func continuesWord(_ nextCharacter: String) -> Bool {
+        nextCharacter.first.map { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "'" } ?? false
+    }
+
+    static func suffix(forWordPrefix prefix: String) -> String? {
+        guard prefix.count >= minimumPrefixLength,
+              prefix.unicodeScalars.allSatisfy({ CharacterSet.letters.contains($0) }) else { return nil }
+        let checker = NSSpellChecker.shared
+        let words = checker.completions(
+            forPartialWordRange: NSRange(location: 0, length: (prefix as NSString).length),
+            in: prefix,
+            language: nil,
+            inSpellDocumentWithTag: 0
+        ) ?? []
+        return bestSuffix(
+            forWordPrefix: prefix,
+            replacementPhrases: Array(checker.userReplacementsDictionary.values),
+            dictionaryWords: words
+        )
+    }
+
+    /// Text Replacement phrases win over dictionary words because the user
+    /// defined them. The shortest phrase is preferred; dictionary words keep
+    /// the spell checker's ranking.
+    static func bestSuffix(forWordPrefix prefix: String, replacementPhrases: [String], dictionaryWords: [String]) -> String? {
+        let phrase = replacementPhrases
+            .compactMap { completionSuffix(of: $0, extending: prefix) }
+            .min { lhs, rhs in lhs.count != rhs.count ? lhs.count < rhs.count : lhs < rhs }
+        return phrase ?? dictionaryWords.lazy.compactMap { completionSuffix(of: $0, extending: prefix) }.first
+    }
+
+    private static func completionSuffix(of candidate: String, extending prefix: String) -> String? {
+        guard !candidate.contains(where: \.isNewline),
+              let match = candidate.range(of: prefix, options: [.anchored, .caseInsensitive]),
+              match.upperBound < candidate.endIndex else { return nil }
+        return String(candidate[match.upperBound...])
+    }
+}
+#endif

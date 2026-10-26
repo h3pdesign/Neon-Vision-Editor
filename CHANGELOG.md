@@ -6,6 +6,49 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.1.5] - 2026-10-26
+
+### Why Upgrade
+
+- Finish words on the Mac from the macOS dictionary and your Text Replacements by pressing Tab.
+- Quick Open, Go to Symbol, and the outline no longer rescan your project or document on every keystroke.
+- Compare two folders on iPhone and iPad, and open a changed file's diff in the editor.
+
+### Highlights
+
+- The Mac table of contents sidebar reopens the way you left it after quitting.
+- Settings on iPhone and iPad has a Close button, including on iPhone Duo's outer display.
+- On iPhone, the editor status stays above the keyboard shortcut bar again.
+
+### Fixes
+
+- Settings on iPhone and iPad has a Close button in its top-right corner. On iPhone Duo's outer display the sheet could not be closed (#867).
+- With Translucent Window turned on, the iPhone and iPad tab bar no longer turns into one solid grey bar; only the active tab is highlighted (#868).
+- On iPhone, the editor status (line, column) sits above the keyboard shortcut bar again instead of covering it while the software keyboard is open.
+- Quick Open stays responsive in large projects: deduplicating indexed files and ranking by recency no longer slow down with every file in the index.
+- Go to Symbol filters the symbols captured when it opens instead of rescanning the whole document on every keystroke.
+- The status bar's line and word counts are computed off the main thread, so pausing while typing in larger documents no longer stalls the editor.
+- Markdown preview and log summary reuse compiled regular expressions instead of recompiling them per code block, table row, or line.
+- Folder Compare works on iPhone and iPad: Browse opens the Files folder picker, and tapping a changed file shows its diff in the editor.
+- The Folder Compare clear-folder button has a VoiceOver label and tooltip.
+- The Mac toolbar symbols have more room between them.
+- The outline sidebar builds its table of contents on a background thread, so pausing while typing in larger code files no longer stalls the editor.
+- Quick Open loads recent files once when it opens instead of rereading them and resolving their bookmarks on every keystroke.
+- The Mac table of contents sidebar reopens in the state you left it after quitting, in every restored document tab, instead of always starting closed (#876).
+- New Mac setting, Suggest Words from System Dictionary: while typing plain text or Markdown, the editor suggests words from the macOS dictionary and your Text Replacements. Press Tab or Right Arrow to accept (#877).
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, sessions, and preferences are preserved.
+
+### Maintenance
+
+- Development version 2.1.5 (build 1135).
+
 ## [v2.1.3] - 2026-10-25
 
 ### Why Upgrade

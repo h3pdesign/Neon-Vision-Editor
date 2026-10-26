@@ -314,9 +314,11 @@ extension ContentView {
             showGoToLine = true
         case .goToSymbol:
             goToSymbolQuery = ""
+            goToSymbolItems = documentSymbols
             showGoToSymbol = true
         case .quickOpen:
             quickSwitcherQuery = ""
+            quickSwitcherRecentFilesCache.invalidate()
             showQuickSwitcher = true
         case .toggleSidebar: toggleSidebarFromToolbar()
         case .toggleProjectSidebar: toggleProjectSidebarFromToolbar()

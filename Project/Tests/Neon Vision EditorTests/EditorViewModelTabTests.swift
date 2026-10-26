@@ -4,6 +4,26 @@ import XCTest
 
 @MainActor
 final class EditorViewModelTabTests: XCTestCase {
+    func testWordCountMatchesWhitespaceSplitSemantics() {
+        let samples = [
+            "",
+            "   ",
+            "one",
+            "  leading and trailing  ",
+            "tabs\tand\nnew lines\r\nmixed",
+            "non\u{00A0}breaking\u{2003}em space",
+            "emoji 👩‍💻 and café combining e\u{0301}",
+            "line\n\n\nbreaks"
+        ]
+        for sample in samples {
+            XCTAssertEqual(
+                EditorViewModel.wordCount(for: sample),
+                sample.split(whereSeparator: \.isWhitespace).count,
+                "Word count mismatch for \(sample.debugDescription)"
+            )
+        }
+    }
+
     func testTabCrashDetectionFollowsContentMutationAndRevisionReset() {
         let tab = TabData(name: "notes.txt", content: "plain", language: "plain", fileURL: nil)
         XCTAssertFalse(tab.looksLikeAppleCrashReport)

@@ -118,7 +118,30 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v2.1.3</h2><span class="date">25 October 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v2.1.5</h2><span class="date">26 October 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>The Mac table of contents sidebar reopens the way you left it after quitting.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Settings on iPhone and iPad has a Close button, including on iPhone Duo&#x27;s outer display.</p></div>
+          <div class="item"><span class="badge new">New</span><p>On iPhone, the editor status stays above the keyboard shortcut bar again.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Settings on iPhone and iPad has a Close button in its top-right corner. On iPhone Duo&#x27;s outer display the sheet could not be closed (#867).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>With Translucent Window turned on, the iPhone and iPad tab bar no longer turns into one solid grey bar; only the active tab is highlighted (#868).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>On iPhone, the editor status (line, column) sits above the keyboard shortcut bar again instead of covering it while the software keyboard is open.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Quick Open stays responsive in large projects: deduplicating indexed files and ranking by recency no longer slow down with every file in the index.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Go to Symbol filters the symbols captured when it opens instead of rescanning the whole document on every keystroke.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>The status bar&#x27;s line and word counts are computed off the main thread, so pausing while typing in larger documents no longer stalls the editor.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Markdown preview and log summary reuse compiled regular expressions instead of recompiling them per code block, table row, or line.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Folder Compare works on iPhone and iPad: Browse opens the Files folder picker, and tapping a changed file shows its diff in the editor.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>The Folder Compare clear-folder button has a VoiceOver label and tooltip.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>The Mac toolbar symbols have more room between them.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>The outline sidebar builds its table of contents on a background thread, so pausing while typing in larger code files no longer stalls the editor.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Quick Open loads recent files once when it opens instead of rereading them and resolving their bookmarks on every keystroke.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>The Mac table of contents sidebar reopens in the state you left it after quitting, in every restored document tab, instead of always starting closed (#876).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>New Mac setting, Suggest Words from System Dictionary: while typing plain text or Markdown, the editor suggests words from the macOS dictionary and your Text Replacements. Press Tab or Right Arrow to accept (#877).</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v2.1.3</h2><span class="date">25 October 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Scrolling with the mouse wheel or trackpad while the pointer is over the Mac minimap scrolls the editor.</p></div>
           <div class="item"><span class="badge fixed">Fixed</span><p>Dragging a selection past the left or right edge of a long unwrapped line on the Mac scrolls the editor sideways, so the text being selected stays visible (#854).</p></div>

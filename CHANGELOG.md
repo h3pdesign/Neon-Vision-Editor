@@ -26,7 +26,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Go to Symbol filters the symbols captured when it opens instead of rescanning the whole document on every keystroke.
 - The status bar's line and word counts are computed off the main thread, so pausing while typing in larger documents no longer stalls the editor.
 - Markdown preview and log summary reuse compiled regular expressions instead of recompiling them per code block, table row, or line.
-- Folder Compare is no longer offered in the iPhone and iPad command palette, where its folder pickers could not open.
+- Folder Compare works on iPhone and iPad: Browse opens the Files folder picker, and tapping a changed file shows its diff in the editor.
 - The Folder Compare clear-folder button has a VoiceOver label and tooltip.
 - The Mac toolbar symbols have more room between them.
 - The outline sidebar builds its table of contents on a background thread, so pausing while typing in larger code files no longer stalls the editor.

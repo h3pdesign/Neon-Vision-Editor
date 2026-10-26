@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.1.5] - 2026-10-26
+
 ### Why Upgrade
 
 - Finish words on the Mac from the macOS dictionary and your Text Replacements by pressing Tab.

@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.1.3",
-            subtitle: "Release highlights for v2.1.3.",
+            title: "What’s New in v2.1.5",
+            subtitle: "Release highlights for v2.1.5.",
             bullets: [
-                "Text Selection: Select long, unwrapped lines on the Mac by dragging: the editor now scrolls sideways to follow the selection.",
-                "Markdown Formatting: The Mac Markdown formatting bar is back in the editor's top-right corner with all its buttons.",
-                "Minimap Scrolling: Scroll the editor from the Mac minimap with the mouse wheel or trackpad.",
-                "Minimap Scrolling: Scrolling with the mouse wheel or trackpad while the pointer is over the Mac minimap scrolls the editor.",
-                "Text Selection: Dragging a selection past the left or right edge of a long unwrapped line on the Mac scrolls the editor sideways, so the…",
-                "Markdown Formatting: The Mac Markdown formatting bar sits in the editor's top-right corner again, shows all its buttons when there is room, and…"
+                "Word Completion: Finish words on the Mac from the macOS dictionary and your Text Replacements by pressing Tab.",
+                "Large Projects: Quick Open, Go to Symbol, and the outline no longer rescan your project or document on every keystroke.",
+                "Folder Compare: Compare two folders on iPhone and iPad, and open a changed file's diff in the editor.",
+                "Table of Contents: The Mac table of contents sidebar reopens the way you left it after quitting.",
+                "Closing Settings: Settings on iPhone and iPad has a Close button, including on iPhone Duo's outer display.",
+                "Keyboard Shortcut Bar: On iPhone, the editor status stays above the keyboard shortcut bar again."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4518,6 +4518,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.1.5", version: "2.1.5", date: "2026-10-26", highlights: [
+            "Finish words on the Mac from the macOS dictionary and your Text Replacements by pressing Tab.",
+            "Quick Open, Go to Symbol, and the outline no longer rescan your project or document on every keystroke.",
+            "Compare two folders on iPhone and iPad, and open a changed file's diff in the editor."
+        ]),
         Release(id: "2.1.3", version: "2.1.3", date: "2026-10-25", highlights: [
             "Select long, unwrapped lines on the Mac by dragging: the editor now scrolls sideways to follow the selection.",
             "The Mac Markdown formatting bar is back in the editor's top-right corner with all its buttons.",

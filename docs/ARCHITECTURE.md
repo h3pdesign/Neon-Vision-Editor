@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-10-25 (v2.1.3 release-aligned architecture)
+Last updated: 2026-10-26 (v2.1.5 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -9,20 +9,20 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
+### v2.1.5 (2026-10-26)
+
+- The Mac table of contents sidebar reopens the way you left it after quitting.
+- Settings on iPhone and iPad has a Close button, including on iPhone Duo's outer display.
+- On iPhone, the editor status stays above the keyboard shortcut bar again.
+- Settings on iPhone and iPad has a Close button in its top-right corner. On iPhone Duo's outer display the sheet could not be closed (#867).
+- With Translucent Window turned on, the iPhone and iPad tab bar no longer turns into one solid grey bar; only the active tab is highlighted (#868).
+- On iPhone, the editor status (line, column) sits above the keyboard shortcut bar again instead of covering it while the software keyboard is open.
+
 ### v2.1.3 (2026-10-25)
 
 - Scrolling with the mouse wheel or trackpad while the pointer is over the Mac minimap scrolls the editor.
 - Dragging a selection past the left or right edge of a long unwrapped line on the Mac scrolls the editor sideways, so the text being selected stays visible (#854).
 - The Mac Markdown formatting bar sits in the editor's top-right corner again, shows all its buttons when there is room, and no longer covers the first lines of text.
-
-### v2.1.2 (2026-10-24)
-
-- Side by Side is back on the Mac: choose Toggle Side by Side Editor (⌥⌘\) in the View menu or the Side by Side toolbar button, then pick which open tab to show next to the current one. Both panes are editable, and the Side by Side button is now part of the standard toolbar.
-- Adds Move Tab to New Window to the Window menu.
-- Side by Side and Compare Open Tabs find the other documents open in the same Mac window's tabs instead of reporting that no other tab is open.
-- Save and Save As apply to the Side by Side pane you are editing, and a file conflict or save error on that document brings its tab forward so you can resolve it.
-- The second Side by Side pane shows its own minimap, line navigation and cursor position.
-- Undo keeps your own edits after saving a new document, and starts fresh when the document changes elsewhere.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

@@ -4082,10 +4082,13 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             guard !isApplyingHighlight else { return }
+            // UITextView.text copies the whole text storage on every read.
+            // Read it once per keystroke and reuse that snapshot below.
+            let currentText = textView.text ?? ""
             let lineNumberMutation = pendingTextMutation
             let didApplyIncrementalMutation = applyPendingTextMutationIfPossible()
             if !didApplyIncrementalMutation {
-                syncBindingText(textView.text)
+                syncBindingText(currentText)
             }
             if let editorTextView = textView as? EditorInputTextView,
                editorTextView.rendersInvisibleCharacters || editorTextView.rendersIndentationGuides {
@@ -4106,19 +4109,19 @@ struct CustomTextEditor: UIViewRepresentable {
                     container?.updateLineNumbers(
                         afterReplacing: lineNumberMutation.range,
                         with: lineNumberMutation.replacement,
-                        resultingText: textView.text,
+                        resultingText: currentText,
                         fontSize: parent.fontSize
                     )
                 } else {
                     // Undo, IME, and programmatic replacements may not supply a delta.
-                    container?.updateLineNumbers(for: textView.text, fontSize: parent.fontSize)
+                    container?.updateLineNumbers(for: currentText, fontSize: parent.fontSize)
                 }
             }
-            let nsText = (textView.text ?? "") as NSString
+            let nsText = currentText as NSString
             let caretLocation = min(nsText.length, textView.selectedRange.location)
             pendingEditedRange = nsText.lineRange(for: NSRange(location: caretLocation, length: 0))
-            updateCaretStatus()
-            scheduleHighlightIfNeeded(currentText: textView.text)
+            updateCaretStatus(text: nsText)
+            scheduleHighlightIfNeeded(currentText: currentText)
             (textView as? EditorInputTextView)?.expandUnwrappedEditingLineIfNeeded()
             (textView as? EditorInputTextView)?.revealCaretWithContext()
         }
@@ -4149,12 +4152,13 @@ struct CustomTextEditor: UIViewRepresentable {
         }
 
         private func publishSelectionState(for textView: UITextView) {
-            let nsText = (textView.text ?? "") as NSString
+            let currentText = textView.text ?? ""
+            let nsText = currentText as NSString
             publishSelectionSnapshot(from: nsText, selectedRange: textView.selectedRange)
-            updateCaretStatus()
+            updateCaretStatus(text: nsText)
             if !(UIDevice.current.userInterfaceIdiom == .phone && textView.isFirstResponder) {
                 let immediateHighlight = nsText.length < 200_000
-                scheduleHighlightIfNeeded(currentText: textView.text, immediate: immediateHighlight)
+                scheduleHighlightIfNeeded(currentText: currentText, immediate: immediateHighlight)
             }
         }
 
@@ -4235,11 +4239,11 @@ struct CustomTextEditor: UIViewRepresentable {
             )
         }
 
-        private func updateCaretStatus() {
+        private func updateCaretStatus(text: NSString? = nil) {
             // Placeholder/partial-buffer coordinates must not become persisted
             // bookmarks through ContentView's caret notification receiver.
             guard !parent.isTabLoadingContent, !isInstallingLargeText, let textView else { return }
-            let nsText = (textView.text ?? "") as NSString
+            let nsText = text ?? ((textView.text ?? "") as NSString)
             let location = min(max(0, textView.selectedRange.location), nsText.length)
             let useOffsetOnlyStatus =
                 parent.isLargeFileMode ||

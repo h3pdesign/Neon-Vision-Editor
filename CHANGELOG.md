@@ -17,6 +17,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Fixes
 
 - On iPhone Duo's unfolded display, the editor toolbar no longer covers the vertical status bar. Where the system doesn't report the status bar's position on that edge, the toolbar returns to the bottom of the screen (#891).
+- Typing and moving the caret on iPhone and iPad copies the document once per change instead of up to four times, which keeps large files more responsive.
 
 ### Breaking changes
 

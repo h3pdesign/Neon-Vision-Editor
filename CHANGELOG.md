@@ -6,6 +6,30 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- On iPhone Duo's unfolded display, the editor toolbar no longer covers the clock and status icons.
+
+### Highlights
+
+- iPhone Duo: the editor toolbar stays clear of the status bar when the phone is unfolded.
+
+### Fixes
+
+- On iPhone Duo's unfolded display, the editor toolbar no longer covers the vertical status bar. Where the system doesn't report the status bar's position on that edge, the toolbar returns to the bottom of the screen (#891).
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, sessions, and preferences are preserved.
+
+### Maintenance
+
+- Development version 2.1.6 (build 1137).
+
 ## [v2.1.5] - 2026-10-26
 
 ### Why Upgrade

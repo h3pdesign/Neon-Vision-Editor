@@ -208,8 +208,10 @@ enum IOSVerticalToolbarPolicy {
     /// The column for a toolbar on the edge where the system presents vertical
     /// bars, in the coordinates of the safe-area-bounded container. The column
     /// fills that edge's safe-area inset and starts below the status bar and
-    /// camera occlusions. Returns nil when bars are horizontal or no usable
-    /// column remains.
+    /// camera occlusions. Returns nil when bars are horizontal, when no
+    /// status-bar occlusion is reported at the top of the column (its start
+    /// cannot be placed safely, as on iPhone Duo's unfolded display), or when
+    /// no usable column remains.
     nonisolated static func columnFrame(
         edge: HorizontalEdge?,
         containerSize: CGSize,
@@ -222,16 +224,18 @@ enum IOSVerticalToolbarPolicy {
         let minX = edge == .leading ? -edgeInset : containerSize.width + edgeInset - width
         let maxX = minX + width
         let midHeight = containerSize.height / 2
-        var top: CGFloat = 0
+        var top: CGFloat?
         var bottom = containerSize.height
         for occlusion in occlusions where occlusion.maxX > minX && occlusion.minX < maxX {
             if occlusion.midY < midHeight {
-                top = max(top, occlusion.maxY + spacing)
+                top = max(top ?? 0, occlusion.maxY + spacing)
             } else {
                 bottom = min(bottom, occlusion.minY - spacing)
             }
         }
-        guard bottom - top >= minimumColumnLength else { return nil }
+        // The system status bar shares this edge. Without its region the
+        // column would start at the top and cover the clock and indicators.
+        guard let top, bottom - top >= minimumColumnLength else { return nil }
         return CGRect(x: minX, y: top, width: width, height: bottom - top)
     }
 }

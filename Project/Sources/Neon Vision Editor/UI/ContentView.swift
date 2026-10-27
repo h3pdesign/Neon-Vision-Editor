@@ -224,18 +224,22 @@ enum IOSVerticalToolbarPolicy {
         let minX = edge == .leading ? -edgeInset : containerSize.width + edgeInset - width
         let maxX = minX + width
         let midHeight = containerSize.height / 2
-        var top: CGFloat?
+        var top: CGFloat = 0
         var bottom = containerSize.height
+        var reportsStatusBar = false
         for occlusion in occlusions where occlusion.maxX > minX && occlusion.minX < maxX {
             if occlusion.midY < midHeight {
-                top = max(top ?? 0, occlusion.maxY + spacing)
+                top = max(top, occlusion.maxY + spacing)
+                // The status bar region starts at the top edge; a camera
+                // cutout below it does not mark where the bar ends.
+                if occlusion.minY <= 0 { reportsStatusBar = true }
             } else {
                 bottom = min(bottom, occlusion.minY - spacing)
             }
         }
         // The system status bar shares this edge. Without its region the
         // column would start at the top and cover the clock and indicators.
-        guard let top, bottom - top >= minimumColumnLength else { return nil }
+        guard reportsStatusBar, bottom - top >= minimumColumnLength else { return nil }
         return CGRect(x: minX, y: top, width: width, height: bottom - top)
     }
 }

@@ -382,6 +382,13 @@ final class ContentViewLayoutTests: XCTestCase {
             safeAreaInsets: duoOuterInsets,
             occlusions: [CGRect(x: 382, y: 560, width: 84, height: 40)]
         ))
+        // A camera cutout alone does not say where the status bar ends.
+        XCTAssertNil(IOSVerticalToolbarPolicy.columnFrame(
+            edge: .trailing,
+            containerSize: duoOuterSize,
+            safeAreaInsets: duoOuterInsets,
+            occlusions: [CGRect(x: 399.67, y: 29.33, width: 37, height: 37)]
+        ))
     }
 
     func testVerticalToolbarFallsBackWhenColumnIsTooShort() {

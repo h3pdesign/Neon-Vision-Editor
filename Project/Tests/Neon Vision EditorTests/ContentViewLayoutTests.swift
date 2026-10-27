@@ -359,11 +359,36 @@ final class ContentViewLayoutTests: XCTestCase {
             containerSize: CGSize(width: 800, height: 600),
             safeAreaInsets: EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 20),
             occlusions: [
+                CGRect(x: 790, y: 0, width: 30, height: 40),
                 CGRect(x: 790, y: 500, width: 30, height: 30),
                 CGRect(x: 100, y: 0, width: 40, height: 400)
             ]
         ))
-        XCTAssertEqual(column, CGRect(x: 760, y: 0, width: 60, height: 492))
+        XCTAssertEqual(column, CGRect(x: 760, y: 48, width: 60, height: 444))
+    }
+
+    // Issue #891: on iPhone Duo's unfolded display the toolbar column started
+    // at the top and covered the vertical status bar.
+    func testVerticalToolbarFallsBackWhenStatusBarRegionIsUnknown() {
+        XCTAssertNil(IOSVerticalToolbarPolicy.columnFrame(
+            edge: .trailing,
+            containerSize: CGSize(width: 951, height: 669),
+            safeAreaInsets: EdgeInsets(top: 0, leading: 0, bottom: 20, trailing: 0),
+            occlusions: [CGRect(x: 100, y: 0, width: 40, height: 40)]
+        ))
+        XCTAssertNil(IOSVerticalToolbarPolicy.columnFrame(
+            edge: .trailing,
+            containerSize: duoOuterSize,
+            safeAreaInsets: duoOuterInsets,
+            occlusions: [CGRect(x: 382, y: 560, width: 84, height: 40)]
+        ))
+        // A camera cutout alone does not say where the status bar ends.
+        XCTAssertNil(IOSVerticalToolbarPolicy.columnFrame(
+            edge: .trailing,
+            containerSize: duoOuterSize,
+            safeAreaInsets: duoOuterInsets,
+            occlusions: [CGRect(x: 399.67, y: 29.33, width: 37, height: 37)]
+        ))
     }
 
     func testVerticalToolbarFallsBackWhenColumnIsTooShort() {

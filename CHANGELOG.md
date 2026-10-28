@@ -8,11 +8,15 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Why Upgrade
 
+- On smaller Mac screens, every Settings page fits above the Dock again, and taller pages scroll.
+- Typing and moving the caret on iPhone and iPad copies the document once per change instead of up to four times.
 - On iPhone Duo's unfolded display, the editor toolbar no longer covers the clock and status icons.
 
 ### Highlights
 
-- iPhone Duo: the editor toolbar stays clear of the status bar when the phone is unfolded.
+- Completion options have their own section in Mac Settings under Editor.
+- Notes in Mac Settings wrap onto more lines instead of being cut off.
+- Where iPhone Duo doesn't report the status bar's position, the editor toolbar moves to the bottom of the screen.
 
 ### Fixes
 

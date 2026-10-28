@@ -219,6 +219,39 @@ final class EditorSettingsDefaultsTests: XCTestCase {
         XCTAssertEqual(NeonSettingsView.macSettingsContentWidth, 900)
     }
 
+    func testMacSettingsPaneHeightLimitFollowsVisibleScreen() {
+        typealias Limit = MacSettingsPaneHeightLimit<EmptyView>
+        XCTAssertEqual(Limit.maximumPaneHeight(visibleScreenHeight: 900), 900 - Limit.windowChromeAllowance)
+        XCTAssertEqual(Limit.maximumPaneHeight(visibleScreenHeight: 200), Limit.minimumPaneHeight)
+        XCTAssertEqual(Limit.maximumPaneHeight(visibleScreenHeight: nil), .greatestFiniteMagnitude)
+        XCTAssertFalse(Limit.needsScrolling(contentHeight: 800, maximumPaneHeight: 800))
+        XCTAssertTrue(Limit.needsScrolling(contentHeight: 801, maximumPaneHeight: 800))
+    }
+
+    func testMacSettingsPaneTallerThanScreenStaysInsideVisibleFrame() async throws {
+        let visibleHeight = try XCTUnwrap(NSScreen.main?.visibleFrame.height)
+        let maximumHeight = MacSettingsPaneHeightLimit<EmptyView>.maximumPaneHeight(visibleScreenHeight: visibleHeight)
+
+        // #898: Editor > Behavior grew taller than a MacBook Air's visible screen.
+        let tall = NSHostingView(rootView: MacSettingsPaneHeightLimit {
+            Color.clear.frame(width: 400, height: visibleHeight + 400)
+        })
+        // Panes that fit keep their native, unscrolled intrinsic height.
+        let short = NSHostingView(rootView: MacSettingsPaneHeightLimit {
+            Color.clear.frame(width: 400, height: 300)
+        })
+        for hosting in [tall, short] {
+            hosting.frame = NSRect(x: 0, y: 0, width: 400, height: 300)
+            hosting.layoutSubtreeIfNeeded()
+        }
+        try await Task.sleep(for: .milliseconds(100))
+        tall.layoutSubtreeIfNeeded()
+        short.layoutSubtreeIfNeeded()
+
+        XCTAssertEqual(tall.fittingSize.height, maximumHeight, accuracy: 1)
+        XCTAssertEqual(short.fittingSize.height, 300, accuracy: 1)
+    }
+
     func testMacSettingsRestoresNativeTitlebarMaterial() {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),

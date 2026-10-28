@@ -3348,7 +3348,9 @@ struct NeonSettingsView: View {
                     editorBehaviorSettings
                 } else {
 #if os(macOS)
-                    if editorSectionTab == "markdownPreview" {
+                    if editorSectionTab == "completion" {
+                        editorCompletionSettings
+                    } else if editorSectionTab == "markdownPreview" {
                         markdownProjectPreviewSettingsCard
                     } else {
                         editorStatusBarSettings
@@ -3370,6 +3372,7 @@ struct NeonSettingsView: View {
                 Text("Basics").tag("basics")
                 Text("Behavior").tag("behavior")
 #if os(macOS)
+                Text("Completion").tag("completion")
                 Text("Layout & Status").tag("statusBar")
                 Text("Markdown Preview").tag("markdownPreview")
 #endif
@@ -3742,6 +3745,7 @@ struct NeonSettingsView: View {
                     Text("Balanced keeps default behavior. Large Files and Battery enter performance mode earlier.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Picker("Large File Syntax", selection: $largeFileSyntaxHighlightingRaw) {
                         Text("Off").tag("off")
@@ -3763,15 +3767,19 @@ struct NeonSettingsView: View {
                     Text("Minimal colors only visible JSON lines plus a small buffer using a strict work budget.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text("Automatic avoids expensive full-document coloring for likely generated or minified files; Full is an explicit override.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text("Large File Mode remains editable. Responsive defers costly loading, layout, and syntax work; Plain Text also turns off syntax coloring, previews, and the minimap.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text("Files at 100 MB or more open as a read-only 4 MB partial preview so the complete file is never copied into memory.")
                         .font(Typography.footnote)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -3799,24 +3807,9 @@ struct NeonSettingsView: View {
                     )
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                     Toggle("Trim Trailing Whitespace", isOn: $trimTrailingWhitespace)
                     Toggle("Trim Edges for Syntax Detection", isOn: $trimWhitespaceForSyntaxDetection)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                VStack(alignment: .leading, spacing: UI.space10) {
-                    Text("Completion")
-                        .font(Typography.sectionHeadline)
-                    Toggle("Enable Completion", isOn: $completionEnabled)
-                    Toggle("Include Words in Document", isOn: $completionFromDocument)
-                    Toggle("Include Syntax Keywords", isOn: $completionFromSyntax)
-                    Text("For lower latency on large files, keep only one completion source enabled.")
-                        .font(Typography.footnote)
-                        .foregroundStyle(.secondary)
-                    Toggle("Suggest Words from System Dictionary", isOn: $systemWordCompletionEnabled)
-                    Text("In plain text and Markdown, suggests words from the macOS dictionary and your Text Replacements. Press Tab or Right Arrow to accept.")
-                        .font(Typography.footnote)
-                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -3825,6 +3818,31 @@ struct NeonSettingsView: View {
         }
 #endif
     }
+
+#if os(macOS)
+    // Completion has its own section so Behavior stays short enough for the
+    // native Settings window on small displays (#898).
+    private var editorCompletionSettings: some View {
+        GroupBox("Completion") {
+            VStack(alignment: .leading, spacing: UI.space10) {
+                Toggle("Enable Completion", isOn: $completionEnabled)
+                Toggle("Include Words in Document", isOn: $completionFromDocument)
+                Toggle("Include Syntax Keywords", isOn: $completionFromSyntax)
+                Text("For lower latency on large files, keep only one completion source enabled.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle("Suggest Words from System Dictionary", isOn: $systemWordCompletionEnabled)
+                Text("In plain text and Markdown, suggests words from the macOS dictionary and your Text Replacements. Press Tab or Right Arrow to accept.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(UI.groupPadding)
+        }
+    }
+#endif
 
     // MARK: - Template Settings
 
@@ -6685,7 +6703,8 @@ struct NeonSettingsView: View {
         // A macOS Settings scene uses the selected pane's intrinsic content size.
         // Keeping the pane out of a ScrollView lets the system resize the window
         // immediately, matching Apple's standard multi-pane Settings behavior.
-        return page
+        // Only a pane taller than the screen area above the Dock scrolls.
+        return MacSettingsPaneHeightLimit { page }
         .background(settingsContainerBackground)
 #else
         return ScrollView {
@@ -7448,6 +7467,66 @@ private enum DefaultFileAssociation {
         NSWorkspace.shared.urlForApplication(toOpen: contentType)?
             .standardizedFileURL
             .resolvingSymlinksInPath()
+    }
+}
+
+// MARK: - macOS Settings Pane Height Limit
+
+// The native Settings window takes the selected pane's full intrinsic height.
+// A pane taller than the visible screen pushed its bottom controls behind the
+// Dock and compressed its text (#714, #898). Panes that fit keep the native
+// unscrolled layout; a taller pane scrolls inside the visible screen height.
+@MainActor
+struct MacSettingsPaneHeightLimit<Content: View>: View {
+    // Room for the Settings title bar and preference toolbar above the pane.
+    nonisolated static var windowChromeAllowance: CGFloat { 100 }
+    nonisolated static var minimumPaneHeight: CGFloat { 320 }
+
+    let content: Content
+    @State private var contentHeight: CGFloat = 0
+    @State private var visibleScreenHeight: CGFloat? = NSScreen.main?.visibleFrame.height
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    nonisolated static func maximumPaneHeight(visibleScreenHeight: CGFloat?) -> CGFloat {
+        guard let visibleScreenHeight else { return .greatestFiniteMagnitude }
+        return max(visibleScreenHeight - windowChromeAllowance, minimumPaneHeight)
+    }
+
+    nonisolated static func needsScrolling(contentHeight: CGFloat, maximumPaneHeight: CGFloat) -> Bool {
+        contentHeight > maximumPaneHeight + 0.5
+    }
+
+    var body: some View {
+        let maximumHeight = Self.maximumPaneHeight(visibleScreenHeight: visibleScreenHeight)
+        Group {
+            if Self.needsScrolling(contentHeight: contentHeight, maximumPaneHeight: maximumHeight) {
+                ScrollView(.vertical) {
+                    measuredContent
+                }
+                .scrollIndicators(.automatic)
+                .frame(height: maximumHeight)
+            } else {
+                measuredContent
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
+            visibleScreenHeight = NSScreen.main?.visibleFrame.height
+        }
+    }
+
+    // Measure the pane at its ideal height so a clamped window cannot
+    // compress it and hide the overflow.
+    private var measuredContent: some View {
+        content
+            .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.height
+            } action: { height in
+                contentHeight = height
+            }
     }
 }
 

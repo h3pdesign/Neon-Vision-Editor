@@ -7512,9 +7512,13 @@ struct MacSettingsPaneHeightLimit<Content: View>: View {
                 measuredContent
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
-            visibleScreenHeight = NSScreen.main?.visibleFrame.height
-        }
+        .background(
+            SettingsWindowScreenReader { height in
+                if visibleScreenHeight != height {
+                    visibleScreenHeight = height
+                }
+            }
+        )
     }
 
     // Measure the pane at its ideal height so a clamped window cannot
@@ -7527,6 +7531,69 @@ struct MacSettingsPaneHeightLimit<Content: View>: View {
             } action: { height in
                 contentHeight = height
             }
+    }
+}
+
+// Reports the visible height of the screen that holds the Settings window, and
+// again when the window moves to another display or the screen layout changes.
+@MainActor
+private struct SettingsWindowScreenReader: NSViewRepresentable {
+    let onChange: (CGFloat?) -> Void
+
+    func makeNSView(context: Context) -> SettingsWindowScreenTrackingView {
+        let view = SettingsWindowScreenTrackingView(frame: .zero)
+        view.onChange = onChange
+        return view
+    }
+
+    func updateNSView(_ nsView: SettingsWindowScreenTrackingView, context: Context) {
+        nsView.onChange = onChange
+    }
+}
+
+@MainActor
+private final class SettingsWindowScreenTrackingView: NSView {
+    var onChange: ((CGFloat?) -> Void)?
+    nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
+
+    deinit {
+        for observer in observers {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        for observer in observers {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        observers.removeAll()
+        guard let window else { return }
+        let subscriptions: [(name: Notification.Name, object: AnyObject?)] = [
+            (NSWindow.didChangeScreenNotification, window),
+            (NSApplication.didChangeScreenParametersNotification, nil)
+        ]
+        for subscription in subscriptions {
+            let observer = NotificationCenter.default.addObserver(
+                forName: subscription.name,
+                object: subscription.object,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    self?.reportScreen()
+                }
+            }
+            observers.append(observer)
+        }
+        // Defer the first report so it does not mutate SwiftUI state during layout.
+        Task { @MainActor [weak self] in
+            self?.reportScreen()
+        }
+    }
+
+    private func reportScreen() {
+        guard let screen = window?.screen ?? NSScreen.main else { return }
+        onChange?(screen.visibleFrame.height)
     }
 }
 

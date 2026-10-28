@@ -173,6 +173,7 @@ struct NeonSettingsView: View {
 #endif
     @AppStorage("SelectedAIModel") private var selectedAIModelRaw: String = AIModel.appleIntelligence.rawValue
     @AppStorage("OpenCodeGoModelID") private var openCodeGoModelID: String = OpenCodeGoConfig.defaultModel
+    @AppStorage("CheaperInferenceModelID") private var cheaperInferenceModelID: String = CheaperInferenceConfig.defaultModel
 #if os(macOS)
     @State private var settingsActiveTab: String
 #else
@@ -188,6 +189,7 @@ struct NeonSettingsView: View {
     @State private var geminiAPIToken: String = ""
     @State private var anthropicAPIToken: String = ""
     @State private var openCodeGoAPIToken: String = ""
+    @State private var cheaperInferenceAPIToken: String = ""
     @State private var customProviderAPIToken: String = ""
     @State private var typeSafeAPIToken: String = ""
     @AppStorage(JevContextRankingConfig.enabledDefaultsKey) private var jevContextRankingEnabled = false
@@ -1569,6 +1571,7 @@ struct NeonSettingsView: View {
         if geminiAPIToken.isEmpty { geminiAPIToken = SecureTokenStore.token(for: .gemini) }
         if anthropicAPIToken.isEmpty { anthropicAPIToken = SecureTokenStore.token(for: .anthropic) }
         if openCodeGoAPIToken.isEmpty { openCodeGoAPIToken = SecureTokenStore.token(for: .openCodeGo) }
+        if cheaperInferenceAPIToken.isEmpty { cheaperInferenceAPIToken = SecureTokenStore.token(for: .cheaperInference) }
         if customProviderAPIToken.isEmpty { customProviderAPIToken = SecureTokenStore.token(for: .customProvider) }
         if typeSafeAPIToken.isEmpty { typeSafeAPIToken = SecureTokenStore.token(for: .typeSafe) }
     }
@@ -5775,6 +5778,7 @@ struct NeonSettingsView: View {
                     Text("Gemini").tag(AIModel.gemini)
                     Text("Anthropic").tag(AIModel.anthropic)
                     Text("OpenCode Go").tag(AIModel.openCodeGo)
+                    Text("Cheaper Inference").tag(AIModel.cheaperInference)
                     Text("Custom (OpenAI-compatible)").tag(AIModel.customProvider)
                 }
                 .neonSettingsDropdown(maxWidth: .infinity)
@@ -5805,6 +5809,8 @@ struct NeonSettingsView: View {
                     aiKeyRow(title: "Anthropic", placeholder: "sk-ant-…", value: $anthropicAPIToken, provider: .anthropic)
                     aiKeyRow(title: "OpenCode Go", placeholder: "sk-…", value: $openCodeGoAPIToken, provider: .openCodeGo)
                     aiTextRow(title: "OpenCode Model", placeholder: OpenCodeGoConfig.defaultModel, value: $openCodeGoModelID)
+                    aiKeyRow(title: "Cheaper Inference", placeholder: "ci_live_…", value: $cheaperInferenceAPIToken, provider: .cheaperInference)
+                    aiTextRow(title: "Cheaper Inference Model", placeholder: CheaperInferenceConfig.defaultModel, value: $cheaperInferenceModelID)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
             }
@@ -5836,6 +5842,7 @@ struct NeonSettingsView: View {
                             Text("Gemini").tag(AIModel.gemini)
                             Text("Anthropic").tag(AIModel.anthropic)
                             Text("OpenCode Go").tag(AIModel.openCodeGo)
+                            Text("Cheaper Inference").tag(AIModel.cheaperInference)
                             Text("Custom (OpenAI-compatible)").tag(AIModel.customProvider)
                         }
                         .neonSettingsDropdown(maxWidth: 260)
@@ -5872,6 +5879,8 @@ struct NeonSettingsView: View {
                         aiKeyRow(title: "Anthropic", placeholder: "sk-ant-…", value: $anthropicAPIToken, provider: .anthropic)
                         aiKeyRow(title: "OpenCode Go", placeholder: "sk-…", value: $openCodeGoAPIToken, provider: .openCodeGo)
                         aiTextRow(title: "OpenCode Model", placeholder: OpenCodeGoConfig.defaultModel, value: $openCodeGoModelID)
+                        aiKeyRow(title: "Cheaper Inference", placeholder: "ci_live_…", value: $cheaperInferenceAPIToken, provider: .cheaperInference)
+                        aiTextRow(title: "Cheaper Inference Model", placeholder: CheaperInferenceConfig.defaultModel, value: $cheaperInferenceModelID)
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(UI.groupPadding)

@@ -373,6 +373,7 @@ extension ContentView {
         let resolvedGeminiToken = geminiAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? SecureTokenStore.token(for: .gemini) : geminiAPIToken
         let resolvedAnthropicToken = anthropicAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? SecureTokenStore.token(for: .anthropic) : anthropicAPIToken
         let resolvedOpenCodeGoToken = openCodeGoAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? SecureTokenStore.token(for: .openCodeGo) : openCodeGoAPIToken
+        let resolvedCheaperInferenceToken = cheaperInferenceAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? SecureTokenStore.token(for: .cheaperInference) : cheaperInferenceAPIToken
         let resolvedCustomProviderToken = SecureTokenStore.token(for: .customProvider)
         let client = AIClientFactory.makeClient(
             for: selectedModel,
@@ -382,6 +383,8 @@ extension ContentView {
             anthropicKeyProvider: { resolvedAnthropicToken },
             openCodeGoKeyProvider: { resolvedOpenCodeGoToken },
             openCodeGoModelProvider: { openCodeGoModelID },
+            cheaperInferenceKeyProvider: { resolvedCheaperInferenceToken },
+            cheaperInferenceModelProvider: { cheaperInferenceModelID },
             customKeyProvider: { resolvedCustomProviderToken },
             customBaseURLProvider: { UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) },
             customModelProvider: { UserDefaults.standard.string(forKey: CustomProviderConfig.modelDefaultsKey) }
@@ -408,6 +411,9 @@ extension ContentView {
         case .openCodeGo:
             providerLabel = "OpenCode Go"
             isUsingConfiguredProvider = !resolvedOpenCodeGoToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .cheaperInference:
+            providerLabel = "Cheaper Inference"
+            isUsingConfiguredProvider = !resolvedCheaperInferenceToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .customProvider:
             providerLabel = "Custom Provider"
             let baseURL = (UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)

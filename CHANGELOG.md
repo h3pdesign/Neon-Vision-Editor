@@ -18,6 +18,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - On iPhone Duo's unfolded display, the editor toolbar no longer covers the vertical status bar. Where the system doesn't report the status bar's position on that edge, the toolbar returns to the bottom of the screen (#891).
 - Typing and moving the caret on iPhone and iPad copies the document once per change instead of up to four times, which keeps large files more responsive.
+- On smaller Mac screens, Settings no longer extends behind the Dock. A Settings page taller than the screen now scrolls, and Editor › Completion has its own section so Editor › Behavior fits again (#898).
 
 ### Breaking changes
 
@@ -29,7 +30,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Maintenance
 
-- Development version 2.1.6 (build 1137).
+- Development version 2.1.6 (build 1138).
 
 ## [v2.1.5] - 2026-10-26
 

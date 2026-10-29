@@ -688,6 +688,8 @@ struct NeonVisionMacAppCommands: Commands {
             let anthropicToken = SecureTokenStore.token(for: .anthropic)
             let openCodeGoToken = SecureTokenStore.token(for: .openCodeGo)
             let openCodeGoModel = UserDefaults.standard.string(forKey: "OpenCodeGoModelID") ?? OpenCodeGoConfig.defaultModel
+            let cheaperInferenceToken = SecureTokenStore.token(for: .cheaperInference)
+            let cheaperInferenceModel = UserDefaults.standard.string(forKey: "CheaperInferenceModelID") ?? CheaperInferenceConfig.defaultModel
             let customToken = SecureTokenStore.token(for: .customProvider)
             let customBaseURL = UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) ?? ""
             let customModel = UserDefaults.standard.string(forKey: CustomProviderConfig.modelDefaultsKey) ?? ""
@@ -721,6 +723,12 @@ struct NeonVisionMacAppCommands: Commands {
                     return AIClientFactory.makeClient(for: .openCodeGo,
                                                       openCodeGoKeyProvider: { openCodeGoToken },
                                                       openCodeGoModelProvider: { openCodeGoModel })
+                }
+                if !cheaperInferenceToken.isEmpty {
+                    providerLabel = "Cheaper Inference"
+                    return AIClientFactory.makeClient(for: .cheaperInference,
+                                                      cheaperInferenceKeyProvider: { cheaperInferenceToken },
+                                                      cheaperInferenceModelProvider: { cheaperInferenceModel })
                 }
                 if !customBaseURL.isEmpty && !customModel.isEmpty {
                     providerLabel = "Custom Provider"

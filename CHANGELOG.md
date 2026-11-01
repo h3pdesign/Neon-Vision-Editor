@@ -6,6 +6,38 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.1.6] - 2026-11-01
+
+### Why Upgrade
+
+- On smaller Mac screens, every Settings page fits above the Dock again, and taller pages scroll.
+- Typing and moving the caret on iPhone and iPad copies the document once per change instead of up to four times.
+- On iPhone Duo's unfolded display, the editor toolbar no longer covers the clock and status icons.
+
+### Highlights
+
+- Completion options have their own section in Mac Settings under Editor.
+- Notes in Mac Settings wrap onto more lines instead of being cut off.
+- Where iPhone Duo doesn't report the status bar's position, the editor toolbar moves to the bottom of the screen.
+
+### Fixes
+
+- On iPhone Duo's unfolded display, the editor toolbar no longer covers the vertical status bar. Where the system doesn't report the status bar's position on that edge, the toolbar returns to the bottom of the screen (#891).
+- Typing and moving the caret on iPhone and iPad copies the document once per change instead of up to four times, which keeps large files more responsive.
+- On smaller Mac screens, Settings no longer extends behind the Dock. A Settings page taller than the screen now scrolls, and Editor › Completion has its own section so Editor › Behavior fits again (#898).
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, sessions, and preferences are preserved.
+
+### Maintenance
+
+- Development version 2.1.6 (build 1138).
+
 ## [v2.1.5] - 2026-10-26
 
 ### Why Upgrade

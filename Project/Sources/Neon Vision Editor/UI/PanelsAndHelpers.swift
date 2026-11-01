@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.1.5",
-            subtitle: "Release highlights for v2.1.5.",
+            title: "What’s New in v2.1.6",
+            subtitle: "Release highlights for v2.1.6.",
             bullets: [
-                "Word Completion: Finish words on the Mac from the macOS dictionary and your Text Replacements by pressing Tab.",
-                "Large Projects: Quick Open, Go to Symbol, and the outline no longer rescan your project or document on every keystroke.",
-                "Folder Compare: Compare two folders on iPhone and iPad, and open a changed file's diff in the editor.",
-                "Table of Contents: The Mac table of contents sidebar reopens the way you left it after quitting.",
-                "Closing Settings: Settings on iPhone and iPad has a Close button, including on iPhone Duo's outer display.",
-                "Keyboard Shortcut Bar: On iPhone, the editor status stays above the keyboard shortcut bar again."
+                "Mac Settings: On smaller Mac screens, every Settings page fits above the Dock again, and taller pages scroll.",
+                "Typing: Typing and moving the caret on iPhone and iPad copies the document once per change instead of up to four times.",
+                "iPhone Duo: On iPhone Duo's unfolded display, the editor toolbar no longer covers the clock and status icons.",
+                "Completion Settings: Completion options have their own section in Mac Settings under Editor.",
+                "Settings Notes: Notes in Mac Settings wrap onto more lines instead of being cut off.",
+                "iPhone Duo: Where iPhone Duo doesn't report the status bar's position, the editor toolbar moves to the bottom of the screen."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4518,6 +4518,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.1.6", version: "2.1.6", date: "2026-11-01", highlights: [
+            "On smaller Mac screens, every Settings page fits above the Dock again, and taller pages scroll.",
+            "Typing and moving the caret on iPhone and iPad copies the document once per change instead of up to four times.",
+            "On iPhone Duo's unfolded display, the editor toolbar no longer covers the clock and status icons."
+        ]),
         Release(id: "2.1.5", version: "2.1.5", date: "2026-10-26", highlights: [
             "Finish words on the Mac from the macOS dictionary and your Text Replacements by pressing Tab.",
             "Quick Open, Go to Symbol, and the outline no longer rescan your project or document on every keystroke.",

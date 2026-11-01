@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-10-26 (v2.1.5 release-aligned architecture)
+Last updated: 2026-11-01 (v2.1.6 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -8,6 +8,15 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v2.1.6 (2026-11-01)
+
+- Completion options have their own section in Mac Settings under Editor.
+- Notes in Mac Settings wrap onto more lines instead of being cut off.
+- Where iPhone Duo doesn't report the status bar's position, the editor toolbar moves to the bottom of the screen.
+- On iPhone Duo's unfolded display, the editor toolbar no longer covers the vertical status bar. Where the system doesn't report the status bar's position on that edge, the toolbar returns to the bottom of the screen (#891).
+- Typing and moving the caret on iPhone and iPad copies the document once per change instead of up to four times, which keeps large files more responsive.
+- On smaller Mac screens, Settings no longer extends behind the Dock. A Settings page taller than the screen now scrolls, and Editor › Completion has its own section so Editor › Behavior fits again (#898).
 
 ### v2.1.5 (2026-10-26)
 
@@ -17,12 +26,6 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 - Settings on iPhone and iPad has a Close button in its top-right corner. On iPhone Duo's outer display the sheet could not be closed (#867).
 - With Translucent Window turned on, the iPhone and iPad tab bar no longer turns into one solid grey bar; only the active tab is highlighted (#868).
 - On iPhone, the editor status (line, column) sits above the keyboard shortcut bar again instead of covering it while the software keyboard is open.
-
-### v2.1.3 (2026-10-25)
-
-- Scrolling with the mouse wheel or trackpad while the pointer is over the Mac minimap scrolls the editor.
-- Dragging a selection past the left or right edge of a long unwrapped line on the Mac scrolls the editor sideways, so the text being selected stays visible (#854).
-- The Mac Markdown formatting bar sits in the editor's top-right corner again, shows all its buttons when there is room, and no longer covers the first lines of text.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

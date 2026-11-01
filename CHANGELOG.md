@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.1.6] - 2026-11-01
+
 ### Why Upgrade
 
 - On smaller Mac screens, every Settings page fits above the Dock again, and taller pages scroll.

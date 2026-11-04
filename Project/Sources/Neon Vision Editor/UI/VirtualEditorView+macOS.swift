@@ -691,6 +691,65 @@ enum VirtualEditorKeyRouting {
     }
 }
 
+/// Word list for system dictionary completion (#926), drawn above the
+/// editor's scroll view so it is never clipped by a short document.
+@MainActor
+final class VirtualEditorCompletionListView: NSView {
+    static let inset: CGFloat = 4
+    var onSelect: ((Int) -> Void)?
+    private var words: [String] = []
+    private var selection = 0
+    private var rowHeight: CGFloat = 18
+    private var font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+
+    override var isFlipped: Bool { true }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    func update(words: [String], selection: Int, rowHeight: CGFloat, font: NSFont, appearance: NSAppearance?) {
+        self.words = words
+        self.selection = selection
+        self.rowHeight = rowHeight
+        self.font = font
+        self.appearance = appearance
+        needsDisplay = true
+    }
+
+    private func rowRect(_ index: Int) -> NSRect {
+        NSRect(x: Self.inset, y: Self.inset + CGFloat(index) * rowHeight,
+               width: bounds.width - Self.inset * 2, height: rowHeight)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let panel = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 6, yRadius: 6)
+        NSColor.controlBackgroundColor.setFill()
+        panel.fill()
+        NSColor.separatorColor.setStroke()
+        panel.lineWidth = 1
+        panel.stroke()
+        for (index, word) in words.enumerated() {
+            let rect = rowRect(index)
+            let isSelected = index == selection
+            if isSelected {
+                NSColor.selectedContentBackgroundColor.setFill()
+                NSBezierPath(roundedRect: rect, xRadius: 4, yRadius: 4).fill()
+            }
+            (word as NSString).draw(
+                at: NSPoint(x: rect.minX + 6, y: rect.minY + 3),
+                withAttributes: [
+                    .font: font,
+                    .foregroundColor: isSelected ? NSColor.alternateSelectedControlTextColor : NSColor.labelColor
+                ]
+            )
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard let index = words.indices.first(where: { rowRect($0).contains(point) }) else { return }
+        onSelect?(index)
+    }
+}
+
 @MainActor
 final class VirtualEditorScrollView: NSScrollView {
     private let canvas = VirtualEditorCanvas()
@@ -1132,7 +1191,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var completionListPrefix = ""
     private var completionListSelection = 0
     private var completionListNavigated = false
-    private var completionListRowRects: [NSRect] = []
+    private var completionListOverlay: VirtualEditorCompletionListView?
+    private var completionListScrollObserver: NSObjectProtocol?
     private var onFontSizeChange: ((CGFloat) -> Void)?
     private var onTextMutation: ((EditorTextMutation) -> Bool)?
     private var pendingFontSizeDelta: CGFloat = 0
@@ -1914,7 +1974,6 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         drawMarkedText(rows: rows, context: context)
         drawInlineSuggestion(rows: rows, context: context)
         drawCaret(rows: rows)
-        drawCompletionList(rows: rows)
     }
 
     private func visibleVisualRowRange(in rows: [VisualRow], dirtyRect: NSRect) -> Range<Int> {
@@ -1965,72 +2024,78 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             && inlineSuggestionLocation == absoluteCaret && selection.length == 0
     }
 
-    private func drawCompletionList(rows: [VisualRow]) {
-        completionListRowRects = []
-        guard isCompletionListVisible, let inlineSuggestionLocation else { return }
-        let local = inlineSuggestionLocation - viewportLineOriginStartUTF16
-        guard let row = visualRow(containing: local, in: rows) else { return }
-        let caretX = gutterWidth + Geometry.gutterTextInset + CGFloat(CTLineGetOffsetForStringIndex(
-            row.fragment.line,
-            row.coreTextStringIndex(forViewportOffset: local),
-            nil
-        ))
+    /// The list lives in an overlay on the scroll view, not in the canvas:
+    /// a short document's canvas ends below its last line, so drawing there
+    /// would clip the list.
+    private func updateCompletionListOverlay() {
+        guard isCompletionListVisible,
+              let inlineSuggestionLocation,
+              let scrollView = enclosingScrollView else {
+            removeCompletionListOverlay()
+            return
+        }
         let font = editorFont
         let words = completionListSuffixes.map { completionListPrefix + $0 }
         let attributes: [NSAttributedString.Key: Any] = [.font: font]
         let textWidth = words.map { ($0 as NSString).size(withAttributes: attributes).width }.max() ?? 0
         let rowHeight = ceil(font.ascender - font.descender + font.leading + 6)
-        let inset: CGFloat = 4
-        let width = ceil(textWidth) + 20
-        let height = rowHeight * CGFloat(words.count) + inset * 2
+        let size = NSSize(
+            width: ceil(textWidth) + 20,
+            height: rowHeight * CGFloat(words.count) + VirtualEditorCompletionListView.inset * 2
+        )
+        // Canvas coordinates: the caret's line top, and the whole viewport
+        // (the clip view's bounds), which can reach past the canvas.
+        let lineTop = caretPoint(localLocation: inlineSuggestionLocation - viewportLineOriginStartUTF16)
+        let viewportRect = scrollView.contentView.bounds
         let prefixWidth = (completionListPrefix as NSString).size(withAttributes: attributes).width
-        let visible = visibleRect
-        var originX = caretX - prefixWidth - 10
-        originX = min(max(visible.minX + 4, originX), max(visible.minX + 4, visible.maxX - width - 4))
-        let lineTop = row.baseline - lineHeight + 2
-        let below = row.baseline + max(4, -font.descender + 4)
-        let originY = below + height <= visible.maxY || lineTop - height - 2 < visible.minY
-            ? below
-            : lineTop - height - 2
-        let frame = NSRect(x: originX, y: originY, width: width, height: height)
-        // Match the editor's own light or dark scheme, not the app's.
-        let appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua) ?? effectiveAppearance
-        appearance.performAsCurrentDrawingAppearance {
-            drawCompletionListPanel(frame: frame, words: words, rowHeight: rowHeight, inset: inset, font: font)
+        var originX = lineTop.x - prefixWidth - 10
+        originX = min(max(viewportRect.minX + 4, originX), max(viewportRect.minX + 4, viewportRect.maxX - size.width - 4))
+        let below = lineTop.y + lineHeight + 2
+        let above = lineTop.y - size.height - 2
+        let originY = below + size.height <= viewportRect.maxY || above < viewportRect.minY ? below : above
+        let canvasFrame = NSRect(origin: NSPoint(x: originX, y: originY), size: size)
+        let overlay: VirtualEditorCompletionListView
+        if let existing = completionListOverlay, existing.superview === scrollView {
+            overlay = existing
+        } else {
+            removeCompletionListOverlay()
+            overlay = VirtualEditorCompletionListView()
+            overlay.onSelect = { [weak self] index in self?.acceptCompletionListRow(index) }
+            scrollView.addSubview(overlay, positioned: .above, relativeTo: nil)
+            completionListOverlay = overlay
+            completionListScrollObserver = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: scrollView.contentView,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated { self?.updateCompletionListOverlay() }
+            }
         }
+        overlay.frame = convert(canvasFrame, to: scrollView)
+        overlay.update(
+            words: words,
+            selection: completionListSelection,
+            rowHeight: rowHeight,
+            font: font,
+            appearance: NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+        )
     }
 
-    private func drawCompletionListPanel(frame: NSRect, words: [String], rowHeight: CGFloat, inset: CGFloat, font: NSFont) {
-        let panel = NSBezierPath(roundedRect: frame, xRadius: 6, yRadius: 6)
-        NSGraphicsContext.saveGraphicsState()
-        let shadow = NSShadow()
-        shadow.shadowColor = NSColor.black.withAlphaComponent(0.25)
-        shadow.shadowBlurRadius = 6
-        shadow.shadowOffset = NSSize(width: 0, height: -2)
-        shadow.set()
-        NSColor.controlBackgroundColor.setFill()
-        panel.fill()
-        NSGraphicsContext.restoreGraphicsState()
-        NSColor.separatorColor.setStroke()
-        panel.lineWidth = 1
-        panel.stroke()
-        for (index, word) in words.enumerated() {
-            let rowRect = NSRect(x: frame.minX + inset, y: frame.minY + inset + CGFloat(index) * rowHeight,
-                                 width: frame.width - inset * 2, height: rowHeight)
-            completionListRowRects.append(rowRect)
-            let isSelected = index == completionListSelection
-            if isSelected {
-                NSColor.selectedContentBackgroundColor.setFill()
-                NSBezierPath(roundedRect: rowRect, xRadius: 4, yRadius: 4).fill()
-            }
-            (word as NSString).draw(
-                at: NSPoint(x: rowRect.minX + 6, y: rowRect.minY + 3),
-                withAttributes: [
-                    .font: font,
-                    .foregroundColor: isSelected ? NSColor.alternateSelectedControlTextColor : NSColor.labelColor
-                ]
-            )
+    private func removeCompletionListOverlay() {
+        if let completionListScrollObserver {
+            NotificationCenter.default.removeObserver(completionListScrollObserver)
         }
+        completionListScrollObserver = nil
+        completionListOverlay?.removeFromSuperview()
+        completionListOverlay = nil
+    }
+
+    private func acceptCompletionListRow(_ index: Int) {
+        guard isCompletionListVisible, completionListSuffixes.indices.contains(index) else { return }
+        window?.makeFirstResponder(self)
+        completionListSelection = index
+        inlineSuggestion = completionListSuffixes[index]
+        acceptInlineSuggestion()
     }
 
     private func moveCompletionListSelection(by delta: Int) {
@@ -2040,6 +2105,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         completionListNavigated = true
         inlineSuggestion = completionListSuffixes[completionListSelection]
         announceCompletionListSelection()
+        updateCompletionListOverlay()
         needsDisplay = true
     }
 
@@ -2455,16 +2521,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     override func mouseDown(with event: NSEvent) {
         guard ensureCurrentViewportForInput() else { return }
         window?.makeFirstResponder(self)
-        let point = convert(event.locationInWindow, from: nil)
-        if isCompletionListVisible,
-           let index = completionListRowRects.firstIndex(where: { $0.contains(point) }),
-           completionListSuffixes.indices.contains(index) {
-            completionListSelection = index
-            inlineSuggestion = completionListSuffixes[index]
-            acceptInlineSuggestion()
-            return
-        }
         clearInlineSuggestion()
+        let point = convert(event.locationInWindow, from: nil)
         if let target = hexColorSwatchTargets(rows: visualRows()).first(where: { $0.rect.contains(point) }) {
             presentColorPicker(for: target.literal, relativeTo: target.rect)
             return
@@ -3001,6 +3059,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         inlineSuggestion = candidates.first ?? EditorTextSanitizer.sanitize(suggestion)
         inlineSuggestionLocation = location
         if !candidates.isEmpty { announceCompletionListSelection() }
+        updateCompletionListOverlay()
         needsDisplay = true
     }
 
@@ -3012,7 +3071,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         completionListPrefix = ""
         completionListSelection = 0
         completionListNavigated = false
-        completionListRowRects = []
+        removeCompletionListOverlay()
         needsDisplay = true
     }
 

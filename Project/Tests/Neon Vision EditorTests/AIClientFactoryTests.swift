@@ -13,6 +13,16 @@ final class AIClientFactoryTests: XCTestCase {
         XCTAssertTrue(client is OpenAICompatibleAIClient)
     }
 
+    func testCheaperInferenceProviderUsesConfiguredTokenAndModel() {
+        let client = AIClientFactory.makeClient(
+            for: .cheaperInference,
+            cheaperInferenceKeyProvider: { "test-token" },
+            cheaperInferenceModelProvider: { "gpt-5.4-mini" }
+        )
+
+        XCTAssertTrue(client is OpenAICompatibleAIClient)
+    }
+
     func testCustomProviderAllowsHTTPSAndLoopbackHTTPBaseURLs() {
         let localClient = AIClientFactory.makeClient(
             for: .customProvider,

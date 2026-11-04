@@ -237,6 +237,15 @@ extension ContentView {
                 baseURL: OpenCodeGoConfig.baseURL,
                 model: model.isEmpty ? OpenCodeGoConfig.defaultModel : model
             )
+        case .cheaperInference:
+            let key = resolvedAIChatToken(cheaperInferenceAPIToken, key: .cheaperInference)
+            guard !key.isEmpty else { return nil }
+            let model = cheaperInferenceModelID.trimmingCharacters(in: .whitespacesAndNewlines)
+            return OpenAICompatibleAIClient(
+                apiKey: key,
+                baseURL: CheaperInferenceConfig.baseURL,
+                model: model.isEmpty ? CheaperInferenceConfig.defaultModel : model
+            )
         case .customProvider:
             let key = SecureTokenStore.token(for: .customProvider).trimmingCharacters(in: .whitespacesAndNewlines)
             let baseURL = (UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) ?? "")

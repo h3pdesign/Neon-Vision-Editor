@@ -1126,6 +1126,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var isVimInsertMode = true
     private var inlineSuggestion: String?
     private var inlineSuggestionLocation: Int?
+    // System dictionary completion lists every match below the caret (#926).
+    // The selected row is also the inline suggestion that Tab accepts.
+    private var completionListSuffixes: [String] = []
+    private var completionListPrefix = ""
+    private var completionListSelection = 0
+    private var completionListNavigated = false
+    private var completionListRowRects: [NSRect] = []
     private var onFontSizeChange: ((CGFloat) -> Void)?
     private var onTextMutation: ((EditorTextMutation) -> Bool)?
     private var pendingFontSizeDelta: CGFloat = 0
@@ -1907,6 +1914,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         drawMarkedText(rows: rows, context: context)
         drawInlineSuggestion(rows: rows, context: context)
         drawCaret(rows: rows)
+        drawCompletionList(rows: rows)
     }
 
     private func visibleVisualRowRange(in rows: [VisualRow], dirtyRect: NSRect) -> Range<Int> {
@@ -1949,6 +1957,101 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             in: context,
             at: CGPoint(x: gutterWidth + Geometry.gutterTextInset + x, y: row.baseline),
             flippedCoordinates: isFlipped
+        )
+    }
+
+    private var isCompletionListVisible: Bool {
+        !completionListSuffixes.isEmpty && inlineSuggestion != nil
+            && inlineSuggestionLocation == absoluteCaret && selection.length == 0
+    }
+
+    private func drawCompletionList(rows: [VisualRow]) {
+        completionListRowRects = []
+        guard isCompletionListVisible, let inlineSuggestionLocation else { return }
+        let local = inlineSuggestionLocation - viewportLineOriginStartUTF16
+        guard let row = visualRow(containing: local, in: rows) else { return }
+        let caretX = gutterWidth + Geometry.gutterTextInset + CGFloat(CTLineGetOffsetForStringIndex(
+            row.fragment.line,
+            row.coreTextStringIndex(forViewportOffset: local),
+            nil
+        ))
+        let font = editorFont
+        let words = completionListSuffixes.map { completionListPrefix + $0 }
+        let attributes: [NSAttributedString.Key: Any] = [.font: font]
+        let textWidth = words.map { ($0 as NSString).size(withAttributes: attributes).width }.max() ?? 0
+        let rowHeight = ceil(font.ascender - font.descender + font.leading + 6)
+        let inset: CGFloat = 4
+        let width = ceil(textWidth) + 20
+        let height = rowHeight * CGFloat(words.count) + inset * 2
+        let prefixWidth = (completionListPrefix as NSString).size(withAttributes: attributes).width
+        let visible = visibleRect
+        var originX = caretX - prefixWidth - 10
+        originX = min(max(visible.minX + 4, originX), max(visible.minX + 4, visible.maxX - width - 4))
+        let lineTop = row.baseline - lineHeight + 2
+        let below = row.baseline + max(4, -font.descender + 4)
+        let originY = below + height <= visible.maxY || lineTop - height - 2 < visible.minY
+            ? below
+            : lineTop - height - 2
+        let frame = NSRect(x: originX, y: originY, width: width, height: height)
+        // Match the editor's own light or dark scheme, not the app's.
+        let appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua) ?? effectiveAppearance
+        appearance.performAsCurrentDrawingAppearance {
+            drawCompletionListPanel(frame: frame, words: words, rowHeight: rowHeight, inset: inset, font: font)
+        }
+    }
+
+    private func drawCompletionListPanel(frame: NSRect, words: [String], rowHeight: CGFloat, inset: CGFloat, font: NSFont) {
+        let panel = NSBezierPath(roundedRect: frame, xRadius: 6, yRadius: 6)
+        NSGraphicsContext.saveGraphicsState()
+        let shadow = NSShadow()
+        shadow.shadowColor = NSColor.black.withAlphaComponent(0.25)
+        shadow.shadowBlurRadius = 6
+        shadow.shadowOffset = NSSize(width: 0, height: -2)
+        shadow.set()
+        NSColor.controlBackgroundColor.setFill()
+        panel.fill()
+        NSGraphicsContext.restoreGraphicsState()
+        NSColor.separatorColor.setStroke()
+        panel.lineWidth = 1
+        panel.stroke()
+        for (index, word) in words.enumerated() {
+            let rowRect = NSRect(x: frame.minX + inset, y: frame.minY + inset + CGFloat(index) * rowHeight,
+                                 width: frame.width - inset * 2, height: rowHeight)
+            completionListRowRects.append(rowRect)
+            let isSelected = index == completionListSelection
+            if isSelected {
+                NSColor.selectedContentBackgroundColor.setFill()
+                NSBezierPath(roundedRect: rowRect, xRadius: 4, yRadius: 4).fill()
+            }
+            (word as NSString).draw(
+                at: NSPoint(x: rowRect.minX + 6, y: rowRect.minY + 3),
+                withAttributes: [
+                    .font: font,
+                    .foregroundColor: isSelected ? NSColor.alternateSelectedControlTextColor : NSColor.labelColor
+                ]
+            )
+        }
+    }
+
+    private func moveCompletionListSelection(by delta: Int) {
+        let count = completionListSuffixes.count
+        guard count > 0 else { return }
+        completionListSelection = (completionListSelection + delta + count) % count
+        completionListNavigated = true
+        inlineSuggestion = completionListSuffixes[completionListSelection]
+        announceCompletionListSelection()
+        needsDisplay = true
+    }
+
+    private func announceCompletionListSelection() {
+        guard completionListSuffixes.indices.contains(completionListSelection) else { return }
+        NSAccessibility.post(
+            element: self,
+            notification: .announcementRequested,
+            userInfo: [
+                .announcement: completionListPrefix + completionListSuffixes[completionListSelection],
+                .priority: NSAccessibilityPriorityLevel.medium.rawValue
+            ]
         )
     }
 
@@ -2352,8 +2455,16 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     override func mouseDown(with event: NSEvent) {
         guard ensureCurrentViewportForInput() else { return }
         window?.makeFirstResponder(self)
-        clearInlineSuggestion()
         let point = convert(event.locationInWindow, from: nil)
+        if isCompletionListVisible,
+           let index = completionListRowRects.firstIndex(where: { $0.contains(point) }),
+           completionListSuffixes.indices.contains(index) {
+            completionListSelection = index
+            inlineSuggestion = completionListSuffixes[index]
+            acceptInlineSuggestion()
+            return
+        }
+        clearInlineSuggestion()
         if let target = hexColorSwatchTargets(rows: visualRows()).first(where: { $0.rect.contains(point) }) {
             presentColorPicker(for: target.literal, relativeTo: target.rect)
             return
@@ -2627,7 +2738,29 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             NotificationCenter.default.post(name: .markdownFormattingRequested, object: command)
             return
         }
-        if modifiers.isEmpty,
+        // Arrow keys always carry the function and numeric-pad flags, and
+        // Caps Lock is a state, so none of them count as modifiers here.
+        let typedModifiers = modifiers.subtracting([.function, .numericPad, .capsLock])
+        if typedModifiers.isEmpty, isCompletionListVisible {
+            switch event.keyCode {
+            case 125:
+                moveCompletionListSelection(by: 1)
+                return
+            case 126:
+                moveCompletionListSelection(by: -1)
+                return
+            case 53:
+                clearInlineSuggestion()
+                return
+            case 36, 76:
+                // Return accepts only a word the user picked with the arrow
+                // keys, so ending a line after a complete word stays a newline.
+                if completionListNavigated, acceptInlineSuggestion() { return }
+            default:
+                break
+            }
+        }
+        if typedModifiers.isEmpty,
            (event.keyCode == 48 || event.keyCode == 124),
            acceptInlineSuggestion() {
             return
@@ -2857,15 +2990,29 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
               !suggestion.isEmpty,
               selection.length == 0,
               absoluteCaret == location else { return }
-        inlineSuggestion = EditorTextSanitizer.sanitize(suggestion)
+        let prefix = notification.userInfo?[EditorCommandUserInfo.completionWordPrefix] as? String ?? ""
+        let candidates = prefix.isEmpty ? [] : (notification.userInfo?[EditorCommandUserInfo.completionCandidates] as? [String] ?? [])
+            .map(EditorTextSanitizer.sanitize)
+            .filter { !$0.isEmpty && !$0.contains(where: \.isNewline) }
+        completionListPrefix = candidates.isEmpty ? "" : prefix
+        completionListSuffixes = candidates
+        completionListSelection = 0
+        completionListNavigated = false
+        inlineSuggestion = candidates.first ?? EditorTextSanitizer.sanitize(suggestion)
         inlineSuggestionLocation = location
+        if !candidates.isEmpty { announceCompletionListSelection() }
         needsDisplay = true
     }
 
     private func clearInlineSuggestion() {
-        guard inlineSuggestion != nil || inlineSuggestionLocation != nil else { return }
+        guard inlineSuggestion != nil || inlineSuggestionLocation != nil || !completionListSuffixes.isEmpty else { return }
         inlineSuggestion = nil
         inlineSuggestionLocation = nil
+        completionListSuffixes = []
+        completionListPrefix = ""
+        completionListSelection = 0
+        completionListNavigated = false
+        completionListRowRects = []
         needsDisplay = true
     }
 

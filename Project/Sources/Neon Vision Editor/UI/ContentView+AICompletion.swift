@@ -192,14 +192,18 @@ extension ContentView {
               viewModel.selectedTab?.id == tabID else { return false }
         let source = context as NSString
         let prefix = CompletionHeuristics.tokenContext(in: source, caretLocation: source.length).prefix
-        guard let suffix = SystemWordCompletion.suffix(forWordPrefix: prefix) else { return false }
+        let suffixes = SystemWordCompletion.suffixes(forWordPrefix: prefix)
+        guard let suffix = suffixes.first else { return false }
         NotificationCenter.default.post(
             name: .showVirtualEditorInlineSuggestion,
             object: nil,
             userInfo: [
                 EditorCommandUserInfo.documentID: tabID.uuidString,
                 EditorCommandUserInfo.completionCaretOffset: caretLocation,
-                EditorCommandUserInfo.replacementText: suffix
+                EditorCommandUserInfo.replacementText: suffix,
+                // The editor lists every match below the caret (#926).
+                EditorCommandUserInfo.completionCandidates: suffixes,
+                EditorCommandUserInfo.completionWordPrefix: prefix
             ]
         )
         return true

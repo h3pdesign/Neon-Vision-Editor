@@ -412,7 +412,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 - Saved chat conversations support questions about an explicitly selected snippet, the current file, project structure, or no document context. Responses retain Markdown and code formatting; request cancellation and retry stay within the conversation.
 - Whole-file chat context is currently unavailable for large disk-backed documents; selection and project-structure context remain separate options.
-- Apple Intelligence is the default provider selection on supported systems. Other providers are opt-in, including OpenAI, Anthropic, Gemini, Grok, OpenCode Go, and a configurable OpenAI-compatible endpoint. Availability depends on the selected provider and device; core editing works offline.
+- Apple Intelligence is the default provider selection on supported systems. Other providers are opt-in, including OpenAI, Anthropic, Gemini, Grok, OpenCode Go, Cheaper Inference, and a configurable OpenAI-compatible endpoint. Availability depends on the selected provider and device; core editing works offline.
 - Provider credentials stay in Keychain. Cloud-context disclosures and sensitive-content checks let you review what will be sent; restoring a saved chat does not silently attach fresh editor content.
 - Plain-text-to-Markdown and plain-text-to-JSON actions produce proposals for review. JSON output must validate before it can be applied. These workflows and inline completion use the existing provider layer.
 

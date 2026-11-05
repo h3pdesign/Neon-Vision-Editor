@@ -2091,10 +2091,15 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     private func acceptCompletionListRow(_ index: Int) {
-        guard isCompletionListVisible, completionListSuffixes.indices.contains(index) else { return }
+        guard isCompletionListVisible, completionListSuffixes.indices.contains(index),
+              let location = inlineSuggestionLocation else { return }
+        // Taking focus back can clear the list (the Vim mode refresh does),
+        // so read the word first and restore it only if the caret is unchanged.
+        let suffix = completionListSuffixes[index]
         window?.makeFirstResponder(self)
-        completionListSelection = index
-        inlineSuggestion = completionListSuffixes[index]
+        guard absoluteCaret == location, selection.length == 0 else { return }
+        inlineSuggestion = suffix
+        inlineSuggestionLocation = location
         acceptInlineSuggestion()
     }
 

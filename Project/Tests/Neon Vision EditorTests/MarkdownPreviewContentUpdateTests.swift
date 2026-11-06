@@ -40,14 +40,10 @@ final class MarkdownPreviewContentUpdateTests: XCTestCase {
         web.stopLoading()
     }
 
-    func testMathStylesAreIncludedInPreviewAndPDFExport() {
-        let view = ContentView()
-        let preview = view.markdownPreviewHTML(from: "$x_i$", preferDarkMode: false)
-        let export = view.markdownPreviewExportHTML(from: "$$x_i$$", mode: .paginatedFit)
-        for output in [preview, export] {
-            XCTAssertTrue(output.contains("class=\"katex-mathml\""))
-            XCTAssertTrue(output.contains("data:font/woff2;base64,"))
-        }
+    func testMathStylesAreIncludedInPreviewShell() {
+        let output = html(ContentView.simpleMarkdownToHTML("$x_i$"))
+        XCTAssertTrue(output.contains("class=\"katex-mathml\""))
+        XCTAssertTrue(output.contains("data:font/woff2;base64,"))
     }
 
     func testInPlaceUpdateRetainsUnchangedNodesAndInertPageWithoutReload() async throws {

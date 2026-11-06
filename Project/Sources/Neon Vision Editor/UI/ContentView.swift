@@ -5499,7 +5499,7 @@ struct ContentView: View {
         )
 #if os(iOS)
         return Group {
-            if shouldUseMobileSafetyWrap(text: editorTextBinding.wrappedValue as NSString, requestedWrap: false) {
+            if MobileDocumentScanCache.shouldUseMobileSafetyWrap(text: editorTextBinding.wrappedValue) {
                 SegmentedLargeLineEditor(
                     text: editorTextBinding,
                     documentID: tabID,

@@ -282,6 +282,18 @@ nonisolated func isLikelyGeneratedOrMinifiedSyntaxText(_ text: NSString) -> Bool
 }
 
 func shouldSuppressGeneratedFileSyntaxHighlighting(text: NSString, language: String) -> Bool {
+    shouldSuppressGeneratedFileSyntaxHighlighting(
+        language: language,
+        textLength: text.length,
+        isLikelyGenerated: { isLikelyGeneratedOrMinifiedSyntaxText(text) }
+    )
+}
+
+func shouldSuppressGeneratedFileSyntaxHighlighting(
+    language: String,
+    textLength: Int,
+    isLikelyGenerated: () -> Bool
+) -> Bool {
     guard isProgrammingSyntaxLanguage(language) || isJSONLikeLanguage(language) || isHTMLLikeSyntaxLanguage(language) else {
         return false
     }
@@ -289,10 +301,10 @@ func shouldSuppressGeneratedFileSyntaxHighlighting(text: NSString, language: Str
     case .full:
         return false
     case .off:
-        return isLikelyGeneratedOrMinifiedSyntaxText(text)
+        return isLikelyGenerated()
     case .automatic:
-        guard isLikelyGeneratedOrMinifiedSyntaxText(text) else { return false }
-        return !supportsResponsiveLargeFileHighlight(language: language, textLength: text.length)
+        guard isLikelyGenerated() else { return false }
+        return !supportsResponsiveLargeFileHighlight(language: language, textLength: textLength)
     }
 }
 
@@ -346,6 +358,41 @@ nonisolated func shouldUseMobileSafetyWrap(
     }
     return false
 }
+
+#if !os(macOS)
+/// Remembers the latest whole-document scan results for the iOS editor, which
+/// asks several times per keystroke. Results stay exact: an edit produces a new
+/// string, and comparing native strings is much cheaper than rescanning.
+enum MobileDocumentScanCache {
+    private static var safetyWrap: (text: String, result: Bool)?
+    private static var generated: (prefix: String, result: Bool)?
+
+    static func shouldUseMobileSafetyWrap(text: String) -> Bool {
+        if let safetyWrap, safetyWrap.text == text {
+            return safetyWrap.result
+        }
+        let result = Neon_Vision_Editor.shouldUseMobileSafetyWrap(text: text as NSString, requestedWrap: false)
+        safetyWrap = (text, result)
+        return result
+    }
+
+    /// The generated-file check only reads a bounded prefix, so edits beyond it
+    /// cannot change the result once the document is over the size threshold.
+    static func isLikelyGeneratedOrMinified(text: NSString) -> Bool {
+        guard text.length >= EditorRuntimeLimits.generatedFileAutoDetectionUTF16Threshold else { return false }
+        let scanLength = min(text.length, EditorRuntimeLimits.generatedFileAutoDetectionScanUTF16)
+        let prefix = text.substring(with: NSRange(location: 0, length: scanLength))
+        // Bytes, not canonical equivalence: a mismatch only costs one rescan, and
+        // normalising non-ASCII text here would cost nearly as much as the scan.
+        if let generated, generated.prefix.utf8.elementsEqual(prefix.utf8) {
+            return generated.result
+        }
+        let result = isLikelyGeneratedOrMinifiedSyntaxText(text)
+        generated = (prefix, result)
+        return result
+    }
+}
+#endif
 
 func editorCaretLineColumn(in text: NSString, location rawLocation: Int) -> (line: Int, column: Int) {
     let location = min(max(0, rawLocation), text.length)

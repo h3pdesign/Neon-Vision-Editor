@@ -161,6 +161,8 @@ class EditorInputTextView: UITextView {
     weak var editorContainer: LineNumberedTextViewContainer?
     private var preferredTextContainerWidth: CGFloat = 0
     private var textMetricsRevision = 0
+    private(set) var textContentRevision = 0
+    private var nativeTextCache: (revision: Int, text: String)?
     private var noWrapWidthCache: NoWrapWidthCache?
     private var lineStartCache: (revision: Int, offsets: [Int])?
     private var activeShiftPressIdentifiers: Set<ObjectIdentifier> = []
@@ -323,6 +325,42 @@ class EditorInputTextView: UITextView {
         }
     }
 #endif
+
+    /// Native copy of the buffer for whole-document comparisons and scans.
+    /// `UITextView.text` bridges lazily, so Swift reads it one character at a
+    /// time through Objective-C. The copy is rebuilt at most once per edit.
+    var nativeTextSnapshot: String {
+        if let nativeTextCache, nativeTextCache.revision == textContentRevision {
+            return nativeTextCache.text
+        }
+        let storageText = textStorage.string as NSString
+        let length = storageText.length
+        let snapshot: String
+        if length == 0 {
+            snapshot = ""
+        } else {
+            snapshot = withUnsafeTemporaryAllocation(of: unichar.self, capacity: length) { buffer in
+                storageText.getCharacters(buffer.baseAddress!, range: NSRange(location: 0, length: length))
+                return String(decoding: buffer, as: UTF16.self)
+            }
+        }
+        nativeTextCache = (textContentRevision, snapshot)
+        return snapshot
+    }
+
+    private func observeTextContentEdits() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleTextStorageDidProcessEditing(_:)),
+            name: NSTextStorage.didProcessEditingNotification,
+            object: textStorage
+        )
+    }
+
+    @objc private func handleTextStorageDidProcessEditing(_ notification: Notification) {
+        guard textStorage.editedMask.contains(.editedCharacters) else { return }
+        textContentRevision &+= 1
+    }
 
     func invalidateTextMetrics() {
         textMetricsRevision &+= 1
@@ -603,6 +641,7 @@ class EditorInputTextView: UITextView {
         }
         #endif
         syncVimModeFromDefaults()
+        observeTextContentEdits()
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleVimModeStateDidChange(_:)),
@@ -620,6 +659,7 @@ class EditorInputTextView: UITextView {
         }
         #endif
         syncVimModeFromDefaults()
+        observeTextContentEdits()
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleVimModeStateDidChange(_:)),
@@ -2403,10 +2443,7 @@ struct CustomTextEditor: UIViewRepresentable {
     }
 
     private func shouldWrapText(for source: String) -> Bool {
-        isLineWrapEnabled || shouldUseMobileSafetyWrap(
-            text: source as NSString,
-            requestedWrap: isLineWrapEnabled
-        )
+        isLineWrapEnabled || MobileDocumentScanCache.shouldUseMobileSafetyWrap(text: source)
     }
 
     func makeUIView(context: Context) -> LineNumberedTextViewContainer {
@@ -2570,40 +2607,40 @@ struct CustomTextEditor: UIViewRepresentable {
             !didFinishTabLoad &&
             !didReceiveExternalEdit &&
             !context.coordinator.hasPendingBindingSync
-        if textView.text != text && context.coordinator.largeTextInstallTarget != text {
-            if !shouldSkipLargeFileResync {
-                let shouldPreferEditorBuffer =
-                    textView.isFirstResponder &&
-                    !isTabLoadingContent &&
-                    !didSwitchDocumentResource &&
-                    !didFinishTabLoad &&
-                    !didReceiveExternalEdit
-                if shouldPreferEditorBuffer {
-                    context.coordinator.syncBindingTextImmediately(textView.text)
-                } else {
-                    context.coordinator.cancelPendingBindingSync()
-                    let priorSelection = textView.selectedRange
-                    let priorOffset = textView.editorContentOffset
-                    let didInstallLargeText = context.coordinator.installLargeTextIfNeeded(
-                        on: textView,
-                        target: text,
-                        preserveSelection: !didSwitchDocumentResource,
-                        preserveViewport: preserveViewportDuringContentInstall,
-                        restoredCaretLocation: shouldRestoreCaret ? storedCaretLocation : nil
-                    )
-                    if !didInstallLargeText {
-                        textView.text = text
-                        textView.invalidateTextMetrics()
-                        let length = (textView.text as NSString).length
-                        if didSwitchDocumentResource {
-                            textView.selectedRange = NSRange(location: 0, length: 0)
-                            textView.setEditorContentOffset(.zero, animated: false)
-                        } else {
-                            let clampedLocation = min(priorSelection.location, length)
-                            let clampedLength = min(priorSelection.length, max(0, length - clampedLocation))
-                            textView.selectedRange = NSRange(location: clampedLocation, length: clampedLength)
-                            textView.setEditorContentOffset(priorOffset, animated: false)
-                        }
+        if !shouldSkipLargeFileResync,
+           textView.nativeTextSnapshot != text,
+           context.coordinator.largeTextInstallTarget != text {
+            let shouldPreferEditorBuffer =
+                textView.isFirstResponder &&
+                !isTabLoadingContent &&
+                !didSwitchDocumentResource &&
+                !didFinishTabLoad &&
+                !didReceiveExternalEdit
+            if shouldPreferEditorBuffer {
+                context.coordinator.syncBindingTextImmediately(textView.nativeTextSnapshot)
+            } else {
+                context.coordinator.cancelPendingBindingSync()
+                let priorSelection = textView.selectedRange
+                let priorOffset = textView.editorContentOffset
+                let didInstallLargeText = context.coordinator.installLargeTextIfNeeded(
+                    on: textView,
+                    target: text,
+                    preserveSelection: !didSwitchDocumentResource,
+                    preserveViewport: preserveViewportDuringContentInstall,
+                    restoredCaretLocation: shouldRestoreCaret ? storedCaretLocation : nil
+                )
+                if !didInstallLargeText {
+                    textView.text = text
+                    textView.invalidateTextMetrics()
+                    let length = (textView.text as NSString).length
+                    if didSwitchDocumentResource {
+                        textView.selectedRange = NSRange(location: 0, length: 0)
+                        textView.setEditorContentOffset(.zero, animated: false)
+                    } else {
+                        let clampedLocation = min(priorSelection.location, length)
+                        let clampedLength = min(priorSelection.length, max(0, length - clampedLocation))
+                        textView.selectedRange = NSRange(location: clampedLocation, length: clampedLength)
+                        textView.setEditorContentOffset(priorOffset, animated: false)
                     }
                 }
             }
@@ -2720,7 +2757,7 @@ struct CustomTextEditor: UIViewRepresentable {
             context.coordinator.restoreCaret(storedCaretLocation, in: textView)
         }
         if didTransitionDocumentState {
-            context.coordinator.scheduleHighlightIfNeeded(currentText: textView.text ?? text, immediate: true)
+            context.coordinator.scheduleHighlightIfNeeded(currentText: textView.nativeTextSnapshot, immediate: true)
         } else if !isInteractivePhoneEditing {
             context.coordinator.scheduleHighlightIfNeeded(currentText: text)
         }
@@ -2757,6 +2794,7 @@ struct CustomTextEditor: UIViewRepresentable {
             pendingHighlightCancellation = nil
         }
         private var pendingTextMutation: (range: NSRange, replacement: String)?
+        private var pendingTextMutationBaseRevision: Int?
         private var pendingEditedRange: NSRange?
         fileprivate var isInstallingLargeText = false
         fileprivate var largeTextInstallTarget: String?
@@ -2925,7 +2963,7 @@ struct CustomTextEditor: UIViewRepresentable {
             let work = DispatchWorkItem { [weak self] in
                 guard let self else { return }
                 self.pendingBindingSync = nil
-                if self.textView?.text == text {
+                if self.textView?.nativeTextSnapshot == text {
                     self.parent.text = text
                 }
             }
@@ -3126,6 +3164,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 return
             }
             pendingTextMutation = (range: range, replacement: replacement)
+            pendingTextMutationBaseRevision = textView?.textContentRevision
         }
 
         private func applyPendingTextMutationIfPossible() -> Bool {
@@ -3402,7 +3441,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 for: NSRange(location: selectedLocation, length: 0)
             )
             updateCaretStatus()
-            scheduleHighlightIfNeeded(currentText: textView.text)
+            scheduleHighlightIfNeeded(currentText: nativeText(of: textView))
             textView.invisibleCharactersOverlayView?.requestRedraw(immediate: true)
             textView.revealCaretWithContext()
         }
@@ -3440,7 +3479,7 @@ struct CustomTextEditor: UIViewRepresentable {
             textView.selectedRange = target
             centerEditorLine(at: target, in: textView)
             updateCaretStatus()
-            scheduleHighlightIfNeeded(currentText: textView.text ?? "", immediate: true)
+            scheduleHighlightIfNeeded(currentText: nativeText(of: textView), immediate: true)
         }
 
         private func centerEditorLine(at range: NSRange, in textView: UITextView) {
@@ -3557,7 +3596,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 return
             }
             guard let textView, !isInstallingLargeText else { return }
-            let text = currentText ?? textView.text ?? ""
+            let text = currentText ?? textView.nativeTextSnapshot
             let lang = parent.language
             let scheme = parent.colorScheme
             let lineHeight = parent.lineHeightMultiple
@@ -3572,8 +3611,12 @@ struct CustomTextEditor: UIViewRepresentable {
             let nsText = text as NSString
             // Styling any range in one enormous paragraph makes TextKit 1
             // invalidate and synchronously lay out the whole paragraph.
-            if shouldUseMobileSafetyWrap(text: nsText, requestedWrap: false) ||
-                shouldSuppressGeneratedFileSyntaxHighlighting(text: nsText, language: lang) {
+            if MobileDocumentScanCache.shouldUseMobileSafetyWrap(text: text) ||
+                shouldSuppressGeneratedFileSyntaxHighlighting(
+                    language: lang,
+                    textLength: textLength,
+                    isLikelyGenerated: { MobileDocumentScanCache.isLikelyGeneratedOrMinified(text: nsText) }
+                ) {
                 lastHighlightedText = text
                 lastLanguage = lang
                 lastColorScheme = scheme
@@ -3922,7 +3965,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 guard !cancellation.isCancelled else { return }
                 guard let self = coordinator, let textView = self.textView else { return }
                 guard generation == self.highlightGeneration else { return }
-                guard textView.text == text else { return }
+                guard textView.nativeTextSnapshot == text else { return }
                 let selectedRange = textView.selectedRange
                 let viewportAnchor = self.currentViewportAnchor(
                     textLength: (text as NSString).length,
@@ -4056,7 +4099,7 @@ struct CustomTextEditor: UIViewRepresentable {
                     // Keep the highlight state dirty so the complete document pass
                     // follows the quick visible-range first paint.
                     self.lastHighlightedText = ""
-                    self.scheduleHighlightIfNeeded(currentText: textView.text, deferred: true)
+                    self.scheduleHighlightIfNeeded(currentText: self.nativeText(of: textView), deferred: true)
                 }
             }
         }
@@ -4088,7 +4131,7 @@ struct CustomTextEditor: UIViewRepresentable {
             let lineNumberMutation = pendingTextMutation
             let didApplyIncrementalMutation = applyPendingTextMutationIfPossible()
             if !didApplyIncrementalMutation {
-                syncBindingText(currentText)
+                syncBindingText(nativeText(of: textView))
             }
             if let editorTextView = textView as? EditorInputTextView,
                editorTextView.rendersInvisibleCharacters || editorTextView.rendersIndentationGuides {
@@ -4121,7 +4164,16 @@ struct CustomTextEditor: UIViewRepresentable {
             let caretLocation = min(nsText.length, textView.selectedRange.location)
             pendingEditedRange = nsText.lineRange(for: NSRange(location: caretLocation, length: 0))
             updateCaretStatus(text: nsText)
-            scheduleHighlightIfNeeded(currentText: currentText)
+            // A delta updates the binding, so updateUIView schedules this edit's
+            // pass. Outside interactive phone editing that pass already replaced
+            // one scheduled here, so scheduling both only repeated the work.
+            if didApplyIncrementalMutation && UIDevice.current.userInterfaceIdiom != .phone {
+                if !isMarkdownSyntaxLanguage(parent.language) {
+                    pendingEditedRange = nil
+                }
+            } else {
+                scheduleHighlightIfNeeded(currentText: nativeText(of: textView))
+            }
             (textView as? EditorInputTextView)?.expandUnwrappedEditingLineIfNeeded()
             (textView as? EditorInputTextView)?.revealCaretWithContext()
         }
@@ -4151,14 +4203,28 @@ struct CustomTextEditor: UIViewRepresentable {
             }
         }
 
+        private func nativeText(of textView: UITextView) -> String {
+            (textView as? EditorInputTextView)?.nativeTextSnapshot ?? textView.text ?? ""
+        }
+
+        /// UIKit reports a typed edit's caret move just before `textViewDidChange`,
+        /// which supersedes any highlight scheduled for that selection change.
+        private func isAwaitingTextDidChange(for textView: UITextView) -> Bool {
+            guard pendingTextMutation != nil,
+                  let baseRevision = pendingTextMutationBaseRevision,
+                  let editorTextView = textView as? EditorInputTextView else { return false }
+            return editorTextView.textContentRevision != baseRevision
+        }
+
         private func publishSelectionState(for textView: UITextView) {
             let currentText = textView.text ?? ""
             let nsText = currentText as NSString
             publishSelectionSnapshot(from: nsText, selectedRange: textView.selectedRange)
             updateCaretStatus(text: nsText)
-            if !(UIDevice.current.userInterfaceIdiom == .phone && textView.isFirstResponder) {
+            if !(UIDevice.current.userInterfaceIdiom == .phone && textView.isFirstResponder),
+               !isAwaitingTextDidChange(for: textView) {
                 let immediateHighlight = nsText.length < 200_000
-                scheduleHighlightIfNeeded(currentText: currentText, immediate: immediateHighlight)
+                scheduleHighlightIfNeeded(currentText: nativeText(of: textView), immediate: immediateHighlight)
             }
         }
 
@@ -4166,7 +4232,7 @@ struct CustomTextEditor: UIViewRepresentable {
             if UIDevice.current.userInterfaceIdiom == .phone {
                 cancelPendingHighlight()
                 highlightGeneration &+= 1
-                scheduleHighlightIfNeeded(currentText: textView.text, immediate: true)
+                scheduleHighlightIfNeeded(currentText: nativeText(of: textView), immediate: true)
             }
             // Selection callbacks can arrive before UIKit has promoted the
             // editor to first responder.  That ordering used to skip the
@@ -4190,7 +4256,7 @@ struct CustomTextEditor: UIViewRepresentable {
             NotificationCenter.default.post(name: .editorFocusDidChange, object: false)
             let textLength = (textView.text as NSString?)?.length ?? 0
             scheduleHighlightIfNeeded(
-                currentText: textView.text,
+                currentText: nativeText(of: textView),
                 immediate: textLength < EditorRuntimeLimits.cursorRehighlightMaxUTF16Length
             )
         }
@@ -4443,7 +4509,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 textLength: textLength
             ) {
                 guard !isPhoneActivelyEditing else { return }
-                scheduleHighlightIfNeeded(currentText: textView.text)
+                scheduleHighlightIfNeeded(currentText: nativeText(of: textView))
             }
         }
 

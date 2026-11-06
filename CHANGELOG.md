@@ -14,6 +14,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Highlights
 
 - Cheaper Inference is available as an optional AI provider. It uses the shared OpenAI-compatible chat completions client with the gpt-5.4-mini default model, a Keychain-stored API token, and a configurable model id (#908).
+- Markdown previews and PDF exports render inline and display TeX formulas offline with bundled KaTeX. Formula underscores are preserved, and document JavaScript remains disabled (#942).
 
 ### Fixes
 

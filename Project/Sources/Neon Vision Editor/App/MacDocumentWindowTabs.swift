@@ -324,7 +324,9 @@ final class MacDocumentWindowTabs {
     /// Attach at the scene root, before AppKit presents the window. Waiting for
     /// the editor's registration allows SwiftUI to display a standalone window.
     func attachPendingWindow(_ window: NSWindow, for id: UUID) {
-        guard let item = pending[id], let parent = item.parent, parent !== window else { return }
+        // AppKit closes every tab window on quit. Grouping a window into a
+        // closing tab group then raises inside NSWindowStackController (#875).
+        guard !isTerminating, let item = pending[id], let parent = item.parent, parent !== window else { return }
         window.tabbingIdentifier = MacDocumentTabPolicy.tabbingIdentifier
         window.tabbingMode = .preferred
         if window.tabGroup !== parent.tabGroup || window.tabGroup == nil {
@@ -392,7 +394,7 @@ final class MacDocumentWindowTabs {
             guard let model else { return }
             self?.reveal(model)
         }
-        if let parent = parents.removeValue(forKey: identity)?.window, parent !== window {
+        if let parent = parents.removeValue(forKey: identity)?.window, parent !== window, !isTerminating {
             if window.tabGroup !== parent.tabGroup || window.tabGroup == nil {
                 parent.addTabbedWindow(window, ordered: .above)
             }

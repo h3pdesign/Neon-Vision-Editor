@@ -142,5 +142,13 @@ struct MarkdownMathRendererTests {
         #expect(css.contains("overflow-x: auto"))
         #expect(!css.contains("url(fonts/"))
         #expect(!css.contains("https://"))
+        let facePattern = try! NSRegularExpression(pattern: #"@font-face\{([^}]+)\}"#)
+        let faces = facePattern.matches(in: css, range: NSRange(css.startIndex..., in: css))
+        #expect(faces.count == 20)
+        for face in faces {
+            let rule = (css as NSString).substring(with: face.range)
+            #expect(rule.components(separatedBy: "font-family:").count - 1 == 1)
+            #expect(rule.components(separatedBy: "src:").count - 1 == 1)
+        }
     }
 }

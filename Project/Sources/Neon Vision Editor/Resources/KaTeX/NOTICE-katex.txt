@@ -7,3 +7,7 @@ katex.min.css is upstream dist/katex.min.css with each font src replaced
 by its upstream WOFF2 font embedded as a data:font/woff2;base64 URL.
 WOFF and TTF alternatives are omitted. No network access is needed.
 See LICENSE-katex.txt for the upstream license, including bundled fonts.
+
+To regenerate the embedded stylesheet from the pinned archive:
+  npm pack katex@0.19.1
+  python3 scripts/vendor_katex.py katex-0.19.1.tgz

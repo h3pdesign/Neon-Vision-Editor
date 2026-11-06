@@ -46,6 +46,22 @@ final class MarkdownPreviewContentUpdateTests: XCTestCase {
         XCTAssertTrue(output.contains("data:font/woff2;base64,"))
     }
 
+    func testEmbeddedMathFontFacesAreDeclaredAndLoadable() async throws {
+        let output = html(ContentView.simpleMarkdownToHTML(#"$\frac{x_i}{y_j}$"#))
+        let web = WKWebView(frame: NSRect(x: 0, y: 0, width: 700, height: 500))
+        web.configuration.defaultWebpagePreferences.allowsContentJavaScript = false
+        web.loadHTMLString(output, baseURL: nil)
+        try await waitFor("String(document.fonts.size)", equals: "20", in: web)
+        // fonts.check() alone succeeds even when a family is absent and falls back.
+        let loaded = try await web.callAsyncJavaScript("""
+        const fonts = ['20px KaTeX_Main', 'italic 20px KaTeX_Math', '20px KaTeX_Size2'];
+        const faces = await Promise.all(fonts.map(font => document.fonts.load(font)));
+        return faces.map(matches => matches.length).join(',');
+        """, arguments: [:], in: nil, contentWorld: .page)
+        XCTAssertEqual(loaded as? String, "1,1,1")
+        web.stopLoading()
+    }
+
     func testInPlaceUpdateRetainsUnchangedNodesAndInertPageWithoutReload() async throws {
         let old = html("<a id='keep' href='#change'>keep</a><p id='change'>old</p>")
         let new = html("<a id='keep' href='#change'>keep</a><p id='change'>new 😀</p>")

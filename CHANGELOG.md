@@ -8,12 +8,15 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Why Upgrade
 
-- On the Mac, word suggestions from the macOS dictionary and your Text Replacements appear in a list while you type in plain text and Markdown.
-- Cheaper Inference is available as an AI provider.
+- On the Mac, words from the macOS dictionary and your Text Replacements appear in a list below the caret as you type.
+- Right Arrow accepts inline suggestions as the setting describes, and Tab also works with Caps Lock on.
+- Cheaper Inference is available as an optional AI provider.
 
 ### Highlights
 
-- Cheaper Inference is available as an optional AI provider. It uses the shared OpenAI-compatible chat completions client with the gpt-5.4-mini default model, a Keychain-stored API token, and a configurable model id (#908).
+- In the word list, Up and Down Arrow pick a word, Tab or Right Arrow accepts it, and Escape closes the list.
+- Clicking a word in the list inserts it, and Return accepts a word you picked with the arrow keys.
+- Cheaper Inference uses gpt-5.4-mini by default, keeps its API token in the Keychain, and lets you set your own model id.
 - Markdown previews and PDF exports render inline and display TeX formulas offline with bundled KaTeX. Formula underscores are preserved, and document JavaScript remains disabled (#942).
 
 ### Fixes

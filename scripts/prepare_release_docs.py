@@ -302,6 +302,11 @@ def shorten_for_welcome_tour_card(text: str, limit: int = WELCOME_TOUR_CARD_TEXT
 def welcome_feature_title(description: str, index: int) -> str:
     lowered = description.lower()
     rules = (
+        (("up and down arrow",), "Word List Keys"),
+        (("caps lock",), "Inline Suggestions"),
+        (("clicking a word",), "Picking Words"),
+        (("api token in the keychain",), "Cheaper Inference"),
+        (("optional ai provider",), "AI Providers"),
         (("settings page",), "Mac Settings"),
         (("completion options",), "Completion Settings"),
         (("cut off",), "Settings Notes"),
@@ -665,6 +670,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v2.1.7": ("Wortliste auf dem Mac und Cheaper Inference", "Auf dem Mac erscheinen Wörter aus dem macOS-Wörterbuch und deinen Textersetzungen beim Tippen in einer Liste unter der Einfügemarke. Pfeiltasten wählen, Tab oder Rechtspfeil übernimmt. Cheaper Inference ist als optionaler KI-Anbieter verfügbar.", ["Vervollständigung", "Tastatur", "KI"]),
         "v2.1.6": ("Einstellungen passen auf kleinere Mac-Bildschirme", "Auf kleineren Mac-Bildschirmen passt jede Einstellungsseite wieder über das Dock, längere Seiten lassen sich scrollen, und die Vervollständigung hat einen eigenen Bereich unter Editor. Auf iPhone und iPad kopiert das Tippen das Dokument nur noch einmal pro Änderung, und auf dem aufgeklappten iPhone Duo verdeckt die Symbolleiste die Statusleiste nicht mehr.", ["Einstellungen", "Tippen", "iPhone Duo"]),
         "v2.1.5": ("Wortvervollständigung und Ordnervergleich auf dem iPhone", "Auf dem Mac ergänzt der Editor Wörter aus dem macOS-Wörterbuch und deinen Textersetzungen per Tab, und die Inhaltsverzeichnis-Seitenleiste öffnet sich wie zuletzt. Schnell öffnen, Gehe zu Symbol und die Gliederung blockieren den Editor nicht mehr, der Ordnervergleich funktioniert auf iPhone und iPad, und das iPhone Duo erhält Korrekturen.", ["Vervollständigung", "Leistung", "Ordnervergleich"]),
         "v2.1.3": ("Auswahl folgt langen Zeilen", "Beim Auswählen mit der Maus über den linken oder rechten Rand einer langen, nicht umbrochenen Zeile scrollt der Mac-Editor jetzt seitwärts mit. Die Markdown-Formatierungsleiste sitzt wieder oben rechts im Editor, und über der Minimap scrollt das Mausrad den Editor.", ["Auswahl", "Scrollen", "Markdown"]),
@@ -712,6 +718,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v2.1.7": ("Ordliste på Mac og Cheaper Inference", "På Mac vises ord fra macOS-ordbogen og dine teksterstatninger i en liste under markøren, mens du skriver. Piletasterne vælger, og Tab eller højrepil accepterer. Cheaper Inference er tilgængelig som valgfri AI-udbyder.", ["Fuldførelse", "Tastatur", "AI"]),
         "v2.1.6": ("Indstillinger passer til mindre Mac-skærme", "På mindre Mac-skærme passer hver indstillingsside igen over Dock, længere sider kan rulles, og fuldførelse har sin egen sektion under Editor. På iPhone og iPad kopierer skrivning kun dokumentet én gang pr. ændring, og på den udfoldede iPhone Duo dækker værktøjslinjen ikke længere statuslinjen.", ["Indstillinger", "Skrivning", "iPhone Duo"]),
         "v2.1.5": ("Ordfuldførelse og mappesammenligning på iPhone", "På Mac fuldfører editoren ord fra macOS-ordbogen og dine teksterstatninger med Tab, og indholdsfortegnelsens sidepanel åbner, som du forlod det. Hurtig åbning, Gå til symbol og dispositionen blokerer ikke længere editoren, mappesammenligning virker på iPhone og iPad, og iPhone Duo får rettelser.", ["Fuldførelse", "Ydeevne", "Mappesammenligning"]),
         "v2.1.3": ("Markering følger lange linjer", "Når du markerer med musen forbi venstre eller højre kant af en lang linje uden ombrydning, ruller Mac-editoren nu sidelæns med. Markdown-formateringslinjen sidder igen øverst til højre i editoren, og rullehjulet over minikortet ruller editoren.", ["Markering", "Rulning", "Markdown"]),
@@ -759,6 +766,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v2.1.7": ("Liste de mots sur Mac et Cheaper Inference", "Sur Mac, les mots du dictionnaire macOS et de vos remplacements de texte s’affichent dans une liste sous le curseur pendant la saisie. Les flèches choisissent, Tab ou la flèche droite valide. Cheaper Inference est disponible comme fournisseur d’IA facultatif.", ["Complétion", "Clavier", "IA"]),
         "v2.1.6": ("Les Réglages tiennent sur les petits écrans Mac", "Sur les petits écrans Mac, chaque page des Réglages tient de nouveau au-dessus du Dock, les pages plus longues défilent, et la complétion a sa propre section sous Éditeur. Sur iPhone et iPad, la saisie ne copie plus le document qu’une fois par modification, et sur l’iPhone Duo déplié, la barre d’outils ne masque plus la barre d’état.", ["Réglages", "Saisie", "iPhone Duo"]),
         "v2.1.5": ("Complétion de mots et comparaison de dossiers sur iPhone", "Sur Mac, l’éditeur complète les mots à partir du dictionnaire macOS et de vos remplacements de texte avec Tab, et la barre latérale de table des matières se rouvre comme vous l’avez laissée. Ouverture rapide, Aller au symbole et le plan ne bloquent plus l’éditeur, la comparaison de dossiers fonctionne sur iPhone et iPad, et l’iPhone Duo reçoit des corrections.", ["Complétion", "Performances", "Comparaison de dossiers"]),
         "v2.1.3": ("La sélection suit les longues lignes", "Lorsque vous sélectionnez à la souris au-delà du bord gauche ou droit d’une longue ligne non renvoyée, l’éditeur Mac défile désormais latéralement. La barre de mise en forme Markdown retrouve le coin supérieur droit de l’éditeur, et la molette au-dessus de la minicarte fait défiler l’éditeur.", ["Sélection", "Défilement", "Markdown"]),
@@ -806,6 +814,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v2.1.7": ("Lista de palabras en Mac y Cheaper Inference", "En Mac, las palabras del diccionario de macOS y de tus sustituciones de texto aparecen en una lista bajo el cursor mientras escribes. Las flechas eligen y Tab o la flecha derecha aceptan. Cheaper Inference está disponible como proveedor de IA opcional.", ["Autocompletado", "Teclado", "IA"]),
         "v2.1.6": ("Los Ajustes caben en pantallas de Mac más pequeñas", "En pantallas de Mac más pequeñas, cada página de Ajustes vuelve a caber por encima del Dock, las páginas más largas se desplazan y el autocompletado tiene su propia sección en Editor. En iPhone y iPad, escribir copia el documento solo una vez por cambio, y en el iPhone Duo desplegado la barra de herramientas ya no tapa la barra de estado.", ["Ajustes", "Escritura", "iPhone Duo"]),
         "v2.1.5": ("Autocompletado de palabras y comparar carpetas en iPhone", "En Mac, el editor completa palabras del diccionario de macOS y de tus sustituciones de texto con Tab, y la barra lateral de tabla de contenido se abre como la dejaste. Apertura rápida, Ir al símbolo y el esquema ya no bloquean el editor, la comparación de carpetas funciona en iPhone y iPad, y el iPhone Duo recibe correcciones.", ["Autocompletado", "Rendimiento", "Comparar carpetas"]),
         "v2.1.3": ("La selección sigue las líneas largas", "Al seleccionar con el ratón más allá del borde izquierdo o derecho de una línea larga sin ajuste, el editor de Mac ahora se desplaza de lado. La barra de formato Markdown vuelve a la esquina superior derecha del editor, y la rueda sobre el minimapa desplaza el editor.", ["Selección", "Desplazamiento", "Markdown"]),
@@ -853,6 +862,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v2.1.7": ("Macの単語リストとCheaper Inference", "Macでは、入力中にmacOSの辞書とユーザ辞書（テキスト置換）の単語がカーソルの下にリスト表示されます。矢印キーで選び、Tabまたは右矢印キーで確定します。Cheaper InferenceをオプションのAIプロバイダとして使えます。", ["補完", "キーボード", "AI"]),
         "v2.1.6": ("小さなMacの画面でも設定が収まるように", "小さなMacの画面でも、すべての設定ページが再びDockの上に収まり、長いページはスクロールできます。補完はエディタの下に専用のセクションができました。iPhoneとiPadでは入力時に書類をコピーするのが変更ごとに1回になり、開いた状態のiPhone Duoではツールバーがステータスバーを覆わなくなりました。", ["設定", "入力", "iPhone Duo"]),
         "v2.1.5": ("単語補完とiPhoneでのフォルダ比較", "Macでは、macOSの辞書とユーザ辞書（テキスト置換）から単語をTabで補完でき、目次サイドバーは前回の状態で開きます。クイックオープン、シンボルへ移動、アウトラインがエディタを止めなくなり、フォルダ比較がiPhoneとiPadで使えるようになり、iPhone Duo向けの修正も含まれます。", ["補完", "パフォーマンス", "フォルダ比較"]),
         "v2.1.3": ("長い行の選択に追従", "折り返さない長い行で、マウスで左右の端を越えて選択すると、Mac のエディタが横方向にスクロールするようになりました。Markdown 書式バーはエディタの右上に戻り、ミニマップ上でのホイール操作でエディタをスクロールできます。", ["選択", "スクロール", "Markdown"]),
@@ -900,6 +910,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v2.1.7": ("Mac 单词列表与 Cheaper Inference", "在 Mac 上，输入时 macOS 词典和你的文本替换中的单词会以列表形式显示在插入点下方。用方向键选择，按 Tab 或右箭头接受。Cheaper Inference 可作为可选的 AI 提供商使用。", ["补全", "键盘", "AI"]),
         "v2.1.6": ("设置适配较小的 Mac 屏幕", "在较小的 Mac 屏幕上，每个设置页面都重新显示在程序坞上方，较长的页面可以滚动，补全在编辑器下拥有独立的部分。在 iPhone 和 iPad 上，输入时每次更改只复制一次文稿；在展开的 iPhone Duo 上，工具栏不再遮挡状态栏。", ["设置", "输入", "iPhone Duo"]),
         "v2.1.5": ("单词补全与 iPhone 文件夹比较", "在 Mac 上，编辑器可按 Tab 从 macOS 词典和你的文本替换中补全单词，目录边栏会按你上次的状态重新打开。快速打开、跳转到符号和大纲不再阻塞编辑器，文件夹比较可在 iPhone 和 iPad 上使用，并包含 iPhone Duo 修复。", ["补全", "性能", "文件夹比较"]),
         "v2.1.3": ("选择跟随长行", "在未换行的长行中用鼠标拖动选择并越过左右边缘时，Mac 编辑器现在会横向滚动。Markdown 格式栏回到编辑器右上角，在迷你地图上滚动鼠标滚轮即可滚动编辑器。", ["选择", "滚动", "Markdown"]),

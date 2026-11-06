@@ -1670,6 +1670,8 @@ extension ContentView {
         var isEscaped = false
         for character in math.text {
             if isEscaped {
+                // Keep escaped dollars escaped, so cell rendering leaves them literal.
+                if character == "$" { current.append("\\") }
                 current.append(character)
                 isEscaped = false
             } else if character == "\\" {

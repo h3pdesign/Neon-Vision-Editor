@@ -22,6 +22,13 @@ struct MarkdownMathRendererTests {
         #expect(html.contains("<annotation encoding=\"application/x-tex\">\\left|x_i\\right|</annotation>"))
     }
 
+    @Test func tableEscapedDollarsStayLiteral() {
+        let source = #"| \$x\$ | plain |"#
+        #expect(ContentView.splitMarkdownTableRow(source) == [#"\$x\$"#, "plain"])
+        let html = ContentView.simpleMarkdownToHTML("| A | B |\n| --- | --- |\n" + source)
+        #expect(!html.contains("class=\"katex\""))
+    }
+
     @Test(arguments: [#"$x_i$"#, #"\(x_i\)"#, #"$ x_i $"#])
     func inlineDelimiters(_ source: String) {
         let html = ContentView.inlineMarkdownToHTML(source)

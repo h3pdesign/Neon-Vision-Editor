@@ -9,6 +9,9 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Why Upgrade
 
 - On the Mac, words from the macOS dictionary and your Text Replacements appear in a list below the caret as you type.
+- Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX.
+- Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB.
+- Quitting the Mac app with several tabs open no longer crashes.
 - Right Arrow accepts inline suggestions as the setting describes, and Tab also works with Caps Lock on.
 - Cheaper Inference is available as an optional AI provider.
 

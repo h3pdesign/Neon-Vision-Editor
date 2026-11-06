@@ -1925,3 +1925,12 @@
 "Word List Keys: In the word list, Up and Down Arrow pick a word, Tab or Right Arrow accepts it, and Escape closes the list." = "单词列表按键: 在单词列表中，上下箭头选择单词，Tab 或右箭头接受，Esc 关闭列表。";
 "Picking Words: Clicking a word in the list inserts it, and Return accepts a word you picked with the arrow keys." = "选择单词: 点按列表中的单词即可插入，用方向键选中的单词可按 Return 接受。";
 "Cheaper Inference: Cheaper Inference uses gpt-5.4-mini by default, keeps its API token in the Keychain, and lets you set your own model id." = "Cheaper Inference: Cheaper Inference 默认使用 gpt-5.4-mini，将 API 令牌存储在钥匙串中，并可设置你自己的模型 ID。";
+"Math Formulas" = "数学公式";
+"Large Documents" = "大型文稿";
+"Quitting" = "退出";
+"Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX." = "Markdown 预览和 PDF 导出使用内置的 KaTeX 离线显示 TeX 公式。";
+"Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB." = "在 iPhone 和 iPad 上编辑大型文稿时输入更快，超过 1 MB 的文件中每次按键的延迟大大减少。";
+"Quitting the Mac app with several tabs open no longer crashes." = "在打开多个标签页时退出 Mac 应用不再崩溃。";
+"Math Formulas: Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX." = "数学公式: Markdown 预览和 PDF 导出使用内置的 KaTeX 离线显示 TeX 公式。";
+"Large Documents: Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB." = "大型文稿: 在 iPhone 和 iPad 上编辑大型文稿时输入更快，超过 1 MB 的文件中每次按键的延迟大大减少。";
+"Quitting: Quitting the Mac app with several tabs open no longer crashes." = "退出: 在打开多个标签页时退出 Mac 应用不再崩溃。";

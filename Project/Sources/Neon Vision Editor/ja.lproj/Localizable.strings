@@ -1925,3 +1925,12 @@
 "Word List Keys: In the word list, Up and Down Arrow pick a word, Tab or Right Arrow accepts it, and Escape closes the list." = "単語リストのキー操作: 単語リストでは上下矢印キーで単語を選び、Tabまたは右矢印キーで確定し、Escapeでリストを閉じます。";
 "Picking Words: Clicking a word in the list inserts it, and Return accepts a word you picked with the arrow keys." = "単語の選択: リストの単語をクリックすると挿入され、矢印キーで選んだ単語はReturnで確定できます。";
 "Cheaper Inference: Cheaper Inference uses gpt-5.4-mini by default, keeps its API token in the Keychain, and lets you set your own model id." = "Cheaper Inference: Cheaper Inferenceはデフォルトでgpt-5.4-miniを使い、APIトークンをキーチェーンに保存し、独自のモデルIDも設定できます。";
+"Math Formulas" = "数式";
+"Large Documents" = "大きな書類";
+"Quitting" = "終了";
+"Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX." = "MarkdownプレビューとPDF書き出しで、同梱のKaTeXを使ってTeX数式をオフラインで表示します。";
+"Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB." = "iPhoneとiPadで大きな書類に入力する速度が上がり、1 MBを超えるファイルでもキー入力ごとの遅延が大幅に減りました。";
+"Quitting the Mac app with several tabs open no longer crashes." = "複数のタブを開いたままMacアプリを終了しても、クラッシュしなくなりました。";
+"Math Formulas: Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX." = "数式: MarkdownプレビューとPDF書き出しで、同梱のKaTeXを使ってTeX数式をオフラインで表示します。";
+"Large Documents: Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB." = "大きな書類: iPhoneとiPadで大きな書類に入力する速度が上がり、1 MBを超えるファイルでもキー入力ごとの遅延が大幅に減りました。";
+"Quitting: Quitting the Mac app with several tabs open no longer crashes." = "終了: 複数のタブを開いたままMacアプリを終了しても、クラッシュしなくなりました。";

@@ -1925,3 +1925,12 @@
 "Word List Keys: In the word list, Up and Down Arrow pick a word, Tab or Right Arrow accepts it, and Escape closes the list." = "Tasten der Wortliste: In der Wortliste wählen Aufwärts- und Abwärtspfeil ein Wort, Tab oder Rechtspfeil übernimmt es, und Escape schließt die Liste.";
 "Picking Words: Clicking a word in the list inserts it, and Return accepts a word you picked with the arrow keys." = "Wörter auswählen: Ein Klick auf ein Wort in der Liste fügt es ein, und Return übernimmt ein mit den Pfeiltasten gewähltes Wort.";
 "Cheaper Inference: Cheaper Inference uses gpt-5.4-mini by default, keeps its API token in the Keychain, and lets you set your own model id." = "Cheaper Inference: Cheaper Inference nutzt standardmäßig gpt-5.4-mini, speichert sein API-Token im Schlüsselbund und lässt dich eine eigene Modell-ID festlegen.";
+"Math Formulas" = "Mathematische Formeln";
+"Large Documents" = "Große Dokumente";
+"Quitting" = "Beenden";
+"Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX." = "Markdown-Vorschau und PDF-Export zeigen TeX-Formeln offline an, mit einer mitgelieferten Kopie von KaTeX.";
+"Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB." = "Das Tippen in großen Dokumenten auf iPhone und iPad ist schneller, mit deutlich weniger Verzögerung pro Tastendruck in Dateien über 1 MB.";
+"Quitting the Mac app with several tabs open no longer crashes." = "Das Beenden der Mac-App mit mehreren geöffneten Tabs führt nicht mehr zum Absturz.";
+"Math Formulas: Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX." = "Mathematische Formeln: Markdown-Vorschau und PDF-Export zeigen TeX-Formeln offline an, mit einer mitgelieferten Kopie von KaTeX.";
+"Large Documents: Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB." = "Große Dokumente: Das Tippen in großen Dokumenten auf iPhone und iPad ist schneller, mit deutlich weniger Verzögerung pro Tastendruck in Dateien über 1 MB.";
+"Quitting: Quitting the Mac app with several tabs open no longer crashes." = "Beenden: Das Beenden der Mac-App mit mehreren geöffneten Tabs führt nicht mehr zum Absturz.";

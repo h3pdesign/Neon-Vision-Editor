@@ -1925,3 +1925,12 @@
 "Word List Keys: In the word list, Up and Down Arrow pick a word, Tab or Right Arrow accepts it, and Escape closes the list." = "Word List Keys: In the word list, Up and Down Arrow pick a word, Tab or Right Arrow accepts it, and Escape closes the list.";
 "Picking Words: Clicking a word in the list inserts it, and Return accepts a word you picked with the arrow keys." = "Picking Words: Clicking a word in the list inserts it, and Return accepts a word you picked with the arrow keys.";
 "Cheaper Inference: Cheaper Inference uses gpt-5.4-mini by default, keeps its API token in the Keychain, and lets you set your own model id." = "Cheaper Inference: Cheaper Inference uses gpt-5.4-mini by default, keeps its API token in the Keychain, and lets you set your own model id.";
+"Math Formulas" = "Math Formulas";
+"Large Documents" = "Large Documents";
+"Quitting" = "Quitting";
+"Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX." = "Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX.";
+"Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB." = "Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB.";
+"Quitting the Mac app with several tabs open no longer crashes." = "Quitting the Mac app with several tabs open no longer crashes.";
+"Math Formulas: Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX." = "Math Formulas: Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX.";
+"Large Documents: Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB." = "Large Documents: Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB.";
+"Quitting: Quitting the Mac app with several tabs open no longer crashes." = "Quitting: Quitting the Mac app with several tabs open no longer crashes.";

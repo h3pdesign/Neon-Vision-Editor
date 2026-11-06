@@ -1925,3 +1925,12 @@
 "Word List Keys: In the word list, Up and Down Arrow pick a word, Tab or Right Arrow accepts it, and Escape closes the list." = "Touches de la liste: Dans la liste de mots, les flèches haut et bas choisissent un mot, Tab ou la flèche droite l’accepte, et Échap ferme la liste.";
 "Picking Words: Clicking a word in the list inserts it, and Return accepts a word you picked with the arrow keys." = "Choisir un mot: Un clic sur un mot de la liste l’insère, et Retour accepte un mot choisi avec les flèches.";
 "Cheaper Inference: Cheaper Inference uses gpt-5.4-mini by default, keeps its API token in the Keychain, and lets you set your own model id." = "Cheaper Inference: Cheaper Inference utilise gpt-5.4-mini par défaut, conserve son jeton d’API dans le trousseau et vous permet de définir votre propre modèle.";
+"Math Formulas" = "Formules mathématiques";
+"Large Documents" = "Gros documents";
+"Quitting" = "Fermeture";
+"Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX." = "L’aperçu Markdown et l’export PDF affichent les formules TeX hors ligne, grâce à une copie intégrée de KaTeX.";
+"Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB." = "La saisie dans les gros documents sur iPhone et iPad est plus rapide, avec bien moins de délai par frappe dans les fichiers de plus de 1 Mo.";
+"Quitting the Mac app with several tabs open no longer crashes." = "Quitter l’app Mac avec plusieurs onglets ouverts ne provoque plus de plantage.";
+"Math Formulas: Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX." = "Formules mathématiques: L’aperçu Markdown et l’export PDF affichent les formules TeX hors ligne, grâce à une copie intégrée de KaTeX.";
+"Large Documents: Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB." = "Gros documents: La saisie dans les gros documents sur iPhone et iPad est plus rapide, avec bien moins de délai par frappe dans les fichiers de plus de 1 Mo.";
+"Quitting: Quitting the Mac app with several tabs open no longer crashes." = "Fermeture: Quitter l’app Mac avec plusieurs onglets ouverts ne provoque plus de plantage.";

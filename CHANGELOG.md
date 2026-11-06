@@ -22,6 +22,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Fixes
 
 - "Suggest Words from System Dictionary" on the Mac shows a list of matching words below the caret while you type. Up and Down Arrow pick a word, and Tab or Right Arrow accepts it. Return accepts it once you have picked a word with the arrow keys. Clicking a word inserts it, and Escape closes the list. Right Arrow now accepts inline suggestions as the setting describes, and Tab also works with Caps Lock on (#926).
+- Quitting with several tabs open on the Mac no longer crashes when a tab's editor finishes opening while its window is closing (#875).
 
 ### Breaking changes
 

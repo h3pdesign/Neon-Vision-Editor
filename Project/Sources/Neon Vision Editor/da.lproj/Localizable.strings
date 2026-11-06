@@ -1925,3 +1925,12 @@
 "Word List Keys: In the word list, Up and Down Arrow pick a word, Tab or Right Arrow accepts it, and Escape closes the list." = "Ordlistens taster: I ordlisten vælger op- og nedpil et ord, Tab eller højrepil accepterer det, og Escape lukker listen.";
 "Picking Words: Clicking a word in the list inserts it, and Return accepts a word you picked with the arrow keys." = "Vælg ord: Et klik på et ord i listen indsætter det, og Retur accepterer et ord, du har valgt med piletasterne.";
 "Cheaper Inference: Cheaper Inference uses gpt-5.4-mini by default, keeps its API token in the Keychain, and lets you set your own model id." = "Cheaper Inference: Cheaper Inference bruger gpt-5.4-mini som standard, gemmer sit API-token i nøgleringen og lader dig angive dit eget model-id.";
+"Math Formulas" = "Matematiske formler";
+"Large Documents" = "Store dokumenter";
+"Quitting" = "Afslutning";
+"Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX." = "Markdown-forhåndsvisning og PDF-eksport viser TeX-formler offline med en medfølgende kopi af KaTeX.";
+"Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB." = "Skrivning i store dokumenter på iPhone og iPad er hurtigere, med langt mindre forsinkelse pr. tastetryk i filer over 1 MB.";
+"Quitting the Mac app with several tabs open no longer crashes." = "Mac-appen går ikke længere ned, når du afslutter med flere faner åbne.";
+"Math Formulas: Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX." = "Matematiske formler: Markdown-forhåndsvisning og PDF-eksport viser TeX-formler offline med en medfølgende kopi af KaTeX.";
+"Large Documents: Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB." = "Store dokumenter: Skrivning i store dokumenter på iPhone og iPad er hurtigere, med langt mindre forsinkelse pr. tastetryk i filer over 1 MB.";
+"Quitting: Quitting the Mac app with several tabs open no longer crashes." = "Afslutning: Mac-appen går ikke længere ned, når du afslutter med flere faner åbne.";

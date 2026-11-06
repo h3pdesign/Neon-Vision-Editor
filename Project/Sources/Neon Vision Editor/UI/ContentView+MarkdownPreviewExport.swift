@@ -427,7 +427,7 @@ extension ContentView {
         }
         let documentPath = viewModel.selectedTab?.fileURL?.standardizedFileURL.path ?? ""
         return [
-            "renderer-5",
+            "renderer-6",
             contentSignature,
             documentPath,
             markdownPreviewTemplate,
@@ -598,6 +598,7 @@ extension ContentView {
             runtimeFontSize: runtimeFontSize
         ))
         \(markdownPreviewRuntimePreviewScaleCSS(runtimeFontSize: runtimeFontSize))
+        \(MarkdownMathRenderer.stylesheet(for: bodyHTML))
         </style>
         </head>
         <body class="\(template)">
@@ -989,6 +990,7 @@ extension ContentView {
             backgroundStyle: .template,
             translucentBackgroundEnabled: false
         ))
+        \(MarkdownMathRenderer.stylesheet(for: bodyHTML))
         </style>
         </head>
         <body class="\(markdownPreviewTemplate) pdf-export\(modeClass)">
@@ -1196,6 +1198,13 @@ extension ContentView {
                 closeBlockquote()
             }
 
+            if let math = MarkdownMathRenderer.displayBlock(in: lines, at: lineIndex, quoted: isBlockquoteLine) {
+                closeParagraphAndInlineContainers()
+                result.append("<div class=\"markdown-math-display\">\(MarkdownMathRenderer.render(math.source, display: true))</div>")
+                lineIndex = math.nextLine
+                continue
+            }
+
             if let unordered = markdownUnorderedListItem(from: workingLine) {
                 flushParagraph()
                 if insideOrderedList {
@@ -1206,8 +1215,14 @@ extension ContentView {
                     result.append("<ul>")
                     insideUnorderedList = true
                 }
-                result.append(markdownListItemHTML(unordered, dialect: dialect))
-                lineIndex += 1
+                if let math = MarkdownMathRenderer.displayBlock(in: lines, at: lineIndex,
+                                                                quoted: isBlockquoteLine, firstLine: unordered) {
+                    result.append("<li><div class=\"markdown-math-display\">\(MarkdownMathRenderer.render(math.source, display: true))</div></li>")
+                    lineIndex = math.nextLine
+                } else {
+                    result.append(markdownListItemHTML(unordered, dialect: dialect))
+                    lineIndex += 1
+                }
                 continue
             }
 
@@ -1221,8 +1236,14 @@ extension ContentView {
                     result.append("<ol>")
                     insideOrderedList = true
                 }
-                result.append("<li>\(inlineMarkdownToHTML(ordered, dialect: dialect))</li>")
-                lineIndex += 1
+                if let math = MarkdownMathRenderer.displayBlock(in: lines, at: lineIndex,
+                                                                quoted: isBlockquoteLine, firstLine: ordered) {
+                    result.append("<li><div class=\"markdown-math-display\">\(MarkdownMathRenderer.render(math.source, display: true))</div></li>")
+                    lineIndex = math.nextLine
+                } else {
+                    result.append("<li>\(inlineMarkdownToHTML(ordered, dialect: dialect))</li>")
+                    lineIndex += 1
+                }
                 continue
             }
 
@@ -1643,23 +1664,26 @@ extension ContentView {
         var row = line.trimmingCharacters(in: .whitespaces)
         if row.hasPrefix("|") { row.removeFirst() }
         if row.hasSuffix("|") { row.removeLast() }
+        let math = MarkdownMathRenderer.protectInline(in: row)
         var cells: [String] = []
         var current = ""
         var isEscaped = false
-        for character in row {
+        for character in math.text {
             if isEscaped {
+                // Keep escaped dollars escaped, so cell rendering leaves them literal.
+                if character == "$" { current.append("\\") }
                 current.append(character)
                 isEscaped = false
             } else if character == "\\" {
                 isEscaped = true
             } else if character == "|" {
-                cells.append(current.trimmingCharacters(in: .whitespaces))
+                cells.append(math.restoringSource(in: current.trimmingCharacters(in: .whitespaces)))
                 current = ""
             } else {
                 current.append(character)
             }
         }
-        cells.append(current.trimmingCharacters(in: .whitespaces))
+        cells.append(math.restoringSource(in: current.trimmingCharacters(in: .whitespaces)))
         return cells
     }
 
@@ -1832,7 +1856,8 @@ extension ContentView {
     }
 
     nonisolated static func inlineMarkdownToHTML(_ text: String, dialect: MarkdownPreviewDialect = .gfm) -> String {
-        var html = restoreSafeInlineHTML(in: escapedHTML(text))
+        let math = MarkdownMathRenderer.protectInline(in: text)
+        var html = restoreSafeInlineHTML(in: escapedHTML(math.text))
         var codeSpans: [String] = []
         let codeSpanTokenPrefix = "%%CODESPAN"
         let codeSpanTokenSuffix = "%%"
@@ -1881,7 +1906,7 @@ extension ContentView {
                 with: codeHTML
             )
         }
-        return html
+        return math.restoring(in: html)
     }
 
     nonisolated static func replacingBareAutolinksOutsideTags(in html: String) -> String {

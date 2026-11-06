@@ -17,6 +17,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - In the word list, Up and Down Arrow pick a word, Tab or Right Arrow accepts it, and Escape closes the list.
 - Clicking a word in the list inserts it, and Return accepts a word you picked with the arrow keys.
 - Cheaper Inference uses gpt-5.4-mini by default, keeps its API token in the Keychain, and lets you set your own model id.
+- Markdown previews and PDF exports render inline and display TeX formulas offline with bundled KaTeX. Formula underscores are preserved, and document JavaScript remains disabled (#942).
 
 ### Fixes
 

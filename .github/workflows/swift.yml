@@ -97,6 +97,7 @@ jobs:
             -only-testing:"Neon Vision EditorTests/ProjectTreePerformanceTests" \
             -only-testing:"Neon Vision EditorTests/BoundedLRUCacheTests" \
             -only-testing:"Neon Vision EditorTests/MarkdownPreviewContentUpdateTests" \
+            -only-testing:"Neon Vision EditorTests/MarkdownMathRendererTests" \
             -only-testing:"Neon Vision EditorTests/VirtualEditorPerformanceTests" \
             test
 

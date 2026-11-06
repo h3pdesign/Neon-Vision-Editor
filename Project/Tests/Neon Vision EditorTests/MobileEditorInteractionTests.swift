@@ -44,6 +44,26 @@ final class MobileEditorInteractionTests: XCTestCase {
         XCTAssertNotEqual((editor.nativeTextSnapshot as NSString).length, ("caf\u{E9}" as NSString).length)
     }
 
+    func testMobileSafetyWrapCacheSeparatesCanonicallyEquivalentText() {
+        let limit = EditorRuntimeLimits.mobileSafetyWrapLineUTF16Length
+        let padding = String(repeating: "let value = 1\n", count: EditorRuntimeLimits.generatedChunkInstallUTF16Length / 14 + 1)
+        // One long line whose precomposed form is under the limit and whose
+        // decomposed form is over it, although Swift treats the two as equal.
+        let characterCount = limit * 2 / 3
+        let precomposed = padding + String(repeating: "\u{E9}", count: characterCount)
+        let decomposed = padding + String(repeating: "e\u{301}", count: characterCount)
+        XCTAssertTrue(precomposed == decomposed)
+
+        for text in [precomposed, decomposed, precomposed] {
+            XCTAssertEqual(
+                MobileDocumentScanCache.shouldUseMobileSafetyWrap(text: text),
+                shouldUseMobileSafetyWrap(text: text as NSString, requestedWrap: false)
+            )
+        }
+        XCTAssertFalse(shouldUseMobileSafetyWrap(text: precomposed as NSString, requestedWrap: false))
+        XCTAssertTrue(shouldUseMobileSafetyWrap(text: decomposed as NSString, requestedWrap: false))
+    }
+
     func testMobileDocumentScanCacheMatchesDirectScans() {
         let lineLength = EditorRuntimeLimits.mobileSafetyWrapLineUTF16Length
         let padding = String(repeating: "let value = 1\n", count: EditorRuntimeLimits.generatedChunkInstallUTF16Length / 14 + 1)

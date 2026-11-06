@@ -368,12 +368,26 @@ enum MobileDocumentScanCache {
     private static var generated: (prefix: String, result: Bool)?
 
     static func shouldUseMobileSafetyWrap(text: String) -> Bool {
-        if let safetyWrap, safetyWrap.text == text {
+        if let safetyWrap, hasIdenticalUTF8(safetyWrap.text, text) {
             return safetyWrap.result
         }
         let result = Neon_Vision_Editor.shouldUseMobileSafetyWrap(text: text as NSString, requestedWrap: false)
         safetyWrap = (text, result)
         return result
+    }
+
+    /// Bytes, not canonical equivalence: `==` treats NFC and NFD text as equal even
+    /// though their UTF-16 lengths, and so these scan results, can differ.
+    private static func hasIdenticalUTF8(_ lhs: String, _ rhs: String) -> Bool {
+        let lhsBytes = lhs.utf8
+        let rhsBytes = rhs.utf8
+        guard lhsBytes.count == rhsBytes.count else { return false }
+        let comparison = lhsBytes.withContiguousStorageIfAvailable { lhsBuffer in
+            rhsBytes.withContiguousStorageIfAvailable { rhsBuffer in
+                lhsBuffer.isEmpty || memcmp(lhsBuffer.baseAddress!, rhsBuffer.baseAddress!, lhsBuffer.count) == 0
+            }
+        }
+        return (comparison ?? nil) ?? lhsBytes.elementsEqual(rhsBytes)
     }
 
     /// The generated-file check only reads a bounded prefix, so edits beyond it
@@ -382,9 +396,7 @@ enum MobileDocumentScanCache {
         guard text.length >= EditorRuntimeLimits.generatedFileAutoDetectionUTF16Threshold else { return false }
         let scanLength = min(text.length, EditorRuntimeLimits.generatedFileAutoDetectionScanUTF16)
         let prefix = text.substring(with: NSRange(location: 0, length: scanLength))
-        // Bytes, not canonical equivalence: a mismatch only costs one rescan, and
-        // normalising non-ASCII text here would cost nearly as much as the scan.
-        if let generated, generated.prefix.utf8.elementsEqual(prefix.utf8) {
+        if let generated, hasIdenticalUTF8(generated.prefix, prefix) {
             return generated.result
         }
         let result = isLikelyGeneratedOrMinifiedSyntaxText(text)

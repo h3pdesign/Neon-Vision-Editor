@@ -399,7 +399,7 @@ final class MacDocumentWindowTabs {
                 parent.addTabbedWindow(window, ordered: .above)
             }
         }
-        if wasPending, windowControllers[identity] == nil, !isPresentingPendingWindow,
+        if wasPending, !isTerminating, windowControllers[identity] == nil, !isPresentingPendingWindow,
            pending.isEmpty, let selectionToReveal,
            let selectedWindow = entries[selectionToReveal]?.window {
             selectedWindow.makeKeyAndOrderFront(nil)

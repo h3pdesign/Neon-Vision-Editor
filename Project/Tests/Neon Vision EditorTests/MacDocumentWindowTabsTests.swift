@@ -661,6 +661,7 @@ final class MacDocumentWindowTabsTests: XCTestCase {
 
         XCTAssertEqual(parent.addTabCalls, 0)
         XCTAssertFalse(parent.tabGroup?.windows.contains(late) == true)
+        XCTAssertFalse(late.isVisible, "A window attaching during quit must not be ordered back on screen")
     }
 
     private final class TabCloseDelegate: NSObject, NSWindowDelegate {

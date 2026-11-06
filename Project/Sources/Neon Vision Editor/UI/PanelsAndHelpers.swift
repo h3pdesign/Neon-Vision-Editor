@@ -4691,6 +4691,8 @@ enum EditorCommandUserInfo {
     nonisolated static let sourceTextView = "sourceTextView"
     nonisolated static let completionContext = "completionContext"
     nonisolated static let completionNextCharacter = "completionNextCharacter"
+    nonisolated static let completionCandidates = "completionCandidates"
+    nonisolated static let completionWordPrefix = "completionWordPrefix"
     nonisolated static let completionCaretOffset = "completionCaretOffset"
     static let updaterCheckNow = "updaterCheckNow"
 }

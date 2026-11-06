@@ -8,6 +8,33 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Why Upgrade
 
+- On the Mac, word suggestions from the macOS dictionary and your Text Replacements appear in a list while you type in plain text and Markdown.
+- Cheaper Inference is available as an AI provider.
+
+### Highlights
+
+- Cheaper Inference is available as an optional AI provider. It uses the shared OpenAI-compatible chat completions client with the gpt-5.4-mini default model, a Keychain-stored API token, and a configurable model id (#908).
+
+### Fixes
+
+- "Suggest Words from System Dictionary" on the Mac shows a list of matching words below the caret while you type. Up and Down Arrow pick a word, and Tab or Right Arrow accepts it. Return accepts it once you have picked a word with the arrow keys. Clicking a word inserts it, and Escape closes the list. Right Arrow now accepts inline suggestions as the setting describes, and Tab also works with Caps Lock on (#926).
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, sessions, and preferences are preserved.
+
+### Maintenance
+
+- Development version 2.1.7 (build 1140).
+
+## [v2.1.6] - 2026-11-01
+
+### Why Upgrade
+
 - On smaller Mac screens, every Settings page fits above the Dock again, and taller pages scroll.
 - Typing and moving the caret on iPhone and iPad copies the document once per change instead of up to four times.
 - On iPhone Duo's unfolded display, the editor toolbar no longer covers the clock and status icons.

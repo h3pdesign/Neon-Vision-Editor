@@ -6,6 +6,10 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Added
+
+- Markdown previews and PDF exports render inline and display TeX formulas offline with bundled KaTeX. Formula underscores are preserved, and document JavaScript remains disabled.
+
 ## [v2.1.6] - 2026-11-01
 
 ### Why Upgrade

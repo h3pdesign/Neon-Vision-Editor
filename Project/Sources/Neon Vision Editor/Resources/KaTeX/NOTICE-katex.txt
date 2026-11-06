@@ -1,0 +1,9 @@
+KaTeX 0.19.1 (MIT), https://github.com/KaTeX/KaTeX
+Source: https://registry.npmjs.org/katex/-/katex-0.19.1.tgz
+Archive SHA-256: 24da5a599eb2fcede2e270b99a6ff48bca816beecc95feeb84e8cccbd1bb34fd
+
+katex.min.js is the unmodified upstream dist/katex.min.js.
+katex.min.css is upstream dist/katex.min.css with each font src replaced
+by its upstream WOFF2 font embedded as a data:font/woff2;base64 URL.
+WOFF and TTF alternatives are omitted. No network access is needed.
+See LICENSE-katex.txt for the upstream license, including bundled fonts.

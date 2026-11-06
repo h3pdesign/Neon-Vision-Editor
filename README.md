@@ -435,6 +435,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - One opt-in toolbar control opens and closes Markdown, HTML, and SVG previews. PDF and PNG documents open native previews automatically from toolbar, macOS context-menu/Launch Services, paste/drop, and restored tabs; macOS plus regular-width iPad and visionOS use inline panes while iPhone uses a preview sheet.
 - PDF text highlighting stores lightweight page geometry and selected text separately from the source PDF. Notes use the existing editor on the left and may reuse the existing Markdown preview beside the PDF; note preview is off by default and empty notes create no file or Save As dialog.
 - Markdown previews provide 20 templates and GitHub Flavored Markdown support on macOS, iPhone, and iPad. Apple Vision Pro uses dedicated System Glass, Paper, Slate, and Ink reader surfaces.
+- Markdown math uses bundled KaTeX: `$...$` or `\(...\)` inline, and `$$...$$` or `\[...\]` for display equations (including multiline blocks). Preview, copied HTML, and PDF export work offline without enabling document JavaScript. Code spans and fenced code blocks remain literal; unsupported TeX appears as an error in place.
 - `.svg` files support XML editing, bracket help, and rendered SVG Preview on all platforms.
 - Markdown and Swift source exports declare their content types correctly on iOS and iPadOS.
 - Markdown-to-PDF export offers paginated and one-page output. Finder Quick Look previews supported Markdown and source files on macOS.

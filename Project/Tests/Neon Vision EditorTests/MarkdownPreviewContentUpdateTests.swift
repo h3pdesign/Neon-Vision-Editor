@@ -26,6 +26,30 @@ final class MarkdownPreviewContentUpdateTests: XCTestCase {
     }
 
 #if os(macOS)
+    func testMathPreviewUpdatesWithDocumentJavaScriptDisabled() async throws {
+        let old = html(ContentView.simpleMarkdownToHTML("$x_i$"))
+        let next = html(ContentView.simpleMarkdownToHTML("$y_j$"))
+        let script = try XCTUnwrap(MarkdownPreviewContentUpdate.script(from: old, to: next))
+        let web = WKWebView(frame: NSRect(x: 0, y: 0, width: 700, height: 500))
+        web.configuration.defaultWebpagePreferences.allowsContentJavaScript = false
+        web.loadHTMLString(old, baseURL: nil)
+        try await waitFor("document.querySelector('annotation')?.textContent || ''", equals: "x_i", in: web)
+        try await assertScript("String(\(script.dropLast()))", equals: "true", in: web)
+        try await assertScript("document.querySelector('annotation').textContent", equals: "y_j", in: web)
+        XCTAssertFalse(web.configuration.defaultWebpagePreferences.allowsContentJavaScript)
+        web.stopLoading()
+    }
+
+    func testMathStylesAreIncludedInPreviewAndPDFExport() {
+        let view = ContentView()
+        let preview = view.markdownPreviewHTML(from: "$x_i$", preferDarkMode: false)
+        let export = view.markdownPreviewExportHTML(from: "$$x_i$$", mode: .paginatedFit)
+        for output in [preview, export] {
+            XCTAssertTrue(output.contains("class=\"katex-mathml\""))
+            XCTAssertTrue(output.contains("data:font/woff2;base64,"))
+        }
+    }
+
     func testInPlaceUpdateRetainsUnchangedNodesAndInertPageWithoutReload() async throws {
         let old = html("<a id='keep' href='#change'>keep</a><p id='change'>old</p>")
         let new = html("<a id='keep' href='#change'>keep</a><p id='change'>new 😀</p>")

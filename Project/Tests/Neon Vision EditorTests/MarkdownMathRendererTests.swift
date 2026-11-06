@@ -89,11 +89,12 @@ struct MarkdownMathRendererTests {
     }
 
     @Test func linkDestinationsImagesAndHTMLAttributesAreNotMath() {
-        let html = ContentView.inlineMarkdownToHTML(#"[link](https://example.com/$x$) ![$y$](image.png) <span title="$z$">text</span> $w$"#)
+        let html = ContentView.inlineMarkdownToHTML(#"[link](https://example.com/$x$) ![$y$](image.png) <span title="$z$">text</span> https://example.com/$v$ $w$"#)
         #expect(html.components(separatedBy: "class=\"katex\"").count - 1 == 1)
         #expect(html.contains("href=\"https://example.com/$x$\""))
         #expect(html.contains("alt=\"$y$\""))
         #expect(html.contains("$z$"))
+        #expect(html.contains("href=\"https://example.com/$v$\""))
     }
 
     @Test func invalidAndUntrustedTeXStayInertAndDoNotBreakLaterFormulas() {

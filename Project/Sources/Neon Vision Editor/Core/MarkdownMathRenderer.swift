@@ -77,6 +77,9 @@ nonisolated enum MarkdownMathRenderer {
                     ?? start
             } else if text[index] == "<", let end = rest.firstIndex(of: ">") {
                 literalEnd = text.index(after: end)
+            } else if rest.hasPrefix("https://") || rest.hasPrefix("http://") {
+                literalEnd = rest.firstIndex(where: { $0.isWhitespace || $0 == "<" || $0 == ">" })
+                    ?? text.endIndex
             } else if rest.hasPrefix("!["), let end = rest.firstIndex(of: ")") {
                 literalEnd = text.index(after: end)
             } else if text[index] == "(", index > text.startIndex,

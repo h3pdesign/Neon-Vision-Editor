@@ -5,6 +5,92 @@ import SwiftUI
 
 @MainActor
 final class MobileEditorInteractionTests: XCTestCase {
+    func testNativeTextSnapshotFollowsEveryKindOfBufferEdit() {
+        let editor = EditorInputTextView(frame: .zero, textContainer: nil)
+        XCTAssertEqual(editor.nativeTextSnapshot, "")
+
+        editor.text = "let café = \"☕️\"\n"
+        XCTAssertEqual(editor.nativeTextSnapshot, editor.text)
+
+        editor.textStorage.replaceCharacters(in: NSRange(location: 0, length: 3), with: "var")
+        XCTAssertEqual(editor.nativeTextSnapshot, "var café = \"☕️\"\n")
+
+        editor.selectedRange = NSRange(location: 0, length: 0)
+        editor.insertText("// ")
+        XCTAssertEqual(editor.nativeTextSnapshot, "// var café = \"☕️\"\n")
+
+        editor.text = ""
+        XCTAssertEqual(editor.nativeTextSnapshot, "")
+    }
+
+    func testNativeTextSnapshotIgnoresAttributeOnlyEdits() {
+        let editor = EditorInputTextView(frame: .zero, textContainer: nil)
+        editor.text = "highlight me"
+        let revision = editor.textContentRevision
+
+        editor.textStorage.addAttribute(.foregroundColor, value: UIColor.red, range: NSRange(location: 0, length: 9))
+        XCTAssertEqual(editor.textContentRevision, revision)
+
+        editor.textStorage.replaceCharacters(in: NSRange(location: 0, length: 1), with: "H")
+        XCTAssertNotEqual(editor.textContentRevision, revision)
+    }
+
+    func testNativeTextSnapshotKeepsCanonicalEquivalence() {
+        let editor = EditorInputTextView(frame: .zero, textContainer: nil)
+        editor.text = "cafe\u{301}"
+        // The whole-document guard must still treat NFC and NFD text as equal,
+        // so a length difference alone never triggers a reinstall.
+        XCTAssertTrue(editor.nativeTextSnapshot == "caf\u{E9}")
+        XCTAssertNotEqual((editor.nativeTextSnapshot as NSString).length, ("caf\u{E9}" as NSString).length)
+    }
+
+    func testMobileSafetyWrapCacheSeparatesCanonicallyEquivalentText() {
+        let limit = EditorRuntimeLimits.mobileSafetyWrapLineUTF16Length
+        let padding = String(repeating: "let value = 1\n", count: EditorRuntimeLimits.generatedChunkInstallUTF16Length / 14 + 1)
+        // One long line whose precomposed form is under the limit and whose
+        // decomposed form is over it, although Swift treats the two as equal.
+        let characterCount = limit * 2 / 3
+        let precomposed = padding + String(repeating: "\u{E9}", count: characterCount)
+        let decomposed = padding + String(repeating: "e\u{301}", count: characterCount)
+        XCTAssertTrue(precomposed == decomposed)
+
+        for text in [precomposed, decomposed, precomposed] {
+            XCTAssertEqual(
+                MobileDocumentScanCache.shouldUseMobileSafetyWrap(text: text),
+                shouldUseMobileSafetyWrap(text: text as NSString, requestedWrap: false)
+            )
+        }
+        XCTAssertFalse(shouldUseMobileSafetyWrap(text: precomposed as NSString, requestedWrap: false))
+        XCTAssertTrue(shouldUseMobileSafetyWrap(text: decomposed as NSString, requestedWrap: false))
+    }
+
+    func testMobileDocumentScanCacheMatchesDirectScans() {
+        let lineLength = EditorRuntimeLimits.mobileSafetyWrapLineUTF16Length
+        let padding = String(repeating: "let value = 1\n", count: EditorRuntimeLimits.generatedChunkInstallUTF16Length / 14 + 1)
+        let ordinary = padding
+        let longLine = padding + String(repeating: "x", count: lineLength)
+
+        for text in [ordinary, longLine, ordinary, "short"] {
+            XCTAssertEqual(
+                MobileDocumentScanCache.shouldUseMobileSafetyWrap(text: text),
+                shouldUseMobileSafetyWrap(text: text as NSString, requestedWrap: false)
+            )
+        }
+
+        let threshold = EditorRuntimeLimits.generatedFileAutoDetectionUTF16Threshold
+        let plain = String(repeating: "a line of code\n", count: threshold / 15 + 1)
+        let generated = "// @generated\n" + plain
+        let tailEdit = plain + "// @generated\n"
+        let minified = String(repeating: "x", count: threshold)
+        for text in [plain, tailEdit, generated, plain, minified, "// @generated"] {
+            XCTAssertEqual(
+                MobileDocumentScanCache.isLikelyGeneratedOrMinified(text: text as NSString),
+                isLikelyGeneratedOrMinifiedSyntaxText(text as NSString),
+                "Mismatch for text starting with \(text.prefix(16))"
+            )
+        }
+    }
+
     func testLargeSyntaxScrollPolicy() {
         let defaults = UserDefaults.standard
         let syntaxKey = "SettingsLargeFileSyntaxHighlighting"

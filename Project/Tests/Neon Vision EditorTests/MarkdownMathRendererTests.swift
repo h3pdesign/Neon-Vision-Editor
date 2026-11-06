@@ -53,6 +53,28 @@ struct MarkdownMathRendererTests {
         #expect(!html.contains("katex-error"))
     }
 
+    @Test func multilineDisplayEquationsStayInsideListItems() {
+        for marker in ["- ", "1. "] {
+            for (opener, closer) in [("$$", "$$"), (#"\["#, #"\]"#)] {
+                for quote in ["", "> "] {
+                    let source = [
+                        "\(quote)\(marker)\(opener)",
+                        "\(quote)    \\frac{x_i}{y_j}",
+                        "\(quote)    \(closer)",
+                        "\(quote)\(marker)Following item"
+                    ].joined(separator: "\n")
+                    let html = ContentView.simpleMarkdownToHTML(source)
+                    let tag = marker == "- " ? "ul" : "ol"
+                    #expect(html.contains("<\(tag)>\n<li><div class=\"markdown-math-display\">"))
+                    #expect(html.contains("class=\"katex-display\""))
+                    #expect(html.contains(#"\frac{x_i}{y_j}"#))
+                    #expect(html.contains("</div></li>\n<li>Following item</li>\n</\(tag)>"))
+                    #expect(!html.contains("katex-error"))
+                }
+            }
+        }
+    }
+
     @Test func headingsListsTablesAndQuotesUseTheSameRenderer() {
         let html = ContentView.simpleMarkdownToHTML(#"""
         # Estimate $x_i$

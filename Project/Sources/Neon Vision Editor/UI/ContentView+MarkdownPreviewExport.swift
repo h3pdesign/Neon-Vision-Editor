@@ -1215,8 +1215,14 @@ extension ContentView {
                     result.append("<ul>")
                     insideUnorderedList = true
                 }
-                result.append(markdownListItemHTML(unordered, dialect: dialect))
-                lineIndex += 1
+                if let math = MarkdownMathRenderer.displayBlock(in: lines, at: lineIndex,
+                                                                quoted: isBlockquoteLine, firstLine: unordered) {
+                    result.append("<li><div class=\"markdown-math-display\">\(MarkdownMathRenderer.render(math.source, display: true))</div></li>")
+                    lineIndex = math.nextLine
+                } else {
+                    result.append(markdownListItemHTML(unordered, dialect: dialect))
+                    lineIndex += 1
+                }
                 continue
             }
 
@@ -1230,8 +1236,14 @@ extension ContentView {
                     result.append("<ol>")
                     insideOrderedList = true
                 }
-                result.append("<li>\(inlineMarkdownToHTML(ordered, dialect: dialect))</li>")
-                lineIndex += 1
+                if let math = MarkdownMathRenderer.displayBlock(in: lines, at: lineIndex,
+                                                                quoted: isBlockquoteLine, firstLine: ordered) {
+                    result.append("<li><div class=\"markdown-math-display\">\(MarkdownMathRenderer.render(math.source, display: true))</div></li>")
+                    lineIndex = math.nextLine
+                } else {
+                    result.append("<li>\(inlineMarkdownToHTML(ordered, dialect: dialect))</li>")
+                    lineIndex += 1
+                }
                 continue
             }
 

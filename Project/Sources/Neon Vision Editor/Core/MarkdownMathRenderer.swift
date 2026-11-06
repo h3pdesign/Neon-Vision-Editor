@@ -133,7 +133,8 @@ nonisolated enum MarkdownMathRenderer {
         return ProtectedInline(text: output, replacements: replacements)
     }
 
-    static func displayBlock(in lines: [String], at index: Int, quoted: Bool) -> (source: String, nextLine: Int)? {
+    static func displayBlock(in lines: [String], at index: Int, quoted: Bool,
+                             firstLine: String? = nil) -> (source: String, nextLine: Int)? {
         func content(_ line: String) -> String? {
             var value = line.trimmingCharacters(in: .whitespaces)
             if quoted {
@@ -142,7 +143,7 @@ nonisolated enum MarkdownMathRenderer {
             }
             return value
         }
-        guard let first = content(lines[index]) else { return nil }
+        guard let first = firstLine ?? content(lines[index]) else { return nil }
         let opener: String
         let closer: String
         if first.hasPrefix("$$") { opener = "$$"; closer = "$$" }

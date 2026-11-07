@@ -118,7 +118,20 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v2.1.6</h2><span class="date">1 November 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v2.1.7</h2><span class="date">7 November 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>In the word list, Up and Down Arrow pick a word, Tab or Right Arrow accepts it, and Escape closes the list.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Clicking a word in the list inserts it, and Return accepts a word you picked with the arrow keys.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Cheaper Inference uses gpt-5.4-mini by default, keeps its API token in the Keychain, and lets you set your own model id.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Markdown previews and PDF exports render inline and display TeX formulas offline with bundled KaTeX. Formula underscores are preserved, and document JavaScript remains disabled (#942).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>&quot;Suggest Words from System Dictionary&quot; on the Mac shows a list of matching words below the caret while you type. Up and Down Arrow pick a word, and Tab or Right Arrow accepts it. Return accepts it once you have picked a word with the arrow keys. Clicking a word inserts it, and Escape closes the list. Right Arrow now accepts inline suggestions as the setting describes, and Tab also works with Caps Lock on (#926).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Quitting with several tabs open on the Mac no longer crashes when a tab&#x27;s editor finishes opening while its window is closing (#875).</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v2.1.6</h2><span class="date">1 November 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>Completion options have their own section in Mac Settings under Editor.</p></div>
           <div class="item"><span class="badge new">New</span><p>Notes in Mac Settings wrap onto more lines instead of being cut off.</p></div>

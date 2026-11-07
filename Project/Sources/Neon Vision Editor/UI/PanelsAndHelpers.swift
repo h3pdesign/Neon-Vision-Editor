@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.1.6",
-            subtitle: "Release highlights for v2.1.6.",
+            title: "What’s New in v2.1.7",
+            subtitle: "Release highlights for v2.1.7.",
             bullets: [
-                "Mac Settings: On smaller Mac screens, every Settings page fits above the Dock again, and taller pages scroll.",
-                "Typing: Typing and moving the caret on iPhone and iPad copies the document once per change instead of up to four times.",
-                "iPhone Duo: On iPhone Duo's unfolded display, the editor toolbar no longer covers the clock and status icons.",
-                "Completion Settings: Completion options have their own section in Mac Settings under Editor.",
-                "Settings Notes: Notes in Mac Settings wrap onto more lines instead of being cut off.",
-                "iPhone Duo: Where iPhone Duo doesn't report the status bar's position, the editor toolbar moves to the bottom of the screen."
+                "Word Completion: On the Mac, words from the macOS dictionary and your Text Replacements appear in a list below the caret as you type.",
+                "Math Formulas: Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX.",
+                "Large Documents: Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB.",
+                "Quitting: Quitting the Mac app with several tabs open no longer crashes.",
+                "Inline Suggestions: Right Arrow accepts inline suggestions as the setting describes, and Tab also works with Caps Lock on.",
+                "AI Providers: Cheaper Inference is available as an optional AI provider."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4518,10 +4518,10 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
-        Release(id: "2.1.6", version: "2.1.6", date: "2026-11-01", highlights: [
-            "On smaller Mac screens, every Settings page fits above the Dock again, and taller pages scroll.",
-            "Typing and moving the caret on iPhone and iPad copies the document once per change instead of up to four times.",
-            "On iPhone Duo's unfolded display, the editor toolbar no longer covers the clock and status icons."
+        Release(id: "2.1.7", version: "2.1.7", date: "2026-11-07", highlights: [
+            "On the Mac, words from the macOS dictionary and your Text Replacements appear in a list below the caret as you type.",
+            "Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX.",
+            "Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB."
         ]),
         Release(id: "2.1.5", version: "2.1.5", date: "2026-10-26", highlights: [
             "Finish words on the Mac from the macOS dictionary and your Text Replacements by pressing Tab.",
@@ -4696,6 +4696,8 @@ enum EditorCommandUserInfo {
     nonisolated static let sourceTextView = "sourceTextView"
     nonisolated static let completionContext = "completionContext"
     nonisolated static let completionNextCharacter = "completionNextCharacter"
+    nonisolated static let completionCandidates = "completionCandidates"
+    nonisolated static let completionWordPrefix = "completionWordPrefix"
     nonisolated static let completionCaretOffset = "completionCaretOffset"
     static let updaterCheckNow = "updaterCheckNow"
 }

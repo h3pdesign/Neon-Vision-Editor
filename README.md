@@ -1,5 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
+> Prepared release: **v2.1.7** — not published. See [candidate notes](CHANGELOG.md).
+
 <p align="center">
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v2.1.6-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
@@ -424,7 +426,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 
 - Saved chat conversations support questions about an explicitly selected snippet, the current file, project structure, or no document context. Responses retain Markdown and code formatting; request cancellation and retry stay within the conversation.
 - Whole-file chat context is currently unavailable for large disk-backed documents; selection and project-structure context remain separate options.
-- Apple Intelligence is the default provider selection on supported systems. Other providers are opt-in, including OpenAI, Anthropic, Gemini, Grok, OpenCode Go, and a configurable OpenAI-compatible endpoint. Availability depends on the selected provider and device; core editing works offline.
+- Apple Intelligence is the default provider selection on supported systems. Other providers are opt-in, including OpenAI, Anthropic, Gemini, Grok, OpenCode Go, Cheaper Inference, and a configurable OpenAI-compatible endpoint. Availability depends on the selected provider and device; core editing works offline.
 - Provider credentials stay in Keychain. Cloud-context disclosures and sensitive-content checks let you review what will be sent; restoring a saved chat does not silently attach fresh editor content.
 - Plain-text-to-Markdown and plain-text-to-JSON actions produce proposals for review. JSON output must validate before it can be applied. These workflows and inline completion use the existing provider layer.
 
@@ -435,6 +437,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - One opt-in toolbar control opens and closes Markdown, HTML, and SVG previews. PDF and PNG documents open native previews automatically from toolbar, macOS context-menu/Launch Services, paste/drop, and restored tabs; macOS plus regular-width iPad and visionOS use inline panes while iPhone uses a preview sheet.
 - PDF text highlighting stores lightweight page geometry and selected text separately from the source PDF. Notes use the existing editor on the left and may reuse the existing Markdown preview beside the PDF; note preview is off by default and empty notes create no file or Save As dialog.
 - Markdown previews provide 20 templates and GitHub Flavored Markdown support on macOS, iPhone, and iPad. Apple Vision Pro uses dedicated System Glass, Paper, Slate, and Ink reader surfaces.
+- Markdown math uses bundled KaTeX: `$...$` or `\(...\)` inline, and `$$...$$` or `\[...\]` for display equations (including multiline blocks). Preview, copied HTML, and PDF export work offline without enabling document JavaScript. Code spans and fenced code blocks remain literal; unsupported TeX appears as an error in place.
 - `.svg` files support XML editing, bracket help, and rendered SVG Preview on all platforms.
 - Markdown and Swift source exports declare their content types correctly on iOS and iPadOS.
 - Markdown-to-PDF export offers paginated and one-page output. Finder Quick Look previews supported Markdown and source files on macOS.

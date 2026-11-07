@@ -172,6 +172,20 @@ final class CompletionHeuristicsTests: XCTestCase {
         XCTAssertNil(SystemWordCompletion.suffix(forWordPrefix: "ab1"))
     }
 
+    func testSystemWordCompletionRanksListWithoutDuplicates() {
+        let suffixes = SystemWordCompletion.rankedSuffixes(
+            forWordPrefix: "Neo",
+            replacementPhrases: ["Neon Vision Editor", "Neon", "On my way!"],
+            dictionaryWords: ["neon", "neophyte", "neoclassical"],
+            limit: 3
+        )
+
+        XCTAssertEqual(suffixes, ["n", "n Vision Editor", "phyte"])
+        XCTAssertEqual(SystemWordCompletion.rankedSuffixes(
+            forWordPrefix: "Neo", replacementPhrases: [], dictionaryWords: ["neon"], limit: 0
+        ), [])
+    }
+
     func testSystemWordCompletionIsSuppressedInsideAWord() {
         XCTAssertTrue(SystemWordCompletion.continuesWord("o"))
         XCTAssertTrue(SystemWordCompletion.continuesWord("é"))

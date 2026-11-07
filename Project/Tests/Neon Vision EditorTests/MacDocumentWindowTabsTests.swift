@@ -631,6 +631,39 @@ final class MacDocumentWindowTabsTests: XCTestCase {
         XCTAssertEqual(parent.addTabCalls, 0, "An existing tab group must not repeat the window-level attach/order path")
     }
 
+    /// #875: on quit AppKit closes each tab window and selects the next one.
+    /// An editor first attaching to its window during that pass must not
+    /// regroup it into the closing tab group, which raises in AppKit.
+    func testEditorAttachingDuringTerminationDoesNotRegroupTabs() throws {
+        let store = immediateStore()
+        let source = MacDocumentTabPolicy.makeWindowModel()
+        let parent = MetadataWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+            styleMask: [.titled, .closable], backing: .buffered, defer: true)
+        parent.isReleasedWhenClosed = false
+        let late = window("Attaches during quit")
+        var child: EditorViewModel?
+        var pendingID: UUID?
+        defer {
+            if let child { store.unregister(child) }
+            store.unregister(source); late.close(); parent.close()
+        }
+        store.register(source, window: parent) { id in
+            pendingID = id
+            child = store.takePendingModel(for: id)
+        }
+        source.addNewTab()
+        let shell = try XCTUnwrap(child)
+        parent.addTabCalls = 0
+
+        store.beginTermination()
+        store.attachPendingWindow(late, for: try XCTUnwrap(pendingID))
+        store.register(shell, window: late) { _ in }
+
+        XCTAssertEqual(parent.addTabCalls, 0)
+        XCTAssertFalse(parent.tabGroup?.windows.contains(late) == true)
+        XCTAssertFalse(late.isVisible, "A window attaching during quit must not be ordered back on screen")
+    }
+
     private final class TabCloseDelegate: NSObject, NSWindowDelegate {
         var requests = 0
         var allowsClose = false

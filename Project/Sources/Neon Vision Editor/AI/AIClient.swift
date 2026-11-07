@@ -377,7 +377,7 @@ final class GrokAIClientStreaming: AIClient {
 
 // OpenAI-compatible client for endpoints that speak the v1 chat-completions
 // API (POST /v1/chat/completions, Bearer auth, choices[].message.content).
-// Used for OpenCode Go and user-configured custom providers. The base URL and
+// Used for OpenCode Go, Cheaper Inference and user-configured custom providers. The base URL and
 // model are supplied per provider; an empty key sends no Authorization header
 // so local/keyless servers work.
 final class OpenAICompatibleAIClient: AIClient {
@@ -547,6 +547,15 @@ enum OpenCodeGoConfig {
     static let defaultModel = "deepseek-v4-flash"
 }
 
+// Fixed configuration for the hosted Cheaper Inference endpoint, an
+// OpenAI-compatible gateway (POST /v1/chat/completions, Bearer auth).
+// gpt-5.4-mini is the default; the model id can be changed in Settings.
+// Available models: https://api.cheaperinference.com/public/models
+enum CheaperInferenceConfig {
+    static let baseURL = "https://api.cheaperinference.com/v1"
+    static let defaultModel = "gpt-5.4-mini"
+}
+
 // UserDefaults keys for the user-configured custom OpenAI-compatible provider.
 enum CustomProviderConfig {
     static let baseURLDefaultsKey = "CustomProviderBaseURL"
@@ -570,6 +579,8 @@ struct AIClientFactory {
                            anthropicKeyProvider: () -> String? = { nil },
                            openCodeGoKeyProvider: () -> String? = { nil },
                            openCodeGoModelProvider: () -> String? = { nil },
+                           cheaperInferenceKeyProvider: () -> String? = { nil },
+                           cheaperInferenceModelProvider: () -> String? = { nil },
                            customKeyProvider: () -> String? = { nil },
                            customBaseURLProvider: () -> String? = { nil },
                            customModelProvider: () -> String? = { nil },
@@ -608,6 +619,14 @@ struct AIClientFactory {
                 return OpenAICompatibleAIClient(apiKey: key, baseURL: OpenCodeGoConfig.baseURL, model: model)
             }
             // Fallback to Apple Intelligence when no OpenCode Go key.
+            return AppleIntelligenceAIClient()
+        case .cheaperInference:
+            if let key = cheaperInferenceKeyProvider()?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty {
+                let configuredModel = cheaperInferenceModelProvider()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let model = configuredModel.isEmpty ? CheaperInferenceConfig.defaultModel : configuredModel
+                return OpenAICompatibleAIClient(apiKey: key, baseURL: CheaperInferenceConfig.baseURL, model: model)
+            }
+            // Fallback to Apple Intelligence when no Cheaper Inference key.
             return AppleIntelligenceAIClient()
         case .customProvider:
             let key = customKeyProvider()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

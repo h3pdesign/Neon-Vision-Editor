@@ -375,8 +375,8 @@ enum CompletionHeuristics {
 
 #if os(macOS)
 /// Offline prose completion from the user's Text Replacements and the macOS
-/// spelling dictionary. Suggestions use the editor's inline completion, so
-/// Tab or Right Arrow accepts them.
+/// spelling dictionary. The editor shows the best match inline and the
+/// others in a list below the caret.
 enum SystemWordCompletion {
     static let enabledDefaultsKey = "SettingsSystemWordCompletionEnabled"
     static let debounceNanoseconds: UInt64 = 150_000_000
@@ -386,20 +386,35 @@ enum SystemWordCompletion {
         nextCharacter.first.map { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "'" } ?? false
     }
 
+    /// The most suggestions the completion list shows at once.
+    static let maximumSuggestionCount = 6
+
     static func suffix(forWordPrefix prefix: String) -> String? {
+        suffixes(forWordPrefix: prefix).first
+    }
+
+    /// Ranked completion suffixes for the word before the caret, best first.
+    static func suffixes(forWordPrefix prefix: String, limit: Int = maximumSuggestionCount) -> [String] {
         guard prefix.count >= minimumPrefixLength,
-              prefix.unicodeScalars.allSatisfy({ CharacterSet.letters.contains($0) }) else { return nil }
+              prefix.unicodeScalars.allSatisfy({ CharacterSet.letters.contains($0) }) else { return [] }
         let checker = NSSpellChecker.shared
-        let words = checker.completions(
-            forPartialWordRange: NSRange(location: 0, length: (prefix as NSString).length),
-            in: prefix,
-            language: nil,
-            inSpellDocumentWithTag: 0
+        let range = NSRange(location: 0, length: (prefix as NSString).length)
+        var words = checker.completions(
+            forPartialWordRange: range, in: prefix, language: nil, inSpellDocumentWithTag: 0
         ) ?? []
-        return bestSuffix(
+        // With "Automatic by Language" the checker can have no current
+        // language for a two-letter fragment; ask the user's first
+        // preferred spelling language instead of returning nothing.
+        if words.isEmpty, let language = checker.userPreferredLanguages.first {
+            words = checker.completions(
+                forPartialWordRange: range, in: prefix, language: language, inSpellDocumentWithTag: 0
+            ) ?? []
+        }
+        return rankedSuffixes(
             forWordPrefix: prefix,
             replacementPhrases: Array(checker.userReplacementsDictionary.values),
-            dictionaryWords: words
+            dictionaryWords: words,
+            limit: limit
         )
     }
 
@@ -407,10 +422,30 @@ enum SystemWordCompletion {
     /// defined them. The shortest phrase is preferred; dictionary words keep
     /// the spell checker's ranking.
     static func bestSuffix(forWordPrefix prefix: String, replacementPhrases: [String], dictionaryWords: [String]) -> String? {
-        let phrase = replacementPhrases
+        rankedSuffixes(forWordPrefix: prefix, replacementPhrases: replacementPhrases,
+                       dictionaryWords: dictionaryWords, limit: 1).first
+    }
+
+    /// Text Replacement phrases first (shortest first), then dictionary words
+    /// in the spell checker's order, without case-insensitive duplicates.
+    static func rankedSuffixes(
+        forWordPrefix prefix: String,
+        replacementPhrases: [String],
+        dictionaryWords: [String],
+        limit: Int = maximumSuggestionCount
+    ) -> [String] {
+        guard limit > 0 else { return [] }
+        let phrases = replacementPhrases
             .compactMap { completionSuffix(of: $0, extending: prefix) }
-            .min { lhs, rhs in lhs.count != rhs.count ? lhs.count < rhs.count : lhs < rhs }
-        return phrase ?? dictionaryWords.lazy.compactMap { completionSuffix(of: $0, extending: prefix) }.first
+            .sorted { lhs, rhs in lhs.count != rhs.count ? lhs.count < rhs.count : lhs < rhs }
+        var seen = Set<String>()
+        var result: [String] = []
+        for suffix in phrases + dictionaryWords.compactMap({ completionSuffix(of: $0, extending: prefix) }) {
+            guard seen.insert(suffix.lowercased()).inserted else { continue }
+            result.append(suffix)
+            if result.count == limit { break }
+        }
+        return result
     }
 
     private static func completionSuffix(of candidate: String, extending prefix: String) -> String? {

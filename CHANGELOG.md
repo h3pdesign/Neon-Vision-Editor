@@ -6,6 +6,42 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.1.7] - 2026-11-07
+
+### Why Upgrade
+
+- On the Mac, words from the macOS dictionary and your Text Replacements appear in a list below the caret as you type.
+- Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX.
+- Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB.
+- Quitting the Mac app with several tabs open no longer crashes.
+- Right Arrow accepts inline suggestions as the setting describes, and Tab also works with Caps Lock on.
+- Cheaper Inference is available as an optional AI provider.
+
+### Highlights
+
+- In the word list, Up and Down Arrow pick a word, Tab or Right Arrow accepts it, and Escape closes the list.
+- Clicking a word in the list inserts it, and Return accepts a word you picked with the arrow keys.
+- Cheaper Inference uses gpt-5.4-mini by default, keeps its API token in the Keychain, and lets you set your own model id.
+- Markdown previews and PDF exports render inline and display TeX formulas offline with bundled KaTeX. Formula underscores are preserved, and document JavaScript remains disabled (#942).
+
+### Fixes
+
+- Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB.
+- "Suggest Words from System Dictionary" on the Mac shows a list of matching words below the caret while you type. Up and Down Arrow pick a word, and Tab or Right Arrow accepts it. Return accepts it once you have picked a word with the arrow keys. Clicking a word inserts it, and Escape closes the list. Right Arrow now accepts inline suggestions as the setting describes, and Tab also works with Caps Lock on (#926).
+- Quitting with several tabs open on the Mac no longer crashes when a tab's editor finishes opening while its window is closing (#875).
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, sessions, and preferences are preserved.
+
+### Maintenance
+
+- Development version 2.1.7 (build 1140).
+
 ## [v2.1.6] - 2026-11-01
 
 ### Why Upgrade

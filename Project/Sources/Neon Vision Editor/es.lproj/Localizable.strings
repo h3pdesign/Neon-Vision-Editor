@@ -305,6 +305,8 @@
 "Change the project preview filter or open a project containing Markdown or PDF files." = "Cambiar el filtro de vista de proyecto o abrir un proyecto con archivos Markdown o PDF.";
 "Changed Files" = "Archivos modificados";
 "Cheaper Inference" = "Cheaper Inference";
+"API Route" = "API Route";
+"API Route Model" = "Modelo de API Route";
 "Check Again" = "Revisar de nuevo";
 "Check Interval" = "Intervalo de revisión";
 "Check Now" = "Revisar ahora";

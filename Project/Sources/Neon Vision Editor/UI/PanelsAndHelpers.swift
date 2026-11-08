@@ -4698,6 +4698,7 @@ enum EditorCommandUserInfo {
     nonisolated static let completionNextCharacter = "completionNextCharacter"
     nonisolated static let completionCandidates = "completionCandidates"
     nonisolated static let completionWordPrefix = "completionWordPrefix"
+    nonisolated static let completionPrefixReplacements = "completionPrefixReplacements"
     nonisolated static let completionCaretOffset = "completionCaretOffset"
     static let updaterCheckNow = "updaterCheckNow"
 }

@@ -631,6 +631,30 @@ final class MacDocumentWindowTabsTests: XCTestCase {
         XCTAssertEqual(parent.addTabCalls, 0, "An existing tab group must not repeat the window-level attach/order path")
     }
 
+    /// #940: session restore opens every file from the first window. Each
+    /// tab must follow the previously opened one, not jump next to the
+    /// parent, or the restored order is reversed on every relaunch.
+    func testTabsOpenedFromOneWindowKeepTheirOpeningOrder() throws {
+        let store = immediateStore()
+        let source = MacDocumentTabPolicy.makeWindowModel()
+        let parent = window("Parent")
+        let added = [window("First"), window("Second"), window("Third")]
+        var children: [EditorViewModel] = []
+        defer {
+            children.forEach(store.unregister)
+            store.unregister(source)
+            added.forEach { $0.close() }
+            parent.close()
+        }
+        store.register(source, window: parent) { id in
+            if let child = store.takePendingModel(for: id) { children.append(child) }
+            store.attachPendingWindow(added[children.count - 1], for: id)
+        }
+        for _ in added { source.addNewTab() }
+        XCTAssertEqual(children.count, added.count)
+        XCTAssertEqual(parent.tabGroup?.windows.map(\.title), ["Parent", "First", "Second", "Third"])
+    }
+
     /// #875: on quit AppKit closes each tab window and selects the next one.
     /// An editor first attaching to its window during that pass must not
     /// regroup it into the closing tab group, which raises in AppKit.

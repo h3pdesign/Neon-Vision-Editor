@@ -1185,9 +1185,15 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var isVimInsertMode = true
     private var inlineSuggestion: String?
     private var inlineSuggestionLocation: Int?
+    // A Text Replacement phrase replaces the typed shortcut before the caret
+    // instead of being appended to it (#959).
+    private var inlineSuggestionReplacesPrefix = false
     // System dictionary completion lists every match below the caret (#926).
     // The selected row is also the inline suggestion that Tab accepts.
+    // Each row is the text to insert; rows flagged in
+    // completionListReplacesPrefix replace completionListPrefix instead.
     private var completionListSuffixes: [String] = []
+    private var completionListReplacesPrefix: [Bool] = []
     private var completionListPrefix = ""
     private var completionListSelection = 0
     private var completionListNavigated = false
@@ -2005,7 +2011,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             nil
         ))
         let line = CTLineCreateWithAttributedString(NSAttributedString(
-            string: inlineSuggestion,
+            string: inlineSuggestionReplacesPrefix ? " \u{2192} " + inlineSuggestion : inlineSuggestion,
             attributes: [
                 .font: editorFont,
                 .foregroundColor: NSColor.secondaryLabelColor.withAlphaComponent(0.6)
@@ -2035,7 +2041,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             return
         }
         let font = editorFont
-        let words = completionListSuffixes.map { completionListPrefix + $0 }
+        let words = completionListSuffixes.indices.map(completionListWord(at:))
         let attributes: [NSAttributedString.Key: Any] = [.font: font]
         let textWidth = words.map { ($0 as NSString).size(withAttributes: attributes).width }.max() ?? 0
         let rowHeight = ceil(font.ascender - font.descender + font.leading + 6)
@@ -2090,16 +2096,31 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         completionListOverlay = nil
     }
 
+    /// The row as shown in the list: the completed word, or the Text
+    /// Replacement phrase that replaces the typed shortcut.
+    private func completionListWord(at index: Int) -> String {
+        let insertion = completionListSuffixes[index]
+        return completionListRowReplacesPrefix(index) ? insertion : completionListPrefix + insertion
+    }
+
+    private func completionListRowReplacesPrefix(_ index: Int) -> Bool {
+        completionListReplacesPrefix.indices.contains(index) && completionListReplacesPrefix[index]
+    }
+
     private func acceptCompletionListRow(_ index: Int) {
         guard isCompletionListVisible, completionListSuffixes.indices.contains(index),
               let location = inlineSuggestionLocation else { return }
         // Taking focus back can clear the list (the Vim mode refresh does),
         // so read the word first and restore it only if the caret is unchanged.
         let suffix = completionListSuffixes[index]
+        let replacesPrefix = completionListRowReplacesPrefix(index)
+        let prefix = completionListPrefix
         window?.makeFirstResponder(self)
         guard absoluteCaret == location, selection.length == 0 else { return }
         inlineSuggestion = suffix
         inlineSuggestionLocation = location
+        inlineSuggestionReplacesPrefix = replacesPrefix
+        completionListPrefix = prefix
         acceptInlineSuggestion()
     }
 
@@ -2109,6 +2130,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         completionListSelection = (completionListSelection + delta + count) % count
         completionListNavigated = true
         inlineSuggestion = completionListSuffixes[completionListSelection]
+        inlineSuggestionReplacesPrefix = completionListRowReplacesPrefix(completionListSelection)
         announceCompletionListSelection()
         updateCompletionListOverlay()
         needsDisplay = true
@@ -2120,7 +2142,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             element: self,
             notification: .announcementRequested,
             userInfo: [
-                .announcement: completionListPrefix + completionListSuffixes[completionListSelection],
+                .announcement: completionListWord(at: completionListSelection),
                 .priority: NSAccessibilityPriorityLevel.medium.rawValue
             ]
         )
@@ -2818,7 +2840,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             case 36, 76:
                 // Return accepts only a word the user picked with the arrow
                 // keys, so ending a line after a complete word stays a newline.
-                if completionListNavigated, acceptInlineSuggestion() { return }
+                // A Text Replacement the user defined is accepted directly (#959).
+                if completionListNavigated || inlineSuggestionReplacesPrefix,
+                   acceptInlineSuggestion() { return }
             default:
                 break
             }
@@ -3054,14 +3078,23 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
               selection.length == 0,
               absoluteCaret == location else { return }
         let prefix = notification.userInfo?[EditorCommandUserInfo.completionWordPrefix] as? String ?? ""
-        let candidates = prefix.isEmpty ? [] : (notification.userInfo?[EditorCommandUserInfo.completionCandidates] as? [String] ?? [])
-            .map(EditorTextSanitizer.sanitize)
-            .filter { !$0.isEmpty && !$0.contains(where: \.isNewline) }
+        let sanitizeRows: ([String]) -> [String] = { rows in
+            rows.map(EditorTextSanitizer.sanitize).filter { !$0.isEmpty && !$0.contains(where: \.isNewline) }
+        }
+        let replacements = prefix.isEmpty ? [] : sanitizeRows(
+            notification.userInfo?[EditorCommandUserInfo.completionPrefixReplacements] as? [String] ?? []
+        )
+        let suffixes = prefix.isEmpty ? [] : sanitizeRows(
+            notification.userInfo?[EditorCommandUserInfo.completionCandidates] as? [String] ?? []
+        )
+        let candidates = replacements + suffixes
         completionListPrefix = candidates.isEmpty ? "" : prefix
         completionListSuffixes = candidates
+        completionListReplacesPrefix = replacements.map { _ in true } + suffixes.map { _ in false }
         completionListSelection = 0
         completionListNavigated = false
         inlineSuggestion = candidates.first ?? EditorTextSanitizer.sanitize(suggestion)
+        inlineSuggestionReplacesPrefix = !replacements.isEmpty
         inlineSuggestionLocation = location
         if !candidates.isEmpty { announceCompletionListSelection() }
         updateCompletionListOverlay()
@@ -3072,7 +3105,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         guard inlineSuggestion != nil || inlineSuggestionLocation != nil || !completionListSuffixes.isEmpty else { return }
         inlineSuggestion = nil
         inlineSuggestionLocation = nil
+        inlineSuggestionReplacesPrefix = false
         completionListSuffixes = []
+        completionListReplacesPrefix = []
         completionListPrefix = ""
         completionListSelection = 0
         completionListNavigated = false
@@ -3088,7 +3123,25 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             clearInlineSuggestion()
             return false
         }
+        let replacedShortcut = inlineSuggestionReplacesPrefix ? completionListPrefix : ""
         clearInlineSuggestion()
+        if !replacedShortcut.isEmpty {
+            // Replace the typed Text Replacement shortcut, but only if it is
+            // still the text right before the caret.
+            let caretSelection = selection
+            let range = NSRange(location: absoluteCaret - replacedShortcut.utf16.count, length: replacedShortcut.utf16.count)
+            guard range.location >= 0,
+                  let document,
+                  NSMaxRange(range) <= document.utf16Length,
+                  (try? document.text(inUTF16Range: range)) == replacedShortcut else { return false }
+            selection = range
+            selectionAnchor = nil
+            guard replaceSelection(with: suggestion) else {
+                selection = caretSelection
+                return false
+            }
+            return true
+        }
         return replaceSelection(with: suggestion)
     }
 

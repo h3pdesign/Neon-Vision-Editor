@@ -377,7 +377,7 @@ final class GrokAIClientStreaming: AIClient {
 
 // OpenAI-compatible client for endpoints that speak the v1 chat-completions
 // API (POST /v1/chat/completions, Bearer auth, choices[].message.content).
-// Used for OpenCode Go, Cheaper Inference and user-configured custom providers. The base URL and
+// Used for OpenCode Go, Cheaper Inference, API Route and user-configured custom providers. The base URL and
 // model are supplied per provider; an empty key sends no Authorization header
 // so local/keyless servers work.
 final class OpenAICompatibleAIClient: AIClient {
@@ -556,6 +556,16 @@ enum CheaperInferenceConfig {
     static let defaultModel = "gpt-5.4-mini"
 }
 
+// Fixed configuration for the hosted API Route endpoint, an OpenAI-compatible
+// gateway (POST /v1/chat/completions, Bearer auth) (#957). The model id can be
+// changed in Settings; a key can be limited to some models.
+// Available models: https://www.api-route.com/pricing
+enum APIRouteConfig {
+    static let baseURL = "https://global.api-route.com/v1"
+    static let defaultModel = "claude-haiku-4-5"
+    static let modelDefaultsKey = "APIRouteModelID"
+}
+
 // UserDefaults keys for the user-configured custom OpenAI-compatible provider.
 enum CustomProviderConfig {
     static let baseURLDefaultsKey = "CustomProviderBaseURL"
@@ -581,6 +591,8 @@ struct AIClientFactory {
                            openCodeGoModelProvider: () -> String? = { nil },
                            cheaperInferenceKeyProvider: () -> String? = { nil },
                            cheaperInferenceModelProvider: () -> String? = { nil },
+                           apiRouteKeyProvider: () -> String? = { nil },
+                           apiRouteModelProvider: () -> String? = { nil },
                            customKeyProvider: () -> String? = { nil },
                            customBaseURLProvider: () -> String? = { nil },
                            customModelProvider: () -> String? = { nil },
@@ -627,6 +639,14 @@ struct AIClientFactory {
                 return OpenAICompatibleAIClient(apiKey: key, baseURL: CheaperInferenceConfig.baseURL, model: model)
             }
             // Fallback to Apple Intelligence when no Cheaper Inference key.
+            return AppleIntelligenceAIClient()
+        case .apiRoute:
+            if let key = apiRouteKeyProvider()?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty {
+                let configuredModel = apiRouteModelProvider()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let model = configuredModel.isEmpty ? APIRouteConfig.defaultModel : configuredModel
+                return OpenAICompatibleAIClient(apiKey: key, baseURL: APIRouteConfig.baseURL, model: model)
+            }
+            // Fallback to Apple Intelligence when no API Route key.
             return AppleIntelligenceAIClient()
         case .customProvider:
             let key = customKeyProvider()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

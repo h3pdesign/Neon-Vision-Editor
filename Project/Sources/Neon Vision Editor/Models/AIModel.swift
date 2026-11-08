@@ -17,6 +17,7 @@ public enum AIModel: String, CaseIterable, Identifiable {
     case anthropic
     case openCodeGo
     case cheaperInference
+    case apiRoute
     case customProvider
 
     public var id: String { rawValue }
@@ -30,6 +31,7 @@ public enum AIModel: String, CaseIterable, Identifiable {
         case .anthropic: return "Anthropic"
         case .openCodeGo: return "OpenCode Go"
         case .cheaperInference: return "Cheaper Inference"
+        case .apiRoute: return "API Route"
         case .customProvider: return "Custom (OpenAI-compatible)"
         }
     }

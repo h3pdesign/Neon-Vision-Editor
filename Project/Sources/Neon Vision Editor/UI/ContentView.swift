@@ -873,6 +873,7 @@ struct ContentView: View {
     @AppStorage("OpenCodeGoModelID") var openCodeGoModelID: String = OpenCodeGoConfig.defaultModel
     @State var cheaperInferenceAPIToken: String = ""
     @AppStorage("CheaperInferenceModelID") var cheaperInferenceModelID: String = CheaperInferenceConfig.defaultModel
+    @AppStorage(APIRouteConfig.modelDefaultsKey) var apiRouteModelID: String = APIRouteConfig.defaultModel
 
     // Debounce/cancellation handles for inline completion
     @State var completionDebounceTask: Task<Void, Never>?

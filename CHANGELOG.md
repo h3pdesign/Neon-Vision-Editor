@@ -6,6 +6,19 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Added
+
+- API Route is available as an optional AI provider. It uses claude-haiku-4-5 by default, keeps its API key in the Keychain, and lets you set your own model id (#957).
+
+### Fixes
+
+- On the Mac, typing a Text Replacement shortcut such as "omw" lists its phrase first in the word list. Tab, Right Arrow or Return replaces the shortcut with the phrase (#959).
+- With "Reopen Last Session", Mac tabs reopen in the order you left them instead of reversed (#940).
+
+### Maintenance
+
+- Development version 2.1.8 (build 1142).
+
 ## [v2.1.7] - 2026-11-07
 
 ### Why Upgrade

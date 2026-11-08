@@ -77,6 +77,11 @@ final class MacDocumentWindowTabs {
     private var entries: [ObjectIdentifier: Entry] = [:]
     private var pending: [UUID: Pending] = [:]
     private var parents: [ObjectIdentifier: Parent] = [:]
+    // The tab most recently attached from each parent window. Opening several
+    // files from one window, as session restore does, appends each new tab
+    // after the previous one instead of right after the parent, which
+    // reversed the restored tab order on every relaunch (#940).
+    private var lastAttachedChildren: [ObjectIdentifier: Parent] = [:]
     private var order: [ObjectIdentifier] = []
     private var projectPreviewSessions: [ObjectIdentifier: MarkdownProjectPreviewSession] = [:]
     private var presentationStates: [ObjectIdentifier: EditorDocumentPresentationState] = [:]
@@ -330,15 +335,29 @@ final class MacDocumentWindowTabs {
         window.tabbingIdentifier = MacDocumentTabPolicy.tabbingIdentifier
         window.tabbingMode = .preferred
         if window.tabGroup !== parent.tabGroup || window.tabGroup == nil {
-            if let group = parent.tabGroup, let index = group.windows.firstIndex(where: { $0 === parent }) {
-                // Insert restored/background tabs without selecting and ordering
-                // each window. Only the requested final selection is presented.
-                group.insertWindow(window, at: index + 1)
-            } else {
-                parent.addTabbedWindow(window, ordered: .above)
-            }
+            attach(window, toGroupOf: parent)
         }
         parents.removeValue(forKey: ObjectIdentifier(item.model))
+    }
+
+    /// Adds `window` to `parent`'s tab group after the tabs already opened
+    /// from `parent`, so tabs keep the order in which they were opened.
+    private func attach(_ window: NSWindow, toGroupOf parent: NSWindow) {
+        let parentID = ObjectIdentifier(parent)
+        var anchor = parent
+        if let previous = lastAttachedChildren[parentID]?.window, previous !== window,
+           let group = parent.tabGroup, group.windows.contains(where: { $0 === previous }) {
+            anchor = previous
+        }
+        if let group = parent.tabGroup, let index = group.windows.firstIndex(where: { $0 === anchor }) {
+            // Insert restored/background tabs without selecting and ordering
+            // each window. Only the requested final selection is presented.
+            group.insertWindow(window, at: index + 1)
+        } else {
+            anchor.addTabbedWindow(window, ordered: .above)
+        }
+        lastAttachedChildren = lastAttachedChildren.filter { $0.value.window != nil }
+        lastAttachedChildren[parentID] = Parent(window)
     }
 
     func noteBecameKey(_ model: EditorViewModel) {
@@ -396,7 +415,7 @@ final class MacDocumentWindowTabs {
         }
         if let parent = parents.removeValue(forKey: identity)?.window, parent !== window, !isTerminating {
             if window.tabGroup !== parent.tabGroup || window.tabGroup == nil {
-                parent.addTabbedWindow(window, ordered: .above)
+                attach(window, toGroupOf: parent)
             }
         }
         if wasPending, !isTerminating, windowControllers[identity] == nil, !isPresentingPendingWindow,

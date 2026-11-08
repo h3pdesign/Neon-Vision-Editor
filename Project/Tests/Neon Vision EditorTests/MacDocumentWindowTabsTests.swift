@@ -652,7 +652,9 @@ final class MacDocumentWindowTabsTests: XCTestCase {
         }
         for _ in added { source.addNewTab() }
         XCTAssertEqual(children.count, added.count)
-        XCTAssertEqual(parent.tabGroup?.windows.map(\.title), ["Parent", "First", "Second", "Third"])
+        // Compare identities: registering the source model retitles the parent.
+        let expected: [NSWindow] = [parent] + added
+        XCTAssertEqual(parent.tabGroup?.windows.map(ObjectIdentifier.init), expected.map(ObjectIdentifier.init))
     }
 
     /// #875: on quit AppKit closes each tab window and selects the next one.

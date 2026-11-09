@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.2.0] - 2026-11-09
+
 ### Why Upgrade
 
 - On iPhone Duo, a preview next to the editor starts at the fold, so the document and preview each get one half.

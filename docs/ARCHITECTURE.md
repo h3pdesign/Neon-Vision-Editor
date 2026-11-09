@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-11-07 (v2.1.7 release-aligned architecture)
+Last updated: 2026-11-09 (v2.2.0 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -8,6 +8,15 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v2.2.0 (2026-11-09)
+
+- On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it.
+- With Reopen Last Session, Mac tabs come back in the order you left them.
+- The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note.
+- On iPhone Duo, a Markdown, JSON, YAML, web, image or PDF preview next to the editor starts at the fold. Without a reported fold, the split stays as before.
+- API Route uses claude-haiku-4-5 by default, keeps its API key in the Keychain, and lets you set your own model id (#957).
+- On the Mac, typing a Text Replacement shortcut such as "omw" lists its phrase first in the word list. Tab, Right Arrow or Return replaces the shortcut with the phrase (#959).
 
 ### v2.1.7 (2026-11-07)
 
@@ -17,15 +26,6 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 - Markdown previews and PDF exports render inline and display TeX formulas offline with bundled KaTeX. Formula underscores are preserved, and document JavaScript remains disabled (#942).
 - Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB.
 - "Suggest Words from System Dictionary" on the Mac shows a list of matching words below the caret while you type. Up and Down Arrow pick a word, and Tab or Right Arrow accepts it. Return accepts it once you have picked a word with the arrow keys. Clicking a word inserts it, and Escape closes the list. Right Arrow now accepts inline suggestions as the setting describes, and Tab also works with Caps Lock on (#926).
-
-### v2.1.6 (2026-11-01)
-
-- Completion options have their own section in Mac Settings under Editor.
-- Notes in Mac Settings wrap onto more lines instead of being cut off.
-- Where iPhone Duo doesn't report the status bar's position, the editor toolbar moves to the bottom of the screen.
-- On iPhone Duo's unfolded display, the editor toolbar no longer covers the vertical status bar. Where the system doesn't report the status bar's position on that edge, the toolbar returns to the bottom of the screen (#891).
-- Typing and moving the caret on iPhone and iPad copies the document once per change instead of up to four times, which keeps large files more responsive.
-- On smaller Mac screens, Settings no longer extends behind the Dock. A Settings page taller than the screen now scrolls, and Editor › Completion has its own section so Editor › Behavior fits again (#898).
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

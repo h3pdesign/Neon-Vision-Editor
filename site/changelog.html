@@ -118,7 +118,23 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v2.1.7</h2><span class="date">7 November 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v2.2.0</h2><span class="date">9 November 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it.</p></div>
+          <div class="item"><span class="badge new">New</span><p>With Reopen Last Session, Mac tabs come back in the order you left them.</p></div>
+          <div class="item"><span class="badge new">New</span><p>The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>On iPhone Duo, a Markdown, JSON, YAML, web, image or PDF preview next to the editor starts at the fold. Without a reported fold, the split stays as before.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>API Route uses claude-haiku-4-5 by default, keeps its API key in the Keychain, and lets you set your own model id (#957).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>On the Mac, typing a Text Replacement shortcut such as &quot;omw&quot; lists its phrase first in the word list. Tab, Right Arrow or Return replaces the shortcut with the phrase (#959).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>With &quot;Reopen Last Session&quot;, Mac tabs reopen in the order you left them instead of reversed (#940).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note, instead of up to 30 minutes later.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>The iPhone app sends status to Apple Watch only when the document, unsaved changes, conflicts or last save change, not after every pause in typing, and Neon Pulse complications refresh only when their data changes.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Documents on network and SMB volumes are no longer checked every 3 seconds while the app is in the background. They are checked as soon as you return, and every 10 seconds in Low Power Mode.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v2.1.7</h2><span class="date">7 November 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>In the word list, Up and Down Arrow pick a word, Tab or Right Arrow accepts it, and Escape closes the list.</p></div>
           <div class="item"><span class="badge new">New</span><p>Clicking a word in the list inserts it, and Return accepts a word you picked with the arrow keys.</p></div>

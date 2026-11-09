@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.1.7",
-            subtitle: "Release highlights for v2.1.7.",
+            title: "What’s New in v2.2.0",
+            subtitle: "Release highlights for v2.2.0.",
             bullets: [
-                "Word Completion: On the Mac, words from the macOS dictionary and your Text Replacements appear in a list below the caret as you type.",
-                "Math Formulas: Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX.",
-                "Large Documents: Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB.",
-                "Quitting: Quitting the Mac app with several tabs open no longer crashes.",
-                "Inline Suggestions: Right Arrow accepts inline suggestions as the setting describes, and Tab also works with Caps Lock on.",
-                "AI Providers: Cheaper Inference is available as an optional AI provider."
+                "iPhone Duo: On iPhone Duo, a preview next to the editor starts at the fold, so the document and preview each get one half.",
+                "Battery Use: The iPhone app updates Apple Watch only when your status changes, and network files aren't checked in the background.",
+                "AI Providers: API Route is available as an optional AI provider.",
+                "Text Replacements: On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it.",
+                "Tab Order: With Reopen Last Session, Mac tabs come back in the order you left them.",
+                "Neon Pulse: The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4518,6 +4518,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.2.0", version: "2.2.0", date: "2026-11-09", highlights: [
+            "On iPhone Duo, a preview next to the editor starts at the fold, so the document and preview each get one half.",
+            "The iPhone app updates Apple Watch only when your status changes, and network files aren't checked in the background.",
+            "API Route is available as an optional AI provider."
+        ]),
         Release(id: "2.1.7", version: "2.1.7", date: "2026-11-07", highlights: [
             "On the Mac, words from the macOS dictionary and your Text Replacements appear in a list below the caret as you type.",
             "Markdown previews and PDF exports show TeX formulas offline, using a bundled copy of KaTeX.",

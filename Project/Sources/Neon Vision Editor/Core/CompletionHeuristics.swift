@@ -418,6 +418,37 @@ enum SystemWordCompletion {
         )
     }
 
+    /// Text Replacement phrases whose shortcut is the word before the caret,
+    /// such as "omw" for "On my way!" (#959). Accepting one replaces the
+    /// typed shortcut instead of appending to it.
+    static func replacementPhrases(forShortcut shortcut: String) -> [String] {
+        guard shortcut.count >= minimumPrefixLength else { return [] }
+        return replacementPhrases(forShortcut: shortcut, replacements: NSSpellChecker.shared.userReplacementsDictionary)
+    }
+
+    /// Matches the shortcut case-insensitively, like the system does, and
+    /// skips multi-line phrases and phrases that equal the typed text.
+    static func replacementPhrases(
+        forShortcut shortcut: String,
+        replacements: [String: String],
+        limit: Int = maximumSuggestionCount
+    ) -> [String] {
+        guard !shortcut.isEmpty, limit > 0 else { return [] }
+        var seen = Set<String>()
+        return replacements
+            .filter { key, phrase in
+                key.caseInsensitiveCompare(shortcut) == .orderedSame
+                    && !phrase.isEmpty
+                    && !phrase.contains(where: \.isNewline)
+                    && phrase != shortcut
+            }
+            .map(\.value)
+            .sorted { lhs, rhs in lhs.count != rhs.count ? lhs.count < rhs.count : lhs < rhs }
+            .filter { seen.insert($0.lowercased()).inserted }
+            .prefix(limit)
+            .map { $0 }
+    }
+
     /// Text Replacement phrases win over dictionary words because the user
     /// defined them. The shortest phrase is preferred; dictionary words keep
     /// the spell checker's ranking.

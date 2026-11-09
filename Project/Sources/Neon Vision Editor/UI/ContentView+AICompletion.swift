@@ -192,17 +192,25 @@ extension ContentView {
               viewModel.selectedTab?.id == tabID else { return false }
         let source = context as NSString
         let prefix = CompletionHeuristics.tokenContext(in: source, caretLocation: source.length).prefix
+        // A typed Text Replacement shortcut lists its phrases first (#959).
+        let replacements = SystemWordCompletion.replacementPhrases(forShortcut: prefix)
         let suffixes = SystemWordCompletion.suffixes(forWordPrefix: prefix)
-        guard let suffix = suffixes.first else { return false }
+            .filter { suffix in
+                !replacements.contains { $0.caseInsensitiveCompare(prefix + suffix) == .orderedSame }
+            }
+            .prefix(max(0, SystemWordCompletion.maximumSuggestionCount - replacements.count))
+            .map { $0 }
+        guard let first = replacements.first ?? suffixes.first else { return false }
         NotificationCenter.default.post(
             name: .showVirtualEditorInlineSuggestion,
             object: nil,
             userInfo: [
                 EditorCommandUserInfo.documentID: tabID.uuidString,
                 EditorCommandUserInfo.completionCaretOffset: caretLocation,
-                EditorCommandUserInfo.replacementText: suffix,
+                EditorCommandUserInfo.replacementText: first,
                 // The editor lists every match below the caret (#926).
                 EditorCommandUserInfo.completionCandidates: suffixes,
+                EditorCommandUserInfo.completionPrefixReplacements: replacements,
                 EditorCommandUserInfo.completionWordPrefix: prefix
             ]
         )
@@ -378,6 +386,7 @@ extension ContentView {
         let resolvedAnthropicToken = anthropicAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? SecureTokenStore.token(for: .anthropic) : anthropicAPIToken
         let resolvedOpenCodeGoToken = openCodeGoAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? SecureTokenStore.token(for: .openCodeGo) : openCodeGoAPIToken
         let resolvedCheaperInferenceToken = cheaperInferenceAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? SecureTokenStore.token(for: .cheaperInference) : cheaperInferenceAPIToken
+        let resolvedAPIRouteToken = SecureTokenStore.token(for: .apiRoute)
         let resolvedCustomProviderToken = SecureTokenStore.token(for: .customProvider)
         let client = AIClientFactory.makeClient(
             for: selectedModel,
@@ -389,6 +398,8 @@ extension ContentView {
             openCodeGoModelProvider: { openCodeGoModelID },
             cheaperInferenceKeyProvider: { resolvedCheaperInferenceToken },
             cheaperInferenceModelProvider: { cheaperInferenceModelID },
+            apiRouteKeyProvider: { resolvedAPIRouteToken },
+            apiRouteModelProvider: { apiRouteModelID },
             customKeyProvider: { resolvedCustomProviderToken },
             customBaseURLProvider: { UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) },
             customModelProvider: { UserDefaults.standard.string(forKey: CustomProviderConfig.modelDefaultsKey) }
@@ -418,6 +429,9 @@ extension ContentView {
         case .cheaperInference:
             providerLabel = "Cheaper Inference"
             isUsingConfiguredProvider = !resolvedCheaperInferenceToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .apiRoute:
+            providerLabel = "API Route"
+            isUsingConfiguredProvider = !resolvedAPIRouteToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .customProvider:
             providerLabel = "Custom Provider"
             let baseURL = (UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)

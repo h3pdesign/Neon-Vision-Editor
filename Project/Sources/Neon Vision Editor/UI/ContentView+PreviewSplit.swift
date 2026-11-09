@@ -495,7 +495,14 @@ extension ContentView {
 #if os(macOS)
             .frame(minWidth: 280, idealWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
 #else
-            .frame(minWidth: 280, idealWidth: 420, maxWidth: 680, maxHeight: .infinity)
+            // On a foldable iPhone the pane starts at the fold, so the editor
+            // and the preview each keep one half of the display.
+            .frame(
+                minWidth: hingeAlignedPreviewPaneWidth ?? 280,
+                idealWidth: hingeAlignedPreviewPaneWidth ?? 420,
+                maxWidth: hingeAlignedPreviewPaneWidth ?? 680,
+                maxHeight: .infinity
+            )
 #endif
             .background(editorSurfaceBackgroundStyle)
             .clipShape(previewSplitPaneShape)
@@ -506,9 +513,20 @@ extension ContentView {
             }
 #endif
             .padding(.top, 4)
-            .padding(.trailing, 4)
+            .padding(.trailing, previewSplitPaneTrailingInset)
             .padding(.bottom, 4)
     }
+
+    var previewSplitPaneTrailingInset: CGFloat { 4 }
+
+#if !os(macOS)
+    /// A trailing project preview panel takes the space after the split pane,
+    /// so the fold cannot be matched; keep the regular split then.
+    private var hingeAlignedPreviewPaneWidth: CGFloat? {
+        guard !(isMarkdownProjectPreviewVisible && usesRegularIOSLayout) else { return nil }
+        return hingeSplitPreviewPaneWidth
+    }
+#endif
 
 #if os(macOS)
     var minimumPreviewPaneWidth: CGFloat { 280 }

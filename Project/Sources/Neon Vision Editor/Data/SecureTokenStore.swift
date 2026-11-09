@@ -10,6 +10,7 @@ enum APITokenKey: String, CaseIterable {
     case anthropic
     case openCodeGo
     case cheaperInference
+    case apiRoute
     case customProvider
     case typeSafe
 
@@ -21,6 +22,7 @@ enum APITokenKey: String, CaseIterable {
         case .anthropic: return "AnthropicAPIToken"
         case .openCodeGo: return "OpenCodeGoAPIToken"
         case .cheaperInference: return "CheaperInferenceAPIToken"
+        case .apiRoute: return "APIRouteAPIToken"
         case .customProvider: return "CustomProviderAPIToken"
         case .typeSafe: return "TypeSafeAPIToken"
         }

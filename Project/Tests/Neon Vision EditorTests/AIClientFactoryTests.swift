@@ -23,6 +23,22 @@ final class AIClientFactoryTests: XCTestCase {
         XCTAssertTrue(client is OpenAICompatibleAIClient)
     }
 
+    func testAPIRouteProviderUsesConfiguredTokenAndModel() {
+        let client = AIClientFactory.makeClient(
+            for: .apiRoute,
+            apiRouteKeyProvider: { "test-token" },
+            apiRouteModelProvider: { "claude-haiku-4-5" }
+        )
+
+        XCTAssertTrue(client is OpenAICompatibleAIClient)
+    }
+
+    func testAPIRouteProviderFallsBackToAppleWithoutToken() {
+        let client = AIClientFactory.makeClient(for: .apiRoute, apiRouteKeyProvider: { "  " })
+
+        XCTAssertTrue(client is AppleIntelligenceAIClient)
+    }
+
     func testCustomProviderAllowsHTTPSAndLoopbackHTTPBaseURLs() {
         let localClient = AIClientFactory.makeClient(
             for: .customProvider,

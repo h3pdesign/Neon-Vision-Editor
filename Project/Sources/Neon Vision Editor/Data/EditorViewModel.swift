@@ -759,6 +759,7 @@ class EditorViewModel {
     private static let deferredLanguageDetectionSampleUTF16Length = 180_000
     private static let largeContentLanguageDetectionSampleUTF16Length = 120_000
     private static let networkVolumePollingIntervalNanos: UInt64 = 3_000_000_000
+    private static let lowPowerNetworkVolumePollingIntervalNanos: UInt64 = 10_000_000_000
 
     // MARK: - Observable State and Indexes
 
@@ -787,6 +788,8 @@ class EditorViewModel {
     @ObservationIgnored private var externalRefreshStatusClearTask: Task<Void, Never>?
     @ObservationIgnored private var networkVolumePollingTask: Task<Void, Never>?
     @ObservationIgnored private var networkVolumePollingCandidatePaths: Set<String> = []
+    @ObservationIgnored private var networkVolumePolledURLs: [URL] = []
+    @ObservationIgnored private var isNetworkVolumePollingSuspended = false
     @ObservationIgnored private lazy var openDocumentObservationCenter = OpenDocumentObservationCenter { [weak self] url in
         Task { @MainActor [weak self] in
             self?.handleObservedLocalFileChange(at: url)
@@ -2707,6 +2710,7 @@ class EditorViewModel {
         networkVolumePollingCandidatePaths = candidatePaths
         networkVolumePollingTask?.cancel()
         networkVolumePollingTask = nil
+        networkVolumePolledURLs = []
         guard !uniqueURLs.isEmpty else { return }
 
         let candidates = Array(uniqueURLs.values)
@@ -2714,16 +2718,53 @@ class EditorViewModel {
             let polledURLs = await Task.detached(priority: .utility) {
                 candidates.filter { Self.requiresExternalChangePolling(at: $0) }
             }.value
-            guard !Task.isCancelled, !polledURLs.isEmpty else { return }
+            guard !Task.isCancelled, let self, !polledURLs.isEmpty else { return }
+            self.networkVolumePolledURLs = polledURLs
+            // While the app is inactive the loop stays stopped; activation
+            // starts it with an immediate check.
+            self.networkVolumePollingTask = self.isNetworkVolumePollingSuspended
+                ? nil
+                : self.makeNetworkVolumePollingLoop(for: polledURLs, pollImmediately: false)
+        }
+    }
 
+    /// Network and SMB volumes deliver no file presenter events, so their open
+    /// documents are polled. Polling stops while the app is inactive, because
+    /// nobody sees the result, and resumes with an immediate check.
+    func setNetworkVolumePollingSuspended(_ suspended: Bool) {
+        guard suspended != isNetworkVolumePollingSuspended else { return }
+        isNetworkVolumePollingSuspended = suspended
+        if suspended {
+            // Before the volume check finishes there are no polled URLs yet;
+            // that task then sees the suspension and does not start a loop.
+            guard !networkVolumePolledURLs.isEmpty else { return }
+            networkVolumePollingTask?.cancel()
+            networkVolumePollingTask = nil
+        } else if !networkVolumePolledURLs.isEmpty, networkVolumePollingTask == nil {
+            networkVolumePollingTask = makeNetworkVolumePollingLoop(for: networkVolumePolledURLs, pollImmediately: true)
+        }
+    }
+
+    static func networkVolumePollingInterval(lowPowerModeEnabled: Bool) -> UInt64 {
+        lowPowerModeEnabled ? lowPowerNetworkVolumePollingIntervalNanos : networkVolumePollingIntervalNanos
+    }
+
+    private func makeNetworkVolumePollingLoop(for urls: [URL], pollImmediately: Bool) -> Task<Void, Never> {
+        Task { @MainActor [weak self] in
+            if pollImmediately {
+                _ = await self?.pollOpenDocumentsForExternalChanges(at: urls)
+            }
             while !Task.isCancelled {
+                let interval = Self.networkVolumePollingInterval(
+                    lowPowerModeEnabled: ProcessInfo.processInfo.isLowPowerModeEnabled
+                )
                 do {
-                    try await Task.sleep(nanoseconds: Self.networkVolumePollingIntervalNanos)
+                    try await Task.sleep(nanoseconds: interval)
                 } catch {
                     return
                 }
                 guard !Task.isCancelled else { return }
-                _ = await self?.pollOpenDocumentsForExternalChanges(at: polledURLs)
+                _ = await self?.pollOpenDocumentsForExternalChanges(at: urls)
             }
         }
     }

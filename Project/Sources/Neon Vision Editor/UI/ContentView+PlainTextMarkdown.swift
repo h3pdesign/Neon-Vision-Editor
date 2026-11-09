@@ -169,6 +169,15 @@ extension ContentView {
                 baseURL: CheaperInferenceConfig.baseURL,
                 model: model.isEmpty ? CheaperInferenceConfig.defaultModel : model
             )
+        case .apiRoute:
+            let token = SecureTokenStore.token(for: .apiRoute).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !token.isEmpty else { return nil }
+            let model = apiRouteModelID.trimmingCharacters(in: .whitespacesAndNewlines)
+            return OpenAICompatibleAIClient(
+                apiKey: token,
+                baseURL: APIRouteConfig.baseURL,
+                model: model.isEmpty ? APIRouteConfig.defaultModel : model
+            )
         case .customProvider:
             let token = SecureTokenStore.token(for: .customProvider).trimmingCharacters(in: .whitespacesAndNewlines)
             let baseURL = (UserDefaults.standard.string(forKey: CustomProviderConfig.baseURLDefaultsKey) ?? "")

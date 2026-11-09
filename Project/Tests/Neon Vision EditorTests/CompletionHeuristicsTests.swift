@@ -152,6 +152,20 @@ final class CompletionHeuristicsTests: XCTestCase {
         XCTAssertEqual(suffix, "n")
     }
 
+    func testTextReplacementShortcutOffersItsPhrase() {
+        let replacements = ["rs": "rhinitis", "omw": "On my way!", "addr": "1 Main St\nSpringfield"]
+
+        XCTAssertEqual(SystemWordCompletion.replacementPhrases(forShortcut: "rs", replacements: replacements), ["rhinitis"])
+        XCTAssertEqual(SystemWordCompletion.replacementPhrases(forShortcut: "OMW", replacements: replacements), ["On my way!"])
+        XCTAssertEqual(SystemWordCompletion.replacementPhrases(forShortcut: "r", replacements: replacements), [])
+        XCTAssertEqual(SystemWordCompletion.replacementPhrases(forShortcut: "addr", replacements: replacements), [])
+        XCTAssertEqual(SystemWordCompletion.replacementPhrases(forShortcut: "rhinitis", replacements: replacements), [])
+    }
+
+    func testTextReplacementShortcutSkipsPhraseEqualToShortcut() {
+        XCTAssertEqual(SystemWordCompletion.replacementPhrases(forShortcut: "teh", replacements: ["teh": "teh"]), [])
+    }
+
     func testSystemWordCompletionKeepsDictionaryRankingAndTypedCase() {
         let suffix = SystemWordCompletion.bestSuffix(
             forWordPrefix: "Hel",

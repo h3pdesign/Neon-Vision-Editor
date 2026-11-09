@@ -22,6 +22,32 @@ nonisolated final class NeonPulseStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testStatusContentIgnoresSnapshotTimestamp() {
+        let saved = Date(timeIntervalSince1970: 1_750_000_000)
+        let status = NeonPulseStatus(
+            projectName: "Neon Vision Editor",
+            currentDocument: "Notes.md",
+            pendingChanges: 1,
+            hasConflict: false,
+            lastSuccessfulSave: saved,
+            updatedAt: saved
+        )
+        var later = status
+        later.updatedAt = saved.addingTimeInterval(30)
+        XCTAssertTrue(status.hasSameContent(as: later))
+
+        var changes: [NeonPulseStatus] = []
+        var document = status; document.currentDocument = "Other.md"; changes.append(document)
+        var pending = status; pending.pendingChanges = 2; changes.append(pending)
+        var conflict = status; conflict.hasConflict = true; changes.append(conflict)
+        var save = status; save.lastSuccessfulSave = saved.addingTimeInterval(5); changes.append(save)
+        var project = status; project.projectName = "Other"; changes.append(project)
+        for changed in changes {
+            XCTAssertFalse(status.hasSameContent(as: changed))
+        }
+    }
+
+    @MainActor
     func testCaptureIsTrimmedPersistedAndMarkedDelivered() throws {
         let store = NeonPulseStore(defaults: defaults)
         let createdAt = Date(timeIntervalSince1970: 1_750_000_000)

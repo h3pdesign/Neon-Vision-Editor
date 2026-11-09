@@ -15,6 +15,10 @@ final class NeonPulsePhoneBridge {
     private weak var viewModel: EditorViewModel?
     private let processedIDsKey = "NeonPulseProcessedCaptureIDsV1"
     private var lastSuccessfulSave: Date?
+    // The last status the watch accepted. Typing advances the tab persistence
+    // revision after every pause, so without this check each pause would send
+    // a context update and refresh the watch complication.
+    private var lastPublishedStatus: NeonPulseStatus?
     private var saveObserver: NSObjectProtocol?
     private let transport = NeonPulsePhoneTransport()
     private let logger = Logger(subsystem: "h3p.Neon-Vision-Editor", category: "WatchConnectivity")
@@ -46,8 +50,14 @@ final class NeonPulsePhoneBridge {
         publishStatus()
     }
 
-    func publishStatus() {
-        guard WCSession.default.activationState == .activated, let viewModel else { return }
+    /// Sends the editor status to the watch when it differs from the last one
+    /// sent. `force` resends after activation or a watch pairing change.
+    func publishStatus(force: Bool = false) {
+        let session = WCSession.default
+        guard session.activationState == .activated,
+              session.isPaired,
+              session.isWatchAppInstalled,
+              let viewModel else { return }
         let status = NeonPulseStatus(
             projectName: "Neon Vision Editor",
             currentDocument: viewModel.selectedTab?.name,
@@ -56,8 +66,14 @@ final class NeonPulsePhoneBridge {
             lastSuccessfulSave: lastSuccessfulSave,
             updatedAt: .now
         )
+        if !force, let lastPublishedStatus, lastPublishedStatus.hasSameContent(as: status) { return }
         guard let data = NeonPulseCodec.encode(status) else { return }
-        try? WCSession.default.updateApplicationContext([NeonPulseConstants.statusPayloadKey: data])
+        do {
+            try session.updateApplicationContext([NeonPulseConstants.statusPayloadKey: data])
+            lastPublishedStatus = status
+        } catch {
+            lastPublishedStatus = nil
+        }
     }
 
     func receivePayloadData(_ data: Data) {
@@ -126,7 +142,14 @@ nonisolated final class NeonPulsePhoneTransport: NSObject, WCSessionDelegate {
     ) {
         guard activationState == .activated, error == nil else { return }
         Task { @MainActor in
-            NeonPulsePhoneBridge.shared.publishStatus()
+            NeonPulsePhoneBridge.shared.publishStatus(force: true)
+        }
+    }
+
+    // Pairing a watch or installing the watch app after launch.
+    nonisolated func sessionWatchStateDidChange(_ session: WCSession) {
+        Task { @MainActor in
+            NeonPulsePhoneBridge.shared.publishStatus(force: true)
         }
     }
 

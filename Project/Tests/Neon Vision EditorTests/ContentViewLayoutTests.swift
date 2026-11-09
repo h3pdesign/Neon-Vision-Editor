@@ -406,6 +406,68 @@ final class ContentViewLayoutTests: XCTestCase {
         ))
     }
 
+    func testHingeSplitStartsTrailingPaneAtTheFold() throws {
+        let width = try XCTUnwrap(IOSHingeSplitPolicy.trailingPaneWidth(
+            containerSize: CGSize(width: 900, height: 700),
+            divisions: [CGRect(x: 440, y: 0, width: 20, height: 700)],
+            trailingInset: 4
+        ))
+        XCTAssertEqual(width, 436)
+    }
+
+    func testHingeSplitAcceptsZeroWidthCrease() {
+        XCTAssertEqual(
+            IOSHingeSplitPolicy.trailingPaneWidth(
+                containerSize: CGSize(width: 900, height: 700),
+                divisions: [CGRect(x: 450, y: 0, width: 0, height: 700)],
+                trailingInset: 4
+            ),
+            446
+        )
+    }
+
+    func testHingeSplitIgnoresMissingHorizontalOrOutsideDivisions() {
+        let size = CGSize(width: 900, height: 700)
+        XCTAssertNil(IOSHingeSplitPolicy.trailingPaneWidth(containerSize: size, divisions: [], trailingInset: 4))
+        XCTAssertNil(IOSHingeSplitPolicy.trailingPaneWidth(
+            containerSize: size,
+            divisions: [CGRect(x: 0, y: 340, width: 900, height: 20)],
+            trailingInset: 4
+        ), "A horizontal fold cannot divide side-by-side panes")
+        XCTAssertNil(IOSHingeSplitPolicy.trailingPaneWidth(
+            containerSize: size,
+            divisions: [CGRect(x: 920, y: 0, width: 20, height: 700)],
+            trailingInset: 4
+        ), "A fold outside this container does not apply")
+        XCTAssertNil(IOSHingeSplitPolicy.trailingPaneWidth(
+            containerSize: .zero,
+            divisions: [CGRect(x: 440, y: 0, width: 20, height: 700)],
+            trailingInset: 4
+        ))
+    }
+
+    func testHingeSplitKeepsRegularSplitWhenASideWouldBeTooNarrow() {
+        let size = CGSize(width: 900, height: 700)
+        XCTAssertNil(IOSHingeSplitPolicy.trailingPaneWidth(
+            containerSize: size,
+            divisions: [CGRect(x: 200, y: 0, width: 20, height: 700)],
+            trailingInset: 4
+        ), "Editor side narrower than the minimum")
+        XCTAssertNil(IOSHingeSplitPolicy.trailingPaneWidth(
+            containerSize: size,
+            divisions: [CGRect(x: 640, y: 0, width: 20, height: 700)],
+            trailingInset: 4
+        ), "Preview side narrower than the minimum")
+        XCTAssertNil(IOSHingeSplitPolicy.trailingPaneWidth(
+            containerSize: CGSize(width: 1_400, height: 700),
+            divisions: [
+                CGRect(x: 460, y: 0, width: 10, height: 700),
+                CGRect(x: 930, y: 0, width: 10, height: 700)
+            ],
+            trailingInset: 4
+        ), "Several folds have no single split position")
+    }
+
     func testSecondaryPaneWidthScalesAndRemainsBounded() {
         XCTAssertEqual(IOSAdaptiveLayoutPolicy.secondaryPaneIdealWidth(containerWidth: 390), 280)
         XCTAssertEqual(IOSAdaptiveLayoutPolicy.secondaryPaneIdealWidth(containerWidth: 900), 360)

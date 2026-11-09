@@ -9,15 +9,23 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Added
 
 - API Route is available as an optional AI provider. It uses claude-haiku-4-5 by default, keeps its API key in the Keychain, and lets you set your own model id (#957).
+- On iPhone Duo, a preview next to the editor lines up with the fold, so your document and its Markdown, JSON, YAML, web, image or PDF preview each keep one half of the display.
 
 ### Fixes
 
 - On the Mac, typing a Text Replacement shortcut such as "omw" lists its phrase first in the word list. Tab, Right Arrow or Return replaces the shortcut with the phrase (#959).
 - With "Reopen Last Session", Mac tabs reopen in the order you left them instead of reversed (#940).
+- The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note, instead of up to 30 minutes later.
+
+### Performance
+
+- The iPhone app sends status to Apple Watch only when the document, unsaved changes, conflicts or last save change, not after every pause in typing. The watch refreshes its complications less often as a result.
+- Neon Pulse complications refresh only when their data changes, not every 30 minutes.
+- Documents on network and SMB volumes are no longer checked every 3 seconds while the app is in the background. They are checked as soon as you return, and every 10 seconds in Low Power Mode.
 
 ### Maintenance
 
-- Development version 2.1.8 (build 1142).
+- Development version 2.2.0 (build 1143).
 
 ## [v2.1.7] - 2026-11-07
 

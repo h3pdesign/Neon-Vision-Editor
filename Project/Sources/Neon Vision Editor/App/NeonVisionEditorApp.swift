@@ -973,6 +973,10 @@ struct NeonVisionEditorApp: App {
                 .onChange(of: viewModel.tabPersistenceObservationToken) { _, _ in
                     NeonPulsePhoneBridge.shared.publishStatus()
                 }
+                // A conflict can appear or clear without a tab mutation.
+                .onChange(of: viewModel.pendingExternalFileConflict != nil) { _, _ in
+                    NeonPulsePhoneBridge.shared.publishStatus()
+                }
 #endif
                 .onAppear { _ = AppearanceThemeCloudSync.syncIfEnabled() }
                 .onReceive(NotificationCenter.default.publisher(for: NSUbiquitousKeyValueStore.didChangeExternallyNotification)) { _ in

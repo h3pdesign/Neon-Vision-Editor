@@ -244,6 +244,35 @@ enum IOSVerticalToolbarPolicy {
     }
 }
 
+/// Aligns a trailing preview pane with a fold. On a foldable iPhone, the
+/// system reports the crease as a vertical `.division` reserved region.
+enum IOSHingeSplitPolicy {
+    nonisolated static let minimumEditorWidth: CGFloat = 280
+    nonisolated static let minimumPaneWidth: CGFloat = 280
+
+    /// The frame width for a trailing pane whose outer edge, after
+    /// `trailingInset`, starts at the trailing edge of the one vertical
+    /// division that crosses the container. Returns nil when there is no such
+    /// division, when several are reported, or when either side would be
+    /// narrower than its minimum.
+    nonisolated static func trailingPaneWidth(
+        containerSize: CGSize,
+        divisions: [CGRect],
+        trailingInset: CGFloat
+    ) -> CGFloat? {
+        guard containerSize.width > 0, containerSize.height > 0 else { return nil }
+        let crossing = divisions.filter { division in
+            division.height > division.width &&
+            division.minX > 0 && division.maxX < containerSize.width &&
+            division.minY < containerSize.height && division.maxY > 0
+        }
+        guard crossing.count == 1, let division = crossing.first else { return nil }
+        let paneWidth = containerSize.width - division.maxX - max(0, trailingInset)
+        guard division.minX >= minimumEditorWidth, paneWidth >= minimumPaneWidth else { return nil }
+        return paneWidth
+    }
+}
+
 enum IOSFloatingStatusPolicy {
     /// On iPhone the keyboard shortcut bar is drawn inside the editor, above
     /// the keyboard, so the keyboard safe area does not include it. Lift the
@@ -326,6 +355,34 @@ struct MobileFloatingStatusOverlayModifier: ViewModifier {
             .padding(.bottom, (centered ? 8 : 12) + bottomInset)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: centered ? .bottom : .bottomTrailing)
         }
+    }
+}
+
+/// Publishes the preview pane width that lines the split up with a display
+/// fold, or nil where the system reports none.
+struct IOSHingeSplitReaderModifier: ViewModifier {
+    @Binding var paneWidth: CGFloat?
+    let trailingInset: CGFloat
+
+    func body(content: Content) -> some View {
+#if os(iOS) && IOS_27_1_DUO_LAYOUT
+        if #available(iOS 27.1, *) {
+            let trailingInset = trailingInset
+            content.onGeometryChange(for: CGFloat?.self) { proxy in
+                IOSHingeSplitPolicy.trailingPaneWidth(
+                    containerSize: proxy.size,
+                    divisions: proxy.reservedRegions(kind: .division).map(\.frame),
+                    trailingInset: trailingInset
+                )
+            } action: { width in
+                if paneWidth != width { paneWidth = width }
+            }
+        } else {
+            content
+        }
+#else
+        content
+#endif
     }
 }
 
@@ -1350,6 +1407,7 @@ struct ContentView: View {
     @State private var didRunInitialWindowLayoutSetup: Bool = false
     @State private var pendingLargeFileModeReevaluation: DispatchWorkItem? = nil
     @State var liveContainerWidth: CGFloat = 0
+    @State var hingeSplitPreviewPaneWidth: CGFloat? = nil
     @State var recoverySnapshotIdentifier: String = UUID().uuidString
     @AppStorage("SettingsRecoverUnsavedDrafts") var recoverUnsavedDrafts: Bool = true
     @State var lastCaretLocation: Int = 0
@@ -3679,6 +3737,7 @@ struct ContentView: View {
             }
 #if os(iOS) || os(visionOS)
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+                viewModel.setNetworkVolumePollingSuspended(true)
                 persistSessionIfReady()
                 persistUnsavedDraftSnapshotIfNeeded()
                 EditorPreferenceWriter.shared.flushBeforeTermination()
@@ -5709,6 +5768,7 @@ struct ContentView: View {
 #endif
 
     private func handleAppDidBecomeActive() {
+        viewModel.setNetworkVolumePollingSuspended(false)
         if let selectedID = viewModel.selectedTab?.id {
             viewModel.refreshExternalConflictForTab(tabID: selectedID)
         }
@@ -5737,6 +5797,7 @@ struct ContentView: View {
     }
 
     private func handleAppWillResignActive() {
+        viewModel.setNetworkVolumePollingSuspended(true)
         persistSessionIfReady()
         persistUnsavedDraftSnapshotIfNeeded()
     }
@@ -6187,6 +6248,10 @@ struct ContentView: View {
                             )
                     }
                 }
+                .modifier(IOSHingeSplitReaderModifier(
+                    paneWidth: $hingeSplitPreviewPaneWidth,
+                    trailingInset: previewSplitPaneTrailingInset
+                ))
             )
         }
 #endif

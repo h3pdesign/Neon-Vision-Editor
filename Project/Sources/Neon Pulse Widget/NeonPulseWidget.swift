@@ -23,7 +23,7 @@ struct NeonPulseProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<NeonPulseEntry>) -> Void) {
-        completion(Timeline(entries: [entry()], policy: .after(Date().addingTimeInterval(30 * 60))))
+        completion(Timeline(entries: [entry()], policy: .never))
     }
 
     private func entry() -> NeonPulseEntry {
@@ -50,7 +50,7 @@ struct NeonPulseInboxProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<NeonPulseInboxEntry>) -> Void) {
-        completion(Timeline(entries: [entry()], policy: .after(Date().addingTimeInterval(30 * 60))))
+        completion(Timeline(entries: [entry()], policy: .never))
     }
 
     private func entry() -> NeonPulseInboxEntry {

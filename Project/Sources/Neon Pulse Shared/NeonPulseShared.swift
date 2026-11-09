@@ -45,6 +45,15 @@ struct NeonPulseStatus: Codable, Equatable, Sendable {
     var lastSuccessfulSave: Date?
     var updatedAt: Date
 
+    /// Equal apart from `updatedAt`, which changes on every snapshot.
+    nonisolated func hasSameContent(as other: NeonPulseStatus) -> Bool {
+        projectName == other.projectName &&
+        currentDocument == other.currentDocument &&
+        pendingChanges == other.pendingChanges &&
+        hasConflict == other.hasConflict &&
+        lastSuccessfulSave == other.lastSuccessfulSave
+    }
+
     static let empty = NeonPulseStatus(
         projectName: "Neon Vision Editor",
         currentDocument: nil,

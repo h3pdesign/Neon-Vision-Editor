@@ -168,7 +168,7 @@ final class NeonPulseWatchModel: NSObject {
     private func reload() {
         captures = store.captures()
         status = store.status()
-        WidgetCenter.shared.reloadTimelines(ofKind: "NeonPulseStatus")
+        WidgetCenter.shared.reloadAllTimelines()
     }
     private func handleActivation(_ activated: Bool) {
         connectionLabel = activated

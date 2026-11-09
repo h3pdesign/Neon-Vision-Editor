@@ -18,7 +18,7 @@ struct CaptureInNeonIntent: AppIntent {
         guard await NeonPulseStore().addCapture(text: text) != nil else {
             return .result(dialog: "Nothing was captured.")
         }
-        WidgetCenter.shared.reloadTimelines(ofKind: "NeonPulseStatus")
+        WidgetCenter.shared.reloadAllTimelines()
         return .result(dialog: "Captured in Neon Inbox.")
     }
 }

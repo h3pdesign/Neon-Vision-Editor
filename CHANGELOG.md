@@ -6,6 +6,14 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixed
+
+- On iPhone, including iPhone Duo, a Hide Keyboard button sits above the keyboard, so you can close the keyboard and get back to the toolbar without scrolling the document. With the Keyboard Snippet Bar turned off, the button still appears on its own.
+
+### Maintenance
+
+- Development version 2.2.1 (build 1146).
+
 ## [v2.2.0] - 2026-11-09
 
 ### Why Upgrade

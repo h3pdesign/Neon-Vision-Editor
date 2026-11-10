@@ -6519,7 +6519,8 @@ struct ContentView: View {
                     IOSFloatingStatusPolicy.bottomInset(
                         isPhone: UIDevice.current.userInterfaceIdiom == .phone,
                         keyboardVisible: isPhoneSoftwareKeyboardVisible,
-                        accessoryBarShown: showKeyboardAccessoryBarIOS,
+                        // The phone overlay shows Hide Keyboard even with the snippet bar off.
+                        accessoryBarShown: true,
                         accessoryBarHeight: EditorInputTextView.keyboardToolbarHeight
                     )
 #else

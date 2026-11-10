@@ -6,6 +6,14 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixed
+
+- On iPhone, including iPhone Duo, the keyboard bar above the keyboard has a Hide Keyboard button, so you can close the keyboard and get back to the toolbar without scrolling the document.
+
+### Maintenance
+
+- Development version 2.2.1 (build 1145).
+
 ## [v2.2.0] - 2026-11-09
 
 ### Why Upgrade

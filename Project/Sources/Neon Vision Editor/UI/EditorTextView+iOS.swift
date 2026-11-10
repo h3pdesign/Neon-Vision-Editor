@@ -481,7 +481,7 @@ class EditorInputTextView: UITextView {
         }
     }
 
-    fileprivate func makeKeyboardAccessoryView(isEditorOverlay: Bool = false) -> UIView {
+    func makeKeyboardAccessoryView(isEditorOverlay: Bool = false) -> UIView {
 #if os(iOS)
         let liquidGlassEnabled = IOSAdaptiveChromePreference.isEnabled()
         let usesNativeGlass: Bool
@@ -592,6 +592,25 @@ class EditorInputTextView: UITextView {
         glass.contentView.addSubview(scroll)
         scroll.addSubview(stack)
 
+        // The iPhone keyboard has no dismiss key and the editor toolbar is
+        // hidden while it is up, so the in-editor bar keeps a fixed way out.
+        let dismissButton = isEditorOverlay ? UIButton(type: .system) : nil
+        if let dismissButton {
+            dismissButton.accessibilityIdentifier = "keyboard-hide"
+            dismissButton.accessibilityLabel = NSLocalizedString("Hide Keyboard", comment: "Keyboard accessory button that dismisses the software keyboard")
+            dismissButton.setImage(UIImage(systemName: "keyboard.chevron.compact.down"), for: .normal)
+            dismissButton.tintColor = .label
+            dismissButton.translatesAutoresizingMaskIntoConstraints = false
+            dismissButton.addTarget(self, action: #selector(dismissKeyboardFromAccessory), for: .touchUpInside)
+            glass.contentView.addSubview(dismissButton)
+            NSLayoutConstraint.activate([
+                dismissButton.trailingAnchor.constraint(equalTo: glass.contentView.trailingAnchor, constant: -10),
+                dismissButton.centerYAnchor.constraint(equalTo: glass.contentView.centerYAnchor),
+                dismissButton.widthAnchor.constraint(equalToConstant: 36),
+                dismissButton.heightAnchor.constraint(equalTo: glass.contentView.heightAnchor)
+            ])
+        }
+
         NSLayoutConstraint.activate([
             host.heightAnchor.constraint(equalToConstant: Self.keyboardToolbarHeight),
 
@@ -601,7 +620,10 @@ class EditorInputTextView: UITextView {
             glass.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -2),
 
             scroll.leadingAnchor.constraint(equalTo: glass.contentView.leadingAnchor, constant: 10),
-            scroll.trailingAnchor.constraint(equalTo: glass.contentView.trailingAnchor, constant: -10),
+            scroll.trailingAnchor.constraint(
+                equalTo: dismissButton?.leadingAnchor ?? glass.contentView.trailingAnchor,
+                constant: dismissButton == nil ? -10 : -4
+            ),
             scroll.topAnchor.constraint(equalTo: glass.contentView.topAnchor, constant: 4),
             scroll.bottomAnchor.constraint(equalTo: glass.contentView.bottomAnchor, constant: -4),
 
@@ -819,6 +841,10 @@ class EditorInputTextView: UITextView {
         }
         #endif
         return resigned
+    }
+
+    @objc private func dismissKeyboardFromAccessory() {
+        _ = resignFirstResponder()
     }
 
     @objc private func performKeyboardAccessoryAction(_ sender: UIButton) {

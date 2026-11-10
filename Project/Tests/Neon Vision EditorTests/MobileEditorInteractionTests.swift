@@ -440,6 +440,22 @@ final class MobileEditorInteractionTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(probe.elapsed, probe.longestGap)
     }
 
+    func testPhoneKeyboardBarOffersHideKeyboard() {
+        let editor = EditorInputTextView(frame: .zero, textContainer: nil)
+        func hideButton(in view: UIView) -> UIButton? {
+            if let button = view as? UIButton, button.accessibilityIdentifier == "keyboard-hide" {
+                return button
+            }
+            return view.subviews.lazy.compactMap { hideButton(in: $0) }.first
+        }
+        let overlayButton = hideButton(in: editor.makeKeyboardAccessoryView(isEditorOverlay: true))
+        XCTAssertNotNil(overlayButton)
+        XCTAssertEqual(overlayButton?.accessibilityLabel, "Hide Keyboard")
+        XCTAssertEqual(overlayButton?.actions(forTarget: editor, forControlEvent: .touchUpInside), ["dismissKeyboardFromAccessory"])
+        // iPad's input accessory keeps the system keyboard's own dismiss key.
+        XCTAssertNil(hideButton(in: editor.makeKeyboardAccessoryView(isEditorOverlay: false)))
+    }
+
     func testFocusedEditorExposesConfiguredAppShortcuts() {
         let editor = EditorInputTextView(frame: .zero, textContainer: nil)
         var receivedAction: EditorShortcutAction?

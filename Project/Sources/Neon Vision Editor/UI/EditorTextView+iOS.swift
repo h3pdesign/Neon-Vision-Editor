@@ -140,6 +140,8 @@ enum EditorLargeTextFormatting {
 
 class EditorInputTextView: UITextView {
     static let keyboardToolbarHeight: CGFloat = 46
+    /// Width of the iPhone bar that holds only Hide Keyboard (snippet bar off).
+    static let dismissOnlyKeyboardToolbarWidth: CGFloat = 76
     var onConfiguredAppShortcut: ((EditorShortcutAction) -> Void)?
     private struct NoWrapWidthCache {
         let revision: Int
@@ -481,7 +483,7 @@ class EditorInputTextView: UITextView {
         }
     }
 
-    func makeKeyboardAccessoryView(isEditorOverlay: Bool = false) -> UIView {
+    func makeKeyboardAccessoryView(isEditorOverlay: Bool = false, dismissOnly: Bool = false) -> UIView {
 #if os(iOS)
         let liquidGlassEnabled = IOSAdaptiveChromePreference.isEnabled()
         let usesNativeGlass: Bool
@@ -538,7 +540,7 @@ class EditorInputTextView: UITextView {
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        let accessoryActions = keyboardShortcutAccessoryEnabled
+        let accessoryActions = keyboardShortcutAccessoryEnabled && !dismissOnly
             ? KeyboardAccessoryAction.configuredActions(
                 rawValue: UserDefaults.standard.string(forKey: KeyboardAccessoryAction.storageKey)
             ) : []
@@ -560,7 +562,7 @@ class EditorInputTextView: UITextView {
             stack.addArrangedSubview(divider)
         }
 
-        for token in bracketTokens {
+        for token in dismissOnly ? [] : bracketTokens {
             let button = UIButton(type: .system)
             button.titleLabel?.font = UIFont.monospacedSystemFont(ofSize: 15, weight: .semibold)
             button.accessibilityIdentifier = token
@@ -2013,8 +2015,9 @@ final class LineNumberedTextViewContainer: UIView, UIScrollViewDelegate {
 
 #if os(iOS)
     func setKeyboardAccessoryRequested(_ requested: Bool, rebuild: Bool) {
+        let requestChanged = keyboardAccessoryRequested != requested
         keyboardAccessoryRequested = requested
-        if rebuild {
+        if rebuild || requestChanged {
             keyboardAccessoryOverlay?.removeFromSuperview()
             keyboardAccessoryOverlay = nil
         }
@@ -2036,16 +2039,23 @@ final class LineNumberedTextViewContainer: UIView, UIScrollViewDelegate {
     }
 
     func refreshKeyboardAccessoryOverlay() {
-        let shouldShow = keyboardAccessoryRequested && softwareKeyboardVisible && textView.isFirstResponder
+        // The phone keyboard has no dismiss key, so the overlay stays up while
+        // the editor has the keyboard. With the snippet bar turned off it holds
+        // only Hide Keyboard. iPad keeps its native input accessory instead.
+        let shouldShow = UIDevice.current.userInterfaceIdiom == .phone &&
+            softwareKeyboardVisible && textView.isFirstResponder
         guard shouldShow else {
             keyboardAccessoryOverlay?.isHidden = true
             return
         }
         if keyboardAccessoryOverlay == nil {
-            let overlay = textView.makeKeyboardAccessoryView(isEditorOverlay: true)
+            let dismissOnly = !keyboardAccessoryRequested
+            let overlay = textView.makeKeyboardAccessoryView(isEditorOverlay: true, dismissOnly: dismissOnly)
             addSubview(overlay)
             NSLayoutConstraint.activate([
-                overlay.leadingAnchor.constraint(equalTo: leadingAnchor),
+                dismissOnly
+                    ? overlay.widthAnchor.constraint(equalToConstant: EditorInputTextView.dismissOnlyKeyboardToolbarWidth)
+                    : overlay.leadingAnchor.constraint(equalTo: leadingAnchor),
                 overlay.trailingAnchor.constraint(equalTo: trailingAnchor),
                 overlay.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor)
             ])

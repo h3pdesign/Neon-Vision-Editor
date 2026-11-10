@@ -440,20 +440,42 @@ final class MobileEditorInteractionTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(probe.elapsed, probe.longestGap)
     }
 
+    private func hideKeyboardButton(in view: UIView) -> UIButton? {
+        if let button = view as? UIButton, button.accessibilityIdentifier == "keyboard-hide" {
+            return button
+        }
+        return view.subviews.lazy.compactMap { self.hideKeyboardButton(in: $0) }.first
+    }
+
+    private func buttonIdentifiers(in view: UIView) -> [String] {
+        ((view as? UIButton)?.accessibilityIdentifier.map { [$0] } ?? []) +
+            view.subviews.flatMap { buttonIdentifiers(in: $0) }
+    }
+
     func testPhoneKeyboardBarOffersHideKeyboard() {
         let editor = EditorInputTextView(frame: .zero, textContainer: nil)
-        func hideButton(in view: UIView) -> UIButton? {
-            if let button = view as? UIButton, button.accessibilityIdentifier == "keyboard-hide" {
-                return button
-            }
-            return view.subviews.lazy.compactMap { hideButton(in: $0) }.first
-        }
-        let overlayButton = hideButton(in: editor.makeKeyboardAccessoryView(isEditorOverlay: true))
+        let overlayButton = hideKeyboardButton(in: editor.makeKeyboardAccessoryView(isEditorOverlay: true))
         XCTAssertNotNil(overlayButton)
-        XCTAssertEqual(overlayButton?.accessibilityLabel, "Hide Keyboard")
-        XCTAssertEqual(overlayButton?.actions(forTarget: editor, forControlEvent: .touchUpInside), ["dismissKeyboardFromAccessory"])
+        XCTAssertEqual(
+            overlayButton?.accessibilityLabel,
+            NSLocalizedString("Hide Keyboard", comment: "Keyboard accessory button that dismisses the software keyboard")
+        )
         // iPad's input accessory keeps the system keyboard's own dismiss key.
-        XCTAssertNil(hideButton(in: editor.makeKeyboardAccessoryView(isEditorOverlay: false)))
+        XCTAssertNil(hideKeyboardButton(in: editor.makeKeyboardAccessoryView(isEditorOverlay: false)))
+    }
+
+    func testHideKeyboardButtonResignsTheEditor() throws {
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom != .phone, "iPad intentionally uses the native input accessory, not the phone overlay")
+        withEditor("Short note", showKeyboardAccessoryBar: true, softwareKeyboardVisible: true) { container in
+            let view = container.textView
+            XCTAssertTrue(view.becomeFirstResponder())
+            guard let overlay = container.keyboardAccessoryOverlay, let button = hideKeyboardButton(in: overlay) else {
+                return XCTFail("Missing Hide Keyboard button in the editor keyboard overlay")
+            }
+            button.sendActions(for: .touchUpInside)
+            XCTAssertFalse(view.isFirstResponder)
+            XCTAssertTrue(overlay.isHidden)
+        }
     }
 
     func testFocusedEditorExposesConfiguredAppShortcuts() {
@@ -1274,7 +1296,9 @@ final class MobileEditorInteractionTests: XCTestCase {
             assertAccessoryBackground(container, matches: editorBackground)
 
             view.setBracketAccessoryVisible(false)
-            XCTAssertTrue(container.keyboardAccessoryOverlay?.isHidden ?? true)
+            // With the snippet bar off, the overlay keeps only Hide Keyboard.
+            XCTAssertFalse(container.keyboardAccessoryOverlay?.isHidden ?? true)
+            XCTAssertEqual(container.keyboardAccessoryOverlay.map { buttonIdentifiers(in: $0) }, ["keyboard-hide"])
             view.setBracketAccessoryVisible(true)
             assertAccessoryBackground(container, matches: editorBackground)
             container.setSoftwareKeyboardVisible(false)

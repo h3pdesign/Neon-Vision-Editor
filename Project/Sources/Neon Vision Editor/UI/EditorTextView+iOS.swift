@@ -140,6 +140,8 @@ enum EditorLargeTextFormatting {
 
 class EditorInputTextView: UITextView {
     static let keyboardToolbarHeight: CGFloat = 46
+    /// Width of the iPhone bar that holds only Hide Keyboard (snippet bar off).
+    static let dismissOnlyKeyboardToolbarWidth: CGFloat = 76
     var onConfiguredAppShortcut: ((EditorShortcutAction) -> Void)?
     private struct NoWrapWidthCache {
         let revision: Int
@@ -481,7 +483,7 @@ class EditorInputTextView: UITextView {
         }
     }
 
-    fileprivate func makeKeyboardAccessoryView(isEditorOverlay: Bool = false) -> UIView {
+    func makeKeyboardAccessoryView(isEditorOverlay: Bool = false, dismissOnly: Bool = false) -> UIView {
 #if os(iOS)
         let liquidGlassEnabled = IOSAdaptiveChromePreference.isEnabled()
         let usesNativeGlass: Bool
@@ -538,7 +540,7 @@ class EditorInputTextView: UITextView {
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        let accessoryActions = keyboardShortcutAccessoryEnabled
+        let accessoryActions = keyboardShortcutAccessoryEnabled && !dismissOnly
             ? KeyboardAccessoryAction.configuredActions(
                 rawValue: UserDefaults.standard.string(forKey: KeyboardAccessoryAction.storageKey)
             ) : []
@@ -560,7 +562,7 @@ class EditorInputTextView: UITextView {
             stack.addArrangedSubview(divider)
         }
 
-        for token in bracketTokens {
+        for token in dismissOnly ? [] : bracketTokens {
             let button = UIButton(type: .system)
             button.titleLabel?.font = UIFont.monospacedSystemFont(ofSize: 15, weight: .semibold)
             button.accessibilityIdentifier = token
@@ -592,6 +594,25 @@ class EditorInputTextView: UITextView {
         glass.contentView.addSubview(scroll)
         scroll.addSubview(stack)
 
+        // The iPhone keyboard has no dismiss key and the editor toolbar is
+        // hidden while it is up, so the in-editor bar keeps a fixed way out.
+        let dismissButton = isEditorOverlay ? UIButton(type: .system) : nil
+        if let dismissButton {
+            dismissButton.accessibilityIdentifier = "keyboard-hide"
+            dismissButton.accessibilityLabel = NSLocalizedString("Hide Keyboard", comment: "Keyboard accessory button that dismisses the software keyboard")
+            dismissButton.setImage(UIImage(systemName: "keyboard.chevron.compact.down"), for: .normal)
+            dismissButton.tintColor = .label
+            dismissButton.translatesAutoresizingMaskIntoConstraints = false
+            dismissButton.addTarget(self, action: #selector(dismissKeyboardFromAccessory), for: .touchUpInside)
+            glass.contentView.addSubview(dismissButton)
+            NSLayoutConstraint.activate([
+                dismissButton.trailingAnchor.constraint(equalTo: glass.contentView.trailingAnchor, constant: -10),
+                dismissButton.centerYAnchor.constraint(equalTo: glass.contentView.centerYAnchor),
+                dismissButton.widthAnchor.constraint(equalToConstant: 36),
+                dismissButton.heightAnchor.constraint(equalTo: glass.contentView.heightAnchor)
+            ])
+        }
+
         NSLayoutConstraint.activate([
             host.heightAnchor.constraint(equalToConstant: Self.keyboardToolbarHeight),
 
@@ -601,7 +622,10 @@ class EditorInputTextView: UITextView {
             glass.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -2),
 
             scroll.leadingAnchor.constraint(equalTo: glass.contentView.leadingAnchor, constant: 10),
-            scroll.trailingAnchor.constraint(equalTo: glass.contentView.trailingAnchor, constant: -10),
+            scroll.trailingAnchor.constraint(
+                equalTo: dismissButton?.leadingAnchor ?? glass.contentView.trailingAnchor,
+                constant: dismissButton == nil ? -10 : -4
+            ),
             scroll.topAnchor.constraint(equalTo: glass.contentView.topAnchor, constant: 4),
             scroll.bottomAnchor.constraint(equalTo: glass.contentView.bottomAnchor, constant: -4),
 
@@ -819,6 +843,10 @@ class EditorInputTextView: UITextView {
         }
         #endif
         return resigned
+    }
+
+    @objc private func dismissKeyboardFromAccessory() {
+        _ = resignFirstResponder()
     }
 
     @objc private func performKeyboardAccessoryAction(_ sender: UIButton) {
@@ -1987,8 +2015,9 @@ final class LineNumberedTextViewContainer: UIView, UIScrollViewDelegate {
 
 #if os(iOS)
     func setKeyboardAccessoryRequested(_ requested: Bool, rebuild: Bool) {
+        let requestChanged = keyboardAccessoryRequested != requested
         keyboardAccessoryRequested = requested
-        if rebuild {
+        if rebuild || requestChanged {
             keyboardAccessoryOverlay?.removeFromSuperview()
             keyboardAccessoryOverlay = nil
         }
@@ -2010,16 +2039,23 @@ final class LineNumberedTextViewContainer: UIView, UIScrollViewDelegate {
     }
 
     func refreshKeyboardAccessoryOverlay() {
-        let shouldShow = keyboardAccessoryRequested && softwareKeyboardVisible && textView.isFirstResponder
+        // The phone keyboard has no dismiss key, so the overlay stays up while
+        // the editor has the keyboard. With the snippet bar turned off it holds
+        // only Hide Keyboard. iPad keeps its native input accessory instead.
+        let shouldShow = UIDevice.current.userInterfaceIdiom == .phone &&
+            softwareKeyboardVisible && textView.isFirstResponder
         guard shouldShow else {
             keyboardAccessoryOverlay?.isHidden = true
             return
         }
         if keyboardAccessoryOverlay == nil {
-            let overlay = textView.makeKeyboardAccessoryView(isEditorOverlay: true)
+            let dismissOnly = !keyboardAccessoryRequested
+            let overlay = textView.makeKeyboardAccessoryView(isEditorOverlay: true, dismissOnly: dismissOnly)
             addSubview(overlay)
             NSLayoutConstraint.activate([
-                overlay.leadingAnchor.constraint(equalTo: leadingAnchor),
+                dismissOnly
+                    ? overlay.widthAnchor.constraint(equalToConstant: EditorInputTextView.dismissOnlyKeyboardToolbarWidth)
+                    : overlay.leadingAnchor.constraint(equalTo: leadingAnchor),
                 overlay.trailingAnchor.constraint(equalTo: trailingAnchor),
                 overlay.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor)
             ])

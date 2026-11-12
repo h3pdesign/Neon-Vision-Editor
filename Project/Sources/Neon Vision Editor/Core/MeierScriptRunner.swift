@@ -115,8 +115,8 @@ nonisolated enum MeierScriptRunner {
         }
         if Task.isCancelled { cancelled = true; timedOut = false }
 
-        let output = stdoutCollector.finish()
-        let error = stderrCollector.finish()
+        let output = await stdoutCollector.finish()
+        let error = await stderrCollector.finish()
         var standardError = String(decoding: error.data, as: UTF8.self)
         standardError = MeierScriptLanguage.remapDiagnostics(
             standardError, source: source, preludeLineCount: mode == .syntaxCheck ? 1 : 0)
@@ -152,7 +152,7 @@ nonisolated enum MeierScriptRunner {
         private var data = Data()
         private var truncated = false
         private var handle: FileHandle?
-        private let drained = DispatchSemaphore(value: 0)
+        private let drained = AsyncLatch()
 
         init(limit: Int) { self.limit = limit }
 
@@ -163,7 +163,7 @@ nonisolated enum MeierScriptRunner {
                 guard let self else { return }
                 if chunk.isEmpty {
                     handle.readabilityHandler = nil
-                    self.drained.signal()
+                    self.drained.open()
                     return
                 }
                 self.lock.lock()
@@ -179,11 +179,58 @@ nonisolated enum MeierScriptRunner {
         }
 
         /// Waits briefly for EOF so the last chunk written before exit is kept.
-        func finish() -> (data: Data, truncated: Bool) {
-            _ = drained.wait(timeout: .now() + 1)
+        /// Suspends instead of blocking a thread: the readability handler runs
+        /// at a lower QoS, and a blocking wait would invert priorities.
+        func finish() async -> (data: Data, truncated: Bool) {
+            await drained.wait(timeoutNanoseconds: 1_000_000_000)
             detach()
-            lock.lock(); defer { lock.unlock() }
-            return (data, truncated)
+            return lock.withLock { (data, truncated) }
+        }
+    }
+
+    /// One-shot signal that can be awaited with a timeout and cancellation.
+    private final class AsyncLatch: @unchecked Sendable {
+        private let lock = NSLock()
+        private var isOpen = false
+        private var waiters: [UUID: CheckedContinuation<Void, Never>] = [:]
+
+        func open() {
+            lock.lock()
+            isOpen = true
+            let pending = Array(waiters.values)
+            waiters.removeAll()
+            lock.unlock()
+            pending.forEach { $0.resume() }
+        }
+
+        func wait() async {
+            let id = UUID()
+            await withTaskCancellationHandler {
+                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    lock.lock()
+                    if isOpen || Task.isCancelled {
+                        lock.unlock()
+                        continuation.resume()
+                    } else {
+                        waiters[id] = continuation
+                        lock.unlock()
+                    }
+                }
+            } onCancel: {
+                lock.lock()
+                let continuation = waiters.removeValue(forKey: id)
+                lock.unlock()
+                continuation?.resume()
+            }
+        }
+
+        func wait(timeoutNanoseconds: UInt64) async {
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { await self.wait() }
+                group.addTask { try? await Task.sleep(nanoseconds: timeoutNanoseconds) }
+                await group.next()
+                group.cancelAll()
+            }
         }
     }
 

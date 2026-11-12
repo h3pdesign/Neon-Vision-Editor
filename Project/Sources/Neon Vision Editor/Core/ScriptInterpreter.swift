@@ -55,8 +55,9 @@ nonisolated struct ScriptInterpreter: Equatable, Sendable {
         ScriptInterpreter(
             languageID: "perl", displayName: "Perl",
             run: Command(executableNames: ["perl"], arguments: ["-"], input: .standardInput),
-            syntaxCheck: Command(executableNames: ["perl"], arguments: ["-c", "-"], input: .standardInput),
-            diagnosticLinePattern: #"at - line (\d+)"#),
+            // No check: `perl -c` runs BEGIN and CHECK blocks, so Auto-Check
+            // would execute document code without Run.
+            syntaxCheck: nil, diagnosticLinePattern: nil),
         ScriptInterpreter(
             languageID: "php", displayName: "PHP",
             run: Command(executableNames: ["php"], arguments: [], input: .standardInput),
@@ -210,11 +211,20 @@ nonisolated struct ScriptInterpreter: Equatable, Sendable {
         command.arguments.map { $0 == filePlaceholder ? (fileURL?.path ?? $0) : $0 }
     }
 
+    /// Node reads stdin as CommonJS, so `node --check -` rejects `import`
+    /// and `export` that a `.mjs` file or a `"type": "module"` package allows.
+    static func looksLikeESModule(_ source: String) -> Bool {
+        source.range(of: #"(?m)^[ \t]*(import[ \t]*[\w{*"']|export[ \t]+[\w{*])"#, options: .regularExpression) != nil
+    }
+
     func execute(source: String, mode: MeierScriptRunner.Mode, executableURL: URL,
                  workingDirectory: URL?, timeout: TimeInterval) async -> MeierScriptRunner.Result {
-        guard let command = mode == .syntaxCheck ? syntaxCheck : run else {
+        guard var command = mode == .syntaxCheck ? syntaxCheck : run else {
             return MeierScriptRunner.Result(standardOutput: "", standardError: "", exitCode: 0, timedOut: false,
                                             wasCancelled: false, duration: 0, outputTruncated: false)
+        }
+        if languageID == "javascript", Self.looksLikeESModule(source) {
+            command.arguments.insert("--input-type=module", at: 0)
         }
         var temporaryFolder: URL?
         var fileURL: URL?

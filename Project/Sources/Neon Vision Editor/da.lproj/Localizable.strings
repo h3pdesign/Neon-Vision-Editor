@@ -2000,3 +2000,21 @@
 "The tool reports the first token it did not expect, so a missing \")\" often points to the next line. Runtime errors appear only when the script runs." = "Værktøjet melder det første tegn, det ikke forventede, så en manglende \")\" peger ofte på næste linje. Kørselsfejl vises først, når scriptet kører.";
 "Scripts in the Sandbox" = "Scripts i sandkassen";
 "Scripts run with Neon Vision Editor's permissions: writeFile, readFile and runCommand reach only places the app may access, and readLine returns nil." = "Scripts kører med Neon Vision Editors rettigheder: writeFile, readFile og runCommand når kun steder, appen har adgang til, og readLine returnerer nil.";
+
+/* Run console for script languages */
+"Run the script as it is in the editor" = "Kør scriptet, som det står i editoren";
+"%@ Console" = "%@-konsol";
+"Hide Console" = "Skjul konsol";
+"%@ not found. Install it, for example with Homebrew." = "%@ blev ikke fundet. Installer det, for eksempel med Homebrew.";
+"Run Scripts Help" = "Hjælp til at køre scripts";
+"Run Scripts Help…" = "Hjælp til at køre scripts…";
+"Run Script" = "Kør script";
+"Check Script Syntax" = "Tjek scriptets syntaks";
+"Show or Hide Run Console" = "Vis eller skjul kørselskonsol";
+"Run Scripts" = "Kør scripts";
+"Run Console" = "Kørselskonsol";
+"Scripts and Permissions" = "Scripts og tilladelser";
+"Python, JavaScript, Ruby, Perl, PHP, Lua, R, Bash, Zsh, Fish, PowerShell and Swift files run with an interpreter installed on your Mac, for example with Homebrew or the Xcode Command Line Tools. Output appears on the left, errors on the right." = "Python-, JavaScript-, Ruby-, Perl-, PHP-, Lua-, R-, Bash-, Zsh-, Fish-, PowerShell- og Swift-filer kører med en fortolker, der er installeret på din Mac, for eksempel med Homebrew eller Xcode Command Line Tools. Output vises til venstre, fejl til højre.";
+"Checks the syntax without running the script, where the interpreter offers a check. Click the error in the status bar to jump to its line." = "Tjekker syntaksen uden at køre scriptet, hvor fortolkeren tilbyder et tjek. Klik på fejlen i statuslinjen for at gå til dens linje.";
+"The console opens when you run a script and stays hidden otherwise. Auto-Check and Auto-Run work as for MeierScript. Python uses the interpreter set in Settings or a .venv next to the file." = "Konsollen åbner, når du kører et script, og er ellers skjult. Auto-tjek og Auto-kør virker som for MeierScript. Python bruger den fortolker, der er valgt i Indstillinger, eller en .venv ved siden af filen.";
+"Scripts run with Neon Vision Editor's permissions and reach only files the app may access. Unsaved edits run as they are in the editor." = "Scripts kører med Neon Vision Editors tilladelser og når kun filer, som appen har adgang til. Ikke-gemte ændringer kører, som de står i editoren.";

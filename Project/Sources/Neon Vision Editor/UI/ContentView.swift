@@ -901,6 +901,7 @@ struct ContentView: View {
 #endif
 #if os(macOS) && !APP_STORE_BUILD
     @AppStorage(MeierScriptConsoleDefaults.visibleKey) var isMeierScriptConsoleVisible: Bool = true
+    @AppStorage(MeierScriptConsoleDefaults.scriptVisibleKey) var isScriptConsoleVisible: Bool = false
     @State var meierScriptConsole = MeierScriptConsoleModel()
 #endif
     @AppStorage("SettingsReopenLastSession") var reopenLastSession: Bool = true
@@ -3219,7 +3220,7 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .toggleMeierScriptConsoleRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
-                isMeierScriptConsoleVisible.toggle()
+                toggleScriptConsoleVisibility()
             }
     }
 #endif
@@ -5985,12 +5986,32 @@ struct ContentView: View {
     }
 
 #if !APP_STORE_BUILD
-    /// The selected MeierScript tab while its console is shown in this window.
-    private var meierScriptConsoleTab: TabData? {
-        guard isMeierScriptConsoleVisible, !brainDumpLayoutEnabled,
-              currentLanguage == MeierScriptLanguage.identifier,
+    /// Run console language of the current document, if it can be run.
+    private var scriptConsoleLanguage: ScriptConsoleLanguage? {
+        ScriptConsoleLanguage(languageID: currentLanguage)
+    }
+
+    /// MeierScript keeps its own visibility (shown by default); interpreter
+    /// languages share one that starts hidden.
+    private func scriptConsoleIsShown(for language: ScriptConsoleLanguage) -> Bool {
+        language.isMeierScript ? isMeierScriptConsoleVisible : isScriptConsoleVisible
+    }
+
+    private func setScriptConsoleVisible(_ visible: Bool, for language: ScriptConsoleLanguage) {
+        if language.isMeierScript { isMeierScriptConsoleVisible = visible } else { isScriptConsoleVisible = visible }
+    }
+
+    private func toggleScriptConsoleVisibility() {
+        guard let language = scriptConsoleLanguage else { return }
+        setScriptConsoleVisible(!scriptConsoleIsShown(for: language), for: language)
+    }
+
+    /// The selected runnable tab while its console is shown in this window.
+    private var meierScriptConsoleTab: (tab: TabData, language: ScriptConsoleLanguage)? {
+        guard !brainDumpLayoutEnabled, let language = scriptConsoleLanguage,
+              scriptConsoleIsShown(for: language),
               let tab = viewModel.selectedTab else { return nil }
-        return tab
+        return (tab, language)
     }
 
     private var meierScriptConsoleAppearance: MeierScriptConsoleAppearance {
@@ -6005,15 +6026,16 @@ struct ContentView: View {
     }
 
     private func performMeierScriptCommand(runs: Bool) {
-        guard currentLanguage == MeierScriptLanguage.identifier,
+        guard let language = scriptConsoleLanguage, runs || language.supportsSyntaxCheck,
               let tab = viewModel.selectedTab, !tab.isLoadingContent else { return }
-        isMeierScriptConsoleVisible = true
+        setScriptConsoleVisible(true, for: language)
         let source = tab.document.string()
-        meierScriptConsole.attach(tabID: tab.id)
+        let workingDirectory = tab.fileURL?.deletingLastPathComponent()
+        meierScriptConsole.attach(tabID: tab.id, language: language)
         if runs {
-            meierScriptConsole.run(source: source, workingDirectory: tab.fileURL?.deletingLastPathComponent())
+            meierScriptConsole.run(source: source, workingDirectory: workingDirectory)
         } else {
-            meierScriptConsole.checkSyntax(source: source)
+            meierScriptConsole.checkSyntax(source: source, workingDirectory: workingDirectory)
         }
     }
 #endif
@@ -6071,15 +6093,18 @@ struct ContentView: View {
             }
         }
 #if !APP_STORE_BUILD
-        if configuration.replacement == nil, let consoleTab = meierScriptConsoleTab {
+        if configuration.replacement == nil, let console = meierScriptConsoleTab {
+            let consoleTab = console.tab
+            let consoleLanguage = console.language
             configuration.console = {
                 AnyView(MeierScriptConsoleView(
                     tab: consoleTab,
+                    language: consoleLanguage,
                     model: meierScriptConsole,
                     onSelectLine: { moveEditorFromMinimap(to: $0, tabID: consoleTab.id) },
-                    onHide: { isMeierScriptConsoleVisible = false },
+                    onHide: { setScriptConsoleVisible(false, for: consoleLanguage) },
                     onShowHelp: {
-                        editorHelpFocusSectionKey = MeierScriptHelp.sectionKey
+                        editorHelpFocusSectionKey = consoleLanguage.helpSectionKey
                         showEditorHelp = true
                     },
                     appearance: meierScriptConsoleAppearance

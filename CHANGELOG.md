@@ -11,6 +11,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - MeierScript support: `.meierscript` files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names from the document while you type.
 - On the Mac, a MeierScript console runs the script with the `meierscript` command-line tool from an installed SidUI Editor or SidUI Viewer and shows output and errors in separate panes. Run is ⌘R, Check Syntax is ⇧⌘R, and Auto-Check and opt-in Auto-Run react to each edit.
 - Help › MeierScript Help… and the ? button in the MeierScript console open a MeierScript section in the editor help.
+- In the direct-download Mac version, the run console also runs Python, JavaScript (Node.js), Ruby, Perl, PHP, Lua, R, Bash, Zsh, Fish, PowerShell and Swift files with an interpreter installed on the Mac, such as from Homebrew or the Xcode Command Line Tools. ⌘R runs the script as it is in the editor and opens the console; ⇧⌘R and Auto-Check check the syntax where the language offers a check, and a click on the error jumps to its line. Python uses the interpreter set in Settings or a `.venv` next to the file. The console stays hidden for these languages until you run a script, and Help › Run Scripts Help… explains it.
 
 ### Fixed
 
@@ -22,7 +23,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Maintenance
 
-- Development version 2.2.2 (build 1149).
+- Development version 2.2.3 (build 1150).
 
 ## [v2.2.0] - 2026-11-09
 

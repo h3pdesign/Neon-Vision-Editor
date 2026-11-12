@@ -3,6 +3,9 @@ import SwiftUI
 
 enum MeierScriptConsoleDefaults {
     static let visibleKey = "MeierScriptConsoleVisible"
+    /// Console visibility for interpreter languages (Python, shells, …). Off
+    /// by default so their documents open without a panel; Run shows it.
+    static let scriptVisibleKey = "ScriptConsoleVisible"
     static let autoCheckKey = "MeierScriptAutoCheckEnabled"
     static let autoRunKey = "MeierScriptAutoRunEnabled"
     static let heightKey = "MeierScriptConsoleHeight"
@@ -11,7 +14,62 @@ enum MeierScriptConsoleDefaults {
     static let manualRunTimeout: TimeInterval = 60
 }
 
-/// Per-window state of the MeierScript console. One script runs at a time; a
+/// Language the run console serves: MeierScript through the SidUI CLI, or a
+/// script language through an installed interpreter.
+enum ScriptConsoleLanguage: Equatable {
+    case meierScript
+    case interpreter(ScriptInterpreter)
+
+    init?(languageID: String) {
+        if languageID.lowercased() == MeierScriptLanguage.identifier {
+            self = .meierScript
+        } else if let interpreter = ScriptInterpreter.forLanguage(languageID) {
+            self = .interpreter(interpreter)
+        } else {
+            return nil
+        }
+    }
+
+    var id: String {
+        switch self {
+        case .meierScript: return MeierScriptLanguage.identifier
+        case .interpreter(let interpreter): return interpreter.languageID
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .meierScript: return MeierScriptLanguage.displayName
+        case .interpreter(let interpreter): return interpreter.displayName
+        }
+    }
+
+    var isMeierScript: Bool { self == .meierScript }
+
+    var supportsSyntaxCheck: Bool {
+        switch self {
+        case .meierScript: return true
+        case .interpreter(let interpreter): return interpreter.supportsSyntaxCheck
+        }
+    }
+
+    var visibilityKey: String {
+        isMeierScript ? MeierScriptConsoleDefaults.visibleKey : MeierScriptConsoleDefaults.scriptVisibleKey
+    }
+
+    var helpSectionKey: String {
+        isMeierScript ? MeierScriptHelp.sectionKey : ScriptRunHelp.sectionKey
+    }
+
+    func firstDiagnostic(in output: String) -> MeierScriptLanguage.Diagnostic? {
+        switch self {
+        case .meierScript: return MeierScriptLanguage.firstDiagnostic(in: output)
+        case .interpreter(let interpreter): return interpreter.firstDiagnostic(in: output)
+        }
+    }
+}
+
+/// Per-window state of the run console. One script runs at a time; a
 /// newer request cancels the previous process.
 @MainActor
 @Observable
@@ -32,6 +90,7 @@ final class MeierScriptConsoleModel {
     private(set) var phase: Phase = .idle
     private(set) var outputTruncated = false
     private(set) var cliURL: URL?
+    private(set) var language: ScriptConsoleLanguage = .meierScript
     @ObservationIgnored private var hasLocatedCLI = false
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var tabID: UUID?
@@ -40,9 +99,10 @@ final class MeierScriptConsoleModel {
 
     var isBusy: Bool { phase == .checking || phase == .running }
 
-    func attach(tabID: UUID?) {
-        guard self.tabID != tabID else { return }
+    func attach(tabID: UUID?, language: ScriptConsoleLanguage) {
+        guard self.tabID != tabID || self.language != language else { return }
         self.tabID = tabID
+        self.language = language
         cancel()
         clear()
     }
@@ -77,7 +137,7 @@ final class MeierScriptConsoleModel {
         start(debounce: true) { [weak self] in
             guard let self, let text = source() else { return }
             await self.perform(source: text, workingDirectory: workingDirectory, runAfterCheck: autoRun,
-                               timeout: MeierScriptConsoleDefaults.automaticRunTimeout)
+                               isManual: false, timeout: MeierScriptConsoleDefaults.automaticRunTimeout)
         }
     }
 
@@ -85,15 +145,15 @@ final class MeierScriptConsoleModel {
         manualRequestPending = true
         start(debounce: false) { [weak self] in
             await self?.perform(source: source, workingDirectory: workingDirectory, runAfterCheck: true,
-                                timeout: MeierScriptConsoleDefaults.manualRunTimeout)
+                                isManual: true, timeout: MeierScriptConsoleDefaults.manualRunTimeout)
         }
     }
 
-    func checkSyntax(source: String) {
+    func checkSyntax(source: String, workingDirectory: URL? = nil) {
         manualRequestPending = true
         start(debounce: false) { [weak self] in
-            await self?.perform(source: source, workingDirectory: nil, runAfterCheck: false,
-                                timeout: MeierScriptConsoleDefaults.automaticRunTimeout)
+            await self?.perform(source: source, workingDirectory: workingDirectory, runAfterCheck: false,
+                                isManual: true, timeout: MeierScriptConsoleDefaults.automaticRunTimeout)
         }
     }
 
@@ -112,39 +172,73 @@ final class MeierScriptConsoleModel {
         }
     }
 
-    private func perform(source: String, workingDirectory: URL?, runAfterCheck: Bool, timeout: TimeInterval) async {
+    /// `workingDirectory` is where a run starts; syntax checks only use it to
+    /// find a project interpreter such as a Python `.venv`.
+    private func perform(source: String, workingDirectory: URL?, runAfterCheck: Bool, isManual: Bool,
+                         timeout: TimeInterval) async {
         let current = generation
-        guard let cli = resolveCLI() ?? resolveCLI(forceRefresh: true) else {
+        let language = language
+        let runTool: URL?
+        let checkTool: URL?
+        switch language {
+        case .meierScript:
+            let cli = resolveCLI() ?? resolveCLI(forceRefresh: true)
+            runTool = cli
+            checkTool = cli
+        case .interpreter(let interpreter):
+            runTool = runAfterCheck ? interpreter.locate(interpreter.run, workingDirectory: workingDirectory) : nil
+            checkTool = interpreter.syntaxCheck.flatMap { interpreter.locate($0, workingDirectory: workingDirectory) }
+        }
+        guard (runAfterCheck ? runTool : checkTool) != nil else {
             phase = .cliMissing
             return
         }
-        phase = .checking
-        let check = await MeierScriptRunner.execute(source: source, mode: .syntaxCheck, cliURL: cli,
-                                                    workingDirectory: nil, timeout: timeout)
-        guard !Task.isCancelled, generation == current, !check.wasCancelled else { return }
-        guard check.exitCode == 0, !check.timedOut else {
-            standardError = check.standardError
-            if !runAfterCheck { standardOutput = "" }
-            phase = check.timedOut ? .timedOut : .syntaxError(MeierScriptLanguage.firstDiagnostic(in: check.standardError))
-            return
+        // A language without a checker (or without its checker installed)
+        // runs directly; runtime errors still appear in the error pane.
+        if let checkTool {
+            phase = .checking
+            let check = await execute(source: source, mode: .syntaxCheck, language: language, tool: checkTool,
+                                      workingDirectory: nil, timeout: timeout)
+            guard !Task.isCancelled, generation == current, !check.wasCancelled else { return }
+            guard check.exitCode == 0, !check.timedOut else {
+                standardError = check.standardError
+                // Auto-Run keeps the last good output while you type; a manual
+                // request must not show output from an earlier run.
+                if !runAfterCheck || isManual { standardOutput = "" }
+                phase = check.timedOut ? .timedOut : .syntaxError(language.firstDiagnostic(in: check.standardError))
+                return
+            }
         }
-        guard runAfterCheck else {
+        guard runAfterCheck, let runTool else {
             standardError = ""
             phase = .syntaxOK
             return
         }
         phase = .running
-        let result = await MeierScriptRunner.execute(source: source, mode: .run, cliURL: cli,
-                                                     workingDirectory: workingDirectory, timeout: timeout)
+        let result = await execute(source: source, mode: .run, language: language, tool: runTool,
+                                   workingDirectory: workingDirectory, timeout: timeout)
         guard !Task.isCancelled, generation == current, !result.wasCancelled else { return }
         standardOutput = result.standardOutput
         standardError = result.standardError
         outputTruncated = result.outputTruncated
         phase = result.timedOut ? .timedOut : .finished(exitCode: result.exitCode)
     }
+
+    private func execute(source: String, mode: MeierScriptRunner.Mode, language: ScriptConsoleLanguage, tool: URL,
+                         workingDirectory: URL?, timeout: TimeInterval) async -> MeierScriptRunner.Result {
+        switch language {
+        case .meierScript:
+            return await MeierScriptRunner.execute(source: source, mode: mode, cliURL: tool,
+                                                   workingDirectory: workingDirectory, timeout: timeout)
+        case .interpreter(let interpreter):
+            return await interpreter.execute(source: source, mode: mode, executableURL: tool,
+                                             workingDirectory: workingDirectory, timeout: timeout)
+        }
+    }
 }
 
-/// Bottom panel for MeierScript documents: stdout and stderr in separate panes.
+/// Bottom panel for MeierScript and script documents: stdout and stderr in
+/// separate panes.
 /// Window styling the console follows so it reads as part of the editor:
 /// the editor surface (translucent, opaque canvas or solid), theme colors and
 /// the editor font.
@@ -163,6 +257,7 @@ struct MeierScriptConsoleAppearance {
 
 struct MeierScriptConsoleView: View {
     let tab: TabData
+    let language: ScriptConsoleLanguage
     let model: MeierScriptConsoleModel
     let onSelectLine: (Int) -> Void
     let onHide: () -> Void
@@ -192,15 +287,21 @@ struct MeierScriptConsoleView: View {
         .frame(height: CGFloat(min(max(storedHeight, 120), 600)))
         .background(appearance.background)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text("MeierScript Console"))
+        .accessibilityLabel(Text(language.isMeierScript ? NSLocalizedString("MeierScript Console", comment: "")
+                                 : String(format: NSLocalizedString("%@ Console", comment: "Run console accessibility label"),
+                                          language.displayName)))
         .onAppear {
-            model.attach(tabID: tab.id)
+            model.attach(tabID: tab.id, language: language)
             // Opening the console for ⌘R must not replace that run, and
             // showing a document never runs it: Auto-Run reacts to edits only.
             scheduleAutomatic(allowsRun: false, replacesManualRequest: false)
         }
         .onChange(of: tab.id) { _, newID in
-            model.attach(tabID: newID)
+            model.attach(tabID: newID, language: language)
+            scheduleAutomatic(allowsRun: false)
+        }
+        .onChange(of: language) { _, newLanguage in
+            model.attach(tabID: tab.id, language: newLanguage)
             scheduleAutomatic(allowsRun: false)
         }
         // Loading or reloading a file also bumps the revision but leaves the
@@ -217,7 +318,8 @@ struct MeierScriptConsoleView: View {
     private func scheduleAutomatic(allowsRun: Bool, replacesManualRequest: Bool = true) {
         let tab = tab
         model.scheduleAutomatic(source: { tab.isLoadingContent ? nil : tab.document.string() },
-                                workingDirectory: workingDirectory, autoCheck: autoCheck,
+                                workingDirectory: workingDirectory,
+                                autoCheck: autoCheck && language.supportsSyntaxCheck,
                                 autoRun: allowsRun && autoRun,
                                 replacesManualRequest: replacesManualRequest)
     }
@@ -245,26 +347,31 @@ struct MeierScriptConsoleView: View {
 
     private var toolbar: some View {
         HStack(spacing: 10) {
-            Text("MeierScript")
+            Text(verbatim: language.displayName)
                 .font(.system(size: 12, weight: .semibold))
             Button {
                 if let source = currentSource() { model.run(source: source, workingDirectory: workingDirectory) }
             } label: {
                 Label("Run", systemImage: "play.fill")
             }
-            .help(Text("Run the script with the meierscript CLI"))
-            Button {
-                if let source = currentSource() { model.checkSyntax(source: source) }
-            } label: {
-                Label("Check Syntax", systemImage: "checkmark.seal")
+            .help(language.isMeierScript ? Text("Run the script with the meierscript CLI")
+                  : Text("Run the script as it is in the editor"))
+            if language.supportsSyntaxCheck {
+                Button {
+                    if let source = currentSource() { model.checkSyntax(source: source, workingDirectory: workingDirectory) }
+                } label: {
+                    Label("Check Syntax", systemImage: "checkmark.seal")
+                }
+                .help(Text("Parse the script without running it"))
             }
-            .help(Text("Parse the script without running it"))
             if model.isBusy {
                 Button { model.cancel() } label: { Label("Stop", systemImage: "stop.fill") }
             }
-            Toggle("Auto-Check", isOn: $autoCheck)
-                .toggleStyle(.checkbox)
-                .help(Text("Check the syntax after each edit"))
+            if language.supportsSyntaxCheck {
+                Toggle("Auto-Check", isOn: $autoCheck)
+                    .toggleStyle(.checkbox)
+                    .help(Text("Check the syntax after each edit"))
+            }
             Toggle("Auto-Run", isOn: $autoRun)
                 .toggleStyle(.checkbox)
                 .help(Text("Run the script after each edit. Scripts can change files, preferences and system state."))
@@ -272,16 +379,16 @@ struct MeierScriptConsoleView: View {
             statusView
             Button(action: onShowHelp) { Image(systemName: "questionmark.circle") }
                 .buttonStyle(.borderless)
-                .help(Text("MeierScript Help"))
-                .accessibilityLabel(Text("MeierScript Help"))
+                .help(language.isMeierScript ? Text("MeierScript Help") : Text("Run Scripts Help"))
+                .accessibilityLabel(language.isMeierScript ? Text("MeierScript Help") : Text("Run Scripts Help"))
             Button { model.clear() } label: { Image(systemName: "trash") }
                 .buttonStyle(.borderless)
                 .help(Text("Clear Output"))
                 .accessibilityLabel(Text("Clear Output"))
             Button(action: onHide) { Image(systemName: "xmark") }
                 .buttonStyle(.borderless)
-                .help(Text("Hide MeierScript Console"))
-                .accessibilityLabel(Text("Hide MeierScript Console"))
+                .help(language.isMeierScript ? Text("Hide MeierScript Console") : Text("Hide Console"))
+                .accessibilityLabel(language.isMeierScript ? Text("Hide MeierScript Console") : Text("Hide Console"))
         }
         .controlSize(.small)
         .padding(.horizontal, 10)
@@ -333,10 +440,20 @@ struct MeierScriptConsoleView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.orange)
         case .cliMissing:
-            Label("meierscript CLI not found. Install SidUI Editor or SidUI Viewer.", systemImage: "questionmark.app")
-                .font(.system(size: 11))
-                .foregroundStyle(.orange)
-                .lineLimit(1)
+            Group {
+                switch language {
+                case .meierScript:
+                    Label("meierscript CLI not found. Install SidUI Editor or SidUI Viewer.", systemImage: "questionmark.app")
+                case .interpreter(let interpreter):
+                    Label(String(format: NSLocalizedString("%@ not found. Install it, for example with Homebrew.",
+                                                           comment: "Run console: interpreter missing"),
+                                 interpreter.run.executableNames.first ?? interpreter.displayName),
+                          systemImage: "questionmark.app")
+                }
+            }
+            .font(.system(size: 11))
+            .foregroundStyle(.orange)
+            .lineLimit(1)
         }
     }
 }

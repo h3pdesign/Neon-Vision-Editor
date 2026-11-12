@@ -56,9 +56,28 @@ nonisolated enum MeierScriptRunner {
         timeout: TimeInterval
     ) async -> Result {
         let input = mode == .syntaxCheck ? MeierScriptLanguage.syntaxCheckSource(for: source) : source
+        var result = await runProcess(executableURL: cliURL, arguments: ["-"], input: input,
+                                      environment: nil, workingDirectory: workingDirectory, timeout: timeout)
+        result.standardError = MeierScriptLanguage.remapDiagnostics(
+            result.standardError, source: source, preludeLineCount: mode == .syntaxCheck ? 1 : 0)
+        return result
+    }
+
+    /// Runs one tool with `input` on stdin, capturing stdout and stderr
+    /// separately. Shared by the MeierScript CLI and the script interpreters
+    /// of the run console (`ScriptInterpreter`). `environment` nil inherits.
+    static func runProcess(
+        executableURL: URL,
+        arguments: [String],
+        input: String,
+        environment: [String: String]?,
+        workingDirectory: URL?,
+        timeout: TimeInterval
+    ) async -> Result {
         let process = Process()
-        process.executableURL = cliURL
-        process.arguments = ["-"]
+        process.executableURL = executableURL
+        process.arguments = arguments
+        if let environment { process.environment = environment }
         if let workingDirectory { process.currentDirectoryURL = workingDirectory }
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
@@ -85,8 +104,11 @@ nonisolated enum MeierScriptRunner {
                           timedOut: false, wasCancelled: false, duration: 0, outputTruncated: false)
         }
         let writer = stdinPipe.fileHandleForWriting
+        // A tool that exits before reading all of stdin would otherwise raise
+        // SIGPIPE in the app; with this flag the write fails with EPIPE instead.
+        _ = fcntl(writer.fileDescriptor, F_SETNOSIGPIPE, 1)
         DispatchQueue.global(qos: .userInitiated).async {
-            try? writer.write(contentsOf: Data(input.utf8))
+            if !input.isEmpty { try? writer.write(contentsOf: Data(input.utf8)) }
             try? writer.close()
         }
 
@@ -117,12 +139,9 @@ nonisolated enum MeierScriptRunner {
 
         let output = await stdoutCollector.finish()
         let error = await stderrCollector.finish()
-        var standardError = String(decoding: error.data, as: UTF8.self)
-        standardError = MeierScriptLanguage.remapDiagnostics(
-            standardError, source: source, preludeLineCount: mode == .syntaxCheck ? 1 : 0)
         return Result(
             standardOutput: String(decoding: output.data, as: UTF8.self),
-            standardError: standardError,
+            standardError: String(decoding: error.data, as: UTF8.self),
             exitCode: status,
             timedOut: timedOut,
             wasCancelled: cancelled,

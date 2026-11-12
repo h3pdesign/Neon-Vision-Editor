@@ -91,6 +91,14 @@ struct NeonVisionMacAppCommands: Commands {
         activeEditorViewModel().selectedTab?.language.lowercased() == MeierScriptLanguage.identifier
     }
 
+#if !APP_STORE_BUILD
+    /// Run console language of the selected tab: MeierScript or a script
+    /// language with an interpreter (Python, shells, …).
+    private var selectedTabScriptLanguage: ScriptConsoleLanguage? {
+        activeEditorViewModel().selectedTab.flatMap { ScriptConsoleLanguage(languageID: $0.language) }
+    }
+#endif
+
     private func post(_ name: Notification.Name, object: Any? = nil) {
         postWindowCommand(name, object)
     }
@@ -510,22 +518,22 @@ struct NeonVisionMacAppCommands: Commands {
 #if !APP_STORE_BUILD
             Divider()
 
-            Button("Run MeierScript") {
+            Button(LocalizedStringKey(selectedTabIsMeierScript ? "Run MeierScript" : "Run Script")) {
                 post(.runMeierScriptRequested)
             }
             .keyboardShortcut("r", modifiers: .command)
-            .disabled(!selectedTabIsMeierScript)
+            .disabled(selectedTabScriptLanguage == nil)
 
-            Button("Check MeierScript Syntax") {
+            Button(LocalizedStringKey(selectedTabIsMeierScript ? "Check MeierScript Syntax" : "Check Script Syntax")) {
                 post(.checkMeierScriptSyntaxRequested)
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
-            .disabled(!selectedTabIsMeierScript)
+            .disabled(selectedTabScriptLanguage?.supportsSyntaxCheck != true)
 
-            Button("Show or Hide MeierScript Console") {
+            Button(LocalizedStringKey(selectedTabIsMeierScript ? "Show or Hide MeierScript Console" : "Show or Hide Run Console")) {
                 post(.toggleMeierScriptConsoleRequested)
             }
-            .disabled(!selectedTabIsMeierScript)
+            .disabled(selectedTabScriptLanguage == nil)
 #endif
 
             Divider()
@@ -604,6 +612,11 @@ struct NeonVisionMacAppCommands: Commands {
             Button("MeierScript Help…") {
                 post(.showEditorHelpRequested, object: MeierScriptHelp.sectionKey)
             }
+#if !APP_STORE_BUILD
+            Button("Run Scripts Help…") {
+                post(.showEditorHelpRequested, object: ScriptRunHelp.sectionKey)
+            }
+#endif
 
             Divider()
 

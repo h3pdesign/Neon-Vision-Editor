@@ -2000,3 +2000,21 @@
 "The tool reports the first token it did not expect, so a missing \")\" often points to the next line. Runtime errors appear only when the script runs." = "ツールは最初に想定外だった字句を報告するため、「)」の欠落は次の行を指すことがよくあります。実行時エラーは実行したときにだけ表示されます。";
 "Scripts in the Sandbox" = "サンドボックス内のスクリプト";
 "Scripts run with Neon Vision Editor's permissions: writeFile, readFile and runCommand reach only places the app may access, and readLine returns nil." = "スクリプトはNeon Vision Editorの権限で実行されます。writeFile、readFile、runCommandはアプリがアクセスできる場所にのみ届き、readLineはnilを返します。";
+
+/* Run console for script languages */
+"Run the script as it is in the editor" = "エディタの内容のままスクリプトを実行";
+"%@ Console" = "%@ コンソール";
+"Hide Console" = "コンソールを隠す";
+"%@ not found. Install it, for example with Homebrew." = "%@ が見つかりません。Homebrew などでインストールしてください。";
+"Run Scripts Help" = "スクリプト実行のヘルプ";
+"Run Scripts Help…" = "スクリプト実行のヘルプ…";
+"Run Script" = "スクリプトを実行";
+"Check Script Syntax" = "スクリプトの構文をチェック";
+"Show or Hide Run Console" = "実行コンソールを表示/非表示";
+"Run Scripts" = "スクリプトを実行";
+"Run Console" = "実行コンソール";
+"Scripts and Permissions" = "スクリプトと権限";
+"Python, JavaScript, Ruby, Perl, PHP, Lua, R, Bash, Zsh, Fish, PowerShell and Swift files run with an interpreter installed on your Mac, for example with Homebrew or the Xcode Command Line Tools. Output appears on the left, errors on the right." = "Python、JavaScript、Ruby、Perl、PHP、Lua、R、Bash、Zsh、Fish、PowerShell、Swift のファイルは、Mac にインストールされたインタプリタ（Homebrew や Xcode Command Line Tools など）で実行されます。出力は左、エラーは右に表示されます。";
+"Checks the syntax without running the script, where the interpreter offers a check. Click the error in the status bar to jump to its line." = "インタプリタがチェック機能を備えている場合、スクリプトを実行せずに構文をチェックします。ステータスバーのエラーをクリックすると、その行に移動します。";
+"The console opens when you run a script and stays hidden otherwise. Auto-Check and Auto-Run work as for MeierScript. Python uses the interpreter set in Settings or a .venv next to the file." = "コンソールはスクリプトを実行すると開き、それ以外は隠れたままです。自動チェックと自動実行は MeierScript と同じように動作します。Python は設定で選んだインタプリタか、ファイルの隣にある .venv を使います。";
+"Scripts run with Neon Vision Editor's permissions and reach only files the app may access. Unsaved edits run as they are in the editor." = "スクリプトは Neon Vision Editor の権限で実行され、アプリがアクセスできるファイルにのみアクセスします。保存していない変更もエディタの内容のまま実行されます。";

@@ -4068,6 +4068,11 @@ enum MeierScriptHelp {
     static let sectionKey = "meierscript"
 }
 
+/// Run console help for script languages with an installed interpreter.
+enum ScriptRunHelp {
+    static let sectionKey = "runscripts"
+}
+
 struct EditorHelpView: View {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -4184,6 +4189,29 @@ struct EditorHelpView: View {
         ]
 #endif
         return HelpSection(key: MeierScriptHelp.sectionKey, title: "MeierScript", iconName: "scroll", items: items)
+    }
+
+    /// Mac direct-download builds only: the App Store build has no run console.
+    private static var runScriptsSections: [HelpSection] {
+#if os(macOS) && !APP_STORE_BUILD
+        let items = [
+            meierScriptItem("Run Scripts",
+                            "Python, JavaScript, Ruby, Perl, PHP, Lua, R, Bash, Zsh, Fish, PowerShell and Swift files run with an interpreter installed on your Mac, for example with Homebrew or the Xcode Command Line Tools. Output appears on the left, errors on the right.",
+                            mac: "Cmd+R", icon: "play.fill"),
+            meierScriptItem("Check Script Syntax",
+                            "Checks the syntax without running the script, where the interpreter offers a check. Click the error in the status bar to jump to its line.",
+                            mac: "Shift+Cmd+R", icon: "checkmark.seal"),
+            meierScriptItem("Run Console",
+                            "The console opens when you run a script and stays hidden otherwise. Auto-Check and Auto-Run work as for MeierScript. Python uses the interpreter set in Settings or a .venv next to the file.",
+                            icon: "rectangle.bottomthird.inset.filled"),
+            meierScriptItem("Scripts and Permissions",
+                            "Scripts run with Neon Vision Editor's permissions and reach only files the app may access. Unsaved edits run as they are in the editor.",
+                            icon: "lock.shield"),
+        ]
+        return [HelpSection(key: ScriptRunHelp.sectionKey, title: "Run Scripts", iconName: "play.rectangle", items: items)]
+#else
+        return []
+#endif
     }
 
     private var toolbarPresetSection: HelpSection {
@@ -4320,7 +4348,7 @@ struct EditorHelpView: View {
                 HelpItem(title: "Bracket Helper Bar", description: "Show or hide the macOS bracket helper bar.", shortcutMac: "None", shortcutPad: "None", iconName: "curlybraces")
             ]
         )
-    ]
+    ] + Self.runScriptsSections
 
     /// Key of a section to scroll to when the help opens, such as `MeierScriptHelp.sectionKey`.
     var focusSectionKey: String? = nil

@@ -48,7 +48,7 @@ enum SettingsPreferenceKey {
     static let showWelcomeTourAutomatically = "SettingsShowWelcomeTourAutomatically"
     static let editorAgentAllowPrivateCloudCompute = "EditorAgentAllowPrivateCloudCompute"
     static let lineWrapEnabled = "SettingsLineWrapEnabled"
-    static let pythonInterpreterPath = "SettingsPythonInterpreterPath"
+    nonisolated static let pythonInterpreterPath = "SettingsPythonInterpreterPath"
     static let showLineNumbers = "SettingsShowLineNumbers"
     static let showInvisibleCharacters = "SettingsShowInvisibleCharacters"
     static let indentStyle = "SettingsIndentStyle"

@@ -2000,3 +2000,21 @@
 "The tool reports the first token it did not expect, so a missing \")\" often points to the next line. Runtime errors appear only when the script runs." = "工具报告的是第一个意外的记号，因此缺少的“)”常常指向下一行。运行时错误只在运行脚本时出现。";
 "Scripts in the Sandbox" = "沙盒中的脚本";
 "Scripts run with Neon Vision Editor's permissions: writeFile, readFile and runCommand reach only places the app may access, and readLine returns nil." = "脚本以 Neon Vision Editor 的权限运行：writeFile、readFile 和 runCommand 只能访问应用可访问的位置，readLine 返回 nil。";
+
+/* Run console for script languages */
+"Run the script as it is in the editor" = "按编辑器中的内容运行脚本";
+"%@ Console" = "%@ 控制台";
+"Hide Console" = "隐藏控制台";
+"%@ not found. Install it, for example with Homebrew." = "未找到 %@。请安装它，例如使用 Homebrew。";
+"Run Scripts Help" = "运行脚本帮助";
+"Run Scripts Help…" = "运行脚本帮助…";
+"Run Script" = "运行脚本";
+"Check Script Syntax" = "检查脚本语法";
+"Show or Hide Run Console" = "显示或隐藏运行控制台";
+"Run Scripts" = "运行脚本";
+"Run Console" = "运行控制台";
+"Scripts and Permissions" = "脚本与权限";
+"Python, JavaScript, Ruby, Perl, PHP, Lua, R, Bash, Zsh, Fish, PowerShell and Swift files run with an interpreter installed on your Mac, for example with Homebrew or the Xcode Command Line Tools. Output appears on the left, errors on the right." = "Python、JavaScript、Ruby、Perl、PHP、Lua、R、Bash、Zsh、Fish、PowerShell 和 Swift 文件使用 Mac 上安装的解释器运行，例如通过 Homebrew 或 Xcode Command Line Tools 安装的解释器。输出显示在左侧，错误显示在右侧。";
+"Checks the syntax without running the script, where the interpreter offers a check. Click the error in the status bar to jump to its line." = "在解释器提供检查功能时，检查语法而不运行脚本。点按状态栏中的错误可跳转到对应行。";
+"The console opens when you run a script and stays hidden otherwise. Auto-Check and Auto-Run work as for MeierScript. Python uses the interpreter set in Settings or a .venv next to the file." = "运行脚本时控制台会打开，否则保持隐藏。自动检查和自动运行的工作方式与 MeierScript 相同。Python 使用“设置”中选择的解释器，或文件旁边的 .venv。";
+"Scripts run with Neon Vision Editor's permissions and reach only files the app may access. Unsaved edits run as they are in the editor." = "脚本以 Neon Vision Editor 的权限运行，只能访问 App 有权访问的文件。未保存的更改会按编辑器中的内容运行。";

@@ -1148,7 +1148,7 @@ final class MobileEditorInteractionTests: XCTestCase {
             XCTAssertGreaterThan(lineMidY, view.contentOffset.y)
             XCTAssertLessThan(lineMidY, view.contentOffset.y + view.bounds.height)
 
-            view.selectedRange = NSRange(location: 0, length: 0)
+            view.selectedRange = NSRange(location: location, length: 5)
             XCTAssertNil(view.navigationHighlightLocation)
         }
     }

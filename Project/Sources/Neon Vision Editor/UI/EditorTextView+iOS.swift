@@ -486,6 +486,10 @@ class EditorInputTextView: UITextView {
             }
         }
     }
+    var isAtNavigationHighlight: Bool {
+        guard let navigationHighlightLocation else { return false }
+        return selectedRange == NSRange(location: navigationHighlightLocation, length: 0)
+    }
     var matchingBracketHighlightRanges: [NSRange] = [] {
         didSet {
             if oldValue != matchingBracketHighlightRanges {
@@ -1758,7 +1762,7 @@ final class CurrentLineHighlightOverlayView: UIView {
     private func drawCurrentLineHighlight() {
         guard let textView,
               (isCurrentLineHighlightEnabled && textView.isFirstResponder)
-                || textView.navigationHighlightLocation == textView.selectedRange.location,
+                || textView.isAtNavigationHighlight,
               textView.textStorage.length <= 250_000 else { return }
 
         let inset = textView.textContainerInset
@@ -1773,8 +1777,11 @@ final class CurrentLineHighlightOverlayView: UIView {
             return
         }
 
-        textView.layoutManager.ensureLayout(for: textView.textContainer)
         let clampedLocation = min(max(0, textView.selectedRange.location), textLength)
+        // Only the text up to the caret's line decides where that line sits.
+        textView.layoutManager.ensureLayout(
+            forCharacterRange: NSRange(location: 0, length: min(textLength, clampedLocation + 1))
+        )
         let nsText = textView.textStorage.string as NSString
         if clampedLocation == textLength && nsText.length > 0 && nsText.character(at: nsText.length - 1) == 10 {
             let extraLineRect = textView.layoutManager.extraLineFragmentRect
@@ -4244,9 +4251,8 @@ struct CustomTextEditor: UIViewRepresentable {
             guard !isApplyingHighlight else { return }
             textView.setNeedsDisplay()
             let editorTextView = textView as? EditorInputTextView
-            if let navigationLocation = editorTextView?.navigationHighlightLocation,
-               navigationLocation != textView.selectedRange.location {
-                editorTextView?.navigationHighlightLocation = nil
+            if let editorTextView, !editorTextView.isAtNavigationHighlight {
+                editorTextView.navigationHighlightLocation = nil
             }
             editorTextView?.currentLineHighlightOverlayView?.setNeedsDisplay()
             selectionUpdateGeneration &+= 1

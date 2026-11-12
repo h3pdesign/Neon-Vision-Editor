@@ -3936,6 +3936,7 @@ struct CustomTextEditor: UIViewRepresentable {
             var fallbackColoredRanges: [(priority: Int, range: NSRange, color: UIColor)] = []
             var emphasizedRanges: [(NSRange, SyntaxFontEmphasis)] = []
             var underlinedRanges: [NSRange] = []
+            var literalOccupiedRanges: [NSRange] = []
             let markdownFonts = isMarkdownSyntaxLanguage(language) ? markdownSourceFontRanges(text) : []
 
             if let fastRanges = fastSyntaxColorRanges(
@@ -3965,6 +3966,21 @@ struct CustomTextEditor: UIViewRepresentable {
                         }
                     }
                 }
+                // Strings and comments the scanner finds (multi-line ones, and
+                // for some languages every one) are colored as such only, so
+                // drop keywords and other tokens matched inside them.
+                if let literalScanner = SyntaxLiteralScanner.forLanguage(language) {
+                    var state: SyntaxLiteralScanner.State = nil
+                    _ = literalScanner.literals(in: nsText, range: NSRange(location: 0, length: applyRange.location), state: &state)
+                    let literals = literalScanner.literals(in: nsText, range: applyRange, state: &state)
+                    if !literals.isEmpty {
+                        literalOccupiedRanges = mergedSyntaxRanges(literals.map(\.range))
+                        coloredRanges.removeAll { !syntaxRangeIsUnoccupied($0.0, occupiedRanges: literalOccupiedRanges) }
+                        let stringColor = UIColor(colors.string)
+                        let commentColor = UIColor(colors.comment)
+                        coloredRanges.append(contentsOf: literals.map { ($0.range, $0.isComment ? commentColor : stringColor) })
+                    }
+                }
                 var occupiedRanges = mergedSyntaxRanges(coloredRanges.map(\.0))
                 let acceptedTypes = fallbackColoredRanges.lazy
                     .filter { $0.priority == 0 }
@@ -3990,6 +4006,9 @@ struct CustomTextEditor: UIViewRepresentable {
                         guard isValidHighlightRange(match.range, utf16Length: fullRange.length) else { continue }
                         emphasizedRanges.append((match.range, .keyword))
                     }
+                }
+                if !literalOccupiedRanges.isEmpty {
+                    emphasizedRanges.removeAll { !syntaxRangeIsUnoccupied($0.0, occupiedRanges: literalOccupiedRanges) }
                 }
             }
 

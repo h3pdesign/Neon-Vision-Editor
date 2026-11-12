@@ -9,11 +9,13 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Added
 
 - MeierScript support: `.meierscript` files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names from the document while you type.
-- On the Mac, a MeierScript console runs the script with the `meierscript` command-line tool from an installed SidUI Editor or SidUI Viewer and shows output and errors in separate panes. Run is ⌘R, Check Syntax is ⇧⌘R, and Auto-Check and opt-in Auto-Run react to each edit.
+- In the Mac version downloaded from GitHub (not the Mac App Store version), a MeierScript console runs the script with the `meierscript` command-line tool from an installed SidUI Editor or SidUI Viewer and shows output and errors in separate panes. Run is ⌘R, Check Syntax is ⇧⌘R, and Auto-Check and opt-in Auto-Run react to each edit.
 - Help › MeierScript Help… and the ? button in the MeierScript console open a MeierScript section in the editor help.
 
 ### Fixed
 
+- On the Mac, text inside multi-line `"""` strings in MeierScript, Swift, Kotlin, Python and TOML (and `'''` strings in Python and TOML) is colored as a string on every line, instead of picking up keyword and type colors from the second line on.
+- In MeierScript, keywords, numbers, `nil`, `true` and `false` inside comments and strings keep the comment or string color, and `/* … */` comments that span lines are colored on every line.
 - On iPhone, including iPhone Duo, a Hide Keyboard button sits above the keyboard, so you can close the keyboard and get back to the toolbar without scrolling the document. With the Keyboard Snippet Bar turned off, the button still appears on its own.
 - On iPhone and iPad, tapping a table of contents entry scrolls the editor to that heading, even far down a long document, and marks its line.
 - On the Mac, AI code completion no longer stops after a URL in JSON, CSS, INI, .env, Dockerfile, nginx, CSV and log files, after `${#name}` in shell scripts, or after an apostrophe or Rust lifetime in TeX, Typst and Rust code.
@@ -22,7 +24,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Maintenance
 
-- Development version 2.2.2 (build 1149).
+- Development version 2.2.2 (build 1150).
 
 ## [v2.2.0] - 2026-11-09
 

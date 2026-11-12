@@ -8,6 +8,7 @@ final class ScriptInterpreterTests: XCTestCase {
         XCTAssertEqual(ScriptInterpreter.forLanguage("javascript")?.run.executableNames, ["node"])
         XCTAssertEqual(ScriptInterpreter.forLanguage("lua")?.syntaxCheck?.executableNames, ["luac"])
         XCTAssertNil(ScriptInterpreter.forLanguage("powershell")?.syntaxCheck)
+        XCTAssertNil(ScriptInterpreter.forLanguage("perl")?.syntaxCheck, "perl -c runs BEGIN blocks")
         for id in ["plain", "markdown", "json", "meierscript", "typescript", "c"] {
             XCTAssertNil(ScriptInterpreter.forLanguage(id), id)
         }
@@ -44,6 +45,16 @@ final class ScriptInterpreterTests: XCTestCase {
         XCTAssertNil(ScriptInterpreter.sdkRoot(forToolAt: tools) { _ in false })
     }
 
+    func testESModuleDetection() {
+        XCTAssertTrue(ScriptInterpreter.looksLikeESModule("import fs from 'node:fs'\n"))
+        XCTAssertTrue(ScriptInterpreter.looksLikeESModule("// x\nexport const a = 1\n"))
+        XCTAssertTrue(ScriptInterpreter.looksLikeESModule("import { a } from './a.js'"))
+        XCTAssertTrue(ScriptInterpreter.looksLikeESModule("import './side-effect.js'"))
+        XCTAssertFalse(ScriptInterpreter.looksLikeESModule("const m = await import('x')\n"))
+        XCTAssertFalse(ScriptInterpreter.looksLikeESModule("import('x').then(f)\n"))
+        XCTAssertFalse(ScriptInterpreter.looksLikeESModule("const fs = require('fs')\nmodule.exports = {}\n"))
+    }
+
     func testFilePlaceholderIsReplaced() throws {
         let swift = try XCTUnwrap(ScriptInterpreter.forLanguage("swift"))
         let file = URL(fileURLWithPath: "/tmp/x/script.swift")
@@ -58,7 +69,6 @@ final class ScriptInterpreterTests: XCTestCase {
             ("javascript", "[stdin]:3\nlet = ;\n    ^\n\nSyntaxError: Unexpected token '='\n", 3),
             ("ruby", "-:2: syntax error, unexpected end-of-input, expecting ')'\n", 2),
             ("ruby", "/opt/homebrew/bin/ruby: -:3: syntax error found (SyntaxError)\n", 3),
-            ("perl", "syntax error at - line 2, near \"= ;\"\n- had compilation errors.\n", 2),
             ("bash", "script.sh: line 4: syntax error near unexpected token `then'\n", 4),
             ("zsh", "script.zsh:3: parse error near `\\n'\n", 3),
             ("r", "Error in parse(file(\"stdin\")) : 2:6: unexpected ')'\n", 2),
@@ -81,7 +91,9 @@ final class ScriptInterpreterTests: XCTestCase {
             ("python", "import sys\nprint('out')\nprint('err', file=sys.stderr)\n", "x = 1\nif x\n", 2),
             ("javascript", "console.log('out')\nconsole.error('err')\n", "console.log(1)\nconst a = ;\n", 2),
             ("ruby", "puts 'out'\n$stderr.puts 'err'\n", "x = 1\nputs(1\n", 2),
-            ("perl", "print \"out\\n\";\nprint STDERR \"err\\n\";\n", "my $x = 1;\nmy $y = ;\n", 2),
+            ("perl", "print \"out\\n\";\nprint STDERR \"err\\n\";\n", "", nil),
+            ("javascript", "import { stderr } from 'node:process'\nconsole.log('out')\nstderr.write('err\\n')\n",
+             "import fs from 'node:fs'\nconst a = ;\n", 2),
             ("bash", "echo out\necho err >&2\n", "echo ok\nif then\n", 2),
             ("zsh", "echo out\necho err >&2\n", "echo ok\nif then\n", nil),
             ("r", "cat('out\\n')\nmessage('err')\n", "x <- 1\ny <- )\n", 2),

@@ -138,7 +138,7 @@ enum CompletionHeuristics {
                 return ""
             }
         } else {
-            let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_()[]{}.,;:+-/*=<>!|&%?\"'` \t")
+            let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_()[]{}.,;:+-/*=<>!|&%?\"'`#$@\\^~ \t")
             if result.unicodeScalars.contains(where: { !allowed.contains($0) }) {
                 return ""
             }
@@ -217,7 +217,7 @@ enum CompletionHeuristics {
             return true
         }
 
-        return hasUnclosedStringDelimiter(in: linePrefix)
+        return hasUnclosedStringDelimiter(in: linePrefix, language: normalizedLanguage)
     }
 
     private static func collectDocumentCandidates(
@@ -250,17 +250,39 @@ enum CompletionHeuristics {
         }
     }
 
-    private static func isLineCommentPrefix(_ prefix: String, language: String) -> Bool {
+    /// Line comment markers for each editor language. Languages without
+    /// line comments, such as JSON, CSS, CSV and logs, have none, so a URL's
+    /// "//" does not read as a comment there.
+    private static func lineCommentMarkers(for language: String) -> [String] {
         switch language {
-        case "python", "bash", "zsh", "powershell", "ruby", "yaml", "yml", "toml", "nix":
-            return prefix.hasPrefix("#")
+        case "python", "bash", "zsh", "fish", "powershell", "ruby", "perl", "r", "yaml", "yml", "toml", "nix",
+             "dockerfile", "makefile", "nginx", "dotenv", "graphql":
+            return ["#"]
+        case "php", "hcl":
+            return ["//", "#"]
+        case "sql", "lua", "ada":
+            return ["--"]
+        case "ini":
+            return [";", "#"]
+        case "cobol":
+            return ["*>"]
         case "tex", "latex", "bibtex":
-            return prefix.hasPrefix("%")
-        case "html", "markdown":
-            return prefix.hasPrefix("<!--")
+            return ["%"]
+        case "html", "xml", "markdown":
+            return ["<!--"]
+        case "expressionengine":
+            return ["<!--", "{!--"]
+        case "vim":
+            return ["\""]
+        case "json", "ipynb", "css", "csv", "log", "crashlog", "eml":
+            return []
         default:
-            return prefix.hasPrefix("//")
+            return ["//"]
         }
+    }
+
+    private static func isLineCommentPrefix(_ prefix: String, language: String) -> Bool {
+        lineCommentMarkers(for: language).contains { prefix.hasPrefix($0) }
     }
 
     private static func isIdentifierCodeUnit(_ codeUnit: unichar) -> Bool {
@@ -283,38 +305,44 @@ enum CompletionHeuristics {
     }
 
     private static func containsLineCommentBeforeCaret(_ linePrefix: String, language: String) -> Bool {
-        let markers: [String]
-        switch language {
-        case "python", "bash", "zsh", "powershell", "ruby", "yaml", "yml", "toml", "nix":
-            markers = ["#"]
-        case "tex", "latex", "bibtex":
-            markers = ["%"]
-        case "html", "markdown":
-            markers = ["<!--"]
-        default:
-            markers = ["//"]
-        }
+        // Vim's comment quote also opens strings, so only a leading one
+        // (handled by isLineCommentPrefix) is a comment.
+        guard language != "vim" else { return false }
+        // In shells "#" starts a comment only at the start of a word, so
+        // "${#items}" is code.
+        let needsWordStart = ["bash", "zsh", "fish"].contains(language)
 
-        for marker in markers {
-            if let range = linePrefix.range(of: marker),
-               !isStringDelimiterOpen(in: String(linePrefix[..<range.lowerBound])) {
-                return true
+        for marker in lineCommentMarkers(for: language) {
+            var searchStart = linePrefix.startIndex
+            while let range = linePrefix.range(of: marker, range: searchStart..<linePrefix.endIndex) {
+                searchStart = range.upperBound
+                let before = linePrefix[..<range.lowerBound]
+                if needsWordStart, let previous = before.last, !previous.isWhitespace { continue }
+                // A marker inside a string, such as a URL's "//", is skipped.
+                if !isStringDelimiterOpen(in: String(before), language: language) {
+                    return true
+                }
             }
         }
         return false
     }
 
-    private static func hasUnclosedStringDelimiter(in linePrefix: String) -> Bool {
-        isStringDelimiterOpen(in: linePrefix)
+    private static func hasUnclosedStringDelimiter(in linePrefix: String, language: String) -> Bool {
+        isStringDelimiterOpen(in: linePrefix, language: language)
     }
 
-    private static func isStringDelimiterOpen(in text: String) -> Bool {
+    private static func isStringDelimiterOpen(in text: String, language: String = "") -> Bool {
+        // TeX and Typst have no single-quoted or backtick strings, so an
+        // apostrophe in prose such as "don't" is not an open string.
+        let quotesOnlyDouble = ["tex", "latex", "typst"].contains(language)
+        let isRust = language == "rust"
+        let characters = Array(text)
         var singleOpen = false
         var doubleOpen = false
         var backtickOpen = false
         var escaped = false
 
-        for character in text {
+        for (index, character) in characters.enumerated() {
             if escaped {
                 escaped = false
                 continue
@@ -324,11 +352,13 @@ enum CompletionHeuristics {
                 continue
             }
             switch character {
-            case "'" where !doubleOpen && !backtickOpen:
+            case "'" where !doubleOpen && !backtickOpen && !quotesOnlyDouble:
+                // A Rust lifetime such as 'a or 'static is not a char literal.
+                if isRust, !singleOpen, isRustLifetime(characters, at: index) { continue }
                 singleOpen.toggle()
             case "\"" where !singleOpen && !backtickOpen:
                 doubleOpen.toggle()
-            case "`" where !singleOpen && !doubleOpen:
+            case "`" where !singleOpen && !doubleOpen && !quotesOnlyDouble:
                 backtickOpen.toggle()
             default:
                 continue
@@ -336,6 +366,15 @@ enum CompletionHeuristics {
         }
 
         return singleOpen || doubleOpen || backtickOpen
+    }
+
+    private static func isRustLifetime(_ characters: [Character], at index: Int) -> Bool {
+        let next = index + 1
+        guard next < characters.count,
+              characters[next].isLetter || characters[next] == "_" else { return false }
+        // 'a' is a char literal; 'a followed by anything else is a lifetime.
+        let afterNext = next + 1
+        return afterNext >= characters.count || characters[afterNext] != "'"
     }
 
     private static func normalizeCandidate(_ candidate: String, prefix: String, normalizedPrefix: String) -> String? {

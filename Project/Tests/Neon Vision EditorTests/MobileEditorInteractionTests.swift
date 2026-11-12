@@ -1114,6 +1114,45 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
+    func testTableOfContentsJumpCentersAndMarksDistantLineWithoutFocus() {
+        var text = ""
+        for section in 1...40 {
+            text += "## Heading \(section)\n\n"
+            text += String(repeating: "Body line for section \(section).\n", count: 12) + "\n"
+        }
+        let targetLine = 436 // "## Heading 30"
+        withEditor(text) { container in
+            let view = container.textView
+            container.layoutIfNeeded()
+            NotificationCenter.default.post(
+                name: .moveCursorToLine,
+                object: targetLine,
+                userInfo: [EditorCommandUserInfo.focusEditor: false]
+            )
+            RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+
+            let nsText = view.text as NSString
+            var location = 0
+            for _ in 1..<targetLine {
+                location = NSMaxRange(nsText.lineRange(for: NSRange(location: location, length: 0)))
+            }
+            XCTAssertTrue(nsText.substring(from: location).hasPrefix("## Heading 30\n"))
+            XCTAssertEqual(view.selectedRange, NSRange(location: location, length: 0))
+            XCTAssertFalse(view.isFirstResponder)
+            XCTAssertEqual(view.navigationHighlightLocation, location)
+
+            view.layoutManager.ensureLayout(for: view.textContainer)
+            let glyph = view.layoutManager.glyphIndexForCharacter(at: location)
+            let lineRect = view.layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+            let lineMidY = lineRect.midY + view.textContainerInset.top
+            XCTAssertGreaterThan(lineMidY, view.contentOffset.y)
+            XCTAssertLessThan(lineMidY, view.contentOffset.y + view.bounds.height)
+
+            view.selectedRange = NSRange(location: 0, length: 0)
+            XCTAssertNil(view.navigationHighlightLocation)
+        }
+    }
+
     func testNoWrapTypingDoesNotJumpViewportWhenCapacityGrows() {
         withEditor(String(repeating: "W", count: 5_000)) { container in
             let view = container.textView

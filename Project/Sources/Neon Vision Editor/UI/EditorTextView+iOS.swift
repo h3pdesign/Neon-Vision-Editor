@@ -475,6 +475,17 @@ class EditorInputTextView: UITextView {
             }
         }
     }
+    /// Caret location of a line reached by navigation (for example a table of
+    /// contents entry) without focusing the editor. The current-line overlay
+    /// marks that line until the caret moves, since UIKit draws neither the
+    /// caret nor the selection while the text view is not first responder.
+    var navigationHighlightLocation: Int? {
+        didSet {
+            if oldValue != navigationHighlightLocation {
+                currentLineHighlightOverlayView?.setNeedsDisplay()
+            }
+        }
+    }
     var matchingBracketHighlightRanges: [NSRange] = [] {
         didSet {
             if oldValue != matchingBracketHighlightRanges {
@@ -1745,9 +1756,9 @@ final class CurrentLineHighlightOverlayView: UIView {
     }
 
     private func drawCurrentLineHighlight() {
-        guard isCurrentLineHighlightEnabled,
-              let textView,
-              textView.isFirstResponder,
+        guard let textView,
+              (isCurrentLineHighlightEnabled && textView.isFirstResponder)
+                || textView.navigationHighlightLocation == textView.selectedRange.location,
               textView.textStorage.length <= 250_000 else { return }
 
         let inset = textView.textContainerInset
@@ -3513,9 +3524,17 @@ struct CustomTextEditor: UIViewRepresentable {
                 _ = textView.resignFirstResponder()
             }
             textView.selectedRange = target
+            (textView as? EditorInputTextView)?.navigationHighlightLocation = shouldFocusEditor ? nil : target.location
             centerEditorLine(at: target, in: textView)
             updateCaretStatus()
             scheduleHighlightIfNeeded(currentText: nativeText(of: textView), immediate: true)
+            // Selection and styling updates can move the viewport on the next
+            // run loop. Center again there unless the caret moved meanwhile.
+            DispatchQueue.main.async { [weak self, weak textView] in
+                guard let self, let textView, self.textView === textView,
+                      textView.selectedRange == target else { return }
+                self.centerEditorLine(at: target, in: textView)
+            }
         }
 
         private func centerEditorLine(at range: NSRange, in textView: UITextView) {
@@ -3526,6 +3545,12 @@ struct CustomTextEditor: UIViewRepresentable {
                 location: min(max(0, range.location), textLength),
                 length: range.location < textLength ? 1 : 0
             )
+            // Non-contiguous layout only estimates the position of text that
+            // has not been laid out yet, which put distant lines off screen.
+            // Large files keep the estimate so a jump cannot stall typing.
+            if !parent.isLargeFileMode {
+                layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: NSMaxRange(lineProbe)))
+            }
             let glyphRange = layoutManager.glyphRange(forCharacterRange: lineProbe, actualCharacterRange: nil)
             let lineRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textView.textContainer)
             let targetY = lineRect.midY + textView.textContainerInset.top - textView.bounds.height / 2
@@ -4161,6 +4186,7 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             guard !isApplyingHighlight else { return }
+            (textView as? EditorInputTextView)?.navigationHighlightLocation = nil
             // UITextView.text copies the whole text storage on every read.
             // Read it once per keystroke and reuse that snapshot below.
             let currentText = textView.text ?? ""
@@ -4218,6 +4244,10 @@ struct CustomTextEditor: UIViewRepresentable {
             guard !isApplyingHighlight else { return }
             textView.setNeedsDisplay()
             let editorTextView = textView as? EditorInputTextView
+            if let navigationLocation = editorTextView?.navigationHighlightLocation,
+               navigationLocation != textView.selectedRange.location {
+                editorTextView?.navigationHighlightLocation = nil
+            }
             editorTextView?.currentLineHighlightOverlayView?.setNeedsDisplay()
             selectionUpdateGeneration &+= 1
             let generation = selectionUpdateGeneration

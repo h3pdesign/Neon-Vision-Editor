@@ -1984,3 +1984,19 @@
 "(output truncated)" = "(output afkortet)";
 "Stopped after timeout" = "Stoppet efter tidsgrænse";
 "meierscript CLI not found. Install SidUI Editor or SidUI Viewer." = "meierscript-CLI blev ikke fundet. Installer SidUI Editor eller SidUI Viewer.";
+
+/* MeierScript help */
+"MeierScript Help…" = "MeierScript-hjælp …";
+"MeierScript Help" = "MeierScript-hjælp";
+"MeierScript Files" = "MeierScript-filer";
+"Files ending in .meierscript open as MeierScript with syntax highlighting. Use Language > MeierScript for other files." = "Filer, der ender på .meierscript, åbnes som MeierScript med syntaksfremhævning. Brug Sprog › MeierScript til andre filer.";
+"MeierScript Completion" = "MeierScript-fuldførelse";
+"After two letters, keywords, built-in functions and names from the document appear below the caret. Tab or Right Arrow accepts, Esc closes." = "Efter to bogstaver vises nøgleord, indbyggede funktioner og navne fra dokumentet under markøren. Tab eller højrepil accepterer, Esc lukker.";
+"Runs the script as it is in the editor with the meierscript tool from SidUI Editor or SidUI Viewer. Output appears on the left, errors on the right." = "Kører scriptet, som det står i editoren, med meierscript-værktøjet fra SidUI Editor eller SidUI Viewer. Output vises til venstre, fejl til højre.";
+"Parses the script without running any line. Click the error in the status bar to jump to its line." = "Kontrollerer scriptet uden at køre nogen linje. Klik på fejlen i statuslinjen for at gå til linjen.";
+"Auto-Check and Auto-Run" = "Autokontrol og autokørsel";
+"Auto-Check tests the syntax after each pause in typing. Auto-Run, off by default, also runs the script; avoid it for scripts that change files or settings." = "Autokontrol tester syntaksen efter hver pause i skrivningen. Autokørsel er slået fra som standard og kører også scriptet; undgå den til scripts, der ændrer filer eller indstillinger.";
+"MeierScript Errors" = "MeierScript-fejl";
+"The tool reports the first token it did not expect, so a missing \")\" often points to the next line. Runtime errors appear only when the script runs." = "Værktøjet melder det første tegn, det ikke forventede, så en manglende \")\" peger ofte på næste linje. Kørselsfejl vises først, når scriptet kører.";
+"Scripts in the Sandbox" = "Scripts i sandkassen";
+"Scripts run with Neon Vision Editor's permissions: writeFile, readFile and runCommand reach only places the app may access, and readLine returns nil." = "Scripts kører med Neon Vision Editors rettigheder: writeFile, readFile og runCommand når kun steder, appen har adgang til, og readLine returnerer nil.";

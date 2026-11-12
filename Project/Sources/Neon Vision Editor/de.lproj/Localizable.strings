@@ -1984,3 +1984,19 @@
 "(output truncated)" = "(Ausgabe gekürzt)";
 "Stopped after timeout" = "Nach Zeitlimit gestoppt";
 "meierscript CLI not found. Install SidUI Editor or SidUI Viewer." = "meierscript-CLI nicht gefunden. Installiere SidUI Editor oder SidUI Viewer.";
+
+/* MeierScript help */
+"MeierScript Help…" = "MeierScript-Hilfe …";
+"MeierScript Help" = "MeierScript-Hilfe";
+"MeierScript Files" = "MeierScript-Dateien";
+"Files ending in .meierscript open as MeierScript with syntax highlighting. Use Language > MeierScript for other files." = "Dateien mit der Endung .meierscript öffnen sich als MeierScript mit Syntax-Hervorhebung. Andere Dateien stellst du über Sprache › MeierScript um.";
+"MeierScript Completion" = "MeierScript-Vervollständigung";
+"After two letters, keywords, built-in functions and names from the document appear below the caret. Tab or Right Arrow accepts, Esc closes." = "Ab zwei Buchstaben erscheinen unter dem Cursor Schlüsselwörter, eingebaute Funktionen und Namen aus dem Dokument. Tab oder Pfeil rechts übernimmt, Esc schließt.";
+"Runs the script as it is in the editor with the meierscript tool from SidUI Editor or SidUI Viewer. Output appears on the left, errors on the right." = "Führt das Skript so aus, wie es im Editor steht, mit dem meierscript-Tool aus SidUI Editor oder SidUI Viewer. Die Ausgabe erscheint links, Fehler rechts.";
+"Parses the script without running any line. Click the error in the status bar to jump to its line." = "Prüft das Skript, ohne eine Zeile auszuführen. Ein Klick auf den Fehler in der Statuszeile springt in die Zeile.";
+"Auto-Check and Auto-Run" = "Auto-Prüfung und Auto-Ausführung";
+"Auto-Check tests the syntax after each pause in typing. Auto-Run, off by default, also runs the script; avoid it for scripts that change files or settings." = "Die Auto-Prüfung testet die Syntax nach jeder Tipp-Pause. Die Auto-Ausführung ist standardmäßig aus und führt das Skript zusätzlich aus. Nutze sie nicht für Skripte, die Dateien oder Einstellungen ändern.";
+"MeierScript Errors" = "MeierScript-Fehler";
+"The tool reports the first token it did not expect, so a missing \")\" often points to the next line. Runtime errors appear only when the script runs." = "Das Tool meldet das erste Zeichen, das es nicht erwartet hat. Eine fehlende „)“ zeigt deshalb oft auf die nächste Zeile. Laufzeitfehler erscheinen erst beim Ausführen.";
+"Scripts in the Sandbox" = "Skripte in der Sandbox";
+"Scripts run with Neon Vision Editor's permissions: writeFile, readFile and runCommand reach only places the app may access, and readLine returns nil." = "Skripte laufen mit den Rechten von Neon Vision Editor: writeFile, readFile und runCommand erreichen nur Orte, auf die die App zugreifen darf, und readLine liefert nil.";

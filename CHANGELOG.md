@@ -10,6 +10,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - MeierScript support: `.meierscript` files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names from the document while you type.
 - On the Mac, a MeierScript console runs the script with the `meierscript` command-line tool from an installed SidUI Editor or SidUI Viewer and shows output and errors in separate panes. Run is ⌘R, Check Syntax is ⇧⌘R, and Auto-Check and opt-in Auto-Run react to each edit.
+- Help › MeierScript Help… and the ? button in the MeierScript console open a MeierScript section in the editor help.
 
 ### Fixed
 

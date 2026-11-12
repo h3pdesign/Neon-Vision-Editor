@@ -601,6 +601,10 @@ struct NeonVisionMacAppCommands: Commands {
                 post(.showWelcomeTourRequested)
             }
 
+            Button("MeierScript Help…") {
+                post(.showEditorHelpRequested, object: MeierScriptHelp.sectionKey)
+            }
+
             Divider()
 
             Button("Support Neon Vision Editor…") {

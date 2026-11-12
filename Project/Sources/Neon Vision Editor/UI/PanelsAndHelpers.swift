@@ -4062,6 +4062,12 @@ struct SupportPromptSheetView: View {
     }
 }
 
+/// MeierScript part of the editor help. Texts are localized because
+/// colleagues using SidUI/MessageBox read this instead of the documentation.
+enum MeierScriptHelp {
+    static let sectionKey = "meierscript"
+}
+
 struct EditorHelpView: View {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -4094,6 +4100,7 @@ struct EditorHelpView: View {
 
     private struct HelpSection: Identifiable {
         let id = UUID()
+        var key: String? = nil
         let title: String
         let iconName: String
         let items: [HelpItem]
@@ -4135,6 +4142,48 @@ struct EditorHelpView: View {
             ? ToolbarActionSelection.orderedIDs(from: toolbarCustomFiveIDsIOS, fallback: [])
             : currentToolbarPreset.mobileIDs
 #endif
+    }
+
+    private static func meierScriptItem(_ title: String, _ description: String, mac: String = "None",
+                                        icon: String) -> HelpItem {
+        HelpItem(title: NSLocalizedString(title, comment: "MeierScript help title"),
+                 description: NSLocalizedString(description, comment: "MeierScript help description"),
+                 shortcutMac: mac, shortcutPad: "None", iconName: icon)
+    }
+
+    private static var meierScriptSection: HelpSection {
+        var items = [
+            meierScriptItem("MeierScript Files",
+                            "Files ending in .meierscript open as MeierScript with syntax highlighting. Use Language > MeierScript for other files.",
+                            icon: "doc.text"),
+        ]
+#if os(macOS)
+        items += [
+            meierScriptItem("MeierScript Completion",
+                            "After two letters, keywords, built-in functions and names from the document appear below the caret. Tab or Right Arrow accepts, Esc closes.",
+                            mac: "Tab", icon: "text.badge.plus"),
+        ]
+#endif
+#if os(macOS) && !APP_STORE_BUILD
+        items += [
+            meierScriptItem("Run MeierScript",
+                            "Runs the script as it is in the editor with the meierscript tool from SidUI Editor or SidUI Viewer. Output appears on the left, errors on the right.",
+                            mac: "Cmd+R", icon: "play.fill"),
+            meierScriptItem("Check MeierScript Syntax",
+                            "Parses the script without running any line. Click the error in the status bar to jump to its line.",
+                            mac: "Shift+Cmd+R", icon: "checkmark.seal"),
+            meierScriptItem("Auto-Check and Auto-Run",
+                            "Auto-Check tests the syntax after each pause in typing. Auto-Run, off by default, also runs the script; avoid it for scripts that change files or settings.",
+                            icon: "arrow.triangle.2.circlepath"),
+            meierScriptItem("MeierScript Errors",
+                            "The tool reports the first token it did not expect, so a missing \")\" often points to the next line. Runtime errors appear only when the script runs.",
+                            icon: "exclamationmark.triangle"),
+            meierScriptItem("Scripts in the Sandbox",
+                            "Scripts run with Neon Vision Editor's permissions: writeFile, readFile and runCommand reach only places the app may access, and readLine returns nil.",
+                            icon: "lock.shield"),
+        ]
+#endif
+        return HelpSection(key: MeierScriptHelp.sectionKey, title: "MeierScript", iconName: "scroll", items: items)
     }
 
     private var toolbarPresetSection: HelpSection {
@@ -4257,6 +4306,7 @@ struct EditorHelpView: View {
                 HelpItem(title: "Hide Keyboard", description: "Dismiss the on-screen keyboard on iPhone and iPad.", shortcutMac: "None", shortcutPad: "None", iconName: "keyboard.chevron.compact.down")
             ]
         ),
+        Self.meierScriptSection,
         HelpSection(
             title: "App Controls",
             iconName: "gearshape",
@@ -4272,23 +4322,32 @@ struct EditorHelpView: View {
         )
     ]
 
+    /// Key of a section to scroll to when the help opens, such as `MeierScriptHelp.sectionKey`.
+    var focusSectionKey: String? = nil
     let onDismiss: () -> Void
 
     var body: some View {
         NavigationStack {
             GeometryReader { proxy in
                 let compact = proxy.size.width < 560
-                ScrollView(.vertical, showsIndicators: true) {
-                    VStack(alignment: .leading, spacing: compact ? 18 : 22) {
-                        header(compact: compact)
+                ScrollViewReader { reader in
+                    ScrollView(.vertical, showsIndicators: true) {
+                        VStack(alignment: .leading, spacing: compact ? 18 : 22) {
+                            header(compact: compact)
 
-                        sectionView(toolbarPresetSection, compact: compact)
+                            sectionView(toolbarPresetSection, compact: compact)
 
-                        ForEach(sections) { section in
-                            sectionView(section, compact: compact)
+                            ForEach(sections) { section in
+                                sectionView(section, compact: compact)
+                                    .id(section.key ?? section.id.uuidString)
+                            }
                         }
+                        .padding(compact ? 16 : 24)
                     }
-                    .padding(compact ? 16 : 24)
+                    .onAppear {
+                        guard let focusSectionKey else { return }
+                        DispatchQueue.main.async { reader.scrollTo(focusSectionKey, anchor: .top) }
+                    }
                 }
             }
             .toolbar {
@@ -5058,3 +5117,4 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
     }
 }
 #endif
+

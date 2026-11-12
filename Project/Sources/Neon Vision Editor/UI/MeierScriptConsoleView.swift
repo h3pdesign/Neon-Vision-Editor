@@ -150,6 +150,7 @@ struct MeierScriptConsoleView: View {
     let model: MeierScriptConsoleModel
     let onSelectLine: (Int) -> Void
     let onHide: () -> Void
+    let onShowHelp: () -> Void
 
     @AppStorage(MeierScriptConsoleDefaults.autoCheckKey) private var autoCheck = true
     @AppStorage(MeierScriptConsoleDefaults.autoRunKey) private var autoRun = false
@@ -246,6 +247,10 @@ struct MeierScriptConsoleView: View {
                 .help(Text("Run the script after each edit. Scripts can change files, preferences and system state."))
             Spacer(minLength: 8)
             statusView
+            Button(action: onShowHelp) { Image(systemName: "questionmark.circle") }
+                .buttonStyle(.borderless)
+                .help(Text("MeierScript Help"))
+                .accessibilityLabel(Text("MeierScript Help"))
             Button { model.clear() } label: { Image(systemName: "trash") }
                 .buttonStyle(.borderless)
                 .help(Text("Clear Output"))

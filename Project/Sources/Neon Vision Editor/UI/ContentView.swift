@@ -1356,6 +1356,7 @@ struct ContentView: View {
     @AppStorage("SharedImportAccessAllowed") var sharedImportAccessAllowed: Bool = false
     @State var showWelcomeTour: Bool = false
     @State var showEditorHelp: Bool = false
+    @State var editorHelpFocusSectionKey: String?
     @State var showInAppChangelog: Bool = false
     @State var showSupportPromptSheet: Bool = false
     @State var showSharedImportAccessExplanation: Bool = false
@@ -3085,8 +3086,7 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .showEditorHelpRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
-                dismissTransientSheetsForCommand()
-                showEditorHelp = true
+                presentEditorHelp(focusSectionKey: notif.object as? String)
             }
             .onReceive(NotificationCenter.default.publisher(for: .showSupportPromptRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -3143,18 +3143,6 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 showTerminalInProjectSidebar()
             }
-            .onReceive(NotificationCenter.default.publisher(for: .runMeierScriptRequested)) { notif in
-                guard matchesCurrentWindow(notif) else { return }
-                performMeierScriptCommand(runs: true)
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .checkMeierScriptSyntaxRequested)) { notif in
-                guard matchesCurrentWindow(notif) else { return }
-                performMeierScriptCommand(runs: false)
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .toggleMeierScriptConsoleRequested)) { notif in
-                guard matchesCurrentWindow(notif) else { return }
-                isMeierScriptConsoleVisible.toggle()
-            }
 #endif
             .onReceive(NotificationCenter.default.publisher(for: .openProjectFolderRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -3204,8 +3192,37 @@ struct ContentView: View {
                 selectedModelRaw = model.rawValue
             }
 
+#if os(macOS) && !APP_STORE_BUILD
+        return withMeierScriptCommands(viewWithPanels)
+#else
         return viewWithPanels
+#endif
     }
+
+    private func presentEditorHelp(focusSectionKey: String?) {
+        dismissTransientSheetsForCommand()
+        editorHelpFocusSectionKey = focusSectionKey
+        showEditorHelp = true
+    }
+
+#if os(macOS) && !APP_STORE_BUILD
+    /// Kept out of the main command chain so it stays cheap to type-check.
+    private func withMeierScriptCommands<Content: View>(_ view: Content) -> some View {
+        view
+            .onReceive(NotificationCenter.default.publisher(for: .runMeierScriptRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                performMeierScriptCommand(runs: true)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .checkMeierScriptSyntaxRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                performMeierScriptCommand(runs: false)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .toggleMeierScriptConsoleRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                isMeierScriptConsoleVisible.toggle()
+            }
+    }
+#endif
 
     private func withTypingEvents<Content: View>(_ view: Content) -> some View {
 #if os(macOS)
@@ -4461,8 +4478,9 @@ struct ContentView: View {
                     }
                 }
 #endif
-                .sheet(isPresented: contentView.$showEditorHelp) {
-                    EditorHelpView {
+                .sheet(isPresented: contentView.$showEditorHelp,
+                       onDismiss: { contentView.$editorHelpFocusSectionKey.wrappedValue = nil }) {
+                    EditorHelpView(focusSectionKey: contentView.editorHelpFocusSectionKey) {
                         contentView.$showEditorHelp.wrappedValue = false
                     }
                 }
@@ -6048,7 +6066,11 @@ struct ContentView: View {
                     tab: consoleTab,
                     model: meierScriptConsole,
                     onSelectLine: { moveEditorFromMinimap(to: $0, tabID: consoleTab.id) },
-                    onHide: { isMeierScriptConsoleVisible = false }
+                    onHide: { isMeierScriptConsoleVisible = false },
+                    onShowHelp: {
+                        editorHelpFocusSectionKey = MeierScriptHelp.sectionKey
+                        showEditorHelp = true
+                    }
                 ))
             }
         }

@@ -1984,3 +1984,19 @@
 "(output truncated)" = "(output truncated)";
 "Stopped after timeout" = "Stopped after timeout";
 "meierscript CLI not found. Install SidUI Editor or SidUI Viewer." = "meierscript CLI not found. Install SidUI Editor or SidUI Viewer.";
+
+/* MeierScript help */
+"MeierScript Help…" = "MeierScript Help…";
+"MeierScript Help" = "MeierScript Help";
+"MeierScript Files" = "MeierScript Files";
+"Files ending in .meierscript open as MeierScript with syntax highlighting. Use Language > MeierScript for other files." = "Files ending in .meierscript open as MeierScript with syntax highlighting. Use Language > MeierScript for other files.";
+"MeierScript Completion" = "MeierScript Completion";
+"After two letters, keywords, built-in functions and names from the document appear below the caret. Tab or Right Arrow accepts, Esc closes." = "After two letters, keywords, built-in functions and names from the document appear below the caret. Tab or Right Arrow accepts, Esc closes.";
+"Runs the script as it is in the editor with the meierscript tool from SidUI Editor or SidUI Viewer. Output appears on the left, errors on the right." = "Runs the script as it is in the editor with the meierscript tool from SidUI Editor or SidUI Viewer. Output appears on the left, errors on the right.";
+"Parses the script without running any line. Click the error in the status bar to jump to its line." = "Parses the script without running any line. Click the error in the status bar to jump to its line.";
+"Auto-Check and Auto-Run" = "Auto-Check and Auto-Run";
+"Auto-Check tests the syntax after each pause in typing. Auto-Run, off by default, also runs the script; avoid it for scripts that change files or settings." = "Auto-Check tests the syntax after each pause in typing. Auto-Run, off by default, also runs the script; avoid it for scripts that change files or settings.";
+"MeierScript Errors" = "MeierScript Errors";
+"The tool reports the first token it did not expect, so a missing \")\" often points to the next line. Runtime errors appear only when the script runs." = "The tool reports the first token it did not expect, so a missing \")\" often points to the next line. Runtime errors appear only when the script runs.";
+"Scripts in the Sandbox" = "Scripts in the Sandbox";
+"Scripts run with Neon Vision Editor's permissions: writeFile, readFile and runCommand reach only places the app may access, and readLine returns nil." = "Scripts run with Neon Vision Editor's permissions: writeFile, readFile and runCommand reach only places the app may access, and readLine returns nil.";

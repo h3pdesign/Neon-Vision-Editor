@@ -110,6 +110,20 @@ final class MeierScriptSupportTests: XCTestCase {
         XCTAssertEqual(valid.exitCode, 0)
         XCTAssertEqual(valid.standardOutput, "", "A syntax check must not execute the script")
 
+        // The sample scripts shipped in ScriptingSDKit must pass the check
+        // without running (they touch system information and preferences).
+        let documentation = cli.deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Frameworks/ScriptingSDKit.framework/Versions/A/Resources/Documentation")
+        for name in ["Test.meierscript", "Test2.meierscript"] {
+            let url = documentation.appendingPathComponent(name)
+            guard let sample = try? String(contentsOf: url, encoding: .utf8) else { XCTFail("Unreadable \(url.path)"); continue }
+            let sampleCheck = await MeierScriptRunner.execute(source: sample, mode: .syntaxCheck,
+                                                              cliURL: cli, workingDirectory: nil, timeout: 10)
+            XCTAssertEqual(sampleCheck.exitCode, 0, "\(name): \(sampleCheck.standardError)")
+            XCTAssertEqual(sampleCheck.standardOutput, "", name)
+            XCTAssertFalse(MeierScriptLanguage.firstDiagnostic(in: sampleCheck.standardError) != nil, name)
+        }
+
         let endless = await MeierScriptRunner.execute(source: "while true { }\n", mode: .run,
                                                       cliURL: cli, workingDirectory: nil, timeout: 1)
         XCTAssertTrue(endless.timedOut)

@@ -148,6 +148,7 @@ jobs:
             "Project/Sources/Neon Vision Editor/Core/NVELock.swift" \
             "Project/Sources/Neon Vision Editor/Core/SyntaxHighlighting.swift" \
             "Project/Sources/Neon Vision Editor/Core/HTMLSyntaxHighlighting.swift" \
+            "Project/Sources/Neon Vision Editor/Core/MeierScriptLanguage.swift" \
             "Project/Sources/Neon Vision Editor/UI/EditorTextView+RuntimePolicy.swift" \
             scripts/ci/run_syntax_highlighting_regressions.swift \
             -o "$RUNNER_TEMP/syntax-highlighting-regressions"

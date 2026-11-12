@@ -176,15 +176,18 @@ struct MeierScriptConsoleView: View {
         .accessibilityLabel(Text("MeierScript Console"))
         .onAppear {
             model.attach(tabID: tab.id)
-            // Opening the console for ⌘R must not replace that run.
-            scheduleAutomatic(replacesManualRequest: false)
+            // Opening the console for ⌘R must not replace that run, and
+            // showing a document never runs it: Auto-Run reacts to edits only.
+            scheduleAutomatic(allowsRun: false, replacesManualRequest: false)
         }
         .onChange(of: tab.id) { _, newID in
             model.attach(tabID: newID)
-            scheduleAutomatic()
+            scheduleAutomatic(allowsRun: false)
         }
-        .onChange(of: tab.contentRevision) { _, _ in scheduleAutomatic() }
-        .onChange(of: autoRun) { _, enabled in if enabled { scheduleAutomatic() } }
+        // Loading or reloading a file also bumps the revision but leaves the
+        // tab clean, so only unsaved edits trigger an automatic run.
+        .onChange(of: tab.contentRevision) { _, _ in scheduleAutomatic(allowsRun: tab.isDirty) }
+        .onChange(of: autoRun) { _, enabled in if enabled { scheduleAutomatic(allowsRun: true) } }
         .onDisappear { model.cancel() }
     }
 
@@ -192,10 +195,11 @@ struct MeierScriptConsoleView: View {
         tab.isLoadingContent ? nil : tab.document.string()
     }
 
-    private func scheduleAutomatic(replacesManualRequest: Bool = true) {
+    private func scheduleAutomatic(allowsRun: Bool, replacesManualRequest: Bool = true) {
         let tab = tab
         model.scheduleAutomatic(source: { tab.isLoadingContent ? nil : tab.document.string() },
-                                workingDirectory: workingDirectory, autoCheck: autoCheck, autoRun: autoRun,
+                                workingDirectory: workingDirectory, autoCheck: autoCheck,
+                                autoRun: allowsRun && autoRun,
                                 replacesManualRequest: replacesManualRequest)
     }
 

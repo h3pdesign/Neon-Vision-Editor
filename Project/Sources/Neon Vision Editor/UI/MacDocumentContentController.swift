@@ -17,6 +17,8 @@ final class MacDocumentContentController: NSViewController {
         var secondary: Pane?
         var replacement: (() -> AnyView)?
         var header: (() -> AnyView)?
+        /// Bottom panel above the status row, such as the MeierScript console.
+        var console: (() -> AnyView)?
         var status: (() -> AnyView)?
         var find: (() -> AnyView)?
         var contentInsets = NSEdgeInsets()
@@ -58,6 +60,7 @@ final class MacDocumentContentController: NSViewController {
             editors.setAccessibilityLabel(splitGroup ? NSLocalizedString("Split editor", comment: "Editor accessibility group") : nil)
         }
         let header = updateAccessory("header", factory: configuration.header)
+        let console = updateAccessory("console", factory: configuration.console)
         let status = updateAccessory("status", factory: configuration.status)
         let find = updateAccessory("find", factory: configuration.find)
         let replacement = updateAccessory("replacement", factory: configuration.replacement, fillsHeight: true)
@@ -93,7 +96,7 @@ final class MacDocumentContentController: NSViewController {
         contentContainer.install(content, insets: configuration.contentInsets, maximumWidth: configuration.maximumEditorWidth)
         contentContainer.setContentHuggingPriority(.init(1), for: .vertical)
         contentContainer.setContentCompressionResistancePriority(.init(1), for: .vertical)
-        Self.install([header, contentContainer, status, find].compactMap { $0 }, in: column)
+        Self.install([header, contentContainer, console, status, find].compactMap { $0 }, in: column)
     }
 
     private func updateAccessory(_ key: String, factory: (() -> AnyView)?, fillsHeight: Bool = false) -> NSView? {

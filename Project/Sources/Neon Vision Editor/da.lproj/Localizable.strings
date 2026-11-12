@@ -1954,3 +1954,33 @@
 "Text Replacements: On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it." = "Teksterstatninger: På Mac viser en teksterstatningsgenvej som “omw” sin sætning først, og Tab eller Retur erstatter den.";
 "Tab Order: With Reopen Last Session, Mac tabs come back in the order you left them." = "Fanerækkefølge: Med Genåbn sidste session vender Mac-faner tilbage i den rækkefølge, du forlod dem.";
 "Neon Pulse: The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note." = "Neon Pulse: Neon Pulse-indbakkens komplikation på Apple Watch opdateres, så snart du gemmer en note.";
+
+/* MeierScript */
+"Run MeierScript" = "Kør MeierScript";
+"Check MeierScript Syntax" = "Kontrollér MeierScript-syntaks";
+"Show or Hide MeierScript Console" = "Vis eller skjul MeierScript-konsol";
+"Suggest MeierScript Keywords and Built-ins" = "Foreslå MeierScript-nøgleord og indbyggede funktioner";
+"Lists matching MeierScript keywords, built-in functions and names from the document while you type, without an AI provider." = "Viser matchende MeierScript-nøgleord, indbyggede funktioner og navne fra dokumentet, mens du skriver, uden en AI-udbyder.";
+"MeierScript Console" = "MeierScript-konsol";
+"Output (stdout)" = "Output (stdout)";
+"Errors (stderr)" = "Fejl (stderr)";
+"Run" = "Kør";
+"Check Syntax" = "Kontrollér syntaks";
+"Stop" = "Stop";
+"Auto-Check" = "Autokontrol";
+"Auto-Run" = "Autokørsel";
+"Run the script with the meierscript CLI" = "Kør scriptet med meierscript-CLI";
+"Parse the script without running it" = "Kontrollér scriptet uden at køre det";
+"Check the syntax after each edit" = "Kontrollér syntaksen efter hver ændring";
+"Run the script after each edit. Scripts can change files, preferences and system state." = "Kør scriptet efter hver ændring. Scripts kan ændre filer, indstillinger og systemets tilstand.";
+"Clear Output" = "Ryd output";
+"Hide MeierScript Console" = "Skjul MeierScript-konsol";
+"Checking…" = "Kontrollerer …";
+"Running…" = "Kører …";
+"Syntax OK" = "Syntaks OK";
+"Syntax error in line %d" = "Syntaksfejl i linje %d";
+"Syntax error" = "Syntaksfejl";
+"Exit code %d" = "Afslutningskode %d";
+"(output truncated)" = "(output afkortet)";
+"Stopped after timeout" = "Stoppet efter tidsgrænse";
+"meierscript CLI not found. Install SidUI Editor or SidUI Viewer." = "meierscript-CLI blev ikke fundet. Installer SidUI Editor eller SidUI Viewer.";

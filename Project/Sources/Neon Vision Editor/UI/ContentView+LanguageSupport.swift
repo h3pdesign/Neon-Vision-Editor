@@ -6,7 +6,7 @@ import FoundationModels
 
 enum CodeTemplateCatalog {
     static let supportedLanguages: [String] = [
-        "swift", "ada", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "fish", "perl", "lua", "r",
+        "swift", "ada", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "fish", "perl", "lua", "r", "meierscript",
         "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "dockerfile", "makefile", "hcl", "xcconfig", "strings",
         "csharp", "objective-c", "json", "xml", "yaml", "toml", "nix", "eml", "csv", "ini", "vim", "log", "crashlog", "ipynb",
         "markdown", "typst", "tex", "bash", "zsh", "powershell", "standard", "plain"
@@ -120,6 +120,14 @@ enum CodeTemplateCatalog {
             return template(["use strict;", "use warnings;", "", "sub greet { return \"Hello, World!\\n\"; }", "", "print greet();"])
         case "lua":
             return template(["local function greet(name)", "  return \"Hello, \" .. name .. \"!\"", "end", "", "print(greet(\"World\"))"])
+        case "meierscript":
+            return template([
+                "func greet(name: String) -> String {",
+                "    return \"Hello, \" + name + \"!\"",
+                "}",
+                "",
+                "print(greet(\"World\"))"
+            ])
         case "r":
             return template(["greet <- function(name) {", "  paste(\"Hello,\", name, \"!\")", "}", "", "print(greet(\"World\"))"])
         case "dockerfile":
@@ -654,6 +662,7 @@ extension ContentView {
         case "crashlog": return NSLocalizedString("Apple Crash Report", comment: "File language")
         case "ipynb": return "Jupyter Notebook"
         case "tex": return "TeX"
+        case "meierscript": return "MeierScript"
         case "html": return "HTML"
         case "expressionengine": return "ExpressionEngine"
         case "css": return "CSS"
@@ -677,6 +686,7 @@ extension ContentView {
         case "expressionengine": return "EE"
         case "crashlog": return "Crash"
         case "ipynb": return "Jupyter"
+        case "meierscript": return "Meier"
         case "plain": return "Text"
         default: return lang.uppercased()
         }
@@ -946,7 +956,7 @@ extension ContentView {
 
     private func detectLanguageWithAppleIntelligence(_ text: String) async -> String {
         // Supported languages in our picker
-        let supported = ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "fish", "perl", "lua", "r", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "dockerfile", "makefile", "hcl", "xcconfig", "strings", "objective-c", "csharp", "json", "xml", "yaml", "toml", "nix", "eml", "csv", "ini", "vim", "log", "crashlog", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
+        let supported = ["swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby", "rust", "fish", "perl", "lua", "r", "meierscript", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "expressionengine", "css", "c", "cpp", "dockerfile", "makefile", "hcl", "xcconfig", "strings", "objective-c", "csharp", "json", "xml", "yaml", "toml", "nix", "eml", "csv", "ini", "vim", "log", "crashlog", "ipynb", "markdown", "tex", "bash", "zsh", "powershell", "standard", "plain"]
 
         #if USE_FOUNDATION_MODELS && canImport(FoundationModels)
         // Attempt a lightweight model-based detection via AppleIntelligenceAIClient if available

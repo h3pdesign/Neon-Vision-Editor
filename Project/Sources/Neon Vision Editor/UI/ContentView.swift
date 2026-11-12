@@ -897,6 +897,11 @@ struct ContentView: View {
     @AppStorage("SettingsCompletionFromSyntax") var completionFromSyntax: Bool = false
 #if os(macOS)
     @AppStorage(SystemWordCompletion.enabledDefaultsKey) var isSystemWordCompletionEnabled: Bool = false
+    @AppStorage(CompletionHeuristics.vocabularyCompletionDefaultsKey) var isVocabularyCompletionEnabled: Bool = true
+#endif
+#if os(macOS) && !APP_STORE_BUILD
+    @AppStorage(MeierScriptConsoleDefaults.visibleKey) var isMeierScriptConsoleVisible: Bool = true
+    @State var meierScriptConsole = MeierScriptConsoleModel()
 #endif
     @AppStorage("SettingsReopenLastSession") var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") var openWithBlankDocument: Bool = true
@@ -3138,6 +3143,18 @@ struct ContentView: View {
                 guard matchesCurrentWindow(notif) else { return }
                 showTerminalInProjectSidebar()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .runMeierScriptRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                performMeierScriptCommand(runs: true)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .checkMeierScriptSyntaxRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                performMeierScriptCommand(runs: false)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .toggleMeierScriptConsoleRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                isMeierScriptConsoleVisible.toggle()
+            }
 #endif
             .onReceive(NotificationCenter.default.publisher(for: .openProjectFolderRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -3194,7 +3211,8 @@ struct ContentView: View {
 #if os(macOS)
         view
             .onReceive(NotificationCenter.default.publisher(for: .virtualEditorTextDidChange)) { notification in
-                guard isAutoCompletionEnabled || isSystemWordCompletionEnabled,
+                let usesVocabulary = isVocabularyCompletionEnabled && CompletionHeuristics.usesLocalVocabularyCompletion(for: currentLanguage)
+                guard isAutoCompletionEnabled || isSystemWordCompletionEnabled || usesVocabulary,
                       !viewModel.isBrainDumpMode,
                       !isApplyingCompletion,
                       let rawID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
@@ -3210,7 +3228,16 @@ struct ContentView: View {
                 completionTask?.cancel()
                 let debounce: TimeInterval = context.utf16.count >= 80_000 ? 0.9 : (context.utf16.count >= 25_000 ? 0.7 : 0.45)
                 completionDebounceTask = Task { @MainActor in
-                    if isSystemWordCompletionEnabled {
+                    if usesVocabulary {
+                        try? await Task.sleep(nanoseconds: SystemWordCompletion.debounceNanoseconds)
+                        guard !Task.isCancelled else { return }
+                        if performVocabularyCompletion(tabID: tabID, caretLocation: caret, context: context,
+                                                       nextCharacter: nextCharacter) {
+                            lastCompletionTriggerSignature = ""
+                            return
+                        }
+                        guard isAutoCompletionEnabled else { return }
+                    } else if isSystemWordCompletionEnabled {
                         // The local dictionary lookup is cheap, so it answers
                         // well before the model debounce elapses.
                         try? await Task.sleep(nanoseconds: SystemWordCompletion.debounceNanoseconds)
@@ -5939,6 +5966,29 @@ struct ContentView: View {
         return pane
     }
 
+#if !APP_STORE_BUILD
+    /// The selected MeierScript tab while its console is shown in this window.
+    private var meierScriptConsoleTab: TabData? {
+        guard isMeierScriptConsoleVisible, !brainDumpLayoutEnabled,
+              currentLanguage == MeierScriptLanguage.identifier,
+              let tab = viewModel.selectedTab else { return nil }
+        return tab
+    }
+
+    private func performMeierScriptCommand(runs: Bool) {
+        guard currentLanguage == MeierScriptLanguage.identifier,
+              let tab = viewModel.selectedTab, !tab.isLoadingContent else { return }
+        isMeierScriptConsoleVisible = true
+        let source = tab.document.string()
+        meierScriptConsole.attach(tabID: tab.id)
+        if runs {
+            meierScriptConsole.run(source: source, workingDirectory: tab.fileURL?.deletingLastPathComponent())
+        } else {
+            meierScriptConsole.checkSyntax(source: source)
+        }
+    }
+#endif
+
     private func macEditorColumn(
         lineWrap: Binding<Bool>, highlightLine: Bool, bracket: Bool, scope: Bool, scopeBackground: Bool
     ) -> MacDocumentContentController.Configuration {
@@ -5991,6 +6041,18 @@ struct ContentView: View {
                 configuration.secondary?.header = { AnyView(splitEditorPaneHeader(title: secondaryTab.name, showsCloseButton: true)) }
             }
         }
+#if !APP_STORE_BUILD
+        if configuration.replacement == nil, let consoleTab = meierScriptConsoleTab {
+            configuration.console = {
+                AnyView(MeierScriptConsoleView(
+                    tab: consoleTab,
+                    model: meierScriptConsole,
+                    onSelectLine: { moveEditorFromMinimap(to: $0, tabID: consoleTab.id) },
+                    onHide: { isMeierScriptConsoleVisible = false }
+                ))
+            }
+        }
+#endif
         if !brainDumpLayoutEnabled { configuration.status = { AnyView(wordCountView) } }
         if showFindReplace { configuration.find = { AnyView(inlineFindBar.frame(maxWidth: .infinity)) } }
         configuration.contentInsets = brainDumpLayoutEnabled ? NSEdgeInsets(top: 40, left: 24, bottom: 40, right: 24) : .init()

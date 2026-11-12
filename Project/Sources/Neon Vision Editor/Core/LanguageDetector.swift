@@ -119,6 +119,7 @@ public struct LanguageDetector: Sendable {
         "pl": "perl",
         "pm": "perl",
         "lua": "lua",
+        "meierscript": "meierscript",
         "r": "r",
         "tf": "hcl",
         "tfvars": "hcl",

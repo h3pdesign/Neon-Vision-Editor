@@ -217,6 +217,37 @@ extension ContentView {
         return true
     }
 
+    /// Lists MeierScript keywords, built-ins and nearby identifiers below the
+    /// caret. Offline and cheap, so it runs before any model request.
+    @MainActor
+    func performVocabularyCompletion(tabID: UUID, caretLocation: Int, context: String, nextCharacter: String) -> Bool {
+        guard !SystemWordCompletion.continuesWord(nextCharacter),
+              !effectiveLargeFileModeEnabled,
+              CompletionHeuristics.usesLocalVocabularyCompletion(for: currentLanguage),
+              viewModel.selectedTab?.id == tabID else { return false }
+        let source = context as NSString
+        let match = CompletionHeuristics.vocabularySuffixes(
+            in: source,
+            caretLocation: source.length,
+            language: currentLanguage,
+            limit: SystemWordCompletion.maximumSuggestionCount
+        )
+        guard let first = match.suffixes.first else { return false }
+        NotificationCenter.default.post(
+            name: .showVirtualEditorInlineSuggestion,
+            object: nil,
+            userInfo: [
+                EditorCommandUserInfo.documentID: tabID.uuidString,
+                EditorCommandUserInfo.completionCaretOffset: caretLocation,
+                EditorCommandUserInfo.replacementText: first,
+                EditorCommandUserInfo.completionCandidates: match.suffixes,
+                EditorCommandUserInfo.completionPrefixReplacements: [String](),
+                EditorCommandUserInfo.completionWordPrefix: match.prefix
+            ]
+        )
+        return true
+    }
+
     // MARK: - Completion Context and Cache
 
     func completionContextPrefix(in nsDoc: NSString, caretLocation: Int, maxUTF16: Int = 1200, maxLines: Int = 16) -> String {

@@ -88,7 +88,7 @@ nonisolated func isMarkdownSyntaxLanguage(_ language: String) -> Bool {
 nonisolated func isProgrammingSyntaxLanguage(_ language: String) -> Bool {
     switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
     case "swift", "c", "cpp", "c++", "objective-c", "objective-c++", "objc", "java",
-         "kotlin", "rust", "go", "python", "ruby", "php", "perl", "lua", "r",
+         "kotlin", "rust", "go", "python", "ruby", "php", "perl", "lua", "r", "meierscript",
          "javascript", "js", "typescript", "ts", "tsx", "jsx", "shell", "bash",
          "zsh", "fish", "powershell", "sql":
         return true
@@ -103,7 +103,7 @@ nonisolated func isProgrammingSyntaxLanguage(_ language: String) -> Bool {
 nonisolated func isViewportSafeSyntaxLanguage(_ language: String) -> Bool {
     switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
     case "swift", "ada", "python", "javascript", "js", "typescript", "ts", "tsx", "jsx",
-         "php", "java", "kotlin", "go", "ruby", "rust", "fish", "perl", "lua", "r",
+         "php", "java", "kotlin", "go", "ruby", "rust", "fish", "perl", "lua", "r", "meierscript",
          "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "htm",
          "xhtml", "expressionengine", "css", "c", "cpp", "c++", "dockerfile", "makefile",
          "hcl", "xcconfig", "strings", "csharp", "objective-c", "objective-c++", "objc",

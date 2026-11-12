@@ -12,9 +12,12 @@ private enum SyntaxRegexCache {
 private enum SyntaxIdentifierCoverage {
     nonisolated static let languages: Set<String> = [
         "swift", "ada", "python", "javascript", "php", "java", "kotlin", "go", "ruby", "rust",
-        "fish", "perl", "lua", "r", "c", "cpp", "csharp", "objective-c"
+        "fish", "perl", "lua", "r", "c", "cpp", "csharp", "objective-c", "meierscript"
     ]
 }
+
+/// Calls to MeierScript 0.5.2 built-ins (see `MeierScriptLanguage.builtins`).
+nonisolated let meierScriptBuiltinCallPattern = #"\b(?:"# + MeierScriptLanguage.builtins.joined(separator: "|") + #")\b(?=\s*\()"#
 
 nonisolated let syntaxFallbackTypePattern = #"\b[A-Z][A-Za-z0-9_$]*\b"#
 nonisolated let syntaxFallbackCallPattern = #"\b(?!if\b|for\b|while\b|switch\b|catch\b|func\b|function\b|return\b)[A-Za-z_$][A-Za-z0-9_$]*(?=\s*\()"#
@@ -518,6 +521,13 @@ func syntaxEmphasisPatterns(
             keyword: [#"\b(http|server|location|upstream|map|if|set|return|rewrite|proxy_pass|listen|server_name|root|index|try_files|include|error_page|access_log|error_log|gzip|ssl|add_header)\b"#],
             comment: [#"(?m)#.*$"#],
             link: [],
+            markdownHeading: []
+        )
+    case "meierscript":
+        return SyntaxEmphasisPatterns(
+            keyword: [#"\b(var|let|staticLet|globalVar|func|return|if|else|guard|while|for|in|switch|case|default|break|detach)\b"#],
+            comment: [#"//.*|/\*([^*]|(\*+[^*/]))*\*+/"#],
+            link: [#"https?://[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]+"#],
             markdownHeading: []
         )
     case "standard":
@@ -1038,6 +1048,18 @@ private func baseSyntaxPatterns(
             #"\"([^\"\\]|\\.)*\""#: colors.string,
             #"(?m)#.*$|//.*|/\*([^*]|(\*+[^*/]))*\*+/"#: colors.comment,
             #"[{}\[\]=,:]"#: colors.meta
+        ]
+    case "meierscript":
+        return [
+            #"\b(var|let|staticLet|globalVar|func|return|if|else|guard|while|for|in|switch|case|default|break|detach)\b"#: colors.keyword,
+            #"\b(String|Int|Double|Number|Bool|Boolean|Any)\b"#: colors.type,
+            #"\b(true|false|nil)\b"#: colors.atom,
+            #"\b(ARGUMENTS|ERRORCODE|ERRORTEXT|ERRORCONFIG|ERRORHANDLER|SCRIPTCONTENT)\b"#: colors.variable,
+            meierScriptBuiltinCallPattern: colors.builtin,
+            #"(?<=\bfunc )[A-Za-z_][A-Za-z0-9_]*"#: colors.def,
+            #"\b[0-9]+(\.[0-9]+)?\b"#: colors.number,
+            #"\"([^\"\\\n]|\\.)*\"|„[^“\n]*“|\"\"\""#: colors.string,
+            #"//.*|/\*([^*]|(\*+[^*/]))*\*+/"#: colors.comment
         ]
     case "fish", "perl", "lua", "r":
         return [

@@ -13,6 +13,7 @@ enum CompletionHeuristics {
         "typescript": ["async", "await", "break", "case", "catch", "class", "const", "continue", "default", "else", "enum", "export", "extends", "false", "finally", "for", "function", "if", "implements", "import", "in", "interface", "let", "namespace", "new", "null", "private", "protected", "public", "readonly", "return", "switch", "this", "throw", "true", "try", "type", "var", "while"],
         "json": ["false", "null", "true"],
         "markdown": ["```", "###", "##", "#", "- ", "1. ", "> "],
+        "meierscript": MeierScriptLanguage.completionVocabulary,
         "tex": ["\\begin{}", "\\end{}", "\\section{}", "\\subsection{}", "\\textbf{}", "\\emph{}", "\\item", "\\cite{}", "\\label{}", "\\ref{}"],
         "plain": []
     ]
@@ -344,6 +345,52 @@ enum CompletionHeuristics {
         guard trimmed.lowercased().hasPrefix(normalizedPrefix) else { return nil }
         guard trimmed.lowercased() != normalizedPrefix else { return nil }
         return trimmed
+    }
+
+    static let vocabularyCompletionDefaultsKey = "SettingsVocabularyCompletionEnabled"
+
+    /// Languages whose keyword and built-in vocabulary is offered while typing
+    /// without an AI provider.
+    static func usesLocalVocabularyCompletion(for language: String) -> Bool {
+        language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == MeierScriptLanguage.identifier
+    }
+
+    /// Completion suffixes for the identifier before the caret: language
+    /// vocabulary first (shortest first), then identifiers from the nearby
+    /// document. Only case-sensitive prefix matches qualify, because the editor
+    /// appends the suffix to the typed prefix.
+    static func vocabularySuffixes(
+        in text: NSString,
+        caretLocation: Int,
+        language: String,
+        minimumPrefixLength: Int = 2,
+        limit: Int = 6
+    ) -> (prefix: String, suffixes: [String]) {
+        let normalizedLanguage = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard limit > 0,
+              let prefix = currentIdentifierPrefix(in: text, caretLocation: caretLocation),
+              prefix.count >= minimumPrefixLength,
+              prefix.first.map({ !$0.isNumber }) == true,
+              !isLikelyInCommentOrString(in: text, caretLocation: caretLocation, language: normalizedLanguage) else {
+            return ("", [])
+        }
+        let vocabulary = syntaxKeywords(for: normalizedLanguage)
+            .filter { $0.hasPrefix(prefix) && $0 != prefix }
+            .sorted { lhs, rhs in lhs.count != rhs.count ? lhs.count < rhs.count : lhs < rhs }
+        var documentScores: [String: Int] = [:]
+        collectDocumentCandidates(into: &documentScores, in: text, caretLocation: caretLocation,
+                                  prefix: prefix, normalizedPrefix: prefix.lowercased())
+        let documentWords = documentScores
+            .filter { $0.key.hasPrefix(prefix) }
+            .sorted { lhs, rhs in lhs.value != rhs.value ? lhs.value > rhs.value : lhs.key < rhs.key }
+            .map(\.key)
+        var seen = Set<String>()
+        var suffixes: [String] = []
+        for word in vocabulary + documentWords where seen.insert(word).inserted {
+            suffixes.append(String(word.dropFirst(prefix.count)))
+            if suffixes.count == limit { break }
+        }
+        return (prefix, suffixes)
     }
 
     private static func syntaxKeywords(for language: String) -> [String] {

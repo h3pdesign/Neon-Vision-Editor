@@ -1954,3 +1954,33 @@
 "Text Replacements: On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it." = "Remplacements de texte: Sur Mac, un raccourci de remplacement comme « omw » affiche d’abord sa phrase, et Tab ou Retour le remplace.";
 "Tab Order: With Reopen Last Session, Mac tabs come back in the order you left them." = "Ordre des onglets: Avec Rouvrir la dernière session, les onglets Mac reviennent dans l’ordre où vous les avez laissés.";
 "Neon Pulse: The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note." = "Neon Pulse: La complication de la boîte Neon Pulse sur l’Apple Watch se met à jour dès que vous capturez une note.";
+
+/* MeierScript */
+"Run MeierScript" = "Exécuter MeierScript";
+"Check MeierScript Syntax" = "Vérifier la syntaxe MeierScript";
+"Show or Hide MeierScript Console" = "Afficher ou masquer la console MeierScript";
+"Suggest MeierScript Keywords and Built-ins" = "Suggérer les mots-clés et fonctions intégrées MeierScript";
+"Lists matching MeierScript keywords, built-in functions and names from the document while you type, without an AI provider." = "Affiche pendant la saisie les mots-clés MeierScript, fonctions intégrées et noms du document correspondants, sans fournisseur d’IA.";
+"MeierScript Console" = "Console MeierScript";
+"Output (stdout)" = "Sortie (stdout)";
+"Errors (stderr)" = "Erreurs (stderr)";
+"Run" = "Exécuter";
+"Check Syntax" = "Vérifier la syntaxe";
+"Stop" = "Arrêter";
+"Auto-Check" = "Vérification auto";
+"Auto-Run" = "Exécution auto";
+"Run the script with the meierscript CLI" = "Exécuter le script avec la CLI meierscript";
+"Parse the script without running it" = "Analyser le script sans l’exécuter";
+"Check the syntax after each edit" = "Vérifier la syntaxe après chaque modification";
+"Run the script after each edit. Scripts can change files, preferences and system state." = "Exécuter le script après chaque modification. Les scripts peuvent modifier des fichiers, des préférences et l’état du système.";
+"Clear Output" = "Effacer la sortie";
+"Hide MeierScript Console" = "Masquer la console MeierScript";
+"Checking…" = "Vérification…";
+"Running…" = "Exécution…";
+"Syntax OK" = "Syntaxe correcte";
+"Syntax error in line %d" = "Erreur de syntaxe à la ligne %d";
+"Syntax error" = "Erreur de syntaxe";
+"Exit code %d" = "Code de sortie %d";
+"(output truncated)" = "(sortie tronquée)";
+"Stopped after timeout" = "Arrêté après le délai";
+"meierscript CLI not found. Install SidUI Editor or SidUI Viewer." = "CLI meierscript introuvable. Installez SidUI Editor ou SidUI Viewer.";

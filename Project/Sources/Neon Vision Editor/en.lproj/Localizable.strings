@@ -1954,3 +1954,33 @@
 "Text Replacements: On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it." = "Text Replacements: On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it.";
 "Tab Order: With Reopen Last Session, Mac tabs come back in the order you left them." = "Tab Order: With Reopen Last Session, Mac tabs come back in the order you left them.";
 "Neon Pulse: The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note." = "Neon Pulse: The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note.";
+
+/* MeierScript */
+"Run MeierScript" = "Run MeierScript";
+"Check MeierScript Syntax" = "Check MeierScript Syntax";
+"Show or Hide MeierScript Console" = "Show or Hide MeierScript Console";
+"Suggest MeierScript Keywords and Built-ins" = "Suggest MeierScript Keywords and Built-ins";
+"Lists matching MeierScript keywords, built-in functions and names from the document while you type, without an AI provider." = "Lists matching MeierScript keywords, built-in functions and names from the document while you type, without an AI provider.";
+"MeierScript Console" = "MeierScript Console";
+"Output (stdout)" = "Output (stdout)";
+"Errors (stderr)" = "Errors (stderr)";
+"Run" = "Run";
+"Check Syntax" = "Check Syntax";
+"Stop" = "Stop";
+"Auto-Check" = "Auto-Check";
+"Auto-Run" = "Auto-Run";
+"Run the script with the meierscript CLI" = "Run the script with the meierscript CLI";
+"Parse the script without running it" = "Parse the script without running it";
+"Check the syntax after each edit" = "Check the syntax after each edit";
+"Run the script after each edit. Scripts can change files, preferences and system state." = "Run the script after each edit. Scripts can change files, preferences and system state.";
+"Clear Output" = "Clear Output";
+"Hide MeierScript Console" = "Hide MeierScript Console";
+"Checking…" = "Checking…";
+"Running…" = "Running…";
+"Syntax OK" = "Syntax OK";
+"Syntax error in line %d" = "Syntax error in line %d";
+"Syntax error" = "Syntax error";
+"Exit code %d" = "Exit code %d";
+"(output truncated)" = "(output truncated)";
+"Stopped after timeout" = "Stopped after timeout";
+"meierscript CLI not found. Install SidUI Editor or SidUI Viewer." = "meierscript CLI not found. Install SidUI Editor or SidUI Viewer.";

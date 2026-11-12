@@ -1954,3 +1954,49 @@
 "Text Replacements: On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it." = "Remplacements de texte: Sur Mac, un raccourci de remplacement comme « omw » affiche d’abord sa phrase, et Tab ou Retour le remplace.";
 "Tab Order: With Reopen Last Session, Mac tabs come back in the order you left them." = "Ordre des onglets: Avec Rouvrir la dernière session, les onglets Mac reviennent dans l’ordre où vous les avez laissés.";
 "Neon Pulse: The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note." = "Neon Pulse: La complication de la boîte Neon Pulse sur l’Apple Watch se met à jour dès que vous capturez une note.";
+
+/* MeierScript */
+"Run MeierScript" = "Exécuter MeierScript";
+"Check MeierScript Syntax" = "Vérifier la syntaxe MeierScript";
+"Show or Hide MeierScript Console" = "Afficher ou masquer la console MeierScript";
+"Suggest MeierScript Keywords and Built-ins" = "Suggérer les mots-clés et fonctions intégrées MeierScript";
+"Lists matching MeierScript keywords, built-in functions and names from the document while you type, without an AI provider." = "Affiche pendant la saisie les mots-clés MeierScript, fonctions intégrées et noms du document correspondants, sans fournisseur d’IA.";
+"MeierScript Console" = "Console MeierScript";
+"Output (stdout)" = "Sortie (stdout)";
+"Errors (stderr)" = "Erreurs (stderr)";
+"Run" = "Exécuter";
+"Check Syntax" = "Vérifier la syntaxe";
+"Stop" = "Arrêter";
+"Auto-Check" = "Vérification auto";
+"Auto-Run" = "Exécution auto";
+"Run the script with the meierscript CLI" = "Exécuter le script avec la CLI meierscript";
+"Parse the script without running it" = "Analyser le script sans l’exécuter";
+"Check the syntax after each edit" = "Vérifier la syntaxe après chaque modification";
+"Run the script after each edit. Scripts can change files, preferences and system state." = "Exécuter le script après chaque modification. Les scripts peuvent modifier des fichiers, des préférences et l’état du système.";
+"Clear Output" = "Effacer la sortie";
+"Hide MeierScript Console" = "Masquer la console MeierScript";
+"Checking…" = "Vérification…";
+"Running…" = "Exécution…";
+"Syntax OK" = "Syntaxe correcte";
+"Syntax error in line %d" = "Erreur de syntaxe à la ligne %d";
+"Syntax error" = "Erreur de syntaxe";
+"Exit code %d" = "Code de sortie %d";
+"(output truncated)" = "(sortie tronquée)";
+"Stopped after timeout" = "Arrêté après le délai";
+"meierscript CLI not found. Install SidUI Editor or SidUI Viewer." = "CLI meierscript introuvable. Installez SidUI Editor ou SidUI Viewer.";
+
+/* MeierScript help */
+"MeierScript Help…" = "Aide MeierScript…";
+"MeierScript Help" = "Aide MeierScript";
+"MeierScript Files" = "Fichiers MeierScript";
+"Files ending in .meierscript open as MeierScript with syntax highlighting. Use Language > MeierScript for other files." = "Les fichiers .meierscript s’ouvrent en MeierScript avec coloration syntaxique. Pour d’autres fichiers, utilisez Langage › MeierScript.";
+"MeierScript Completion" = "Complétion MeierScript";
+"After two letters, keywords, built-in functions and names from the document appear below the caret. Tab or Right Arrow accepts, Esc closes." = "Après deux lettres, les mots-clés, fonctions intégrées et noms du document s’affichent sous le curseur. Tab ou Flèche droite accepte, Échap ferme.";
+"Runs the script as it is in the editor with the meierscript tool from SidUI Editor or SidUI Viewer. Output appears on the left, errors on the right." = "Exécute le script tel qu’il est dans l’éditeur avec l’outil meierscript de SidUI Editor ou SidUI Viewer. La sortie s’affiche à gauche, les erreurs à droite.";
+"Parses the script without running any line. Click the error in the status bar to jump to its line." = "Analyse le script sans exécuter aucune ligne. Cliquez sur l’erreur dans la barre d’état pour aller à sa ligne.";
+"Auto-Check and Auto-Run" = "Vérification et exécution automatiques";
+"Auto-Check tests the syntax after each pause in typing. Auto-Run, off by default, also runs the script; avoid it for scripts that change files or settings." = "La vérification automatique teste la syntaxe à chaque pause de saisie. L’exécution automatique, désactivée par défaut, lance aussi le script ; évitez-la pour les scripts qui modifient des fichiers ou des réglages.";
+"MeierScript Errors" = "Erreurs MeierScript";
+"The tool reports the first token it did not expect, so a missing \")\" often points to the next line. Runtime errors appear only when the script runs." = "L’outil signale le premier élément inattendu : une « ) » manquante désigne donc souvent la ligne suivante. Les erreurs d’exécution n’apparaissent qu’à l’exécution.";
+"Scripts in the Sandbox" = "Scripts dans le bac à sable";
+"Scripts run with Neon Vision Editor's permissions: writeFile, readFile and runCommand reach only places the app may access, and readLine returns nil." = "Les scripts s’exécutent avec les droits de Neon Vision Editor : writeFile, readFile et runCommand n’atteignent que les emplacements accessibles à l’app, et readLine renvoie nil.";

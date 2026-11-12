@@ -105,6 +105,7 @@ final class LanguageDetectorTests: XCTestCase {
             ("main.fish", "fish"),
             ("main.pl", "perl"),
             ("main.lua", "lua"),
+            ("main.meierscript", "meierscript"),
             ("analysis.r", "r"),
             ("main.tf", "hcl"),
             ("settings.xcconfig", "xcconfig"),

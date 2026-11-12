@@ -76,6 +76,7 @@
 				<string>rst</string>
 				<string>conf</string>
 				<string>nginx</string>
+				<string>meierscript</string>
 			</array>
 			<key>CFBundleTypeName</key>
 			<string>Neon Vision Editor Document</string>

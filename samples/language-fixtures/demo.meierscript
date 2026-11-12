@@ -1,0 +1,90 @@
+// MeierScript demo for Neon Vision Editor
+// Safe to run: only prints, does not touch files, preferences or the system.
+//
+// Try this:
+//  1. Highlighting: keywords, types, built-ins, strings, comments, nil/true/false.
+//  2. Completion: on a new line type "pri", "isNo", "stat" or "greet" and pick a suggestion.
+//  3. Syntax check: press ⇧⌘R, or keep Auto-Check on. Remove the ")" at the end
+//     of "print(banner)" below. The CLI reports the next token it did not
+//     expect, so clicking the status jumps to the "func" a few lines further.
+//  4. Run: press ⌘R. stdout appears on the left, stderr on the right.
+
+staticLet title = "MeierScript Demo"
+staticLet banner = """
+Welcome to the demo.
+Each section prints to stdout; warnings go to stderr.
+"""
+
+globalVar runCount: Int = 0
+
+print(title)
+print(banner)
+
+/* Functions with typed parameters */
+func greet(name: String) -> String {
+    return "Hello, " + name + "!"
+}
+
+func square(value: Double) -> Double {
+    return value * value
+}
+
+// Arrays and loops
+var names: [String] = ["Ada", "Grace", "Sidney"]
+for name in names {
+    print(greet(name))
+}
+
+for i in 1...3 {
+    print("square of", i, "=", square(i))
+}
+
+// Dictionaries
+var person: [String:Any]
+person["name"] = „Herr Meier“
+person["age"] = 42
+print("keys:", join(sort(keys(person)), ", "))
+
+// Control flow
+let score = 73
+if score >= 90 {
+    print("grade: A")
+} else if score >= 70 {
+    print("grade: B")
+} else {
+    print("grade: C")
+}
+
+guard isNotEmpty(names) else {
+    printError("names must not be empty")
+}
+
+var label = score > 50 ? "passed" : "failed"
+print("result:", label)
+
+switch label {
+case "passed", "excellent":
+    print("well done")
+default:
+    print("try again")
+}
+
+// String helpers
+print(uppercase("meierscript"), lowercase("NEON"), reverse("abc"))
+print(split("a,b,c", ","), contains("Neon Vision", "Vision"))
+print("version check:", compareVersions("0.5.2", "0.5.0"))
+print("nil default:", ifNotNil(nil, "fallback"))
+
+// Recoverable error handling: the handler keeps the script running
+ERRORCONFIG = 2
+func handleError(error: String) -> Bool {
+    printError("handled:", error)
+    return true
+}
+var ERRORHANDLER = handleError
+unknownFunction()
+ERRORHANDLER = nil
+
+runCount += 1
+printError("warning: this line goes to stderr")
+print("done, runCount =", runCount, "at", date())

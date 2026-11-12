@@ -1954,3 +1954,49 @@
 "Text Replacements: On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it." = "文本替换: 在 Mac 上，输入“omw”等文本替换缩写时会先列出其短语，按 Tab 或 Return 即可替换。";
 "Tab Order: With Reopen Last Session, Mac tabs come back in the order you left them." = "标签页顺序: 使用“重新打开上次会话”时，Mac 标签页会按你离开时的顺序恢复。";
 "Neon Pulse: The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note." = "Neon Pulse: Apple Watch 上的 Neon Pulse 收件箱复杂功能会在你记录笔记后立即更新。";
+
+/* MeierScript */
+"Run MeierScript" = "运行 MeierScript";
+"Check MeierScript Syntax" = "检查 MeierScript 语法";
+"Show or Hide MeierScript Console" = "显示或隐藏 MeierScript 控制台";
+"Suggest MeierScript Keywords and Built-ins" = "建议 MeierScript 关键字和内置函数";
+"Lists matching MeierScript keywords, built-in functions and names from the document while you type, without an AI provider." = "输入时列出匹配的 MeierScript 关键字、内置函数和文稿中的名称，无需 AI 提供方。";
+"MeierScript Console" = "MeierScript 控制台";
+"Output (stdout)" = "输出（stdout）";
+"Errors (stderr)" = "错误（stderr）";
+"Run" = "运行";
+"Check Syntax" = "检查语法";
+"Stop" = "停止";
+"Auto-Check" = "自动检查";
+"Auto-Run" = "自动运行";
+"Run the script with the meierscript CLI" = "使用 meierscript CLI 运行脚本";
+"Parse the script without running it" = "仅解析脚本而不运行";
+"Check the syntax after each edit" = "每次编辑后检查语法";
+"Run the script after each edit. Scripts can change files, preferences and system state." = "每次编辑后运行脚本。脚本可以更改文件、偏好设置和系统状态。";
+"Clear Output" = "清除输出";
+"Hide MeierScript Console" = "隐藏 MeierScript 控制台";
+"Checking…" = "正在检查…";
+"Running…" = "正在运行…";
+"Syntax OK" = "语法正确";
+"Syntax error in line %d" = "第 %d 行有语法错误";
+"Syntax error" = "语法错误";
+"Exit code %d" = "退出代码 %d";
+"(output truncated)" = "（输出已截断）";
+"Stopped after timeout" = "超时后已停止";
+"meierscript CLI not found. Install SidUI Editor or SidUI Viewer." = "未找到 meierscript CLI。请安装 SidUI Editor 或 SidUI Viewer。";
+
+/* MeierScript help */
+"MeierScript Help…" = "MeierScript 帮助…";
+"MeierScript Help" = "MeierScript 帮助";
+"MeierScript Files" = "MeierScript 文件";
+"Files ending in .meierscript open as MeierScript with syntax highlighting. Use Language > MeierScript for other files." = "以 .meierscript 结尾的文件会以 MeierScript 打开并高亮语法。其他文件可通过“语言 › MeierScript”切换。";
+"MeierScript Completion" = "MeierScript 补全";
+"After two letters, keywords, built-in functions and names from the document appear below the caret. Tab or Right Arrow accepts, Esc closes." = "输入两个字母后，光标下方会列出关键字、内置函数和文稿中的名称。按 Tab 或右箭头接受，按 Esc 关闭。";
+"Runs the script as it is in the editor with the meierscript tool from SidUI Editor or SidUI Viewer. Output appears on the left, errors on the right." = "使用 SidUI Editor 或 SidUI Viewer 中的 meierscript 工具，按编辑器中的当前内容运行脚本。输出显示在左侧，错误显示在右侧。";
+"Parses the script without running any line. Click the error in the status bar to jump to its line." = "只解析脚本，不运行任何一行。点按状态栏中的错误可跳到对应行。";
+"Auto-Check and Auto-Run" = "自动检查和自动运行";
+"Auto-Check tests the syntax after each pause in typing. Auto-Run, off by default, also runs the script; avoid it for scripts that change files or settings." = "自动检查会在每次停止输入后检查语法。自动运行默认关闭，还会运行脚本；更改文件或设置的脚本请勿使用。";
+"MeierScript Errors" = "MeierScript 错误";
+"The tool reports the first token it did not expect, so a missing \")\" often points to the next line. Runtime errors appear only when the script runs." = "工具报告的是第一个意外的记号，因此缺少的“)”常常指向下一行。运行时错误只在运行脚本时出现。";
+"Scripts in the Sandbox" = "沙盒中的脚本";
+"Scripts run with Neon Vision Editor's permissions: writeFile, readFile and runCommand reach only places the app may access, and readLine returns nil." = "脚本以 Neon Vision Editor 的权限运行：writeFile、readFile 和 runCommand 只能访问应用可访问的位置，readLine 返回 nil。";

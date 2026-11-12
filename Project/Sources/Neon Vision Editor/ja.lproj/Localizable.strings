@@ -1954,3 +1954,49 @@
 "Text Replacements: On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it." = "ユーザ辞書: Macでは、「omw」などのユーザ辞書の短縮形を入力すると語句が最初に表示され、TabまたはReturnで置き換わります。";
 "Tab Order: With Reopen Last Session, Mac tabs come back in the order you left them." = "タブの順序: 「最後のセッションを再度開く」で、Macのタブが閉じたときの順序で戻ります。";
 "Neon Pulse: The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note." = "Neon Pulse: Apple WatchのNeon Pulseインボックスのコンプリケーションは、メモを記録するとすぐに更新されます。";
+
+/* MeierScript */
+"Run MeierScript" = "MeierScriptを実行";
+"Check MeierScript Syntax" = "MeierScriptの構文をチェック";
+"Show or Hide MeierScript Console" = "MeierScriptコンソールを表示/非表示";
+"Suggest MeierScript Keywords and Built-ins" = "MeierScriptのキーワードと組み込み関数を候補に表示";
+"Lists matching MeierScript keywords, built-in functions and names from the document while you type, without an AI provider." = "入力中に、一致するMeierScriptのキーワード、組み込み関数、書類内の名前をAIプロバイダなしで表示します。";
+"MeierScript Console" = "MeierScriptコンソール";
+"Output (stdout)" = "出力（stdout）";
+"Errors (stderr)" = "エラー（stderr）";
+"Run" = "実行";
+"Check Syntax" = "構文をチェック";
+"Stop" = "停止";
+"Auto-Check" = "自動チェック";
+"Auto-Run" = "自動実行";
+"Run the script with the meierscript CLI" = "meierscript CLIでスクリプトを実行";
+"Parse the script without running it" = "実行せずにスクリプトを解析";
+"Check the syntax after each edit" = "編集のたびに構文をチェック";
+"Run the script after each edit. Scripts can change files, preferences and system state." = "編集のたびにスクリプトを実行します。スクリプトはファイル、設定、システムの状態を変更できます。";
+"Clear Output" = "出力を消去";
+"Hide MeierScript Console" = "MeierScriptコンソールを隠す";
+"Checking…" = "チェック中…";
+"Running…" = "実行中…";
+"Syntax OK" = "構文OK";
+"Syntax error in line %d" = "%d行目に構文エラー";
+"Syntax error" = "構文エラー";
+"Exit code %d" = "終了コード %d";
+"(output truncated)" = "（出力を省略）";
+"Stopped after timeout" = "タイムアウトで停止";
+"meierscript CLI not found. Install SidUI Editor or SidUI Viewer." = "meierscript CLIが見つかりません。SidUI EditorまたはSidUI Viewerをインストールしてください。";
+
+/* MeierScript help */
+"MeierScript Help…" = "MeierScriptヘルプ…";
+"MeierScript Help" = "MeierScriptヘルプ";
+"MeierScript Files" = "MeierScriptファイル";
+"Files ending in .meierscript open as MeierScript with syntax highlighting. Use Language > MeierScript for other files." = "拡張子が.meierscriptのファイルは、構文ハイライト付きのMeierScriptとして開きます。ほかのファイルは「言語」›「MeierScript」で切り替えます。";
+"MeierScript Completion" = "MeierScriptの補完";
+"After two letters, keywords, built-in functions and names from the document appear below the caret. Tab or Right Arrow accepts, Esc closes." = "2文字入力すると、キーワード、組み込み関数、書類内の名前がカーソルの下に表示されます。Tabまたは右矢印で確定、Escで閉じます。";
+"Runs the script as it is in the editor with the meierscript tool from SidUI Editor or SidUI Viewer. Output appears on the left, errors on the right." = "エディタ上のスクリプトを、SidUI EditorまたはSidUI Viewerのmeierscriptツールで実行します。出力は左に、エラーは右に表示されます。";
+"Parses the script without running any line. Click the error in the status bar to jump to its line." = "どの行も実行せずにスクリプトを解析します。ステータスバーのエラーをクリックするとその行に移動します。";
+"Auto-Check and Auto-Run" = "自動チェックと自動実行";
+"Auto-Check tests the syntax after each pause in typing. Auto-Run, off by default, also runs the script; avoid it for scripts that change files or settings." = "自動チェックは入力が止まるたびに構文を確認します。自動実行は初期設定でオフで、スクリプトも実行します。ファイルや設定を変更するスクリプトには使わないでください。";
+"MeierScript Errors" = "MeierScriptのエラー";
+"The tool reports the first token it did not expect, so a missing \")\" often points to the next line. Runtime errors appear only when the script runs." = "ツールは最初に想定外だった字句を報告するため、「)」の欠落は次の行を指すことがよくあります。実行時エラーは実行したときにだけ表示されます。";
+"Scripts in the Sandbox" = "サンドボックス内のスクリプト";
+"Scripts run with Neon Vision Editor's permissions: writeFile, readFile and runCommand reach only places the app may access, and readLine returns nil." = "スクリプトはNeon Vision Editorの権限で実行されます。writeFile、readFile、runCommandはアプリがアクセスできる場所にのみ届き、readLineはnilを返します。";

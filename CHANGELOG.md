@@ -6,6 +6,14 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixed
+
+- On the Mac, the integrated terminal starts without a stray `%` line and without a wrapped banner: zsh now gets the panel's real width, and the banner is a short "zsh in <folder>" line with the home folder shown as `~`. iCloud Drive folders show by name instead of their Mobile Documents path.
+
+### Maintenance
+
+- Development version 2.2.5 (build 1158).
+
 ## [v2.2.4] - 2026-11-14
 
 ### Why Upgrade

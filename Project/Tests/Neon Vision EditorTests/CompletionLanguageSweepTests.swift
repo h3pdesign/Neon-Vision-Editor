@@ -24,6 +24,7 @@ final class CompletionLanguageSweepTests: XCTestCase {
         "fish": "set -l total (count $ite",
         "perl": "my $total = scalar(@ite",
         "lua": "local total = #ite",
+        "meierscript": "var total = count(ite",
         "r": "total <- length(ite",
         "cobol": "MOVE WS-TOTAL TO WS-RES",
         "dotenv": "API_URL=https://example.com/v",
@@ -70,6 +71,7 @@ final class CompletionLanguageSweepTests: XCTestCase {
     private static let commentRows: [String: String] = [
         "swift": "let x = 1 // explain the val",
         "ada": "X := 1; -- explain the val",
+        "meierscript": "var x = 1 // explain the val",
         "python": "x = 1  # explain the val",
         "javascript": "let x = 1 // explain the val",
         "typescript": "let x = 1 // explain the val",

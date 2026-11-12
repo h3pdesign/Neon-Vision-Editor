@@ -22,7 +22,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Maintenance
 
-- Development version 2.2.2 (build 1148).
+- Development version 2.2.2 (build 1149).
 
 ## [v2.2.0] - 2026-11-09
 

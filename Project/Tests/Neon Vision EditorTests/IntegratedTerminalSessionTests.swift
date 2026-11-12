@@ -159,6 +159,13 @@ final class IntegratedTerminalSessionTests: XCTestCase {
             ),
             "zsh in /Users/testerX/a\r\n"
         )
+        XCTAssertEqual(
+            IntegratedTerminalSession.startupBanner(
+                for: URL(fileURLWithPath: "/Users/tester/Library/Mobile Documents/com~apple~CloudDocs/Apps/NVE"),
+                homeDirectory: home
+            ),
+            "zsh in iCloud Drive/Apps/NVE\r\n"
+        )
 
         // zsh PROMPT_SP on an xterm (xn): mark, columns - 1 spaces, CR, one space, CR.
         let columns = 40

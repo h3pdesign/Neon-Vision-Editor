@@ -131,6 +131,29 @@ final class MeierScriptSupportTests: XCTestCase {
         XCTAssertEqual(swift.literals(in: open, range: NSRange(location: 0, length: open.length), state: &state).count, 1)
         XCTAssertEqual(state, "\"\"\"")
         XCTAssertNil(SyntaxLiteralScanner.forLanguage("javascript"))
+
+        // A """ inside a Swift or Kotlin block comment opens nothing, and the
+        // comment itself stays with the regex patterns.
+        for language in ["swift", "kotlin"] {
+            let scanner = try XCTUnwrap(SyntaxLiteralScanner.forLanguage(language))
+            var commentState: SyntaxLiteralScanner.State = nil
+            for line in [#"/* Example delimiter: """"#, #"*/ let count = 42"#] {
+                let ns = line as NSString
+                XCTAssertEqual(scanner.literals(in: ns, range: NSRange(location: 0, length: ns.length), state: &commentState), [], language)
+            }
+            XCTAssertNil(commentState, language)
+        }
+
+        // TOML literal strings and Kotlin raw strings have no escapes.
+        let toml = try XCTUnwrap(SyntaxLiteralScanner.forLanguage("toml"))
+        var tomlState: SyntaxLiteralScanner.State = nil
+        let path = #"path = '''C:\'''"# as NSString
+        XCTAssertEqual(toml.literals(in: path, range: NSRange(location: 0, length: path.length), state: &tomlState).count, 1)
+        XCTAssertNil(tomlState)
+        let kotlin = try XCTUnwrap(SyntaxLiteralScanner.forLanguage("kotlin"))
+        let raw = #"val p = """C:\""""# as NSString
+        XCTAssertEqual(kotlin.literals(in: raw, range: NSRange(location: 0, length: raw.length), state: &tomlState).count, 1)
+        XCTAssertNil(tomlState)
     }
 
     func testLanguageIsRegistered() {

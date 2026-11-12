@@ -233,6 +233,7 @@ nonisolated func isHTMLLikeSyntaxLanguage(_ language: String) -> Bool {
 ///
 /// Swift, Kotlin, Python and TOML only report `"""` (and `'''`) strings that
 /// span lines; their other strings and comments keep using the regex patterns.
+/// Block comments are still tracked so a `"""` inside one opens nothing.
 /// MeierScript reports every string and comment, and tokens matched inside
 /// them (keywords, numbers, `nil`) are dropped.
 nonisolated struct SyntaxLiteralScanner: Sendable, Equatable {
@@ -246,6 +247,10 @@ nonisolated struct SyntaxLiteralScanner: Sendable, Equatable {
     typealias State = String?
 
     let tripleDelimiters: [String]
+    /// Multi-line delimiters whose content has no escapes (Kotlin raw
+    /// strings, TOML literal strings), so a trailing backslash cannot hide the
+    /// closing delimiter.
+    let rawDelimiters: [String]
     /// Single-line quotes as (opening, closing) UTF-16 units.
     let singleLineQuotes: [(open: unichar, close: unichar)]
     let lineCommentPrefix: String
@@ -257,13 +262,19 @@ nonisolated struct SyntaxLiteralScanner: Sendable, Equatable {
     static func forLanguage(_ language: String) -> SyntaxLiteralScanner? {
         switch canonicalSyntaxLanguage(language) {
         case "meierscript":
-            return SyntaxLiteralScanner(tripleDelimiters: ["\"\"\""], singleLineQuotes: [(34, 34), (0x201E, 0x201C)],
+            return SyntaxLiteralScanner(tripleDelimiters: ["\"\"\""], rawDelimiters: [], singleLineQuotes: [(34, 34), (0x201E, 0x201C)],
                                         lineCommentPrefix: "//", blockComment: ("/*", "*/"), masksInnerTokens: true)
-        case "swift", "kotlin":
-            return SyntaxLiteralScanner(tripleDelimiters: ["\"\"\""], singleLineQuotes: [(34, 34)],
-                                        lineCommentPrefix: "//", blockComment: nil, masksInnerTokens: false)
-        case "python", "toml":
-            return SyntaxLiteralScanner(tripleDelimiters: ["\"\"\"", "'''"], singleLineQuotes: [(34, 34), (39, 39)],
+        case "swift":
+            return SyntaxLiteralScanner(tripleDelimiters: ["\"\"\""], rawDelimiters: [], singleLineQuotes: [(34, 34)],
+                                        lineCommentPrefix: "//", blockComment: ("/*", "*/"), masksInnerTokens: false)
+        case "kotlin":
+            return SyntaxLiteralScanner(tripleDelimiters: ["\"\"\""], rawDelimiters: ["\"\"\""], singleLineQuotes: [(34, 34)],
+                                        lineCommentPrefix: "//", blockComment: ("/*", "*/"), masksInnerTokens: false)
+        case "python":
+            return SyntaxLiteralScanner(tripleDelimiters: ["\"\"\"", "'''"], rawDelimiters: [], singleLineQuotes: [(34, 34), (39, 39)],
+                                        lineCommentPrefix: "#", blockComment: nil, masksInnerTokens: false)
+        case "toml":
+            return SyntaxLiteralScanner(tripleDelimiters: ["\"\"\"", "'''"], rawDelimiters: ["'''"], singleLineQuotes: [(34, 34), (39, 39)],
                                         lineCommentPrefix: "#", blockComment: nil, masksInnerTokens: false)
         default:
             return nil
@@ -272,6 +283,7 @@ nonisolated struct SyntaxLiteralScanner: Sendable, Equatable {
 
     static func == (lhs: SyntaxLiteralScanner, rhs: SyntaxLiteralScanner) -> Bool {
         lhs.tripleDelimiters == rhs.tripleDelimiters
+            && lhs.rawDelimiters == rhs.rawDelimiters
             && lhs.singleLineQuotes.map(\.open) == rhs.singleLineQuotes.map(\.open)
             && lhs.singleLineQuotes.map(\.close) == rhs.singleLineQuotes.map(\.close)
             && lhs.lineCommentPrefix == rhs.lineCommentPrefix
@@ -297,13 +309,15 @@ nonisolated struct SyntaxLiteralScanner: Sendable, Equatable {
         while index < end {
             if let closing = state {
                 let isComment = closing == blockComment?.close
-                if !isComment, text.character(at: index) == 92 { // a backslash escapes the next character
+                if !isComment, !rawDelimiters.contains(closing), text.character(at: index) == 92 { // a backslash escapes the next character
                     index += 2
                     continue
                 }
                 if matches(closing, at: index) {
                     index += (closing as NSString).length
-                    result.append(Literal(range: NSRange(location: openStart, length: index - openStart), isComment: isComment))
+                    if masksInnerTokens || !isComment {
+                        result.append(Literal(range: NSRange(location: openStart, length: index - openStart), isComment: isComment))
+                    }
                     state = nil
                 } else {
                     index += 1
@@ -343,7 +357,7 @@ nonisolated struct SyntaxLiteralScanner: Sendable, Equatable {
                 index += 1
             }
         }
-        if let closing = state, end > openStart {
+        if let closing = state, end > openStart, masksInnerTokens || closing != blockComment?.close {
             result.append(Literal(range: NSRange(location: openStart, length: end - openStart),
                                   isComment: closing == blockComment?.close))
         }

@@ -141,6 +141,37 @@ final class IntegratedTerminalSessionTests: XCTestCase {
         XCTAssertEqual(textView.textColor, .textColor)
     }
 
+    func testStartupBannerLeavesCursorAtColumnZeroSoPromptSPMarkerIsErased() {
+        let home = URL(fileURLWithPath: "/Users/tester")
+        let banner = IntegratedTerminalSession.startupBanner(
+            for: URL(fileURLWithPath: "/Users/tester/Projects/Demo"),
+            homeDirectory: home
+        )
+        XCTAssertEqual(banner, "zsh in ~/Projects/Demo\r\n")
+        XCTAssertEqual(
+            IntegratedTerminalSession.startupBanner(for: home, homeDirectory: home),
+            "zsh in ~\r\n"
+        )
+        XCTAssertEqual(
+            IntegratedTerminalSession.startupBanner(
+                for: URL(fileURLWithPath: "/Users/testerX/a"),
+                homeDirectory: home
+            ),
+            "zsh in /Users/testerX/a\r\n"
+        )
+
+        // zsh PROMPT_SP on an xterm (xn): mark, columns - 1 spaces, CR, one space, CR.
+        let columns = 40
+        let promptSP = "\u{1B}[7m%\u{1B}[27m" + String(repeating: " ", count: columns - 1) + "\r \r"
+        let screen = TerminalScreenBuffer()
+        screen.resize(columns: columns, rows: 10)
+        screen.consume(Data((banner + promptSP + "host% ").utf8))
+        let text = screen.takePatch()?.text.string ?? ""
+        XCTAssertEqual(text.components(separatedBy: "\n").count, 2, text)
+        XCTAssertEqual(text.components(separatedBy: "%").count - 1, 1, text)
+        XCTAssertTrue(text.hasPrefix("zsh in ~/Projects/Demo\nhost% "), text)
+    }
+
     func testPythonRuntimeShellQuotePreservesSpecialCharacters() {
         XCTAssertEqual(PythonRuntimeResolver.shellQuote("/tmp/My Script.py"), "'/tmp/My Script.py'")
         XCTAssertEqual(PythonRuntimeResolver.shellQuote("a'b"), "'a'\\''b'")

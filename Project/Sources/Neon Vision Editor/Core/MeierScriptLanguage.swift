@@ -59,23 +59,58 @@ nonisolated enum MeierScriptLanguage {
         syntaxCheckPrelude + source
     }
 
-    /// Positions in CLI messages ("at 4:1") refer to the submitted source. For a
-    /// syntax check, shift them back by the prelude so they match the editor.
-    static func remapSyntaxCheckDiagnostics(_ message: String, lineOffset: Int = 1) -> String {
-        guard lineOffset != 0,
-              let regex = try? NSRegularExpression(pattern: #"\bat (\d+):(\d+)"#) else { return message }
+    /// Positions in CLI messages ("at 4:1") count the submitted text after the
+    /// CLI removed its `staticLet` statements (including `"""` blocks), so they
+    /// drift from the editor. Maps every position back to the editor line of
+    /// `source`; `preludeLineCount` covers lines sent before the source.
+    static func remapDiagnostics(_ message: String, source: String, preludeLineCount: Int = 0) -> String {
+        guard let regex = try? NSRegularExpression(pattern: #"\bat (\d+):(\d+)"#) else { return message }
+        let parsedLines = parsedLineMap(for: source)
         let nsMessage = message as NSString
         var result = ""
         var cursor = 0
         for match in regex.matches(in: message, range: NSRange(location: 0, length: nsMessage.length)) {
-            guard let line = Int(nsMessage.substring(with: match.range(at: 1))) else { continue }
+            guard let reported = Int(nsMessage.substring(with: match.range(at: 1))) else { continue }
             result += nsMessage.substring(with: NSRange(location: cursor, length: match.range.location - cursor))
             let column = nsMessage.substring(with: match.range(at: 2))
-            result += "at \(max(1, line - lineOffset)):\(column)"
+            result += "at \(editorLine(forParsedLine: reported - preludeLineCount, map: parsedLines)):\(column)"
             cursor = NSMaxRange(match.range)
         }
         result += nsMessage.substring(from: cursor)
         return result
+    }
+
+    static func remapSyntaxCheckDiagnostics(_ message: String, source: String) -> String {
+        remapDiagnostics(message, source: source, preludeLineCount: 1)
+    }
+
+    /// Editor line numbers (1-based) of the lines the CLI parser sees.
+    static func parsedLineMap(for source: String) -> [Int] {
+        var map: [Int] = []
+        var insideStaticBlock = false
+        var lineNumber = 0
+        source.enumerateLines { line, _ in
+            lineNumber += 1
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if insideStaticBlock {
+                if trimmed.contains("\"\"\"") { insideStaticBlock = false }
+                return
+            }
+            if trimmed.hasPrefix("staticLet ") || trimmed.hasPrefix("staticLet\t") {
+                let quotes = trimmed.components(separatedBy: "\"\"\"").count - 1
+                insideStaticBlock = quotes == 1
+                return
+            }
+            map.append(lineNumber)
+        }
+        return map
+    }
+
+    private static func editorLine(forParsedLine parsedLine: Int, map: [Int]) -> Int {
+        guard parsedLine >= 1 else { return 1 }
+        if parsedLine <= map.count { return map[parsedLine - 1] }
+        // Past the last parsed line (for example an error at EOF).
+        return (map.last ?? 0) + (parsedLine - map.count)
     }
 
     struct Diagnostic: Equatable, Sendable {

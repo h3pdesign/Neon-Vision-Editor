@@ -118,9 +118,8 @@ nonisolated enum MeierScriptRunner {
         let output = stdoutCollector.finish()
         let error = stderrCollector.finish()
         var standardError = String(decoding: error.data, as: UTF8.self)
-        if mode == .syntaxCheck {
-            standardError = MeierScriptLanguage.remapSyntaxCheckDiagnostics(standardError)
-        }
+        standardError = MeierScriptLanguage.remapDiagnostics(
+            standardError, source: source, preludeLineCount: mode == .syntaxCheck ? 1 : 0)
         return Result(
             standardOutput: String(decoding: output.data, as: UTF8.self),
             standardError: standardError,

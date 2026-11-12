@@ -7,14 +7,28 @@ final class MeierScriptSupportTests: XCTestCase {
     private let colors = SyntaxColors.fromVibrantLightTheme(colorScheme: .dark)
 
     func testSyntaxCheckDiagnosticsAreShiftedBackToEditorLines() {
+        let source = "print(1)\nvar x = \nif {\n"
         XCTAssertEqual(
-            MeierScriptLanguage.remapSyntaxCheckDiagnostics("Parser error at 4:1: Unexpected token in expression. Found: kwIf\n"),
+            MeierScriptLanguage.remapSyntaxCheckDiagnostics("Parser error at 4:1: Unexpected token in expression. Found: kwIf\n", source: source),
             "Parser error at 3:1: Unexpected token in expression. Found: kwIf\n"
         )
-        XCTAssertEqual(MeierScriptLanguage.remapSyntaxCheckDiagnostics("Lexer error: Unexpected character '#' at 1:1"),
+        XCTAssertEqual(MeierScriptLanguage.remapSyntaxCheckDiagnostics("Lexer error: Unexpected character '#' at 1:1", source: source),
                        "Lexer error: Unexpected character '#' at 1:1")
-        XCTAssertEqual(MeierScriptLanguage.remapSyntaxCheckDiagnostics("Runtime error: boom"), "Runtime error: boom")
+        XCTAssertEqual(MeierScriptLanguage.remapDiagnostics("Runtime error: boom", source: source), "Runtime error: boom")
         XCTAssertTrue(MeierScriptLanguage.syntaxCheckSource(for: "print(1)").hasPrefix("exit()\n"))
+    }
+
+    /// The CLI drops staticLet statements (and their \"\"\" blocks) before
+    /// counting lines, so its positions must be mapped back to the editor.
+    func testDiagnosticsSkipLinesTheCLIRemovesForStaticLet() {
+        let source = "print(0)\nstaticLet a = \"x\"\nstaticLet t = \"\"\"\none\ntwo\n\"\"\"\nprint(2\nvar x = 1\n"
+        XCTAssertEqual(MeierScriptLanguage.parsedLineMap(for: source), [1, 7, 8])
+        XCTAssertEqual(MeierScriptLanguage.remapDiagnostics("Parser error at 3:1: Expected rParen", source: source),
+                       "Parser error at 8:1: Expected rParen")
+        XCTAssertEqual(MeierScriptLanguage.remapDiagnostics("Parser error at 4:1: x", source: source, preludeLineCount: 1),
+                       "Parser error at 8:1: x")
+        XCTAssertEqual(MeierScriptLanguage.remapDiagnostics("Parser error at 5:1: Found: eof", source: source),
+                       "Parser error at 10:1: Found: eof")
     }
 
     func testFirstDiagnosticReadsLineAndColumn() {
@@ -122,6 +136,13 @@ final class MeierScriptSupportTests: XCTestCase {
             XCTAssertEqual(sampleCheck.exitCode, 0, "\(name): \(sampleCheck.standardError)")
             XCTAssertEqual(sampleCheck.standardOutput, "", name)
             XCTAssertFalse(MeierScriptLanguage.firstDiagnostic(in: sampleCheck.standardError) != nil, name)
+        }
+
+        let staticSource = "staticLet a = \"x\"\nstaticLet t = \"\"\"\none\n\"\"\"\nprint(2\nvar x = 1\n"
+        for mode in [MeierScriptRunner.Mode.syntaxCheck, .run] {
+            let mapped = await MeierScriptRunner.execute(source: staticSource, mode: mode,
+                                                         cliURL: cli, workingDirectory: nil, timeout: 10)
+            XCTAssertEqual(MeierScriptLanguage.firstDiagnostic(in: mapped.standardError)?.line, 6, mapped.standardError)
         }
 
         let endless = await MeierScriptRunner.execute(source: "while true { }\n", mode: .run,

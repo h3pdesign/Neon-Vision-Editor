@@ -228,8 +228,13 @@ final class IntegratedTerminalSession: ObservableObject {
     ) -> String {
         let path = directory.standardizedFileURL.path
         let home = homeDirectory.standardizedFileURL.path
+        let iCloudDrive = home + "/Library/Mobile Documents/com~apple~CloudDocs"
         let displayPath: String
-        if path == home {
+        if path == iCloudDrive {
+            displayPath = "iCloud Drive"
+        } else if path.hasPrefix(iCloudDrive + "/") {
+            displayPath = "iCloud Drive" + path.dropFirst(iCloudDrive.count)
+        } else if path == home {
             displayPath = "~"
         } else if path.hasPrefix(home + "/") {
             displayPath = "~" + path.dropFirst(home.count)

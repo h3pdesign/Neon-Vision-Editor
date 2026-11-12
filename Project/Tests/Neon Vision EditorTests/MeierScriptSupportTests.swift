@@ -85,6 +85,77 @@ final class MeierScriptSupportTests: XCTestCase {
         XCTAssertTrue(ranges(for: colors.atom).contains("nil"))
     }
 
+    /// The Mac editor colors one line at a time, so a string or block comment
+    /// still open at a line break must carry over to the following lines.
+    func testLiteralScannerCarriesMultiLineStringsAndCommentsAcrossLines() throws {
+        let scanner = try XCTUnwrap(SyntaxLiteralScanner.forLanguage("meierscript"))
+        let lines = [
+            #"staticLet banner = """"#,
+            "Welcome to the demo.",
+            #"""" // done"#,
+            #"/* Functions for "x""#,
+            #"   and nil */ print("say \"hi\"", „Herr Meier“) // 1. true"#
+        ]
+        var state: SyntaxLiteralScanner.State = nil
+        let found = lines.map { line -> [String] in
+            let ns = line as NSString
+            return scanner.literals(in: ns, range: NSRange(location: 0, length: ns.length), state: &state)
+                .map { ($0.isComment ? "C:" : "S:") + ns.substring(with: $0.range) }
+        }
+        XCTAssertEqual(found[0], [#"S:""""#])
+        XCTAssertEqual(found[1], ["S:Welcome to the demo."])
+        XCTAssertEqual(found[2], [#"S:""""#, "C:// done"])
+        XCTAssertEqual(found[3], [#"C:/* Functions for "x""#])
+        XCTAssertEqual(found[4], ["C:   and nil */", #"S:"say \"hi\"""#, "S:„Herr Meier“", "C:// 1. true"])
+        XCTAssertNil(state)
+        XCTAssertTrue(scanner.masksInnerTokens)
+
+        let url = #"let url = "https://example.com" // note"# as NSString
+        XCTAssertEqual(scanner.literals(in: url, range: NSRange(location: 0, length: url.length), state: &state)
+            .map { url.substring(with: $0.range) }, [#""https://example.com""#, "// note"])
+    }
+
+    /// Swift and Python only report multi-line strings; their other strings and
+    /// comments stay with the regex patterns.
+    func testLiteralScannerReportsOnlyTripleQuotedStringsForOtherLanguages() throws {
+        let python = try XCTUnwrap(SyntaxLiteralScanner.forLanguage("py"))
+        XCTAssertFalse(python.masksInnerTokens)
+        var state: SyntaxLiteralScanner.State = nil
+        let doc = "x = 'a'  # '''\ndef f():\n    '''Return the value.\n    \"\"\" stays inside\n    '''\n" as NSString
+        let literals = python.literals(in: doc, range: NSRange(location: 0, length: doc.length), state: &state)
+        XCTAssertEqual(literals.map { doc.substring(with: $0.range) }, ["'''Return the value.\n    \"\"\" stays inside\n    '''"])
+        XCTAssertNil(state)
+
+        let swift = try XCTUnwrap(SyntaxLiteralScanner.forLanguage("swift"))
+        let open = "let s = \"\"\"" as NSString
+        XCTAssertEqual(swift.literals(in: open, range: NSRange(location: 0, length: open.length), state: &state).count, 1)
+        XCTAssertEqual(state, "\"\"\"")
+        XCTAssertNil(SyntaxLiteralScanner.forLanguage("javascript"))
+
+        // A """ inside a Swift or Kotlin block comment opens nothing, and the
+        // comment itself stays with the regex patterns.
+        for language in ["swift", "kotlin"] {
+            let scanner = try XCTUnwrap(SyntaxLiteralScanner.forLanguage(language))
+            var commentState: SyntaxLiteralScanner.State = nil
+            for line in [#"/* Example delimiter: """"#, #"*/ let count = 42"#] {
+                let ns = line as NSString
+                XCTAssertEqual(scanner.literals(in: ns, range: NSRange(location: 0, length: ns.length), state: &commentState), [], language)
+            }
+            XCTAssertNil(commentState, language)
+        }
+
+        // TOML literal strings and Kotlin raw strings have no escapes.
+        let toml = try XCTUnwrap(SyntaxLiteralScanner.forLanguage("toml"))
+        var tomlState: SyntaxLiteralScanner.State = nil
+        let path = #"path = '''C:\'''"# as NSString
+        XCTAssertEqual(toml.literals(in: path, range: NSRange(location: 0, length: path.length), state: &tomlState).count, 1)
+        XCTAssertNil(tomlState)
+        let kotlin = try XCTUnwrap(SyntaxLiteralScanner.forLanguage("kotlin"))
+        let raw = #"val p = """C:\""""# as NSString
+        XCTAssertEqual(kotlin.literals(in: raw, range: NSRange(location: 0, length: raw.length), state: &tomlState).count, 1)
+        XCTAssertNil(tomlState)
+    }
+
     func testLanguageIsRegistered() {
         XCTAssertTrue(CodeTemplateCatalog.supportedLanguages.contains("meierscript"))
         XCTAssertNotNil(CodeTemplateCatalog.defaultTemplate(for: "meierscript"))

@@ -1282,6 +1282,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var htmlContextDocument: ObjectIdentifier?
     private var htmlContextGeneration: UInt64?
     private var htmlContexts: [Int: HTMLSyntaxState] = [:]
+    private var literalContextKey: (document: ObjectIdentifier, generation: UInt64, scanner: SyntaxLiteralScanner)?
+    private var literalContexts: [Int: SyntaxLiteralScanner.State] = [:]
     private var syntaxHighlightGeneration = 0
     private var visibleColors: [NSRange: NSColor] = [:]
     private var colorPickerPopover: NSPopover?
@@ -3971,6 +3973,52 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         return state
     }
 
+    /// Returns the string or block comment still open where the viewport
+    /// starts, so its continuation lines are colored as such.
+    private func literalContext(
+        before target: EditorDocumentViewport,
+        scanner: SyntaxLiteralScanner
+    ) async throws -> SyntaxLiteralScanner.State {
+        guard let document, target.startByteOffset > 0 else { return nil }
+        let identity = ObjectIdentifier(document)
+        if literalContextKey?.document != identity
+            || literalContextKey?.generation != target.generation
+            || literalContextKey?.scanner != scanner {
+            literalContexts = [0: nil]
+            literalContextKey = (identity, target.generation, scanner)
+        }
+        let start = literalContexts.keys.filter { $0 <= target.startByteOffset }.max() ?? 0
+        var state = literalContexts[start] ?? nil
+        var offset = start
+        var pending = ""
+        while offset < target.startByteOffset {
+            try Task.checkCancellation()
+            let chunk = try document.textChunk(startByteOffset: offset, maximumByteCount: min(64 * 1024, target.startByteOffset - offset))
+            guard chunk.byteCount > 0 else { throw FileBackedTextDocument.Error.invalidRange }
+            offset += chunk.byteCount
+            let source = pending + chunk.text
+            let initialState = state
+            let isFinal = offset == target.startByteOffset
+            let worker = Task.detached(priority: .userInitiated) {
+                let text = source as NSString
+                // Stop at the last line break so a delimiter split across chunks is seen whole.
+                var length = text.length
+                if !isFinal {
+                    let lastBreak = text.rangeOfCharacter(from: .newlines, options: .backwards)
+                    length = lastBreak.location == NSNotFound ? 0 : NSMaxRange(lastBreak)
+                }
+                var nextState = initialState
+                _ = scanner.literals(in: text, range: NSRange(location: 0, length: length), state: &nextState)
+                return (nextState, text.substring(from: length))
+            }
+            (state, pending) = await worker.value
+            try Task.checkCancellation()
+        }
+        if literalContexts.count >= 128 { literalContexts = [0: nil] }
+        literalContexts[target.startByteOffset] = state
+        return state
+    }
+
     private func scheduleSyntaxHighlighting() {
         syntaxHighlightTask?.cancel()
         syntaxHighlightingComplete = false
@@ -3986,6 +4034,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let usesMarkdownSourceFonts = isMarkdownSyntaxLanguage(syntaxLanguage)
         let htmlText = viewportText
         let htmlViewport = isHTMLLikeSyntaxLanguage(syntaxLanguage) ? viewport : nil
+        let literalScanner = SyntaxLiteralScanner.forLanguage(syntaxLanguage)
+        let literalViewport = literalScanner == nil ? nil : viewport
         syntaxHighlightSignposter.emitEvent("queued_macos")
         syntaxHighlightTask = Task { [weak self] in
             let initialHTMLState: HTMLSyntaxState?
@@ -3993,6 +4043,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 do { initialHTMLState = try await self?.htmlContext(before: htmlViewport, colors: colors) }
                 catch { return }
             } else { initialHTMLState = nil }
+            var initialLiteralState: SyntaxLiteralScanner.State = nil
+            if let literalScanner, let literalViewport {
+                do { initialLiteralState = try await self?.literalContext(before: literalViewport, scanner: literalScanner) ?? nil }
+                catch { return }
+            }
+            let startingLiteralState = initialLiteralState
             guard !Task.isCancelled else { return }
             let worker = Task.detached(priority: .userInitiated) {
                 var result: [Int: [VirtualEditorSyntaxSpan]] = [:]
@@ -4022,14 +4078,24 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                     }
                     return result
                 }
+                var literalState = startingLiteralState
                 for line in lines {
                     guard !Task.isCancelled else { return result }
+                    let lineStartLiteralState = literalState
+                    let literals = literalScanner?.literals(
+                        in: line.text as NSString,
+                        range: NSRange(location: 0, length: (line.text as NSString).length),
+                        state: &literalState
+                    ) ?? []
+                    // Lines inside or opening a multi-line string or comment depend
+                    // on earlier lines, so they skip the per-text cache.
+                    let dependsOnEarlierLines = lineStartLiteralState != nil || literalState != nil
                     let cacheKey = VirtualEditorSyntaxLineCacheKey(
                         language: syntaxLanguage,
                         theme: syntaxTheme,
                         text: line.text
                     )
-                    if let cachedSpans = VirtualEditorSyntaxLineCache.spans(for: cacheKey) {
+                    if !dependsOnEarlierLines, let cachedSpans = VirtualEditorSyntaxLineCache.spans(for: cacheKey) {
                         if !cachedSpans.isEmpty { result[line.localLine] = cachedSpans }
                         continue
                     }
@@ -4038,7 +4104,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                         around: NSRange(location: 0, length: source.length), in: source, padding: 0
                     )
                     guard range.length > 0 else {
-                        VirtualEditorSyntaxLineCache.store([], for: cacheKey)
+                        if !dependsOnEarlierLines { VirtualEditorSyntaxLineCache.store([], for: cacheKey) }
                         continue
                     }
                     var lineSpans: [VirtualEditorSyntaxSpan] = []
@@ -4073,6 +4139,15 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                         .filter { $0.priority == 1 }
                         .map(\.span)
                         .filter { syntaxRangeIsUnoccupied($0.range, occupiedRanges: occupiedRanges) })
+                    // Strings and comments the scanner found are colored as such only.
+                    if !literals.isEmpty {
+                        lineSpans.removeAll { span in
+                            literals.contains { NSIntersectionRange($0.range, span.range).length > 0 }
+                        }
+                        lineSpans.append(contentsOf: literals.map {
+                            VirtualEditorSyntaxSpan(range: $0.range, color: $0.isComment ? colors.comment : colors.string)
+                        })
+                    }
                     if formattingTheme.boldKeywords {
                         for pattern in emphasisPatterns.keyword {
                             guard !Task.isCancelled else { return result }
@@ -4114,7 +4189,24 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                             VirtualEditorSyntaxSpan(range: $0.range, bold: $0.bold, italic: $0.italic)
                         })
                     }
-                    VirtualEditorSyntaxLineCache.store(lineSpans, for: cacheKey)
+                    if !literals.isEmpty {
+                        // No bold keywords inside strings and comments, and no
+                        // comment italics that start inside a string. Links stay underlined.
+                        lineSpans.removeAll { span in
+                            guard span.color == nil, !span.underline else { return false }
+                            return literals.contains { literal in
+                                span.bold
+                                    ? NSIntersectionRange(literal.range, span.range).length > 0
+                                    : literal.range.location < span.range.location && span.range.location < NSMaxRange(literal.range)
+                            }
+                        }
+                        if formattingTheme.italicComments {
+                            lineSpans.append(contentsOf: literals.lazy.filter(\.isComment).map {
+                                VirtualEditorSyntaxSpan(range: $0.range, italic: true)
+                            })
+                        }
+                    }
+                    if !dependsOnEarlierLines { VirtualEditorSyntaxLineCache.store(lineSpans, for: cacheKey) }
                     if !lineSpans.isEmpty { result[line.localLine] = lineSpans }
                 }
                 return result

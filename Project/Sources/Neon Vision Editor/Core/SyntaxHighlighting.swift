@@ -226,6 +226,145 @@ nonisolated func isHTMLLikeSyntaxLanguage(_ language: String) -> Bool {
     canonicalSyntaxLanguage(language) == "html"
 }
 
+// MARK: - Strings and Comments
+
+/// Finds string literals and comments the way a lexer would, so a line-based
+/// highlighter can color text that continues from earlier lines.
+///
+/// Swift, Kotlin, Python and TOML only report `"""` (and `'''`) strings that
+/// span lines; their other strings and comments keep using the regex patterns.
+/// Block comments are still tracked so a `"""` inside one opens nothing.
+/// MeierScript reports every string and comment, and tokens matched inside
+/// them (keywords, numbers, `nil`) are dropped.
+nonisolated struct SyntaxLiteralScanner: Sendable, Equatable {
+    struct Literal: Equatable, Sendable {
+        let range: NSRange
+        let isComment: Bool
+    }
+
+    /// The closing token of a string or block comment still open at a line
+    /// break, or nil.
+    typealias State = String?
+
+    let tripleDelimiters: [String]
+    /// Multi-line delimiters whose content has no escapes (Kotlin raw
+    /// strings, TOML literal strings), so a trailing backslash cannot hide the
+    /// closing delimiter.
+    let rawDelimiters: [String]
+    /// Single-line quotes as (opening, closing) UTF-16 units.
+    let singleLineQuotes: [(open: unichar, close: unichar)]
+    let lineCommentPrefix: String
+    let blockComment: (open: String, close: String)?
+    /// True when single-line strings and comments are reported as well and
+    /// mask every token matched inside them.
+    let masksInnerTokens: Bool
+
+    static func forLanguage(_ language: String) -> SyntaxLiteralScanner? {
+        switch canonicalSyntaxLanguage(language) {
+        case "meierscript":
+            return SyntaxLiteralScanner(tripleDelimiters: ["\"\"\""], rawDelimiters: [], singleLineQuotes: [(34, 34), (0x201E, 0x201C)],
+                                        lineCommentPrefix: "//", blockComment: ("/*", "*/"), masksInnerTokens: true)
+        case "swift":
+            return SyntaxLiteralScanner(tripleDelimiters: ["\"\"\""], rawDelimiters: [], singleLineQuotes: [(34, 34)],
+                                        lineCommentPrefix: "//", blockComment: ("/*", "*/"), masksInnerTokens: false)
+        case "kotlin":
+            return SyntaxLiteralScanner(tripleDelimiters: ["\"\"\""], rawDelimiters: ["\"\"\""], singleLineQuotes: [(34, 34)],
+                                        lineCommentPrefix: "//", blockComment: ("/*", "*/"), masksInnerTokens: false)
+        case "python":
+            return SyntaxLiteralScanner(tripleDelimiters: ["\"\"\"", "'''"], rawDelimiters: [], singleLineQuotes: [(34, 34), (39, 39)],
+                                        lineCommentPrefix: "#", blockComment: nil, masksInnerTokens: false)
+        case "toml":
+            return SyntaxLiteralScanner(tripleDelimiters: ["\"\"\"", "'''"], rawDelimiters: ["'''"], singleLineQuotes: [(34, 34), (39, 39)],
+                                        lineCommentPrefix: "#", blockComment: nil, masksInnerTokens: false)
+        default:
+            return nil
+        }
+    }
+
+    static func == (lhs: SyntaxLiteralScanner, rhs: SyntaxLiteralScanner) -> Bool {
+        lhs.tripleDelimiters == rhs.tripleDelimiters
+            && lhs.rawDelimiters == rhs.rawDelimiters
+            && lhs.singleLineQuotes.map(\.open) == rhs.singleLineQuotes.map(\.open)
+            && lhs.singleLineQuotes.map(\.close) == rhs.singleLineQuotes.map(\.close)
+            && lhs.lineCommentPrefix == rhs.lineCommentPrefix
+            && lhs.blockComment?.open == rhs.blockComment?.open
+            && lhs.blockComment?.close == rhs.blockComment?.close
+            && lhs.masksInnerTokens == rhs.masksInnerTokens
+    }
+
+    /// Returns the literals inside `range`, delimiters included, in order.
+    /// `state` is the literal still open at `range.location`; on return it
+    /// holds the state at the end of the range.
+    func literals(in text: NSString, range: NSRange, state: inout State) -> [Literal] {
+        var result: [Literal] = []
+        let end = min(NSMaxRange(range), text.length)
+        var index = range.location
+        var openStart = range.location
+        func matches(_ token: String, at position: Int) -> Bool {
+            let length = (token as NSString).length
+            guard length > 0, position + length <= end else { return false }
+            return text.compare(token, options: .literal, range: NSRange(location: position, length: length)) == .orderedSame
+        }
+        func isLineBreak(_ character: unichar) -> Bool { character == 10 || character == 13 }
+        while index < end {
+            if let closing = state {
+                let isComment = closing == blockComment?.close
+                if !isComment, !rawDelimiters.contains(closing), text.character(at: index) == 92 { // a backslash escapes the next character
+                    index += 2
+                    continue
+                }
+                if matches(closing, at: index) {
+                    index += (closing as NSString).length
+                    if masksInnerTokens || !isComment {
+                        result.append(Literal(range: NSRange(location: openStart, length: index - openStart), isComment: isComment))
+                    }
+                    state = nil
+                } else {
+                    index += 1
+                }
+                continue
+            }
+            let character = text.character(at: index)
+            if isLineBreak(character) {
+                index += 1
+            } else if matches(lineCommentPrefix, at: index) {
+                let start = index
+                while index < end, !isLineBreak(text.character(at: index)) { index += 1 }
+                if masksInnerTokens { result.append(Literal(range: NSRange(location: start, length: index - start), isComment: true)) }
+            } else if let blockComment, matches(blockComment.open, at: index) {
+                state = blockComment.close
+                openStart = index
+                index += (blockComment.open as NSString).length
+            } else if let delimiter = tripleDelimiters.first(where: { matches($0, at: index) }) {
+                state = delimiter
+                openStart = index
+                index += (delimiter as NSString).length
+            } else if let quote = singleLineQuotes.first(where: { $0.open == character }) {
+                let start = index
+                index += 1
+                var closed = false
+                while index < end {
+                    let next = text.character(at: index)
+                    if isLineBreak(next) { break }
+                    if next == 92 { index += 2; continue }
+                    index += 1
+                    if next == quote.close { closed = true; break }
+                }
+                if masksInnerTokens, closed {
+                    result.append(Literal(range: NSRange(location: start, length: min(index, end) - start), isComment: false))
+                }
+            } else {
+                index += 1
+            }
+        }
+        if let closing = state, end > openStart, masksInnerTokens || closing != blockComment?.close {
+            result.append(Literal(range: NSRange(location: openStart, length: end - openStart),
+                                  isComment: closing == blockComment?.close))
+        }
+        return result
+    }
+}
+
 // MARK: - Syntax Emphasis Profiles
 
 func syntaxEmphasisPatterns(

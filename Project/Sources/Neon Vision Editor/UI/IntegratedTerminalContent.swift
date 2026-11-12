@@ -46,6 +46,10 @@ final class IntegratedTerminalSession: ObservableObject {
     private var shellProcessID: pid_t = -1
     private var masterTerminalHandle: FileHandle?
     private var masterTerminalFileDescriptor: Int32 = -1
+    /// Last size requested by the panel. The shell is spawned with it so zsh never
+    /// measures a different width than the screen buffer wraps at.
+    private var terminalColumns = 120
+    private var terminalRows = 36
     private var generation: Int = 0
     private let outputBuffer = NSMutableString()
     private let renderedStyledOutput = NSMutableAttributedString()
@@ -118,11 +122,12 @@ final class IntegratedTerminalSession: ObservableObject {
             inheritedPath: ProcessInfo.processInfo.environment["PATH"]
         )
         var masterFileDescriptor: Int32 = -1
-        let processID = forkpty(&masterFileDescriptor, nil, nil, nil)
+        var initialSize = Self.windowSize(columns: terminalColumns, rows: terminalRows)
+        let processID = forkpty(&masterFileDescriptor, nil, nil, &initialSize)
         guard processID >= 0 else {
             isRunning = false
             usesPTY = false
-            enqueueOutput("Failed to allocate a terminal session.\n", generation: currentGeneration)
+            enqueueOutput("Failed to allocate a terminal session.\r\n", generation: currentGeneration)
             return
         }
 
@@ -158,8 +163,9 @@ final class IntegratedTerminalSession: ObservableObject {
         masterTerminalFileDescriptor = masterFileDescriptor
         isRunning = true
         usesPTY = true
-        resize(columns: 120, rows: 36)
-        enqueueOutput("Started PTY-backed zsh in \(directory.path)\n", generation: currentGeneration)
+        // Local output bypasses the PTY's ONLCR translation, so end lines with CRLF.
+        // A bare LF leaves the cursor mid-row and zsh's PROMPT_SP prints a stray "%".
+        enqueueOutput(Self.startupBanner(for: directory), generation: currentGeneration)
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
             var status: Int32 = 0
@@ -174,7 +180,7 @@ final class IntegratedTerminalSession: ObservableObject {
                 self.usesPTY = false
                 self.shellProcessID = -1
                 self.closeTerminalHandles()
-                self.enqueueOutput("\n[terminal exited \(exitStatus)]\n", generation: currentGeneration)
+                self.enqueueOutput("\r\n[terminal exited \(exitStatus)]\r\n", generation: currentGeneration)
             }
         }
     }
@@ -184,7 +190,7 @@ final class IntegratedTerminalSession: ObservableObject {
         guard !trimmed.isEmpty else { return }
         startIfNeeded(in: directory)
         guard masterTerminalHandle != nil else {
-            enqueueOutput("Terminal is not ready.\n", generation: generation)
+            enqueueOutput("Terminal is not ready.\r\n", generation: generation)
             return
         }
         writeToTerminal("\(trimmed)\n")
@@ -199,15 +205,46 @@ final class IntegratedTerminalSession: ObservableObject {
     }
 
     func resize(columns: Int, rows: Int) {
+        terminalColumns = columns
+        terminalRows = rows
         outputContinuation.yield(.resize(columns: columns, rows: rows))
         guard masterTerminalFileDescriptor >= 0 else { return }
-        var size = winsize(
+        var size = Self.windowSize(columns: columns, rows: rows)
+        _ = ioctl(masterTerminalFileDescriptor, TIOCSWINSZ, &size)
+    }
+
+    nonisolated private static func windowSize(columns: Int, rows: Int) -> winsize {
+        winsize(
             ws_row: UInt16(clamping: rows),
             ws_col: UInt16(clamping: columns),
             ws_xpixel: 0,
             ws_ypixel: 0
         )
-        _ = ioctl(masterTerminalFileDescriptor, TIOCSWINSZ, &size)
+    }
+
+    nonisolated static func startupBanner(
+        for directory: URL,
+        homeDirectory: URL = userHomeDirectory()
+    ) -> String {
+        let path = directory.standardizedFileURL.path
+        let home = homeDirectory.standardizedFileURL.path
+        let displayPath: String
+        if path == home {
+            displayPath = "~"
+        } else if path.hasPrefix(home + "/") {
+            displayPath = "~" + path.dropFirst(home.count)
+        } else {
+            displayPath = path
+        }
+        return "zsh in \(displayPath)\r\n"
+    }
+
+    /// The account's real home; the sandbox container path would never match a project folder.
+    nonisolated static func userHomeDirectory() -> URL {
+        if let entry = getpwuid(getuid()), let directory = entry.pointee.pw_dir {
+            return URL(fileURLWithPath: String(cString: directory), isDirectory: true)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
     }
 
     func clear() {

@@ -145,12 +145,29 @@ final class MeierScriptConsoleModel {
 }
 
 /// Bottom panel for MeierScript documents: stdout and stderr in separate panes.
+/// Window styling the console follows so it reads as part of the editor:
+/// the editor surface (translucent, opaque canvas or solid), theme colors and
+/// the editor font.
+struct MeierScriptConsoleAppearance {
+    var background: AnyShapeStyle
+    var text: Color
+    var error: Color
+    var fontName: String
+    var fontSize: CGFloat
+
+    var outputFont: Font {
+        let size = max(9, fontSize - 1)
+        return fontName.isEmpty ? .system(size: size, design: .monospaced) : .custom(fontName, size: size)
+    }
+}
+
 struct MeierScriptConsoleView: View {
     let tab: TabData
     let model: MeierScriptConsoleModel
     let onSelectLine: (Int) -> Void
     let onHide: () -> Void
     let onShowHelp: () -> Void
+    let appearance: MeierScriptConsoleAppearance
 
     @AppStorage(MeierScriptConsoleDefaults.autoCheckKey) private var autoCheck = true
     @AppStorage(MeierScriptConsoleDefaults.autoRunKey) private var autoRun = false
@@ -165,13 +182,15 @@ struct MeierScriptConsoleView: View {
             toolbar
             Divider()
             HStack(spacing: 0) {
-                MeierScriptOutputPane(title: "Output (stdout)", text: model.standardOutput, isError: false)
+                MeierScriptOutputPane(title: "Output (stdout)", text: model.standardOutput,
+                                      font: appearance.outputFont, color: appearance.text)
                 Divider()
-                MeierScriptOutputPane(title: "Errors (stderr)", text: model.standardError, isError: true)
+                MeierScriptOutputPane(title: "Errors (stderr)", text: model.standardError,
+                                      font: appearance.outputFont, color: appearance.error)
             }
         }
         .frame(height: CGFloat(min(max(storedHeight, 120), 600)))
-        .background(.background)
+        .background(appearance.background)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("MeierScript Console"))
         .onAppear {
@@ -325,7 +344,8 @@ struct MeierScriptConsoleView: View {
 private struct MeierScriptOutputPane: View {
     let title: LocalizedStringKey
     let text: String
-    let isError: Bool
+    let font: Font
+    let color: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -338,8 +358,8 @@ private struct MeierScriptOutputPane: View {
                 ScrollView([.vertical, .horizontal]) {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(verbatim: text)
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(isError ? Color.red : Color.primary)
+                            .font(font)
+                            .foregroundStyle(color)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: true, vertical: false)
                         Color.clear.frame(height: 1).id("end")

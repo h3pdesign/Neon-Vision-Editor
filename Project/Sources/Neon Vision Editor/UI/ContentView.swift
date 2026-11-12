@@ -5993,6 +5993,17 @@ struct ContentView: View {
         return tab
     }
 
+    private var meierScriptConsoleAppearance: MeierScriptConsoleAppearance {
+        let theme = currentEditorTheme(colorScheme: colorScheme)
+        return MeierScriptConsoleAppearance(
+            background: editorSurfaceBackgroundStyle,
+            text: theme.text,
+            error: Color(nsColor: .systemRed),
+            fontName: editorFontName,
+            fontSize: CGFloat(editorFontSize)
+        )
+    }
+
     private func performMeierScriptCommand(runs: Bool) {
         guard currentLanguage == MeierScriptLanguage.identifier,
               let tab = viewModel.selectedTab, !tab.isLoadingContent else { return }
@@ -6070,7 +6081,8 @@ struct ContentView: View {
                     onShowHelp: {
                         editorHelpFocusSectionKey = MeierScriptHelp.sectionKey
                         showEditorHelp = true
-                    }
+                    },
+                    appearance: meierScriptConsoleAppearance
                 ))
             }
         }

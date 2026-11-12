@@ -9,10 +9,11 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Fixed
 
 - On iPhone, including iPhone Duo, a Hide Keyboard button sits above the keyboard, so you can close the keyboard and get back to the toolbar without scrolling the document. With the Keyboard Snippet Bar turned off, the button still appears on its own.
+- On iPhone and iPad, tapping a table of contents entry scrolls the editor to that heading, even far down a long document, and marks its line.
 
 ### Maintenance
 
-- Development version 2.2.1 (build 1146).
+- Development version 2.2.2 (build 1147).
 
 ## [v2.2.0] - 2026-11-09
 

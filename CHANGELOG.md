@@ -16,6 +16,9 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - On iPhone, including iPhone Duo, a Hide Keyboard button sits above the keyboard, so you can close the keyboard and get back to the toolbar without scrolling the document. With the Keyboard Snippet Bar turned off, the button still appears on its own.
 - On iPhone and iPad, tapping a table of contents entry scrolls the editor to that heading, even far down a long document, and marks its line.
+- On the Mac, AI code completion no longer stops after a URL in JSON, CSS, INI, .env, Dockerfile, nginx, CSV and log files, after `${#name}` in shell scripts, or after an apostrophe or Rust lifetime in TeX, Typst and Rust code.
+- Code completion recognizes the comment syntax of SQL, Lua, Ada, Perl, R, Makefile, Dockerfile, INI, COBOL, GraphQL, XML and ExpressionEngine, so it stays quiet inside comments.
+- Code suggestions that use `#`, `$`, `@`, `\`, `^` or `~`, such as `#include`, `$variable`, `@Override` or `\section`, are no longer discarded.
 
 ### Maintenance
 

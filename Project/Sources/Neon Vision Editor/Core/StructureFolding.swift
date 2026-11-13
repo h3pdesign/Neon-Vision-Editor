@@ -79,6 +79,8 @@ nonisolated struct StructureFoldTokenizer {
     private var previous: UInt8 = 0
     private var beforePrevious: UInt8 = 0
     private var markupIsCDATA = false
+    /// The quote that opened the current JSON string; JSON5 allows single quotes.
+    private var stringQuote: UInt8 = 0x22
 
     init(syntax: StructureFoldSyntax) {
         self.syntax = syntax
@@ -103,7 +105,7 @@ nonisolated struct StructureFoldTokenizer {
         switch mode {
         case .string:
             if byte == 0x5C { mode = .stringEscape } // backslash
-            else if byte == 0x22 || byte == 0x0A { mode = .code } // a line break ends a broken string
+            else if byte == stringQuote || byte == 0x0A { mode = .code } // a line break ends a broken string
             return nil
         case .stringEscape:
             mode = .string
@@ -116,7 +118,7 @@ nonisolated struct StructureFoldTokenizer {
             return nil
         default:
             switch byte {
-            case 0x22: mode = .string
+            case 0x22, 0x27: mode = .string; stringQuote = byte // " or JSON5 '
             case 0x2F where previous == 0x2F: mode = .lineComment
             case 0x2A where previous == 0x2F: mode = .blockComment
             case 0x7B, 0x5B: return .open // { [
@@ -139,7 +141,11 @@ nonisolated struct StructureFoldTokenizer {
             case 0x21: mode = .markupStart(matched: 1); return nil // <!
             case 0x3C: mode = .tagStart; return nil
             case 0x20, 0x09, 0x0A, 0x0D, 0x3E: mode = .code; return nil // not a tag
-            default: mode = .openTag(quote: nil); return nil
+            default:
+                // Report the opener where the tag starts, so a tag whose
+                // attributes continue on later lines still folds from its first line.
+                mode = .openTag(quote: nil)
+                return .open
             }
         case .markupStart(let matched):
             // After "<!": a comment ("<!--"), a CDATA section, or a declaration.
@@ -168,7 +174,7 @@ nonisolated struct StructureFoldTokenizer {
             case 0x22, 0x27: mode = .openTag(quote: byte)
             case 0x3E: // >
                 mode = .code
-                return previous == 0x2F ? nil : .open // "/>" closes itself
+                return previous == 0x2F ? .close : nil // "/>" closes itself
             default: break
             }
             return nil

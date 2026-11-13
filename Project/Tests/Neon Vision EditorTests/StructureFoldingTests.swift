@@ -55,6 +55,19 @@ final class StructureFoldingTests: XCTestCase {
         XCTAssertFalse(StructureFoldScanner.lineOpensStructure(String(repeating: "[", count: 30_000), syntax: .json))
     }
 
+    func testJSON5SingleQuotedStringsAndMultilineXMLTags() throws {
+        XCTAssertFalse(StructureFoldScanner.lineOpensStructure("  key: '{',", syntax: .json))
+        XCTAssertTrue(StructureFoldScanner.lineOpensStructure(#"  "it's": {"#, syntax: .json))
+        let json5 = FileBackedTextDocument(content: "{\n  a: '}',\n  b: '{',\n  c: 1\n}\n")
+        XCTAssertEqual(try StructureFoldScanner.region(startingAt: 0, in: json5, syntax: .json)?.endLine, 4)
+
+        XCTAssertTrue(StructureFoldScanner.lineOpensStructure("  <item", syntax: .xml))
+        let xml = FileBackedTextDocument(content: "<root>\n  <item\n    id=\"a\">\n    <child/>\n  </item>\n</root>\n")
+        XCTAssertEqual(try StructureFoldScanner.region(startingAt: 1, in: xml, syntax: .xml)?.endLine, 4)
+        XCTAssertEqual(try StructureFoldScanner.region(startingAt: 0, in: xml, syntax: .xml)?.endLine, 5)
+        XCTAssertEqual(try StructureFoldScanner.allRegions(in: xml, syntax: .xml).map(\.headerLine), [0, 1])
+    }
+
     func testJSONRegionsEndOnTheMatchingCloserLine() throws {
         let document = FileBackedTextDocument(content: json)
         XCTAssertEqual(try StructureFoldScanner.region(startingAt: 0, in: document, syntax: .json)?.endLine, 10)

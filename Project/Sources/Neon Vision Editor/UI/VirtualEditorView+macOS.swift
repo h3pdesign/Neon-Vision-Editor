@@ -3599,7 +3599,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private func copySelection() {
         guard selection.length > 0 else { return }
         let local = selection.location - viewportStartUTF16
-        guard local >= 0, NSMaxRange(selection) <= viewportStartUTF16 + viewportText.utf16.count else {
+        // With folds, the viewport lacks hidden lines; the document adapter includes them.
+        guard foldModel.isEmpty, local >= 0, NSMaxRange(selection) <= viewportStartUTF16 + viewportText.utf16.count else {
             guard let document else { return }
             let location = min(max(0, selection.location), document.utf16Length)
             let length = min(max(0, selection.length), document.utf16Length - location)

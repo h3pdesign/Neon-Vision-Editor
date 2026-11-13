@@ -158,8 +158,51 @@ final class CompletionHeuristicsTests: XCTestCase {
         XCTAssertEqual(SystemWordCompletion.replacementPhrases(forShortcut: "rs", replacements: replacements), ["rhinitis"])
         XCTAssertEqual(SystemWordCompletion.replacementPhrases(forShortcut: "OMW", replacements: replacements), ["On my way!"])
         XCTAssertEqual(SystemWordCompletion.replacementPhrases(forShortcut: "r", replacements: replacements), [])
-        XCTAssertEqual(SystemWordCompletion.replacementPhrases(forShortcut: "addr", replacements: replacements), [])
+        XCTAssertEqual(SystemWordCompletion.replacementPhrases(forShortcut: "addr", replacements: replacements), ["1 Main St\nSpringfield"])
         XCTAssertEqual(SystemWordCompletion.replacementPhrases(forShortcut: "rhinitis", replacements: replacements), [])
+    }
+
+    func testTextReplacementShortcutMayContainPunctuation() {
+        let replacements = [";sig": "Best regards", "e.g": "for example", "@@": "me@example.com", "omw": "On my way!"]
+
+        XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: "Thanks ;sig", replacements: replacements)?.shortcut, ";sig")
+        XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: "Thanks ;sig", replacements: replacements)?.phrases, ["Best regards"])
+        XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: "see e.g", replacements: replacements)?.shortcut, "e.g")
+        XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: "mail @@", replacements: replacements)?.phrases, ["me@example.com"])
+        XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: "@@", replacements: replacements)?.shortcut, "@@")
+    }
+
+    func testTextReplacementShortcutStartsAtWordBoundary() {
+        let replacements = ["omw": "On my way!", "sig": "signature", ";sig": "Best regards"]
+
+        XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: "I am (omw", replacements: replacements)?.shortcut, "omw")
+        XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: "Line\nOMW", replacements: replacements)?.shortcut, "OMW")
+        XCTAssertNil(SystemWordCompletion.replacementMatch(beforeCaret: "xomw", replacements: replacements))
+        XCTAssertNil(SystemWordCompletion.replacementMatch(beforeCaret: "omw ", replacements: replacements))
+        XCTAssertNil(SystemWordCompletion.replacementMatch(beforeCaret: "o", replacements: replacements))
+        XCTAssertNil(SystemWordCompletion.replacementMatch(beforeCaret: "", replacements: replacements))
+        // The longest shortcut wins over a shorter one it ends with.
+        XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: "x;sig", replacements: replacements)?.shortcut, ";sig")
+        XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: "x.sig", replacements: replacements)?.shortcut, "sig")
+    }
+
+    func testTextReplacementMatchSkipsShortcutsWithoutOfferablePhrase() {
+        let replacements = ["teh": "teh", ";addr": "", "addr": "1 Main St"]
+
+        XCTAssertNil(SystemWordCompletion.replacementMatch(beforeCaret: "teh", replacements: replacements))
+        XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: ";addr", replacements: replacements)?.shortcut, "addr")
+    }
+
+    func testMultiLineTextReplacementIsOfferedWithOneLinePreview() {
+        let template = "Vertigo exam:\nDix-Hallpike negative\nHead impulse normal"
+        let replacements = ["vertigoexam": template, "nw": "\nNo wax"]
+
+        XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: "vertigoexam", replacements: replacements)?.phrases, [template])
+        XCTAssertEqual(SystemWordCompletion.previewLine(forPhrase: template), "Vertigo exam: \u{2026}")
+        XCTAssertEqual(SystemWordCompletion.previewLine(forPhrase: "\nNo wax"), "\u{2026}")
+        XCTAssertEqual(SystemWordCompletion.previewLine(forPhrase: "On my way!"), "On my way!")
+        let longFirstLine = String(repeating: "a", count: 80) + "\nnext"
+        XCTAssertEqual(SystemWordCompletion.previewLine(forPhrase: longFirstLine), String(repeating: "a", count: 60) + " \u{2026}")
     }
 
     func testTextReplacementShortcutSkipsPhraseEqualToShortcut() {

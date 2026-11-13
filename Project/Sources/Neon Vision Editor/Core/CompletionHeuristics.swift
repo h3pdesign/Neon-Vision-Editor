@@ -504,16 +504,54 @@ enum SystemWordCompletion {
         )
     }
 
-    /// Text Replacement phrases whose shortcut is the word before the caret,
-    /// such as "omw" for "On my way!" (#959). Accepting one replaces the
-    /// typed shortcut instead of appending to it.
-    static func replacementPhrases(forShortcut shortcut: String) -> [String] {
-        guard shortcut.count >= minimumPrefixLength else { return [] }
-        return replacementPhrases(forShortcut: shortcut, replacements: NSSpellChecker.shared.userReplacementsDictionary)
+    /// The longest Text Replacement shortcut the user can type.
+    static let maximumShortcutLength = 32
+
+    /// The Text Replacement shortcut that ends at the caret, with its
+    /// phrases, such as "omw" for "On my way!" (#959). Accepting one
+    /// replaces the typed shortcut instead of appending to it. Shortcuts may contain punctuation, such as ";sig", "e.g" or
+    /// "@@" (#994), so the shortcut is not limited to the identifier before
+    /// the caret. It starts at the beginning of the text after the last
+    /// whitespace or at a boundary between a word character and punctuation,
+    /// so "omw" matches after "(" but not inside "xomw". The longest
+    /// matching shortcut wins.
+    static func replacementMatch(beforeCaret text: String) -> (shortcut: String, phrases: [String])? {
+        replacementMatch(beforeCaret: text, replacements: NSSpellChecker.shared.userReplacementsDictionary)
+    }
+
+    static func replacementMatch(
+        beforeCaret text: String,
+        replacements: [String: String],
+        limit: Int = maximumSuggestionCount
+    ) -> (shortcut: String, phrases: [String])? {
+        guard !replacements.isEmpty, limit > 0 else { return nil }
+        let run = Array(text.suffix(maximumShortcutLength).reversed().prefix { !$0.isWhitespace }.reversed())
+        guard run.count >= minimumPrefixLength else { return nil }
+        var candidateLengths: [String: Int] = [:]
+        for start in 0...(run.count - minimumPrefixLength) {
+            if start > 0, isShortcutWordCharacter(run[start - 1]), isShortcutWordCharacter(run[start]) { continue }
+            candidateLengths[String(run[start...]).lowercased()] = run.count - start
+        }
+        var matchedLengths = Set<Int>()
+        for key in replacements.keys {
+            if let length = candidateLengths[key.lowercased()] { matchedLengths.insert(length) }
+        }
+        for length in matchedLengths.sorted(by: >) {
+            let shortcut = String(run.suffix(length))
+            let phrases = replacementPhrases(forShortcut: shortcut, replacements: replacements, limit: limit)
+            if !phrases.isEmpty { return (shortcut, phrases) }
+        }
+        return nil
+    }
+
+    private static func isShortcutWordCharacter(_ character: Character) -> Bool {
+        character.isLetter || character.isNumber || character == "_"
     }
 
     /// Matches the shortcut case-insensitively, like the system does, and
-    /// skips multi-line phrases and phrases that equal the typed text.
+    /// skips phrases that equal the typed text. Multi-line phrases, such as
+    /// a note template, are offered too (#994); the list shows them with
+    /// `previewLine(forPhrase:)`.
     static func replacementPhrases(
         forShortcut shortcut: String,
         replacements: [String: String],
@@ -525,7 +563,6 @@ enum SystemWordCompletion {
             .filter { key, phrase in
                 key.caseInsensitiveCompare(shortcut) == .orderedSame
                     && !phrase.isEmpty
-                    && !phrase.contains(where: \.isNewline)
                     && phrase != shortcut
             }
             .map(\.value)
@@ -533,6 +570,19 @@ enum SystemWordCompletion {
             .filter { seen.insert($0.lowercased()).inserted }
             .prefix(limit)
             .map { $0 }
+    }
+
+    /// The longest first line a multi-line phrase preview shows.
+    static let maximumPreviewLength = 60
+
+    /// One line for a Text Replacement phrase in the completion list and the
+    /// inline hint. A multi-line phrase shows its first line and an ellipsis;
+    /// accepting it still inserts every line (#994).
+    static func previewLine(forPhrase phrase: String) -> String {
+        guard let firstBreak = phrase.firstIndex(where: \.isNewline) else { return phrase }
+        let firstLine = phrase[..<firstBreak].trimmingCharacters(in: .whitespaces)
+        let shown = String(firstLine.prefix(maximumPreviewLength))
+        return shown.isEmpty ? "\u{2026}" : shown + " \u{2026}"
     }
 
     /// Text Replacement phrases win over dictionary words because the user

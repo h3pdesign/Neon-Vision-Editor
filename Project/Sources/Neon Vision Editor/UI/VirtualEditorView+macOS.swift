@@ -2013,7 +2013,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             nil
         ))
         let line = CTLineCreateWithAttributedString(NSAttributedString(
-            string: inlineSuggestionReplacesPrefix ? " \u{2192} " + inlineSuggestion : inlineSuggestion,
+            string: inlineSuggestionReplacesPrefix
+                ? " \u{2192} " + SystemWordCompletion.previewLine(forPhrase: inlineSuggestion)
+                : inlineSuggestion,
             attributes: [
                 .font: editorFont,
                 .foregroundColor: NSColor.secondaryLabelColor.withAlphaComponent(0.6)
@@ -2102,7 +2104,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     /// Replacement phrase that replaces the typed shortcut.
     private func completionListWord(at index: Int) -> String {
         let insertion = completionListSuffixes[index]
-        return completionListRowReplacesPrefix(index) ? insertion : completionListPrefix + insertion
+        return completionListRowReplacesPrefix(index)
+            ? SystemWordCompletion.previewLine(forPhrase: insertion)
+            : completionListPrefix + insertion
     }
 
     private func completionListRowReplacesPrefix(_ index: Int) -> Bool {
@@ -3083,9 +3087,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let sanitizeRows: ([String]) -> [String] = { rows in
             rows.map(EditorTextSanitizer.sanitize).filter { !$0.isEmpty && !$0.contains(where: \.isNewline) }
         }
-        let replacements = prefix.isEmpty ? [] : sanitizeRows(
+        // Text Replacement phrases may span lines; the list previews them on
+        // one line and accepting one inserts every line (#994).
+        let replacements = prefix.isEmpty ? [] : (
             notification.userInfo?[EditorCommandUserInfo.completionPrefixReplacements] as? [String] ?? []
-        )
+        ).map(EditorTextSanitizer.sanitize).filter { !$0.isEmpty }
         let suffixes = prefix.isEmpty ? [] : sanitizeRows(
             notification.userInfo?[EditorCommandUserInfo.completionCandidates] as? [String] ?? []
         )

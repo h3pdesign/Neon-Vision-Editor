@@ -170,6 +170,7 @@ struct NeonSettingsView: View {
     @AppStorage("SettingsCompletionFromSyntax") private var completionFromSyntax: Bool = false
 #if os(macOS)
     @AppStorage(SystemWordCompletion.enabledDefaultsKey) private var systemWordCompletionEnabled: Bool = false
+    @AppStorage(CompletionHeuristics.vocabularyCompletionDefaultsKey) private var vocabularyCompletionEnabled: Bool = true
 #endif
     @AppStorage("SelectedAIModel") private var selectedAIModelRaw: String = AIModel.appleIntelligence.rawValue
     @AppStorage("OpenCodeGoModelID") private var openCodeGoModelID: String = OpenCodeGoConfig.defaultModel
@@ -3838,6 +3839,11 @@ struct NeonSettingsView: View {
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                Toggle("Suggest MeierScript Keywords and Built-ins", isOn: $vocabularyCompletionEnabled)
+                Text("Lists matching MeierScript keywords, built-in functions and names from the document while you type, without an AI provider.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Toggle("Suggest Words from System Dictionary", isOn: $systemWordCompletionEnabled)
                 Text("In plain text and Markdown, suggests words from the macOS dictionary and your Text Replacements. Press Tab or Right Arrow to accept.")
                     .font(Typography.footnote)
@@ -7086,6 +7092,7 @@ struct NeonSettingsView: View {
         case "ipynb": return "Jupyter Notebook"
         case "tex": return "TeX"
         case "typst": return "Typst"
+        case "meierscript": return "MeierScript"
         case "html": return "HTML"
         case "expressionengine": return "ExpressionEngine"
         case "css": return "CSS"

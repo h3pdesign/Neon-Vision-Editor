@@ -897,6 +897,12 @@ struct ContentView: View {
     @AppStorage("SettingsCompletionFromSyntax") var completionFromSyntax: Bool = false
 #if os(macOS)
     @AppStorage(SystemWordCompletion.enabledDefaultsKey) var isSystemWordCompletionEnabled: Bool = false
+    @AppStorage(CompletionHeuristics.vocabularyCompletionDefaultsKey) var isVocabularyCompletionEnabled: Bool = true
+#endif
+#if os(macOS) && !APP_STORE_BUILD
+    @AppStorage(MeierScriptConsoleDefaults.visibleKey) var isMeierScriptConsoleVisible: Bool = true
+    @AppStorage(MeierScriptConsoleDefaults.scriptVisibleKey) var isScriptConsoleVisible: Bool = false
+    @State var meierScriptConsole = MeierScriptConsoleModel()
 #endif
     @AppStorage("SettingsReopenLastSession") var reopenLastSession: Bool = true
     @AppStorage("SettingsOpenWithBlankDocument") var openWithBlankDocument: Bool = true
@@ -1351,6 +1357,7 @@ struct ContentView: View {
     @AppStorage("SharedImportAccessAllowed") var sharedImportAccessAllowed: Bool = false
     @State var showWelcomeTour: Bool = false
     @State var showEditorHelp: Bool = false
+    @State var editorHelpFocusSectionKey: String?
     @State var showInAppChangelog: Bool = false
     @State var showSupportPromptSheet: Bool = false
     @State var showSharedImportAccessExplanation: Bool = false
@@ -3080,8 +3087,7 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .showEditorHelpRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
-                dismissTransientSheetsForCommand()
-                showEditorHelp = true
+                presentEditorHelp(focusSectionKey: notif.object as? String)
             }
             .onReceive(NotificationCenter.default.publisher(for: .showSupportPromptRequested)) { notif in
                 guard matchesCurrentWindow(notif) else { return }
@@ -3187,14 +3193,44 @@ struct ContentView: View {
                 selectedModelRaw = model.rawValue
             }
 
+#if os(macOS) && !APP_STORE_BUILD
+        return withMeierScriptCommands(viewWithPanels)
+#else
         return viewWithPanels
+#endif
     }
+
+    private func presentEditorHelp(focusSectionKey: String?) {
+        dismissTransientSheetsForCommand()
+        editorHelpFocusSectionKey = focusSectionKey
+        showEditorHelp = true
+    }
+
+#if os(macOS) && !APP_STORE_BUILD
+    /// Kept out of the main command chain so it stays cheap to type-check.
+    private func withMeierScriptCommands<Content: View>(_ view: Content) -> some View {
+        view
+            .onReceive(NotificationCenter.default.publisher(for: .runMeierScriptRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                performMeierScriptCommand(runs: true)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .checkMeierScriptSyntaxRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                performMeierScriptCommand(runs: false)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .toggleMeierScriptConsoleRequested)) { notif in
+                guard matchesCurrentWindow(notif) else { return }
+                toggleScriptConsoleVisibility()
+            }
+    }
+#endif
 
     private func withTypingEvents<Content: View>(_ view: Content) -> some View {
 #if os(macOS)
         view
             .onReceive(NotificationCenter.default.publisher(for: .virtualEditorTextDidChange)) { notification in
-                guard isAutoCompletionEnabled || isSystemWordCompletionEnabled,
+                let usesVocabulary = isVocabularyCompletionEnabled && CompletionHeuristics.usesLocalVocabularyCompletion(for: currentLanguage)
+                guard isAutoCompletionEnabled || isSystemWordCompletionEnabled || usesVocabulary,
                       !viewModel.isBrainDumpMode,
                       !isApplyingCompletion,
                       let rawID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
@@ -3210,7 +3246,16 @@ struct ContentView: View {
                 completionTask?.cancel()
                 let debounce: TimeInterval = context.utf16.count >= 80_000 ? 0.9 : (context.utf16.count >= 25_000 ? 0.7 : 0.45)
                 completionDebounceTask = Task { @MainActor in
-                    if isSystemWordCompletionEnabled {
+                    if usesVocabulary {
+                        try? await Task.sleep(nanoseconds: SystemWordCompletion.debounceNanoseconds)
+                        guard !Task.isCancelled else { return }
+                        if performVocabularyCompletion(tabID: tabID, caretLocation: caret, context: context,
+                                                       nextCharacter: nextCharacter) {
+                            lastCompletionTriggerSignature = ""
+                            return
+                        }
+                        guard isAutoCompletionEnabled else { return }
+                    } else if isSystemWordCompletionEnabled {
                         // The local dictionary lookup is cheap, so it answers
                         // well before the model debounce elapses.
                         try? await Task.sleep(nanoseconds: SystemWordCompletion.debounceNanoseconds)
@@ -4434,8 +4479,9 @@ struct ContentView: View {
                     }
                 }
 #endif
-                .sheet(isPresented: contentView.$showEditorHelp) {
-                    EditorHelpView {
+                .sheet(isPresented: contentView.$showEditorHelp,
+                       onDismiss: { contentView.$editorHelpFocusSectionKey.wrappedValue = nil }) {
+                    EditorHelpView(focusSectionKey: contentView.editorHelpFocusSectionKey) {
                         contentView.$showEditorHelp.wrappedValue = false
                     }
                 }
@@ -5939,6 +5985,61 @@ struct ContentView: View {
         return pane
     }
 
+#if !APP_STORE_BUILD
+    /// Run console language of the current document, if it can be run.
+    private var scriptConsoleLanguage: ScriptConsoleLanguage? {
+        ScriptConsoleLanguage(languageID: currentLanguage)
+    }
+
+    /// MeierScript keeps its own visibility (shown by default); interpreter
+    /// languages share one that starts hidden.
+    private func scriptConsoleIsShown(for language: ScriptConsoleLanguage) -> Bool {
+        language.isMeierScript ? isMeierScriptConsoleVisible : isScriptConsoleVisible
+    }
+
+    private func setScriptConsoleVisible(_ visible: Bool, for language: ScriptConsoleLanguage) {
+        if language.isMeierScript { isMeierScriptConsoleVisible = visible } else { isScriptConsoleVisible = visible }
+    }
+
+    private func toggleScriptConsoleVisibility() {
+        guard let language = scriptConsoleLanguage else { return }
+        setScriptConsoleVisible(!scriptConsoleIsShown(for: language), for: language)
+    }
+
+    /// The selected runnable tab while its console is shown in this window.
+    private var meierScriptConsoleTab: (tab: TabData, language: ScriptConsoleLanguage)? {
+        guard !brainDumpLayoutEnabled, let language = scriptConsoleLanguage,
+              scriptConsoleIsShown(for: language),
+              let tab = viewModel.selectedTab else { return nil }
+        return (tab, language)
+    }
+
+    private var meierScriptConsoleAppearance: MeierScriptConsoleAppearance {
+        let theme = currentEditorTheme(colorScheme: colorScheme)
+        return MeierScriptConsoleAppearance(
+            background: editorSurfaceBackgroundStyle,
+            text: theme.text,
+            error: Color(nsColor: .systemRed),
+            fontName: editorFontName,
+            fontSize: CGFloat(editorFontSize)
+        )
+    }
+
+    private func performMeierScriptCommand(runs: Bool) {
+        guard let language = scriptConsoleLanguage, runs || language.supportsSyntaxCheck,
+              let tab = viewModel.selectedTab, !tab.isLoadingContent else { return }
+        setScriptConsoleVisible(true, for: language)
+        let source = tab.document.string()
+        let workingDirectory = tab.fileURL?.deletingLastPathComponent()
+        meierScriptConsole.attach(tabID: tab.id, language: language)
+        if runs {
+            meierScriptConsole.run(source: source, workingDirectory: workingDirectory)
+        } else {
+            meierScriptConsole.checkSyntax(source: source, workingDirectory: workingDirectory)
+        }
+    }
+#endif
+
     private func macEditorColumn(
         lineWrap: Binding<Bool>, highlightLine: Bool, bracket: Bool, scope: Bool, scopeBackground: Bool
     ) -> MacDocumentContentController.Configuration {
@@ -5991,6 +6092,26 @@ struct ContentView: View {
                 configuration.secondary?.header = { AnyView(splitEditorPaneHeader(title: secondaryTab.name, showsCloseButton: true)) }
             }
         }
+#if !APP_STORE_BUILD
+        if configuration.replacement == nil, let console = meierScriptConsoleTab {
+            let consoleTab = console.tab
+            let consoleLanguage = console.language
+            configuration.console = {
+                AnyView(MeierScriptConsoleView(
+                    tab: consoleTab,
+                    language: consoleLanguage,
+                    model: meierScriptConsole,
+                    onSelectLine: { moveEditorFromMinimap(to: $0, tabID: consoleTab.id) },
+                    onHide: { setScriptConsoleVisible(false, for: consoleLanguage) },
+                    onShowHelp: {
+                        editorHelpFocusSectionKey = consoleLanguage.helpSectionKey
+                        showEditorHelp = true
+                    },
+                    appearance: meierScriptConsoleAppearance
+                ))
+            }
+        }
+#endif
         if !brainDumpLayoutEnabled { configuration.status = { AnyView(wordCountView) } }
         if showFindReplace { configuration.find = { AnyView(inlineFindBar.frame(maxWidth: .infinity)) } }
         configuration.contentInsets = brainDumpLayoutEnabled ? NSEdgeInsets(top: 40, left: 24, bottom: 40, right: 24) : .init()
@@ -6519,7 +6640,8 @@ struct ContentView: View {
                     IOSFloatingStatusPolicy.bottomInset(
                         isPhone: UIDevice.current.userInterfaceIdiom == .phone,
                         keyboardVisible: isPhoneSoftwareKeyboardVisible,
-                        accessoryBarShown: showKeyboardAccessoryBarIOS,
+                        // The phone overlay shows Hide Keyboard even with the snippet bar off.
+                        accessoryBarShown: true,
                         accessoryBarHeight: EditorInputTextView.keyboardToolbarHeight
                     )
 #else

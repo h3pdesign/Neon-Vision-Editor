@@ -608,6 +608,7 @@ extension ContentView {
         case "sql": return "sql"
         case "markdown": return "md"
         case "typst": return "typ"
+        case "meierscript": return "meierscript"
         case "tex": return "tex"
         case "graphql": return "graphql"
         case "proto": return "proto"

@@ -28,7 +28,7 @@ struct NeonVisionMacAppCommands: Commands {
 
     private static let languageOptions = [
         "swift", "python", "javascript", "typescript", "php", "java", "kotlin", "go", "ruby",
-        "rust", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "typst",
+        "rust", "meierscript", "cobol", "dotenv", "proto", "graphql", "rst", "nginx", "sql", "html", "typst",
         "expressionengine", "css", "c", "cpp", "csharp", "objective-c", "json", "xml", "yaml",
         "toml", "nix", "eml", "csv", "ini", "vim", "log", "ipynb", "markdown", "tex", "bash", "zsh", "powershell",
         "standard", "plain"
@@ -86,6 +86,18 @@ struct NeonVisionMacAppCommands: Commands {
         guard let language = activeEditorViewModel().selectedTab?.language.lowercased() else { return false }
         return language == "json" || language == "jsonc" || language == "json5"
     }
+
+    private var selectedTabIsMeierScript: Bool {
+        activeEditorViewModel().selectedTab?.language.lowercased() == MeierScriptLanguage.identifier
+    }
+
+#if !APP_STORE_BUILD
+    /// Run console language of the selected tab: MeierScript or a script
+    /// language with an interpreter (Python, shells, …).
+    private var selectedTabScriptLanguage: ScriptConsoleLanguage? {
+        activeEditorViewModel().selectedTab.flatMap { ScriptConsoleLanguage(languageID: $0.language) }
+    }
+#endif
 
     private func post(_ name: Notification.Name, object: Any? = nil) {
         postWindowCommand(name, object)
@@ -503,6 +515,27 @@ struct NeonVisionMacAppCommands: Commands {
             }
             .disabled(!selectedTabIsJSON)
 
+#if !APP_STORE_BUILD
+            Divider()
+
+            Button(LocalizedStringKey(selectedTabIsMeierScript ? "Run MeierScript" : "Run Script")) {
+                post(.runMeierScriptRequested)
+            }
+            .keyboardShortcut("r", modifiers: .command)
+            .disabled(selectedTabScriptLanguage == nil)
+
+            Button(LocalizedStringKey(selectedTabIsMeierScript ? "Check MeierScript Syntax" : "Check Script Syntax")) {
+                post(.checkMeierScriptSyntaxRequested)
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
+            .disabled(selectedTabScriptLanguage?.supportsSyntaxCheck != true)
+
+            Button(LocalizedStringKey(selectedTabIsMeierScript ? "Show or Hide MeierScript Console" : "Show or Hide Run Console")) {
+                post(.toggleMeierScriptConsoleRequested)
+            }
+            .disabled(selectedTabScriptLanguage == nil)
+#endif
+
             Divider()
 
             Button("Convert Text to Markdown…") {
@@ -575,6 +608,15 @@ struct NeonVisionMacAppCommands: Commands {
             Button("Show Welcome Tour") {
                 post(.showWelcomeTourRequested)
             }
+
+            Button("MeierScript Help…") {
+                post(.showEditorHelpRequested, object: MeierScriptHelp.sectionKey)
+            }
+#if !APP_STORE_BUILD
+            Button("Run Scripts Help…") {
+                post(.showEditorHelpRequested, object: ScriptRunHelp.sectionKey)
+            }
+#endif
 
             Divider()
 
@@ -811,6 +853,7 @@ struct NeonVisionMacAppCommands: Commands {
         case "ipynb": return "Jupyter Notebook"
         case "tex": return "TeX"
         case "typst": return "Typst"
+        case "meierscript": return "MeierScript"
         case "html": return "HTML"
         case "expressionengine": return "ExpressionEngine"
         case "css": return "CSS"

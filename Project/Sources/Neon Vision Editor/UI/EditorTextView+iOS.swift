@@ -140,6 +140,8 @@ enum EditorLargeTextFormatting {
 
 class EditorInputTextView: UITextView {
     static let keyboardToolbarHeight: CGFloat = 46
+    /// Width of the iPhone bar that holds only Hide Keyboard (snippet bar off).
+    static let dismissOnlyKeyboardToolbarWidth: CGFloat = 76
     var onConfiguredAppShortcut: ((EditorShortcutAction) -> Void)?
     private struct NoWrapWidthCache {
         let revision: Int
@@ -473,6 +475,21 @@ class EditorInputTextView: UITextView {
             }
         }
     }
+    /// Caret location of a line reached by navigation (for example a table of
+    /// contents entry) without focusing the editor. The current-line overlay
+    /// marks that line until the caret moves, since UIKit draws neither the
+    /// caret nor the selection while the text view is not first responder.
+    var navigationHighlightLocation: Int? {
+        didSet {
+            if oldValue != navigationHighlightLocation {
+                currentLineHighlightOverlayView?.setNeedsDisplay()
+            }
+        }
+    }
+    var isAtNavigationHighlight: Bool {
+        guard let navigationHighlightLocation else { return false }
+        return selectedRange == NSRange(location: navigationHighlightLocation, length: 0)
+    }
     var matchingBracketHighlightRanges: [NSRange] = [] {
         didSet {
             if oldValue != matchingBracketHighlightRanges {
@@ -481,7 +498,7 @@ class EditorInputTextView: UITextView {
         }
     }
 
-    fileprivate func makeKeyboardAccessoryView(isEditorOverlay: Bool = false) -> UIView {
+    func makeKeyboardAccessoryView(isEditorOverlay: Bool = false, dismissOnly: Bool = false) -> UIView {
 #if os(iOS)
         let liquidGlassEnabled = IOSAdaptiveChromePreference.isEnabled()
         let usesNativeGlass: Bool
@@ -538,7 +555,7 @@ class EditorInputTextView: UITextView {
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        let accessoryActions = keyboardShortcutAccessoryEnabled
+        let accessoryActions = keyboardShortcutAccessoryEnabled && !dismissOnly
             ? KeyboardAccessoryAction.configuredActions(
                 rawValue: UserDefaults.standard.string(forKey: KeyboardAccessoryAction.storageKey)
             ) : []
@@ -560,7 +577,7 @@ class EditorInputTextView: UITextView {
             stack.addArrangedSubview(divider)
         }
 
-        for token in bracketTokens {
+        for token in dismissOnly ? [] : bracketTokens {
             let button = UIButton(type: .system)
             button.titleLabel?.font = UIFont.monospacedSystemFont(ofSize: 15, weight: .semibold)
             button.accessibilityIdentifier = token
@@ -592,6 +609,25 @@ class EditorInputTextView: UITextView {
         glass.contentView.addSubview(scroll)
         scroll.addSubview(stack)
 
+        // The iPhone keyboard has no dismiss key and the editor toolbar is
+        // hidden while it is up, so the in-editor bar keeps a fixed way out.
+        let dismissButton = isEditorOverlay ? UIButton(type: .system) : nil
+        if let dismissButton {
+            dismissButton.accessibilityIdentifier = "keyboard-hide"
+            dismissButton.accessibilityLabel = NSLocalizedString("Hide Keyboard", comment: "Keyboard accessory button that dismisses the software keyboard")
+            dismissButton.setImage(UIImage(systemName: "keyboard.chevron.compact.down"), for: .normal)
+            dismissButton.tintColor = .label
+            dismissButton.translatesAutoresizingMaskIntoConstraints = false
+            dismissButton.addTarget(self, action: #selector(dismissKeyboardFromAccessory), for: .touchUpInside)
+            glass.contentView.addSubview(dismissButton)
+            NSLayoutConstraint.activate([
+                dismissButton.trailingAnchor.constraint(equalTo: glass.contentView.trailingAnchor, constant: -10),
+                dismissButton.centerYAnchor.constraint(equalTo: glass.contentView.centerYAnchor),
+                dismissButton.widthAnchor.constraint(equalToConstant: 36),
+                dismissButton.heightAnchor.constraint(equalTo: glass.contentView.heightAnchor)
+            ])
+        }
+
         NSLayoutConstraint.activate([
             host.heightAnchor.constraint(equalToConstant: Self.keyboardToolbarHeight),
 
@@ -601,7 +637,10 @@ class EditorInputTextView: UITextView {
             glass.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -2),
 
             scroll.leadingAnchor.constraint(equalTo: glass.contentView.leadingAnchor, constant: 10),
-            scroll.trailingAnchor.constraint(equalTo: glass.contentView.trailingAnchor, constant: -10),
+            scroll.trailingAnchor.constraint(
+                equalTo: dismissButton?.leadingAnchor ?? glass.contentView.trailingAnchor,
+                constant: dismissButton == nil ? -10 : -4
+            ),
             scroll.topAnchor.constraint(equalTo: glass.contentView.topAnchor, constant: 4),
             scroll.bottomAnchor.constraint(equalTo: glass.contentView.bottomAnchor, constant: -4),
 
@@ -819,6 +858,10 @@ class EditorInputTextView: UITextView {
         }
         #endif
         return resigned
+    }
+
+    @objc private func dismissKeyboardFromAccessory() {
+        _ = resignFirstResponder()
     }
 
     @objc private func performKeyboardAccessoryAction(_ sender: UIButton) {
@@ -1717,9 +1760,9 @@ final class CurrentLineHighlightOverlayView: UIView {
     }
 
     private func drawCurrentLineHighlight() {
-        guard isCurrentLineHighlightEnabled,
-              let textView,
-              textView.isFirstResponder,
+        guard let textView,
+              (isCurrentLineHighlightEnabled && textView.isFirstResponder)
+                || textView.isAtNavigationHighlight,
               textView.textStorage.length <= 250_000 else { return }
 
         let inset = textView.textContainerInset
@@ -1734,8 +1777,11 @@ final class CurrentLineHighlightOverlayView: UIView {
             return
         }
 
-        textView.layoutManager.ensureLayout(for: textView.textContainer)
         let clampedLocation = min(max(0, textView.selectedRange.location), textLength)
+        // Only the text up to the caret's line decides where that line sits.
+        textView.layoutManager.ensureLayout(
+            forCharacterRange: NSRange(location: 0, length: min(textLength, clampedLocation + 1))
+        )
         let nsText = textView.textStorage.string as NSString
         if clampedLocation == textLength && nsText.length > 0 && nsText.character(at: nsText.length - 1) == 10 {
             let extraLineRect = textView.layoutManager.extraLineFragmentRect
@@ -1987,8 +2033,9 @@ final class LineNumberedTextViewContainer: UIView, UIScrollViewDelegate {
 
 #if os(iOS)
     func setKeyboardAccessoryRequested(_ requested: Bool, rebuild: Bool) {
+        let requestChanged = keyboardAccessoryRequested != requested
         keyboardAccessoryRequested = requested
-        if rebuild {
+        if rebuild || requestChanged {
             keyboardAccessoryOverlay?.removeFromSuperview()
             keyboardAccessoryOverlay = nil
         }
@@ -2010,16 +2057,23 @@ final class LineNumberedTextViewContainer: UIView, UIScrollViewDelegate {
     }
 
     func refreshKeyboardAccessoryOverlay() {
-        let shouldShow = keyboardAccessoryRequested && softwareKeyboardVisible && textView.isFirstResponder
+        // The phone keyboard has no dismiss key, so the overlay stays up while
+        // the editor has the keyboard. With the snippet bar turned off it holds
+        // only Hide Keyboard. iPad keeps its native input accessory instead.
+        let shouldShow = UIDevice.current.userInterfaceIdiom == .phone &&
+            softwareKeyboardVisible && textView.isFirstResponder
         guard shouldShow else {
             keyboardAccessoryOverlay?.isHidden = true
             return
         }
         if keyboardAccessoryOverlay == nil {
-            let overlay = textView.makeKeyboardAccessoryView(isEditorOverlay: true)
+            let dismissOnly = !keyboardAccessoryRequested
+            let overlay = textView.makeKeyboardAccessoryView(isEditorOverlay: true, dismissOnly: dismissOnly)
             addSubview(overlay)
             NSLayoutConstraint.activate([
-                overlay.leadingAnchor.constraint(equalTo: leadingAnchor),
+                dismissOnly
+                    ? overlay.widthAnchor.constraint(equalToConstant: EditorInputTextView.dismissOnlyKeyboardToolbarWidth)
+                    : overlay.leadingAnchor.constraint(equalTo: leadingAnchor),
                 overlay.trailingAnchor.constraint(equalTo: trailingAnchor),
                 overlay.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor)
             ])
@@ -3477,9 +3531,17 @@ struct CustomTextEditor: UIViewRepresentable {
                 _ = textView.resignFirstResponder()
             }
             textView.selectedRange = target
+            (textView as? EditorInputTextView)?.navigationHighlightLocation = shouldFocusEditor ? nil : target.location
             centerEditorLine(at: target, in: textView)
             updateCaretStatus()
             scheduleHighlightIfNeeded(currentText: nativeText(of: textView), immediate: true)
+            // Selection and styling updates can move the viewport on the next
+            // run loop. Center again there unless the caret moved meanwhile.
+            DispatchQueue.main.async { [weak self, weak textView] in
+                guard let self, let textView, self.textView === textView,
+                      textView.selectedRange == target else { return }
+                self.centerEditorLine(at: target, in: textView)
+            }
         }
 
         private func centerEditorLine(at range: NSRange, in textView: UITextView) {
@@ -3490,6 +3552,12 @@ struct CustomTextEditor: UIViewRepresentable {
                 location: min(max(0, range.location), textLength),
                 length: range.location < textLength ? 1 : 0
             )
+            // Non-contiguous layout only estimates the position of text that
+            // has not been laid out yet, which put distant lines off screen.
+            // Large files keep the estimate so a jump cannot stall typing.
+            if !parent.isLargeFileMode {
+                layoutManager.ensureLayout(forCharacterRange: NSRange(location: 0, length: NSMaxRange(lineProbe)))
+            }
             let glyphRange = layoutManager.glyphRange(forCharacterRange: lineProbe, actualCharacterRange: nil)
             let lineRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textView.textContainer)
             let targetY = lineRect.midY + textView.textContainerInset.top - textView.bounds.height / 2
@@ -3868,6 +3936,7 @@ struct CustomTextEditor: UIViewRepresentable {
             var fallbackColoredRanges: [(priority: Int, range: NSRange, color: UIColor)] = []
             var emphasizedRanges: [(NSRange, SyntaxFontEmphasis)] = []
             var underlinedRanges: [NSRange] = []
+            var literalOccupiedRanges: [NSRange] = []
             let markdownFonts = isMarkdownSyntaxLanguage(language) ? markdownSourceFontRanges(text) : []
 
             if let fastRanges = fastSyntaxColorRanges(
@@ -3897,6 +3966,21 @@ struct CustomTextEditor: UIViewRepresentable {
                         }
                     }
                 }
+                // Strings and comments the scanner finds (multi-line ones, and
+                // for some languages every one) are colored as such only, so
+                // drop keywords and other tokens matched inside them.
+                if let literalScanner = SyntaxLiteralScanner.forLanguage(language) {
+                    var state: SyntaxLiteralScanner.State = nil
+                    _ = literalScanner.literals(in: nsText, range: NSRange(location: 0, length: applyRange.location), state: &state)
+                    let literals = literalScanner.literals(in: nsText, range: applyRange, state: &state)
+                    if !literals.isEmpty {
+                        literalOccupiedRanges = mergedSyntaxRanges(literals.map(\.range))
+                        coloredRanges.removeAll { !syntaxRangeIsUnoccupied($0.0, occupiedRanges: literalOccupiedRanges) }
+                        let stringColor = UIColor(colors.string)
+                        let commentColor = UIColor(colors.comment)
+                        coloredRanges.append(contentsOf: literals.map { ($0.range, $0.isComment ? commentColor : stringColor) })
+                    }
+                }
                 var occupiedRanges = mergedSyntaxRanges(coloredRanges.map(\.0))
                 let acceptedTypes = fallbackColoredRanges.lazy
                     .filter { $0.priority == 0 }
@@ -3922,6 +4006,9 @@ struct CustomTextEditor: UIViewRepresentable {
                         guard isValidHighlightRange(match.range, utf16Length: fullRange.length) else { continue }
                         emphasizedRanges.append((match.range, .keyword))
                     }
+                }
+                if !literalOccupiedRanges.isEmpty {
+                    emphasizedRanges.removeAll { !syntaxRangeIsUnoccupied($0.0, occupiedRanges: literalOccupiedRanges) }
                 }
             }
 
@@ -4125,6 +4212,7 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func textViewDidChange(_ textView: UITextView) {
             guard !isApplyingHighlight else { return }
+            (textView as? EditorInputTextView)?.navigationHighlightLocation = nil
             // UITextView.text copies the whole text storage on every read.
             // Read it once per keystroke and reuse that snapshot below.
             let currentText = textView.text ?? ""
@@ -4182,6 +4270,9 @@ struct CustomTextEditor: UIViewRepresentable {
             guard !isApplyingHighlight else { return }
             textView.setNeedsDisplay()
             let editorTextView = textView as? EditorInputTextView
+            if let editorTextView, !editorTextView.isAtNavigationHighlight {
+                editorTextView.navigationHighlightLocation = nil
+            }
             editorTextView?.currentLineHighlightOverlayView?.setNeedsDisplay()
             selectionUpdateGeneration &+= 1
             let generation = selectionUpdateGeneration

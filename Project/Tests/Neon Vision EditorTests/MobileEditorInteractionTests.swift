@@ -440,6 +440,44 @@ final class MobileEditorInteractionTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(probe.elapsed, probe.longestGap)
     }
 
+    private func hideKeyboardButton(in view: UIView) -> UIButton? {
+        if let button = view as? UIButton, button.accessibilityIdentifier == "keyboard-hide" {
+            return button
+        }
+        return view.subviews.lazy.compactMap { self.hideKeyboardButton(in: $0) }.first
+    }
+
+    private func buttonIdentifiers(in view: UIView) -> [String] {
+        ((view as? UIButton)?.accessibilityIdentifier.map { [$0] } ?? []) +
+            view.subviews.flatMap { buttonIdentifiers(in: $0) }
+    }
+
+    func testPhoneKeyboardBarOffersHideKeyboard() {
+        let editor = EditorInputTextView(frame: .zero, textContainer: nil)
+        let overlayButton = hideKeyboardButton(in: editor.makeKeyboardAccessoryView(isEditorOverlay: true))
+        XCTAssertNotNil(overlayButton)
+        XCTAssertEqual(
+            overlayButton?.accessibilityLabel,
+            NSLocalizedString("Hide Keyboard", comment: "Keyboard accessory button that dismisses the software keyboard")
+        )
+        // iPad's input accessory keeps the system keyboard's own dismiss key.
+        XCTAssertNil(hideKeyboardButton(in: editor.makeKeyboardAccessoryView(isEditorOverlay: false)))
+    }
+
+    func testHideKeyboardButtonResignsTheEditor() throws {
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom != .phone, "iPad intentionally uses the native input accessory, not the phone overlay")
+        withEditor("Short note", showKeyboardAccessoryBar: true, softwareKeyboardVisible: true) { container in
+            let view = container.textView
+            XCTAssertTrue(view.becomeFirstResponder())
+            guard let overlay = container.keyboardAccessoryOverlay, let button = hideKeyboardButton(in: overlay) else {
+                return XCTFail("Missing Hide Keyboard button in the editor keyboard overlay")
+            }
+            button.sendActions(for: .touchUpInside)
+            XCTAssertFalse(view.isFirstResponder)
+            XCTAssertTrue(overlay.isHidden)
+        }
+    }
+
     func testFocusedEditorExposesConfiguredAppShortcuts() {
         let editor = EditorInputTextView(frame: .zero, textContainer: nil)
         var receivedAction: EditorShortcutAction?
@@ -1076,6 +1114,45 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
+    func testTableOfContentsJumpCentersAndMarksDistantLineWithoutFocus() {
+        var text = ""
+        for section in 1...40 {
+            text += "## Heading \(section)\n\n"
+            text += String(repeating: "Body line for section \(section).\n", count: 12) + "\n"
+        }
+        let targetLine = 436 // "## Heading 30"
+        withEditor(text) { container in
+            let view = container.textView
+            container.layoutIfNeeded()
+            NotificationCenter.default.post(
+                name: .moveCursorToLine,
+                object: targetLine,
+                userInfo: [EditorCommandUserInfo.focusEditor: false]
+            )
+            RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+
+            let nsText = view.text as NSString
+            var location = 0
+            for _ in 1..<targetLine {
+                location = NSMaxRange(nsText.lineRange(for: NSRange(location: location, length: 0)))
+            }
+            XCTAssertTrue(nsText.substring(from: location).hasPrefix("## Heading 30\n"))
+            XCTAssertEqual(view.selectedRange, NSRange(location: location, length: 0))
+            XCTAssertFalse(view.isFirstResponder)
+            XCTAssertEqual(view.navigationHighlightLocation, location)
+
+            view.layoutManager.ensureLayout(for: view.textContainer)
+            let glyph = view.layoutManager.glyphIndexForCharacter(at: location)
+            let lineRect = view.layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+            let lineMidY = lineRect.midY + view.textContainerInset.top
+            XCTAssertGreaterThan(lineMidY, view.contentOffset.y)
+            XCTAssertLessThan(lineMidY, view.contentOffset.y + view.bounds.height)
+
+            view.selectedRange = NSRange(location: location, length: 5)
+            XCTAssertNil(view.navigationHighlightLocation)
+        }
+    }
+
     func testNoWrapTypingDoesNotJumpViewportWhenCapacityGrows() {
         withEditor(String(repeating: "W", count: 5_000)) { container in
             let view = container.textView
@@ -1258,7 +1335,9 @@ final class MobileEditorInteractionTests: XCTestCase {
             assertAccessoryBackground(container, matches: editorBackground)
 
             view.setBracketAccessoryVisible(false)
-            XCTAssertTrue(container.keyboardAccessoryOverlay?.isHidden ?? true)
+            // With the snippet bar off, the overlay keeps only Hide Keyboard.
+            XCTAssertFalse(container.keyboardAccessoryOverlay?.isHidden ?? true)
+            XCTAssertEqual(container.keyboardAccessoryOverlay.map { buttonIdentifiers(in: $0) }, ["keyboard-hide"])
             view.setBracketAccessoryVisible(true)
             assertAccessoryBackground(container, matches: editorBackground)
             container.setSoftwareKeyboardVisible(false)

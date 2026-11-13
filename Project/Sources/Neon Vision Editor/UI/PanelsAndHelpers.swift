@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.2.0",
-            subtitle: "Release highlights for v2.2.0.",
+            title: "What’s New in v2.2.2",
+            subtitle: "Release highlights for v2.2.2.",
             bullets: [
-                "iPhone Duo: On iPhone Duo, a preview next to the editor starts at the fold, so the document and preview each get one half.",
-                "Battery Use: The iPhone app updates Apple Watch only when your status changes, and network files aren't checked in the background.",
-                "AI Providers: API Route is available as an optional AI provider.",
-                "Text Replacements: On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it.",
-                "Tab Order: With Reopen Last Session, Mac tabs come back in the order you left them.",
-                "Neon Pulse: The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note."
+                "MeierScript: MeierScript files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names.",
+                "Run Console: In the Mac version from GitHub, a run console runs MeierScript, Python, JavaScript, Ruby, PHP, Lua, R, shell and Swift files.",
+                "Hide Keyboard: On iPhone, a Hide Keyboard button above the keyboard closes it without scrolling the document.",
+                "Table of Contents: On iPhone and iPad, tapping a table of contents entry jumps to that heading, even far down a long document.",
+                "Code Completion: Code completion stays quiet inside comments in more languages and keeps suggestions such as #include or $variable.",
+                "Syntax Colors: On the Mac, text inside multi-line strings and MeierScript comments keeps its string or comment color."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4062,6 +4062,17 @@ struct SupportPromptSheetView: View {
     }
 }
 
+/// MeierScript part of the editor help. Texts are localized because
+/// colleagues using SidUI/MessageBox read this instead of the documentation.
+enum MeierScriptHelp {
+    static let sectionKey = "meierscript"
+}
+
+/// Run console help for script languages with an installed interpreter.
+enum ScriptRunHelp {
+    static let sectionKey = "runscripts"
+}
+
 struct EditorHelpView: View {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -4094,6 +4105,7 @@ struct EditorHelpView: View {
 
     private struct HelpSection: Identifiable {
         let id = UUID()
+        var key: String? = nil
         let title: String
         let iconName: String
         let items: [HelpItem]
@@ -4134,6 +4146,71 @@ struct EditorHelpView: View {
         currentToolbarPreset == .custom
             ? ToolbarActionSelection.orderedIDs(from: toolbarCustomFiveIDsIOS, fallback: [])
             : currentToolbarPreset.mobileIDs
+#endif
+    }
+
+    private static func meierScriptItem(_ title: String, _ description: String, mac: String = "None",
+                                        icon: String) -> HelpItem {
+        HelpItem(title: NSLocalizedString(title, comment: "MeierScript help title"),
+                 description: NSLocalizedString(description, comment: "MeierScript help description"),
+                 shortcutMac: mac, shortcutPad: "None", iconName: icon)
+    }
+
+    private static var meierScriptSection: HelpSection {
+        var items = [
+            meierScriptItem("MeierScript Files",
+                            "Files ending in .meierscript open as MeierScript with syntax highlighting. Use Language > MeierScript for other files.",
+                            icon: "doc.text"),
+        ]
+#if os(macOS)
+        items += [
+            meierScriptItem("MeierScript Completion",
+                            "After two letters, keywords, built-in functions and names from the document appear below the caret. Tab or Right Arrow accepts, Esc closes.",
+                            mac: "Tab", icon: "text.badge.plus"),
+        ]
+#endif
+#if os(macOS) && !APP_STORE_BUILD
+        items += [
+            meierScriptItem("Run MeierScript",
+                            "Runs the script as it is in the editor with the meierscript tool from SidUI Editor or SidUI Viewer. Output appears on the left, errors on the right.",
+                            mac: "Cmd+R", icon: "play.fill"),
+            meierScriptItem("Check MeierScript Syntax",
+                            "Parses the script without running any line. Click the error in the status bar to jump to its line.",
+                            mac: "Shift+Cmd+R", icon: "checkmark.seal"),
+            meierScriptItem("Auto-Check and Auto-Run",
+                            "Auto-Check tests the syntax after each pause in typing. Auto-Run, off by default, also runs the script; avoid it for scripts that change files or settings.",
+                            icon: "arrow.triangle.2.circlepath"),
+            meierScriptItem("MeierScript Errors",
+                            "The tool reports the first token it did not expect, so a missing \")\" often points to the next line. Runtime errors appear only when the script runs.",
+                            icon: "exclamationmark.triangle"),
+            meierScriptItem("Scripts in the Sandbox",
+                            "Scripts run with Neon Vision Editor's permissions: writeFile, readFile and runCommand reach only places the app may access, and readLine returns nil.",
+                            icon: "lock.shield"),
+        ]
+#endif
+        return HelpSection(key: MeierScriptHelp.sectionKey, title: "MeierScript", iconName: "scroll", items: items)
+    }
+
+    /// Mac direct-download builds only: the App Store build has no run console.
+    private static var runScriptsSections: [HelpSection] {
+#if os(macOS) && !APP_STORE_BUILD
+        let items = [
+            meierScriptItem("Run Scripts",
+                            "Python, JavaScript, Ruby, Perl, PHP, Lua, R, Bash, Zsh, Fish, PowerShell and Swift files run with an interpreter installed on your Mac, for example with Homebrew or the Xcode Command Line Tools. Output appears on the left, errors on the right.",
+                            mac: "Cmd+R", icon: "play.fill"),
+            meierScriptItem("Check Script Syntax",
+                            "Checks the syntax without running the script, where the interpreter offers a check. Click the error in the status bar to jump to its line.",
+                            mac: "Shift+Cmd+R", icon: "checkmark.seal"),
+            meierScriptItem("Run Console",
+                            "The console opens when you run a script and stays hidden otherwise. Auto-Check and Auto-Run work as for MeierScript. Python uses the interpreter set in Settings or a .venv next to the file.",
+                            icon: "rectangle.bottomthird.inset.filled"),
+            meierScriptItem("Scripts and Permissions",
+                            "Scripts run with Neon Vision Editor's permissions and reach only files the app may access. Unsaved edits run as they are in the editor.",
+                            icon: "lock.shield"),
+        ]
+        return [HelpSection(key: ScriptRunHelp.sectionKey, title: "Run Scripts", iconName: "play.rectangle", items: items)]
+#else
+        return []
 #endif
     }
 
@@ -4257,6 +4334,7 @@ struct EditorHelpView: View {
                 HelpItem(title: "Hide Keyboard", description: "Dismiss the on-screen keyboard on iPhone and iPad.", shortcutMac: "None", shortcutPad: "None", iconName: "keyboard.chevron.compact.down")
             ]
         ),
+        Self.meierScriptSection,
         HelpSection(
             title: "App Controls",
             iconName: "gearshape",
@@ -4270,25 +4348,34 @@ struct EditorHelpView: View {
                 HelpItem(title: "Bracket Helper Bar", description: "Show or hide the macOS bracket helper bar.", shortcutMac: "None", shortcutPad: "None", iconName: "curlybraces")
             ]
         )
-    ]
+    ] + Self.runScriptsSections
 
+    /// Key of a section to scroll to when the help opens, such as `MeierScriptHelp.sectionKey`.
+    var focusSectionKey: String? = nil
     let onDismiss: () -> Void
 
     var body: some View {
         NavigationStack {
             GeometryReader { proxy in
                 let compact = proxy.size.width < 560
-                ScrollView(.vertical, showsIndicators: true) {
-                    VStack(alignment: .leading, spacing: compact ? 18 : 22) {
-                        header(compact: compact)
+                ScrollViewReader { reader in
+                    ScrollView(.vertical, showsIndicators: true) {
+                        VStack(alignment: .leading, spacing: compact ? 18 : 22) {
+                            header(compact: compact)
 
-                        sectionView(toolbarPresetSection, compact: compact)
+                            sectionView(toolbarPresetSection, compact: compact)
 
-                        ForEach(sections) { section in
-                            sectionView(section, compact: compact)
+                            ForEach(sections) { section in
+                                sectionView(section, compact: compact)
+                                    .id(section.key ?? section.id.uuidString)
+                            }
                         }
+                        .padding(compact ? 16 : 24)
                     }
-                    .padding(compact ? 16 : 24)
+                    .onAppear {
+                        guard let focusSectionKey else { return }
+                        DispatchQueue.main.async { reader.scrollTo(focusSectionKey, anchor: .top) }
+                    }
                 }
             }
             .toolbar {
@@ -4496,6 +4583,9 @@ extension Notification.Name {
     static let convertTextToMarkdownRequested = Notification.Name("convertTextToMarkdownRequested")
     static let structureTextAsJSONRequested = Notification.Name("structureTextAsJSONRequested")
     static let showIntegratedTerminalRequested = Notification.Name("showIntegratedTerminalRequested")
+    static let runMeierScriptRequested = Notification.Name("runMeierScriptRequested")
+    static let checkMeierScriptSyntaxRequested = Notification.Name("checkMeierScriptSyntaxRequested")
+    static let toggleMeierScriptConsoleRequested = Notification.Name("toggleMeierScriptConsoleRequested")
     static let toggleCodeMinimapRequested = Notification.Name("toggleCodeMinimapRequested")
     static let toggleFocusModeRequested = Notification.Name("toggleFocusModeRequested")
     static let editorViewportDidChange = Notification.Name("editorViewportDidChange")
@@ -4518,6 +4608,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.2.2", version: "2.2.2", date: "2026-11-13", highlights: [
+            "MeierScript files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names.",
+            "In the Mac version from GitHub, a run console runs MeierScript, Python, JavaScript, Ruby, PHP, Lua, R, shell and Swift files.",
+            "On iPhone, a Hide Keyboard button above the keyboard closes it without scrolling the document."
+        ]),
         Release(id: "2.2.0", version: "2.2.0", date: "2026-11-09", highlights: [
             "On iPhone Duo, a preview next to the editor starts at the fold, so the document and preview each get one half.",
             "The iPhone app updates Apple Watch only when your status changes, and network files aren't checked in the background.",
@@ -5055,3 +5150,4 @@ struct WelcomeTourWindowPresenter: NSViewRepresentable {
     }
 }
 #endif
+

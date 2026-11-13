@@ -101,7 +101,7 @@ enum EditorLoadHelper {
         "log", "vim", "ipynb", "java", "kt", "kts", "go", "rb", "rs", "ps1", "psm1",
         "html", "htm", "xhtml", "ee", "exp", "tmpl", "css", "c", "cpp", "cc", "hpp", "hh", "h",
         "m", "mm", "cs", "json", "jsonc", "json5", "ndjson", "md", "markdown", "env", "proto",
-        "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh", "fish", "pl", "pm", "lua", "r",
+        "graphql", "gql", "rst", "conf", "nginx", "cob", "cbl", "cobol", "sh", "bash", "zsh", "fish", "pl", "pm", "lua", "r", "meierscript",
         "tf", "tfvars", "hcl", "xcconfig", "strings", "stringsdict", "jsx",
         "typ", "tex", "latex", "bib", "sty", "cls", "vasp", "isoviz", "upf", "xyz", "xsf"
     ]
@@ -1498,6 +1498,7 @@ class EditorViewModel {
         "mkdn": "markdown",
         "mdx": "markdown",
         "typ": "typst",
+        "meierscript": "meierscript",
         "tex": "tex",
         "latex": "tex",
         "bib": "tex",

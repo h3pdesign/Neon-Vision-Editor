@@ -6,6 +6,49 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.2.2] - 2026-11-13
+
+### Why Upgrade
+
+- MeierScript files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names.
+- In the Mac version from GitHub, a run console runs MeierScript, Python, JavaScript, Ruby, PHP, Lua, R, shell and Swift files.
+- On iPhone, a Hide Keyboard button above the keyboard closes it without scrolling the document.
+
+### Highlights
+
+- On iPhone and iPad, tapping a table of contents entry jumps to that heading, even far down a long document.
+- Code completion stays quiet inside comments in more languages and keeps suggestions such as #include or $variable.
+- On the Mac, text inside multi-line strings and MeierScript comments keeps its string or comment color.
+
+### Added
+
+- MeierScript support: `.meierscript` files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names from the document while you type.
+- In the Mac version downloaded from GitHub (not the Mac App Store version), a MeierScript console runs the script with the `meierscript` command-line tool from an installed SidUI Editor or SidUI Viewer and shows output and errors in separate panes. Run is ⌘R, Check Syntax is ⇧⌘R, and Auto-Check and opt-in Auto-Run react to each edit.
+- Help › MeierScript Help… and the ? button in the MeierScript console open a MeierScript section in the editor help.
+- In the Mac version downloaded from GitHub, the run console also runs Python, JavaScript (Node.js), Ruby, Perl, PHP, Lua, R, Bash, Zsh, Fish, PowerShell and Swift files with an interpreter installed on the Mac, such as from Homebrew or the Xcode Command Line Tools. ⌘R runs the script as it is in the editor and opens the console; ⇧⌘R and Auto-Check check the syntax where the language offers a check, and a click on the error jumps to its line. Python uses the interpreter set in Settings or a `.venv` next to the file. The console stays hidden for these languages until you run a script, and Help › Run Scripts Help… explains it.
+
+### Fixes
+
+- On the Mac, text inside multi-line `"""` strings in MeierScript, Swift, Kotlin, Python and TOML (and `'''` strings in Python and TOML) is colored as a string on every line, instead of picking up keyword and type colors from the second line on.
+- In MeierScript, keywords, numbers, `nil`, `true` and `false` inside comments and strings keep the comment or string color, and `/* … */` comments that span lines are colored on every line.
+- On iPhone, including iPhone Duo, a Hide Keyboard button sits above the keyboard, so you can close the keyboard and get back to the toolbar without scrolling the document. With the Keyboard Snippet Bar turned off, the button still appears on its own.
+- On iPhone and iPad, tapping a table of contents entry scrolls the editor to that heading, even far down a long document, and marks its line.
+- On the Mac, AI code completion no longer stops after a URL in JSON, CSS, INI, .env, Dockerfile, nginx, CSV and log files, after `${#name}` in shell scripts, or after an apostrophe or Rust lifetime in TeX, Typst and Rust code.
+- Code completion recognizes the comment syntax of SQL, Lua, Ada, Perl, R, Makefile, Dockerfile, INI, COBOL, GraphQL, XML and ExpressionEngine, so it stays quiet inside comments.
+- Code suggestions that use `#`, `$`, `@`, `\`, `^` or `~`, such as `#include`, `$variable`, `@Override` or `\section`, are no longer discarded.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, sessions, and preferences are preserved.
+
+### Maintenance
+
+- Development version 2.2.2 (build 1151).
+
 ## [v2.2.0] - 2026-11-09
 
 ### Why Upgrade

@@ -216,7 +216,9 @@ final class MeierScriptSupportTests: XCTestCase {
             XCTAssertEqual(MeierScriptLanguage.firstDiagnostic(in: mapped.standardError)?.line, 6, mapped.standardError)
         }
 
-        let endless = await MeierScriptRunner.execute(source: "while true { }\n", mode: .run,
+        // The CLI ends a busy loop itself after about a second (recursion
+        // budget), which raced the timeout; a long sleep only stops on it.
+        let endless = await MeierScriptRunner.execute(source: "sleep(30)\n", mode: .run,
                                                       cliURL: cli, workingDirectory: nil, timeout: 1)
         XCTAssertTrue(endless.timedOut)
         XCTAssertLessThan(endless.duration, 5)

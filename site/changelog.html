@@ -118,7 +118,23 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v2.2.0</h2><span class="date">9 November 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v2.2.2</h2><span class="date">13 November 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>On iPhone and iPad, tapping a table of contents entry jumps to that heading, even far down a long document.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Code completion stays quiet inside comments in more languages and keeps suggestions such as #include or $variable.</p></div>
+          <div class="item"><span class="badge new">New</span><p>On the Mac, text inside multi-line strings and MeierScript comments keeps its string or comment color.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>On the Mac, text inside multi-line `&quot;&quot;&quot;` strings in MeierScript, Swift, Kotlin, Python and TOML (and `&#x27;&#x27;&#x27;` strings in Python and TOML) is colored as a string on every line, instead of picking up keyword and type colors from the second line on.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>In MeierScript, keywords, numbers, `nil`, `true` and `false` inside comments and strings keep the comment or string color, and `/* … */` comments that span lines are colored on every line.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>On iPhone, including iPhone Duo, a Hide Keyboard button sits above the keyboard, so you can close the keyboard and get back to the toolbar without scrolling the document. With the Keyboard Snippet Bar turned off, the button still appears on its own.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>On iPhone and iPad, tapping a table of contents entry scrolls the editor to that heading, even far down a long document, and marks its line.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>On the Mac, AI code completion no longer stops after a URL in JSON, CSS, INI, .env, Dockerfile, nginx, CSV and log files, after `${#name}` in shell scripts, or after an apostrophe or Rust lifetime in TeX, Typst and Rust code.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Code completion recognizes the comment syntax of SQL, Lua, Ada, Perl, R, Makefile, Dockerfile, INI, COBOL, GraphQL, XML and ExpressionEngine, so it stays quiet inside comments.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Code suggestions that use `#`, `$`, `@`, `\`, `^` or `~`, such as `#include`, `$variable`, `@Override` or `\section`, are no longer discarded.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v2.2.0</h2><span class="date">9 November 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it.</p></div>
           <div class="item"><span class="badge new">New</span><p>With Reopen Last Session, Mac tabs come back in the order you left them.</p></div>

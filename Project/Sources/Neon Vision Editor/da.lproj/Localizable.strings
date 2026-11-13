@@ -2034,3 +2034,5 @@
 "Table of Contents: On iPhone and iPad, tapping a table of contents entry jumps to that heading, even far down a long document." = "Indholdsfortegnelse: På iPhone og iPad springer et tryk på et punkt i indholdsfortegnelsen til overskriften, også langt nede i lange dokumenter.";
 "Code Completion: Code completion stays quiet inside comments in more languages and keeps suggestions such as #include or $variable." = "Kodefuldførelse: Kodefuldførelse forholder sig i ro i kommentarer i flere sprog og beholder forslag som #include eller $variable.";
 "Syntax Colors: On the Mac, text inside multi-line strings and MeierScript comments keeps its string or comment color." = "Syntaksfarver: På Mac beholder tekst i strenge over flere linjer og MeierScript-kommentarer sin streng- eller kommentarfarve.";
+"Accept Suggestions with Return" = "Accepter forslag med Retur";
+"Like Xcode, Return inserts the selected suggestion from the list. When off, Return accepts only a suggestion you chose with the arrow keys." = "Som i Xcode indsætter Retur det valgte forslag fra listen. Når den er slået fra, accepterer Retur kun et forslag, du har valgt med piletasterne.";

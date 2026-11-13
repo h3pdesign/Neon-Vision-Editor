@@ -2034,3 +2034,5 @@
 "Table of Contents: On iPhone and iPad, tapping a table of contents entry jumps to that heading, even far down a long document." = "目次: iPhoneとiPadでは、目次の項目をタップすると、長い書類の下の方でもその見出しへ移動します。";
 "Code Completion: Code completion stays quiet inside comments in more languages and keeps suggestions such as #include or $variable." = "コード補完: コード補完は、より多くの言語でコメント内では表示されず、#includeや$variableのような候補も残ります。";
 "Syntax Colors: On the Mac, text inside multi-line strings and MeierScript comments keeps its string or comment color." = "構文の色: Macでは、複数行の文字列とMeierScriptのコメント内のテキストが文字列やコメントの色のまま表示されます。";
+"Accept Suggestions with Return" = "Returnキーで候補を確定";
+"Like Xcode, Return inserts the selected suggestion from the list. When off, Return accepts only a suggestion you chose with the arrow keys." = "Xcodeと同様に、Returnキーでリストの選択中の候補を挿入します。オフの場合、Returnキーは矢印キーで選んだ候補のみを確定します。";

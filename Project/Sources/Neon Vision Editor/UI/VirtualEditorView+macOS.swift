@@ -1188,6 +1188,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     // A Text Replacement phrase replaces the typed shortcut before the caret
     // instead of being appended to it (#959).
     private var inlineSuggestionReplacesPrefix = false
+    private var inlineSuggestionSelectsCallArgument = false
     // System dictionary completion lists every match below the caret (#926).
     // The selected row is also the inline suggestion that Tab accepts.
     // Each row is the text to insert; rows flagged in
@@ -2751,6 +2752,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         selectionAnchor = nil
         let sanitized = EditorTextSanitizer.sanitize(raw)
         guard replaceSelection(with: sanitized) else { return false }
+        revealCaretAfterInsertion()
         NotificationCenter.default.post(name: .pastedText, object: sanitized)
         return true
     }
@@ -2847,7 +2849,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 // Return accepts only a word the user picked with the arrow
                 // keys, so ending a line after a complete word stays a newline.
                 // A Text Replacement the user defined is accepted directly (#959).
-                if completionListNavigated || inlineSuggestionReplacesPrefix,
+                // The Xcode-style setting makes Return accept any listed one.
+                if completionListNavigated || inlineSuggestionReplacesPrefix
+                    || UserDefaults.standard.bool(forKey: CompletionHeuristics.returnAcceptsCompletionDefaultsKey),
                    acceptInlineSuggestion() { return }
             default:
                 break
@@ -3103,6 +3107,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         completionListNavigated = false
         inlineSuggestion = candidates.first ?? EditorTextSanitizer.sanitize(suggestion)
         inlineSuggestionReplacesPrefix = !replacements.isEmpty
+        inlineSuggestionSelectsCallArgument = replacements.isEmpty
+            && notification.userInfo?[EditorCommandUserInfo.completionSelectsCallArgument] as? Bool == true
         inlineSuggestionLocation = location
         if !candidates.isEmpty { announceCompletionListSelection() }
         updateCompletionListOverlay()
@@ -3114,6 +3120,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         inlineSuggestion = nil
         inlineSuggestionLocation = nil
         inlineSuggestionReplacesPrefix = false
+        inlineSuggestionSelectsCallArgument = false
         completionListSuffixes = []
         completionListReplacesPrefix = []
         completionListPrefix = ""
@@ -3132,6 +3139,8 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             return false
         }
         let replacedShortcut = inlineSuggestionReplacesPrefix ? completionListPrefix : ""
+        let typedPrefix = completionListPrefix
+        let selectsCallArgument = inlineSuggestionSelectsCallArgument
         clearInlineSuggestion()
         if !replacedShortcut.isEmpty {
             // Replace the typed Text Replacement shortcut, but only if it is
@@ -3150,7 +3159,28 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             }
             return true
         }
-        return replaceSelection(with: suggestion)
+        let insertionStart = absoluteCaret
+        guard replaceSelection(with: suggestion) else { return false }
+        if selectsCallArgument {
+            selectCallArgument(inCompletion: typedPrefix + suggestion,
+                               completionStart: insertionStart - typedPrefix.utf16.count)
+        }
+        return true
+    }
+
+    /// After a function completion such as `print(string)`, selects the first
+    /// argument so typing replaces it; a call without arguments leaves the
+    /// caret after its closing parenthesis.
+    private func selectCallArgument(inCompletion completion: String, completionStart: Int) {
+        guard let placeholder = CompletionHeuristics.callArgumentPlaceholderRange(in: completion),
+              completionStart >= 0 else { return }
+        let location = completionStart + placeholder.location
+        guard NSMaxRange(NSRange(location: location, length: placeholder.length)) <= (document?.utf16Length ?? 0) else { return }
+        selection = NSRange(location: location, length: placeholder.length)
+        absoluteCaret = NSMaxRange(selection)
+        selectionAnchor = placeholder.length > 0 ? location : nil
+        publishCaret()
+        needsDisplay = true
     }
 
     private func insertConfiguredIndentation() {
@@ -3528,8 +3558,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         replaceSelection(with: "")
     }
 
-    private func pasteSelection() {
-        let pasteboard = NSPasteboard.general
+    func pasteSelection(from pasteboard: NSPasteboard = .general) {
         if publishFileURLs(from: pasteboard) { return }
         guard let text = plainString(from: pasteboard) else { return }
         if let fileURL = fileURL(from: text) {
@@ -3538,7 +3567,20 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         }
         let sanitized = EditorTextSanitizer.sanitize(text)
         guard replaceSelection(with: sanitized) else { return }
+        revealCaretAfterInsertion()
         NotificationCenter.default.post(name: .pastedText, object: sanitized)
+    }
+
+    /// A paste can add more lines than one bounded viewport holds. Grow the
+    /// canvas to the new line count and scroll to the caret, so the visible
+    /// region is the loaded viewport around the caret. Otherwise the view stays
+    /// at the old scroll offset while the next configure loads the lines around
+    /// the caret, and the visible rows draw empty until the user scrolls.
+    private func revealCaretAfterInsertion() {
+        recalculateVisualMetrics()
+        setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
+        ensureCaretVisible()
+        needsDisplay = true
     }
 
     @discardableResult

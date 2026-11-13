@@ -387,6 +387,9 @@ enum CompletionHeuristics {
     }
 
     static let vocabularyCompletionDefaultsKey = "SettingsVocabularyCompletionEnabled"
+    /// Return accepts the selected entry of the completion list, as in Xcode,
+    /// instead of only after choosing one with the arrow keys. Off by default.
+    static let returnAcceptsCompletionDefaultsKey = "SettingsCompletionReturnAccepts"
 
     /// Languages whose keyword and built-in vocabulary is offered while typing
     /// without an AI provider.
@@ -397,13 +400,16 @@ enum CompletionHeuristics {
     /// Completion suffixes for the identifier before the caret: language
     /// vocabulary first (shortest first), then identifiers from the nearby
     /// document. Only case-sensitive prefix matches qualify, because the editor
-    /// appends the suffix to the typed prefix.
+    /// appends the suffix to the typed prefix. With `insertsCallTemplates`,
+    /// MeierScript functions complete as calls with their required parameters,
+    /// such as `print(string)` or `getCommands()`, as in Xcode.
     static func vocabularySuffixes(
         in text: NSString,
         caretLocation: Int,
         language: String,
         minimumPrefixLength: Int = 2,
-        limit: Int = 6
+        limit: Int = 6,
+        insertsCallTemplates: Bool = false
     ) -> (prefix: String, suffixes: [String]) {
         let normalizedLanguage = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard limit > 0,
@@ -423,13 +429,75 @@ enum CompletionHeuristics {
             .filter { $0.key.hasPrefix(prefix) }
             .sorted { lhs, rhs in lhs.value != rhs.value ? lhs.value > rhs.value : lhs.key < rhs.key }
             .map(\.key)
+        let userFunctions = insertsCallTemplates && normalizedLanguage == MeierScriptLanguage.identifier
+            && !isFunctionNameDeclaration(in: text, prefixStart: caretLocation - (prefix as NSString).length)
+            ? meierScriptFunctionParameters(in: text, caretLocation: caretLocation)
+            : nil
         var seen = Set<String>()
         var suffixes: [String] = []
         for word in vocabulary + documentWords where seen.insert(word).inserted {
-            suffixes.append(String(word.dropFirst(prefix.count)))
+            var completion = word
+            if let userFunctions {
+                if let parameters = userFunctions[word] {
+                    completion = "\(word)(\(parameters))"
+                } else if let template = MeierScriptLanguage.callTemplate(forBuiltin: word) {
+                    completion = template
+                }
+            }
+            suffixes.append(String(completion.dropFirst(prefix.count)))
             if suffixes.count == limit { break }
         }
         return (prefix, suffixes)
+    }
+
+    /// Range of the first argument placeholder in a completed call, relative
+    /// to `completion`, such as `string` in `print(string)`. A call without
+    /// arguments returns an empty range after its closing parenthesis, so the
+    /// caret continues after the call.
+    static func callArgumentPlaceholderRange(in completion: String) -> NSRange? {
+        let text = completion as NSString
+        guard text.length > 1, text.hasSuffix(")") else { return nil }
+        let open = text.range(of: "(")
+        guard open.location != NSNotFound else { return nil }
+        let start = NSMaxRange(open)
+        let close = text.length - 1
+        guard start <= close else { return nil }
+        if start == close { return NSRange(location: text.length, length: 0) }
+        let comma = text.range(of: ",", range: NSRange(location: start, length: close - start))
+        let end = comma.location == NSNotFound ? close : comma.location
+        return NSRange(location: start, length: end - start)
+    }
+
+    /// True when the identifier being typed follows `func`, where it names a
+    /// new function rather than calling one.
+    private static func isFunctionNameDeclaration(in text: NSString, prefixStart: Int) -> Bool {
+        let start = max(0, prefixStart - 40)
+        guard prefixStart > start else { return false }
+        let before = text.substring(with: NSRange(location: start, length: prefixStart - start))
+        return before.range(of: #"\bfunc\s+$"#, options: .regularExpression) != nil
+    }
+
+    /// Parameter names of the MeierScript functions declared in the text
+    /// before the caret, keyed by function name: `func greet(name: String)`
+    /// gives `"greet": "name"`.
+    private static func meierScriptFunctionParameters(in text: NSString, caretLocation: Int) -> [String: String] {
+        let start = max(0, caretLocation - 16_000)
+        let searchText = text.substring(with: NSRange(location: start, length: max(0, caretLocation - start)))
+        guard let regex = cachedSyntaxRegex(pattern: #"\bfunc\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)\n]*)\)"#) else { return [:] }
+        let nsSearchText = searchText as NSString
+        var result: [String: String] = [:]
+        for match in regex.matches(in: searchText, range: NSRange(location: 0, length: nsSearchText.length)) {
+            let name = nsSearchText.substring(with: match.range(at: 1))
+            let parameters = nsSearchText.substring(with: match.range(at: 2))
+                .split(separator: ",")
+                .compactMap { parameter -> String? in
+                    let label = parameter.split(separator: ":", maxSplits: 1).first?
+                        .trimmingCharacters(in: .whitespaces) ?? ""
+                    return label.isEmpty ? nil : label
+                }
+            result[name] = parameters.joined(separator: ", ")
+        }
+        return result
     }
 
     private static func syntaxKeywords(for language: String) -> [String] {

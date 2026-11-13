@@ -4799,6 +4799,9 @@ enum EditorCommandUserInfo {
     nonisolated static let completionCandidates = "completionCandidates"
     nonisolated static let completionWordPrefix = "completionWordPrefix"
     nonisolated static let completionPrefixReplacements = "completionPrefixReplacements"
+    /// Accepting the completion selects the first argument of the inserted
+    /// call, such as `string` in `print(string)`.
+    nonisolated static let completionSelectsCallArgument = "completionSelectsCallArgument"
     nonisolated static let completionCaretOffset = "completionCaretOffset"
     static let updaterCheckNow = "updaterCheckNow"
 }

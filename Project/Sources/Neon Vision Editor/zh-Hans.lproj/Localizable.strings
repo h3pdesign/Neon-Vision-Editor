@@ -2018,6 +2018,9 @@
 "Checks the syntax without running the script, where the interpreter offers a check. Click the error in the status bar to jump to its line." = "在解释器提供检查功能时，检查语法而不运行脚本。点按状态栏中的错误可跳转到对应行。";
 "The console opens when you run a script and stays hidden otherwise. Auto-Check and Auto-Run work as for MeierScript. Python uses the interpreter set in Settings or a .venv next to the file." = "运行脚本时控制台会打开，否则保持隐藏。自动检查和自动运行的工作方式与 MeierScript 相同。Python 使用“设置”中选择的解释器，或文件旁边的 .venv。";
 "Scripts run with Neon Vision Editor's permissions and reach only files the app may access. Unsaved edits run as they are in the editor." = "脚本以 Neon Vision Editor 的权限运行，只能访问 App 有权访问的文件。未保存的更改会按编辑器中的内容运行。";
+"Working Directory" = "工作目录";
+"A script starts in the folder of its file, shown in the console toolbar, so relative paths such as data.csv are read from there. A new document that was never saved starts in the app's own folder." = "脚本从其文件所在的文件夹启动，该文件夹显示在控制台工具栏中，因此 data.csv 等相对路径从那里读取。从未存储过的新文稿从 App 自己的文件夹启动。";
+"Working directory: %@" = "工作目录：%@";
 "What’s New in v2.2.2" = "v2.2.2 新功能";
 "Release highlights for v2.2.2." = "v2.2.2 版本亮点。";
 "MeierScript" = "MeierScript";

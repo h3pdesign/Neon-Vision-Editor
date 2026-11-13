@@ -4207,6 +4207,9 @@ struct EditorHelpView: View {
             meierScriptItem("Scripts and Permissions",
                             "Scripts run with Neon Vision Editor's permissions and reach only files the app may access. Unsaved edits run as they are in the editor.",
                             icon: "lock.shield"),
+            meierScriptItem("Working Directory",
+                            "A script starts in the folder of its file, shown in the console toolbar, so relative paths such as data.csv are read from there. A new document that was never saved starts in the app's own folder.",
+                            icon: "folder"),
         ]
         return [HelpSection(key: ScriptRunHelp.sectionKey, title: "Run Scripts", iconName: "play.rectangle", items: items)]
 #else

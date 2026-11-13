@@ -2034,3 +2034,5 @@
 "Table of Contents: On iPhone and iPad, tapping a table of contents entry jumps to that heading, even far down a long document." = "Table of Contents: On iPhone and iPad, tapping a table of contents entry jumps to that heading, even far down a long document.";
 "Code Completion: Code completion stays quiet inside comments in more languages and keeps suggestions such as #include or $variable." = "Code Completion: Code completion stays quiet inside comments in more languages and keeps suggestions such as #include or $variable.";
 "Syntax Colors: On the Mac, text inside multi-line strings and MeierScript comments keeps its string or comment color." = "Syntax Colors: On the Mac, text inside multi-line strings and MeierScript comments keeps its string or comment color.";
+"Accept Suggestions with Return" = "Accept Suggestions with Return";
+"Like Xcode, Return inserts the selected suggestion from the list. When off, Return accepts only a suggestion you chose with the arrow keys." = "Like Xcode, Return inserts the selected suggestion from the list. When off, Return accepts only a suggestion you chose with the arrow keys.";

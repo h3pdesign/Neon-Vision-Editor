@@ -222,4 +222,32 @@ final class MeierScriptSupportTests: XCTestCase {
         XCTAssertLessThan(endless.duration, 5)
     }
 #endif
+
+    func testFunctionCompletionInsertsCallWithRequiredParameters() {
+        func suffixes(_ sample: String) -> [String] {
+            let text = sample as NSString
+            return CompletionHeuristics.vocabularySuffixes(in: text, caretLocation: text.length, language: "meierscript",
+                                                           insertsCallTemplates: true).suffixes
+        }
+        XCTAssertEqual(suffixes("pri"), ["nt(string)", "ntError(string)"])
+        XCTAssertEqual(suffixes("getComm"), ["ands()"])
+        XCTAssertEqual(suffixes("le").first, "t", "Keywords stay plain words")
+        XCTAssertEqual(suffixes("func greet(name: String, times: Int) {}\ngre"), ["et(name, times)"])
+        XCTAssertEqual(suffixes("func run() {}\nfunc ru"), ["nCommand", "n"], "Naming a function is not a call")
+        XCTAssertEqual(CompletionHeuristics.vocabularySuffixes(in: "pri" as NSString, caretLocation: 3,
+                                                               language: "swift", insertsCallTemplates: true).suffixes,
+                       CompletionHeuristics.vocabularySuffixes(in: "pri" as NSString, caretLocation: 3, language: "swift").suffixes)
+        for name in MeierScriptLanguage.builtins {
+            XCTAssertNotNil(MeierScriptLanguage.callTemplate(forBuiltin: name), name)
+        }
+        XCTAssertNil(MeierScriptLanguage.callTemplate(forBuiltin: "let"))
+    }
+
+    func testCallArgumentPlaceholderRangeSelectsTheFirstArgument() {
+        XCTAssertEqual(CompletionHeuristics.callArgumentPlaceholderRange(in: "print(string)"), NSRange(location: 6, length: 6))
+        XCTAssertEqual(CompletionHeuristics.callArgumentPlaceholderRange(in: "split(string, separator)"), NSRange(location: 6, length: 6))
+        XCTAssertEqual(CompletionHeuristics.callArgumentPlaceholderRange(in: "getCommands()"), NSRange(location: 13, length: 0))
+        XCTAssertNil(CompletionHeuristics.callArgumentPlaceholderRange(in: "let"))
+        XCTAssertNil(CompletionHeuristics.callArgumentPlaceholderRange(in: ")"))
+    }
 }

@@ -231,11 +231,14 @@ extension ContentView {
               CompletionHeuristics.usesLocalVocabularyCompletion(for: currentLanguage),
               viewModel.selectedTab?.id == tabID else { return false }
         let source = context as NSString
+        // A call that already has its parentheses completes the name only.
+        let insertsCallTemplates = nextCharacter != "("
         let match = CompletionHeuristics.vocabularySuffixes(
             in: source,
             caretLocation: source.length,
             language: currentLanguage,
-            limit: SystemWordCompletion.maximumSuggestionCount
+            limit: SystemWordCompletion.maximumSuggestionCount,
+            insertsCallTemplates: insertsCallTemplates
         )
         guard let first = match.suffixes.first else { return false }
         NotificationCenter.default.post(
@@ -247,7 +250,8 @@ extension ContentView {
                 EditorCommandUserInfo.replacementText: first,
                 EditorCommandUserInfo.completionCandidates: match.suffixes,
                 EditorCommandUserInfo.completionPrefixReplacements: [String](),
-                EditorCommandUserInfo.completionWordPrefix: match.prefix
+                EditorCommandUserInfo.completionWordPrefix: match.prefix,
+                EditorCommandUserInfo.completionSelectsCallArgument: insertsCallTemplates
             ]
         )
         return true

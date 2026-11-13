@@ -9,6 +9,9 @@ enum MeierScriptConsoleDefaults {
     static let autoCheckKey = "MeierScriptAutoCheckEnabled"
     static let autoRunKey = "MeierScriptAutoRunEnabled"
     static let heightKey = "MeierScriptConsoleHeight"
+    /// Share of the console width the output pane takes; errors get the rest.
+    static let outputFractionKey = "MeierScriptConsoleOutputFraction"
+    static let paneFractionRange: ClosedRange<Double> = 0.15...0.85
     static let automaticDebounceNanoseconds: UInt64 = 600_000_000
     static let automaticRunTimeout: TimeInterval = 10
     static let manualRunTimeout: TimeInterval = 60
@@ -267,7 +270,9 @@ struct MeierScriptConsoleView: View {
     @AppStorage(MeierScriptConsoleDefaults.autoCheckKey) private var autoCheck = true
     @AppStorage(MeierScriptConsoleDefaults.autoRunKey) private var autoRun = false
     @AppStorage(MeierScriptConsoleDefaults.heightKey) private var storedHeight: Double = 200
+    @AppStorage(MeierScriptConsoleDefaults.outputFractionKey) private var outputFraction: Double = 0.5
     @State private var dragStartHeight: Double?
+    @State private var dragStartFraction: Double?
 
     private var workingDirectory: URL? { tab.fileURL?.deletingLastPathComponent() }
 
@@ -276,12 +281,17 @@ struct MeierScriptConsoleView: View {
             resizeHandle
             toolbar
             Divider()
-            HStack(spacing: 0) {
-                MeierScriptOutputPane(title: "Output (stdout)", text: model.standardOutput,
-                                      font: appearance.outputFont, color: appearance.text)
-                Divider()
-                MeierScriptOutputPane(title: "Errors (stderr)", text: model.standardError,
-                                      font: appearance.outputFont, color: appearance.error)
+            GeometryReader { proxy in
+                let fraction = min(max(outputFraction, MeierScriptConsoleDefaults.paneFractionRange.lowerBound),
+                                   MeierScriptConsoleDefaults.paneFractionRange.upperBound)
+                HStack(spacing: 0) {
+                    MeierScriptOutputPane(title: "Output (stdout)", text: model.standardOutput,
+                                          font: appearance.outputFont, color: appearance.text)
+                        .frame(width: max(0, proxy.size.width * fraction))
+                    paneSplitHandle(totalWidth: proxy.size.width)
+                    MeierScriptOutputPane(title: "Errors (stderr)", text: model.standardError,
+                                          font: appearance.outputFont, color: appearance.error)
+                }
             }
         }
         .frame(height: CGFloat(min(max(storedHeight, 120), 600)))
@@ -341,6 +351,36 @@ struct MeierScriptConsoleView: View {
                         storedHeight = min(max(start - value.translation.height, 120), 600)
                     }
                     .onEnded { _ in dragStartHeight = nil }
+            )
+            .accessibilityHidden(true)
+    }
+
+    /// Divider between the output and error panes; dragging it resizes both.
+    private func paneSplitHandle(totalWidth: CGFloat) -> some View {
+        Divider()
+            .frame(width: 1)
+            .overlay(
+                Rectangle()
+                    .fill(Color.clear)
+                    .frame(width: 7)
+                    .contentShape(Rectangle())
+                    .onHover { inside in
+                        if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                    }
+                    .gesture(
+                        DragGesture(minimumDistance: 1)
+                            .onChanged { value in
+                                guard totalWidth > 0 else { return }
+                                let start = dragStartFraction ?? outputFraction
+                                dragStartFraction = start
+                                outputFraction = min(max(start + Double(value.translation.width / totalWidth),
+                                                         MeierScriptConsoleDefaults.paneFractionRange.lowerBound),
+                                                     MeierScriptConsoleDefaults.paneFractionRange.upperBound)
+                            }
+                            .onEnded { _ in dragStartFraction = nil }
+                    )
+                    // Double-click splits the panes evenly again.
+                    .onTapGesture(count: 2) { outputFraction = 0.5 }
             )
             .accessibilityHidden(true)
     }
@@ -484,7 +524,9 @@ private struct MeierScriptOutputPane: View {
                     .padding(.horizontal, 10)
                     .padding(.bottom, 6)
                 }
-                .onChange(of: text) { _, _ in proxy.scrollTo("end", anchor: .bottom) }
+                // .bottom centers horizontally, which hid the start of long
+                // lines on every update; keep the leading edge in view.
+                .onChange(of: text) { _, _ in proxy.scrollTo("end", anchor: .bottomLeading) }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

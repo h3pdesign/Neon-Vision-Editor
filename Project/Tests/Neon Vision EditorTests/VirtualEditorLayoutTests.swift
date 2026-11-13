@@ -549,6 +549,118 @@ final class VirtualEditorLayoutTests: XCTestCase {
         XCTAssertEqual(document.string(), "print(\"Hello\")")
     }
 
+    private func showVocabularyCompletion(_ canvas: VirtualEditorCanvas, documentID: UUID, caret: Int,
+                                          prefix: String, candidates: [String]) {
+        NotificationCenter.default.post(
+            name: .showVirtualEditorInlineSuggestion,
+            object: nil,
+            userInfo: [
+                EditorCommandUserInfo.documentID: documentID.uuidString,
+                EditorCommandUserInfo.completionCaretOffset: caret,
+                EditorCommandUserInfo.replacementText: candidates[0],
+                EditorCommandUserInfo.completionCandidates: candidates,
+                EditorCommandUserInfo.completionPrefixReplacements: [String](),
+                EditorCommandUserInfo.completionWordPrefix: prefix,
+                EditorCommandUserInfo.completionSelectsCallArgument: true
+            ]
+        )
+    }
+
+    private func pressReturn(_ canvas: VirtualEditorCanvas) throws {
+        let event = try XCTUnwrap(NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: 0, context: nil,
+            characters: "\r", charactersIgnoringModifiers: "\r", isARepeat: false, keyCode: 36
+        ))
+        canvas.keyDown(with: event)
+    }
+
+    func testFunctionCompletionSelectsItsFirstArgumentAndTypingReplacesIt() {
+        let (document, canvas, documentID) = makeCanvas(source: "pri", language: "meierscript")
+        showVocabularyCompletion(canvas, documentID: documentID, caret: 3, prefix: "pri", candidates: ["nt(string)", "ntError(string)"])
+        canvas.doCommand(by: #selector(NSResponder.insertTab(_:)))
+        XCTAssertEqual(document.string(), "print(string)")
+        XCTAssertEqual(canvas.selectedRange(), NSRange(location: 6, length: 6))
+        canvas.insertText("\"Hi\"", replacementRange: NSRange(location: NSNotFound, length: 0))
+        XCTAssertEqual(document.string(), "print(\"Hi\")")
+
+        let (callDocument, callCanvas, callID) = makeCanvas(source: "getComm", language: "meierscript")
+        showVocabularyCompletion(callCanvas, documentID: callID, caret: 7, prefix: "getComm", candidates: ["ands()"])
+        callCanvas.doCommand(by: #selector(NSResponder.insertTab(_:)))
+        XCTAssertEqual(callDocument.string(), "getCommands()")
+        XCTAssertEqual(callCanvas.selectedRange(), NSRange(location: 13, length: 0))
+    }
+
+    func testReturnAcceptsTheListedCompletionOnlyWithTheXcodeStyleSetting() throws {
+        let key = CompletionHeuristics.returnAcceptsCompletionDefaultsKey
+        let previous = UserDefaults.standard.object(forKey: key)
+        defer { UserDefaults.standard.set(previous, forKey: key) }
+
+        UserDefaults.standard.set(false, forKey: key)
+        let (plainDocument, plainCanvas, plainID) = makeCanvas(source: "le", language: "meierscript")
+        showVocabularyCompletion(plainCanvas, documentID: plainID, caret: 2, prefix: "le", candidates: ["t"])
+        try pressReturn(plainCanvas)
+        XCTAssertEqual(plainDocument.string(), "le\n", "By default Return still ends the line")
+
+        UserDefaults.standard.set(true, forKey: key)
+        let (document, canvas, documentID) = makeCanvas(source: "le", language: "meierscript")
+        showVocabularyCompletion(canvas, documentID: documentID, caret: 2, prefix: "le", candidates: ["t"])
+        try pressReturn(canvas)
+        XCTAssertEqual(document.string(), "let")
+    }
+
+    func testPastingAScriptLongerThanOneViewportShowsTheLinesAtTheCaret() throws {
+        let document = FileBackedTextDocument(content: "")
+        let documentID = UUID()
+        var revision = 0
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        let canvas = VirtualEditorCanvas(frame: scrollView.bounds)
+        scrollView.documentView = canvas
+        _ = canvas.setViewportSize(scrollView.contentSize)
+        func configure() {
+            canvas.configure(
+                document: document, documentID: documentID, resourceID: documentID.uuidString,
+                displayName: "Untitled", contentRevision: revision, externalContentRevision: 0,
+                caret: 0, language: "meierscript", colorScheme: .dark,
+                fontSize: 14, fontName: "", lineHeightMultiplier: 1, isReadOnly: false,
+                translucentBackgroundEnabled: false, showsLineNumbers: true, highlightCurrentLine: false,
+                lineWrapEnabled: true, showsInvisibleCharacters: false, showsIndentationGuides: false,
+                showsScopeGuides: false, highlightsScopeBackground: false, highlightsMatchingBrackets: false,
+                autoIndentEnabled: true, autoCloseBracketsEnabled: false,
+                onFontSizeChange: nil,
+                onTextMutation: { mutation in
+                    do {
+                        if let viewport = mutation.viewport {
+                            try document.replace(in: viewport, utf16Range: mutation.range, with: mutation.replacement)
+                        } else {
+                            try document.replace(utf16Range: mutation.range, with: mutation.replacement)
+                        }
+                        revision += 1
+                        return true
+                    } catch { return false }
+                }
+            )
+        }
+        configure()
+        let script = (1...2_000).map { "print(\"line \($0)\")" }.joined(separator: "\n")
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("nve-paste-regression-\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.clearContents()
+        pasteboard.setString(script, forType: .string)
+
+        canvas.pasteSelection(from: pasteboard)
+        configure() // SwiftUI configures again after the document revision changes.
+
+        XCTAssertEqual(document.string(), script)
+        XCTAssertEqual(canvas.selectedRange(), NSRange(location: (script as NSString).length, length: 0))
+        XCTAssertGreaterThan(scrollView.contentView.bounds.minY, 0, "The paste must reveal the caret at its end")
+        // The loaded viewport must already cover the visible rows; otherwise
+        // they draw empty until a scroll reloads it.
+        let loadedOrigin = canvas.viewportLineOrigin
+        canvas.reloadViewportIfNeeded(scrollY: scrollView.contentView.bounds.minY)
+        XCTAssertEqual(canvas.viewportLineOrigin, loadedOrigin)
+        XCTAssertTrue((canvas.accessibilityValue() as? String)?.contains("print(\"line 2000\")") == true)
+    }
+
     func testVimNormalModeCommandsMutateAndReturnToInsertMode() {
         let (document, canvas, _) = makeCanvas(source: "abc", language: "plain", caret: 0)
         NotificationCenter.default.post(

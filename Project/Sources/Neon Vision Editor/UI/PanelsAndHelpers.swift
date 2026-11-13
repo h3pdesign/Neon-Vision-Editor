@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.2.0",
-            subtitle: "Release highlights for v2.2.0.",
+            title: "What’s New in v2.2.2",
+            subtitle: "Release highlights for v2.2.2.",
             bullets: [
-                "iPhone Duo: On iPhone Duo, a preview next to the editor starts at the fold, so the document and preview each get one half.",
-                "Battery Use: The iPhone app updates Apple Watch only when your status changes, and network files aren't checked in the background.",
-                "AI Providers: API Route is available as an optional AI provider.",
-                "Text Replacements: On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it.",
-                "Tab Order: With Reopen Last Session, Mac tabs come back in the order you left them.",
-                "Neon Pulse: The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note."
+                "MeierScript: MeierScript files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names.",
+                "Run Console: In the Mac version from GitHub, a run console runs MeierScript, Python, JavaScript, Ruby, PHP, Lua, R, shell and Swift files.",
+                "Hide Keyboard: On iPhone, a Hide Keyboard button above the keyboard closes it without scrolling the document.",
+                "Table of Contents: On iPhone and iPad, tapping a table of contents entry jumps to that heading, even far down a long document.",
+                "Code Completion: Code completion stays quiet inside comments in more languages and keeps suggestions such as #include or $variable.",
+                "Syntax Colors: On the Mac, text inside multi-line strings and MeierScript comments keeps its string or comment color."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4608,6 +4608,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.2.2", version: "2.2.2", date: "2026-11-13", highlights: [
+            "MeierScript files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names.",
+            "In the Mac version from GitHub, a run console runs MeierScript, Python, JavaScript, Ruby, PHP, Lua, R, shell and Swift files.",
+            "On iPhone, a Hide Keyboard button above the keyboard closes it without scrolling the document."
+        ]),
         Release(id: "2.2.0", version: "2.2.0", date: "2026-11-09", highlights: [
             "On iPhone Duo, a preview next to the editor starts at the fold, so the document and preview each get one half.",
             "The iPhone app updates Apple Watch only when your status changes, and network files aren't checked in the background.",

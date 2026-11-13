@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.2.2] - 2026-11-13
+
 ### Why Upgrade
 
 - MeierScript files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names.

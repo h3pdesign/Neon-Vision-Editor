@@ -6,6 +6,46 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.2.3] - 2026-11-13
+
+### Why Upgrade
+
+- MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected.
+- An optional setting lets Return accept the selected suggestion from the completion list, as in Xcode.
+- On the Mac, pasting a long text shows it right away instead of an empty editor until you scroll.
+
+### Highlights
+
+- In the Mac version from GitHub, the run console's Output and Errors panes can be resized by dragging the divider between them.
+- Console output stays scrolled to the start of its lines after each run instead of jumping to the middle.
+- On the Mac, Text Replacements with punctuation shortcuts or several lines now appear in the word list.
+
+### Added
+
+- MeierScript completion inserts a function as a call with its required parameters, as Xcode does: `getCommands` completes to `getCommands()` and `print` to `print(string)` with the parameter selected, so typing replaces it. Functions declared in the script complete with their parameter names, and keywords such as `let` stay plain words.
+- Settings › Editor › Completion › Accept Suggestions with Return makes Return insert the selected suggestion from the list, as in Xcode. It is off by default, so Return still ends the line unless you chose a suggestion with the arrow keys.
+- In the Mac version from GitHub, the divider between the run console's Output and Errors panes can be dragged to resize them; a double-click splits them evenly again. The console keeps its height and split.
+
+### Fixes
+
+- In the Mac version from GitHub, the run console's Output and Errors panes stay scrolled to the start of their lines after each run instead of jumping to the middle of long lines.
+- On the Mac, pasting or dropping text longer than the window now shows the pasted lines at the caret right away instead of an empty editor until you scroll.
+- On the Mac, Text Replacement shortcuts that contain punctuation, such as “:beta:” or “=>”, now list their phrase like other shortcuts do (#994).
+- On the Mac, Text Replacements whose phrase spans several lines now appear in the completion list with a one-line preview, and accepting one inserts every line (#994).
+- A function signature inside a MeierScript comment no longer changes the parameters that completion inserts for that function.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, sessions, and preferences are preserved.
+
+### Maintenance
+
+- Development version 2.2.3 (build 1154).
+
 ## [v2.2.2] - 2026-11-13
 
 ### Why Upgrade

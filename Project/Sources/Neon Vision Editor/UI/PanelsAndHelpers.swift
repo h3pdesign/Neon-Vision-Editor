@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.2.2",
-            subtitle: "Release highlights for v2.2.2.",
+            title: "What’s New in v2.2.3",
+            subtitle: "Release highlights for v2.2.3.",
             bullets: [
-                "MeierScript: MeierScript files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names.",
-                "Run Console: In the Mac version from GitHub, a run console runs MeierScript, Python, JavaScript, Ruby, PHP, Lua, R, shell and Swift files.",
-                "Hide Keyboard: On iPhone, a Hide Keyboard button above the keyboard closes it without scrolling the document.",
-                "Table of Contents: On iPhone and iPad, tapping a table of contents entry jumps to that heading, even far down a long document.",
-                "Code Completion: Code completion stays quiet inside comments in more languages and keeps suggestions such as #include or $variable.",
-                "Syntax Colors: On the Mac, text inside multi-line strings and MeierScript comments keeps its string or comment color."
+                "Function Completion: MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected.",
+                "Return Key: An optional setting lets Return accept the selected suggestion from the completion list, as in Xcode.",
+                "Paste: On the Mac, pasting a long text shows it right away instead of an empty editor until you scroll.",
+                "Run Console: In the Mac version from GitHub, the run console's Output and Errors panes can be resized by dragging the divider between them.",
+                "Console Output: Console output stays scrolled to the start of its lines after each run instead of jumping to the middle.",
+                "Text Replacements: On the Mac, Text Replacements with punctuation shortcuts or several lines now appear in the word list."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4608,6 +4608,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.2.3", version: "2.2.3", date: "2026-11-13", highlights: [
+            "MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected.",
+            "An optional setting lets Return accept the selected suggestion from the completion list, as in Xcode.",
+            "On the Mac, pasting a long text shows it right away instead of an empty editor until you scroll."
+        ]),
         Release(id: "2.2.2", version: "2.2.2", date: "2026-11-13", highlights: [
             "MeierScript files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names.",
             "In the Mac version from GitHub, a run console runs MeierScript, Python, JavaScript, Ruby, PHP, Lua, R, shell and Swift files.",
@@ -4799,6 +4804,9 @@ enum EditorCommandUserInfo {
     nonisolated static let completionCandidates = "completionCandidates"
     nonisolated static let completionWordPrefix = "completionWordPrefix"
     nonisolated static let completionPrefixReplacements = "completionPrefixReplacements"
+    /// Accepting the completion selects the first argument of the inserted
+    /// call, such as `string` in `print(string)`.
+    nonisolated static let completionSelectsCallArgument = "completionSelectsCallArgument"
     nonisolated static let completionCaretOffset = "completionCaretOffset"
     static let updaterCheckNow = "updaterCheckNow"
 }

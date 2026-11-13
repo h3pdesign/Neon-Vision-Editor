@@ -193,8 +193,13 @@ extension ContentView {
         let source = context as NSString
         let prefix = CompletionHeuristics.tokenContext(in: source, caretLocation: source.length).prefix
         // A typed Text Replacement shortcut lists its phrases first (#959).
-        let replacements = SystemWordCompletion.replacementPhrases(forShortcut: prefix)
-        let suffixes = SystemWordCompletion.suffixes(forWordPrefix: prefix)
+        // Shortcuts may contain punctuation, such as ";sig" (#994).
+        let match = SystemWordCompletion.replacementMatch(beforeCaret: context)
+        let replacements = match?.phrases ?? []
+        let shortcut = match?.shortcut ?? prefix
+        // Dictionary suffixes extend the word before the caret, so they are
+        // listed only when the shortcut is that word.
+        let suffixes = shortcut != prefix ? [] : SystemWordCompletion.suffixes(forWordPrefix: prefix)
             .filter { suffix in
                 !replacements.contains { $0.caseInsensitiveCompare(prefix + suffix) == .orderedSame }
             }
@@ -211,7 +216,7 @@ extension ContentView {
                 // The editor lists every match below the caret (#926).
                 EditorCommandUserInfo.completionCandidates: suffixes,
                 EditorCommandUserInfo.completionPrefixReplacements: replacements,
-                EditorCommandUserInfo.completionWordPrefix: prefix
+                EditorCommandUserInfo.completionWordPrefix: shortcut
             ]
         )
         return true
@@ -226,11 +231,14 @@ extension ContentView {
               CompletionHeuristics.usesLocalVocabularyCompletion(for: currentLanguage),
               viewModel.selectedTab?.id == tabID else { return false }
         let source = context as NSString
+        // A call that already has its parentheses completes the name only.
+        let insertsCallTemplates = nextCharacter != "("
         let match = CompletionHeuristics.vocabularySuffixes(
             in: source,
             caretLocation: source.length,
             language: currentLanguage,
-            limit: SystemWordCompletion.maximumSuggestionCount
+            limit: SystemWordCompletion.maximumSuggestionCount,
+            insertsCallTemplates: insertsCallTemplates
         )
         guard let first = match.suffixes.first else { return false }
         NotificationCenter.default.post(
@@ -242,7 +250,8 @@ extension ContentView {
                 EditorCommandUserInfo.replacementText: first,
                 EditorCommandUserInfo.completionCandidates: match.suffixes,
                 EditorCommandUserInfo.completionPrefixReplacements: [String](),
-                EditorCommandUserInfo.completionWordPrefix: match.prefix
+                EditorCommandUserInfo.completionWordPrefix: match.prefix,
+                EditorCommandUserInfo.completionSelectsCallArgument: insertsCallTemplates
             ]
         )
         return true

@@ -387,6 +387,9 @@ enum CompletionHeuristics {
     }
 
     static let vocabularyCompletionDefaultsKey = "SettingsVocabularyCompletionEnabled"
+    /// Return accepts the selected entry of the completion list, as in Xcode,
+    /// instead of only after choosing one with the arrow keys. Off by default.
+    static let returnAcceptsCompletionDefaultsKey = "SettingsCompletionReturnAccepts"
 
     /// Languages whose keyword and built-in vocabulary is offered while typing
     /// without an AI provider.
@@ -397,13 +400,16 @@ enum CompletionHeuristics {
     /// Completion suffixes for the identifier before the caret: language
     /// vocabulary first (shortest first), then identifiers from the nearby
     /// document. Only case-sensitive prefix matches qualify, because the editor
-    /// appends the suffix to the typed prefix.
+    /// appends the suffix to the typed prefix. With `insertsCallTemplates`,
+    /// MeierScript functions complete as calls with their required parameters,
+    /// such as `print(string)` or `getCommands()`, as in Xcode.
     static func vocabularySuffixes(
         in text: NSString,
         caretLocation: Int,
         language: String,
         minimumPrefixLength: Int = 2,
-        limit: Int = 6
+        limit: Int = 6,
+        insertsCallTemplates: Bool = false
     ) -> (prefix: String, suffixes: [String]) {
         let normalizedLanguage = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard limit > 0,
@@ -423,13 +429,134 @@ enum CompletionHeuristics {
             .filter { $0.key.hasPrefix(prefix) }
             .sorted { lhs, rhs in lhs.value != rhs.value ? lhs.value > rhs.value : lhs.key < rhs.key }
             .map(\.key)
+        let userFunctions = insertsCallTemplates && normalizedLanguage == MeierScriptLanguage.identifier
+            && !isFunctionNameDeclaration(in: text, prefixStart: caretLocation - (prefix as NSString).length)
+            ? meierScriptFunctionParameters(in: text, caretLocation: caretLocation)
+            : nil
         var seen = Set<String>()
         var suffixes: [String] = []
         for word in vocabulary + documentWords where seen.insert(word).inserted {
-            suffixes.append(String(word.dropFirst(prefix.count)))
+            var completion = word
+            if let userFunctions {
+                if let parameters = userFunctions[word] {
+                    completion = "\(word)(\(parameters))"
+                } else if let template = MeierScriptLanguage.callTemplate(forBuiltin: word) {
+                    completion = template
+                }
+            }
+            suffixes.append(String(completion.dropFirst(prefix.count)))
             if suffixes.count == limit { break }
         }
         return (prefix, suffixes)
+    }
+
+    /// Range of the first argument placeholder in a completed call, relative
+    /// to `completion`, such as `string` in `print(string)`. A call without
+    /// arguments returns an empty range after its closing parenthesis, so the
+    /// caret continues after the call.
+    static func callArgumentPlaceholderRange(in completion: String) -> NSRange? {
+        let text = completion as NSString
+        guard text.length > 1, text.hasSuffix(")") else { return nil }
+        let open = text.range(of: "(")
+        guard open.location != NSNotFound else { return nil }
+        let start = NSMaxRange(open)
+        let close = text.length - 1
+        guard start <= close else { return nil }
+        if start == close { return NSRange(location: text.length, length: 0) }
+        let comma = text.range(of: ",", range: NSRange(location: start, length: close - start))
+        let end = comma.location == NSNotFound ? close : comma.location
+        return NSRange(location: start, length: end - start)
+    }
+
+    /// True when the identifier being typed follows `func`, where it names a
+    /// new function rather than calling one.
+    private static func isFunctionNameDeclaration(in text: NSString, prefixStart: Int) -> Bool {
+        let start = max(0, prefixStart - 40)
+        guard prefixStart > start else { return false }
+        let before = text.substring(with: NSRange(location: start, length: prefixStart - start))
+        return before.range(of: #"\bfunc\s+$"#, options: .regularExpression) != nil
+    }
+
+    /// The text with MeierScript comments (`//`, `/* */`) and strings (`"…"`,
+    /// `"""…"""`) replaced by spaces. Line breaks and UTF-16 offsets are kept.
+    private static func meierScriptCodeOnly(_ text: String) -> String {
+        enum State { case code, lineComment, blockComment, string, multilineString }
+        let units = Array(text.utf16)
+        var output = units
+        let slash: UInt16 = 47, star: UInt16 = 42, quote: UInt16 = 34, backslash: UInt16 = 92
+        let newline: UInt16 = 10, space: UInt16 = 32
+        func unit(_ index: Int) -> UInt16 { index < units.count ? units[index] : 0 }
+        func blank(_ index: Int, count: Int = 1) {
+            for offset in index..<min(units.count, index + count) where output[offset] != newline {
+                output[offset] = space
+            }
+        }
+        var state = State.code
+        var index = 0
+        while index < units.count {
+            let current = units[index]
+            switch state {
+            case .code:
+                if current == slash, unit(index + 1) == slash {
+                    state = .lineComment; blank(index, count: 2); index += 2; continue
+                }
+                if current == slash, unit(index + 1) == star {
+                    state = .blockComment; blank(index, count: 2); index += 2; continue
+                }
+                if current == quote {
+                    if unit(index + 1) == quote, unit(index + 2) == quote {
+                        state = .multilineString; blank(index, count: 3); index += 3; continue
+                    }
+                    state = .string
+                    blank(index)
+                }
+            case .lineComment:
+                if current == newline { state = .code } else { blank(index) }
+            case .blockComment:
+                if current == star, unit(index + 1) == slash {
+                    state = .code; blank(index, count: 2); index += 2; continue
+                }
+                blank(index)
+            case .string:
+                if current == backslash { blank(index, count: 2); index += 2; continue }
+                if current == quote || current == newline { state = .code }
+                blank(index)
+            case .multilineString:
+                if current == quote, unit(index + 1) == quote, unit(index + 2) == quote {
+                    state = .code; blank(index, count: 3); index += 3; continue
+                }
+                blank(index)
+            }
+            index += 1
+        }
+        return String(decoding: output, as: UTF16.self)
+    }
+
+    /// Parameter names of the MeierScript functions declared in the text
+    /// before the caret, keyed by function name: `func greet(name: String)`
+    /// gives `"greet": "name"`.
+    private static func meierScriptFunctionParameters(in text: NSString, caretLocation: Int) -> [String: String] {
+        let start = max(0, caretLocation - 16_000)
+        // Comments and strings are blanked first, so a signature inside one
+        // never replaces the declared function's parameters.
+        let searchText = meierScriptCodeOnly(text.substring(with: NSRange(location: start, length: max(0, caretLocation - start))))
+        // Only a declaration that starts its line counts.
+        guard let regex = cachedSyntaxRegex(pattern: #"^[ \t]*func[ \t]+([A-Za-z_][A-Za-z0-9_]*)[ \t]*\(([^)\n]*)\)"#,
+                                            options: [.anchorsMatchLines]) else { return [:] }
+        let nsSearchText = searchText as NSString
+        var result: [String: String] = [:]
+        for match in regex.matches(in: searchText, range: NSRange(location: 0, length: nsSearchText.length)) {
+            let name = nsSearchText.substring(with: match.range(at: 1))
+            let parameters = nsSearchText.substring(with: match.range(at: 2))
+                .split(separator: ",")
+                .compactMap { parameter -> String? in
+                    let label = parameter.split(separator: ":", maxSplits: 1).first?
+                        .trimmingCharacters(in: .whitespaces) ?? ""
+                    return label.isEmpty ? nil : label
+                }
+            result[name] = parameters.joined(separator: ", ")
+        }
+        return result
     }
 
     private static func syntaxKeywords(for language: String) -> [String] {
@@ -504,16 +631,49 @@ enum SystemWordCompletion {
         )
     }
 
-    /// Text Replacement phrases whose shortcut is the word before the caret,
-    /// such as "omw" for "On my way!" (#959). Accepting one replaces the
-    /// typed shortcut instead of appending to it.
-    static func replacementPhrases(forShortcut shortcut: String) -> [String] {
-        guard shortcut.count >= minimumPrefixLength else { return [] }
-        return replacementPhrases(forShortcut: shortcut, replacements: NSSpellChecker.shared.userReplacementsDictionary)
+    /// The longest Text Replacement shortcut the user can type.
+    static let maximumShortcutLength = 32
+
+    /// The Text Replacement shortcut that ends at the caret, with its
+    /// phrases, such as "omw" for "On my way!" (#959). Accepting one
+    /// replaces the typed shortcut instead of appending to it. Shortcuts may contain punctuation, such as ";sig", "e.g" or
+    /// "@@" (#994), so the shortcut is not limited to the identifier before
+    /// the caret. It starts at the beginning of the text after the last
+    /// whitespace or at a boundary between a word character and punctuation,
+    /// so "omw" matches after "(" but not inside "xomw". The longest
+    /// matching shortcut wins.
+    static func replacementMatch(beforeCaret text: String) -> (shortcut: String, phrases: [String])? {
+        replacementMatch(beforeCaret: text, replacements: NSSpellChecker.shared.userReplacementsDictionary)
+    }
+
+    static func replacementMatch(
+        beforeCaret text: String,
+        replacements: [String: String],
+        limit: Int = maximumSuggestionCount
+    ) -> (shortcut: String, phrases: [String])? {
+        guard !replacements.isEmpty, limit > 0 else { return nil }
+        let run = Array(text.suffix(maximumShortcutLength).reversed().prefix { !$0.isWhitespace }.reversed())
+        guard run.count >= minimumPrefixLength else { return nil }
+        // Starts run left to right, so the first match is the longest. Each
+        // candidate uses replacementPhrases' own case-insensitive comparison,
+        // which also matches "STRASSE" to "straße".
+        for start in 0...(run.count - minimumPrefixLength) {
+            if start > 0, isShortcutWordCharacter(run[start - 1]), isShortcutWordCharacter(run[start]) { continue }
+            let shortcut = String(run[start...])
+            let phrases = replacementPhrases(forShortcut: shortcut, replacements: replacements, limit: limit)
+            if !phrases.isEmpty { return (shortcut, phrases) }
+        }
+        return nil
+    }
+
+    private static func isShortcutWordCharacter(_ character: Character) -> Bool {
+        character.isLetter || character.isNumber || character == "_"
     }
 
     /// Matches the shortcut case-insensitively, like the system does, and
-    /// skips multi-line phrases and phrases that equal the typed text.
+    /// skips phrases that equal the typed text. Multi-line phrases, such as
+    /// a note template, are offered too (#994); the list shows them with
+    /// `previewLine(forPhrase:)`.
     static func replacementPhrases(
         forShortcut shortcut: String,
         replacements: [String: String],
@@ -525,7 +685,6 @@ enum SystemWordCompletion {
             .filter { key, phrase in
                 key.caseInsensitiveCompare(shortcut) == .orderedSame
                     && !phrase.isEmpty
-                    && !phrase.contains(where: \.isNewline)
                     && phrase != shortcut
             }
             .map(\.value)
@@ -533,6 +692,19 @@ enum SystemWordCompletion {
             .filter { seen.insert($0.lowercased()).inserted }
             .prefix(limit)
             .map { $0 }
+    }
+
+    /// The longest first line a multi-line phrase preview shows.
+    static let maximumPreviewLength = 60
+
+    /// One line for a Text Replacement phrase in the completion list and the
+    /// inline hint. A multi-line phrase shows its first line and an ellipsis;
+    /// accepting it still inserts every line (#994).
+    static func previewLine(forPhrase phrase: String) -> String {
+        guard let firstBreak = phrase.firstIndex(where: \.isNewline) else { return phrase }
+        let firstLine = phrase[..<firstBreak].trimmingCharacters(in: .whitespaces)
+        let shown = String(firstLine.prefix(maximumPreviewLength))
+        return shown.isEmpty ? "\u{2026}" : shown + " \u{2026}"
     }
 
     /// Text Replacement phrases win over dictionary words because the user

@@ -216,10 +216,44 @@ final class MeierScriptSupportTests: XCTestCase {
             XCTAssertEqual(MeierScriptLanguage.firstDiagnostic(in: mapped.standardError)?.line, 6, mapped.standardError)
         }
 
-        let endless = await MeierScriptRunner.execute(source: "while true { }\n", mode: .run,
+        // The CLI ends a busy loop itself after about a second (recursion
+        // budget), which raced the timeout; a long sleep only stops on it.
+        let endless = await MeierScriptRunner.execute(source: "sleep(30)\n", mode: .run,
                                                       cliURL: cli, workingDirectory: nil, timeout: 1)
         XCTAssertTrue(endless.timedOut)
         XCTAssertLessThan(endless.duration, 5)
     }
 #endif
+
+    func testFunctionCompletionInsertsCallWithRequiredParameters() {
+        func suffixes(_ sample: String) -> [String] {
+            let text = sample as NSString
+            return CompletionHeuristics.vocabularySuffixes(in: text, caretLocation: text.length, language: "meierscript",
+                                                           insertsCallTemplates: true).suffixes
+        }
+        XCTAssertEqual(suffixes("pri"), ["nt(string)", "ntError(string)"])
+        XCTAssertEqual(suffixes("getComm"), ["ands()"])
+        XCTAssertEqual(suffixes("le").first, "t", "Keywords stay plain words")
+        XCTAssertEqual(suffixes("func greet(name: String, times: Int) {}\ngre"), ["et(name, times)"])
+        XCTAssertEqual(suffixes("func run() {}\nfunc ru"), ["nCommand", "n"], "Naming a function is not a call")
+        XCTAssertEqual(suffixes("func greet(name: String) {}\n// func greet()\nlet s = \"func greet(x)\"\ngre"), ["et(name)"],
+                       "Signatures in comments and strings are not declarations")
+        XCTAssertEqual(suffixes("func greet(name: String) {}\n/*\nfunc greet(fake)\n*/\nlet doc = \"\"\"\nfunc greet(other)\n\"\"\"\ngre"),
+                       ["et(name)"], "Block comments and multi-line strings are not declarations")
+        XCTAssertEqual(CompletionHeuristics.vocabularySuffixes(in: "pri" as NSString, caretLocation: 3,
+                                                               language: "swift", insertsCallTemplates: true).suffixes,
+                       CompletionHeuristics.vocabularySuffixes(in: "pri" as NSString, caretLocation: 3, language: "swift").suffixes)
+        for name in MeierScriptLanguage.builtins {
+            XCTAssertNotNil(MeierScriptLanguage.callTemplate(forBuiltin: name), name)
+        }
+        XCTAssertNil(MeierScriptLanguage.callTemplate(forBuiltin: "let"))
+    }
+
+    func testCallArgumentPlaceholderRangeSelectsTheFirstArgument() {
+        XCTAssertEqual(CompletionHeuristics.callArgumentPlaceholderRange(in: "print(string)"), NSRange(location: 6, length: 6))
+        XCTAssertEqual(CompletionHeuristics.callArgumentPlaceholderRange(in: "split(string, separator)"), NSRange(location: 6, length: 6))
+        XCTAssertEqual(CompletionHeuristics.callArgumentPlaceholderRange(in: "getCommands()"), NSRange(location: 13, length: 0))
+        XCTAssertNil(CompletionHeuristics.callArgumentPlaceholderRange(in: "let"))
+        XCTAssertNil(CompletionHeuristics.callArgumentPlaceholderRange(in: ")"))
+    }
 }

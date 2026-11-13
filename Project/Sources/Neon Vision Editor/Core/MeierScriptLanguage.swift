@@ -43,6 +43,45 @@ nonisolated enum MeierScriptLanguage {
         "typeOf", "uppercase", "writeFile"
     ]
 
+    /// Required parameters of each built-in, as completion inserts them, from
+    /// the ScriptingSDKit documentation. Optional parameters are left out, as
+    /// Xcode does; an empty string marks a function without required arguments.
+    static let builtinParameters: [String: String] = [
+        "appType": "", "append": "array, element", "array": "value", "bool": "value", "char": "string",
+        "commandExists": "command", "compareVersions": "string, string", "components": "string, separator",
+        "contains": "stringOrArray, string", "copyFromClipboard": "", "copyToClipboard": "value",
+        "count": "value", "createPassword": "length", "createRandomString": "length", "date": "",
+        "dateFormat": "dateString", "dateIntervalSince1970": "", "decodeBase64": "string",
+        "decodeJSON": "string", "decryptParameter": "value", "deleteFile": "path",
+        "disableLimitations": "secret", "disableRecursionBudget": "secret", "double": "value",
+        "dropFirst": "stringOrArray", "dropLast": "stringOrArray", "encodeBase64": "value",
+        "encodeJSON": "value", "encryptParameter": "value", "exit": "", "exitOnError": "",
+        "fileExists": "path", "filter": "fnOrName, arrayOrDict", "first": "stringOrArray",
+        "getAssertions": "", "getAssertionsStatus": "", "getCommands": "", "getDiskInformation": "",
+        "getEnv": "", "getGlobalVariables": "", "getPreference": "key", "getScreenInformation": "",
+        "getSystemInformation": "", "getVariable": "name", "getVariables": "",
+        "ifEqual": "value, compare, fallback", "ifNotEqual": "value, compare, fallback",
+        "ifNotNil": "value, fallback", "include": "script", "indices": "array", "int": "value",
+        "isEmpty": "value", "isNil": "value", "isNotEmpty": "value", "isNotNil": "value",
+        "isVariable": "name", "join": "array", "keys": "dictionary", "last": "stringOrArray",
+        "lowercase": "string", "map": "fnOrName, arrayOrDict", "max": "value", "md5Hash": "string",
+        "min": "value", "number": "value", "openApp": "path", "openUrl": "url", "print": "string",
+        "printError": "string", "readFile": "path", "readFromURL": "url", "readLine": "",
+        "remove": "array, index", "removePreference": "key", "replace": "subject, source, destination",
+        "reverse": "value", "round": "double", "runCommand": "path, args", "setPreference": "value, key",
+        "setVariable": "name, value", "sha256Hash": "string", "sleep": "seconds", "sort": "array",
+        "split": "string, separator", "splitPath": "path", "startsWith": "stringOrArray, string",
+        "string": "value", "subString": "string, string", "throw": "message", "throwOnError": "",
+        "toggle": "value", "triggerLogout": "", "triggerRebootDialog": "", "trim": "value",
+        "typeOf": "value", "uppercase": "string", "writeFile": "path, content"
+    ]
+
+    /// The call a completion inserts for a built-in, such as `print(string)`,
+    /// or nil for a keyword, type or constant.
+    static func callTemplate(forBuiltin name: String) -> String? {
+        builtinParameters[name].map { "\(name)(\($0))" }
+    }
+
     /// Words offered by local completion, in priority order and without duplicates.
     static let completionVocabulary: [String] = {
         var seen = Set<String>()

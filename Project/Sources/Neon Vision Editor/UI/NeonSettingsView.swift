@@ -171,6 +171,7 @@ struct NeonSettingsView: View {
 #if os(macOS)
     @AppStorage(SystemWordCompletion.enabledDefaultsKey) private var systemWordCompletionEnabled: Bool = false
     @AppStorage(CompletionHeuristics.vocabularyCompletionDefaultsKey) private var vocabularyCompletionEnabled: Bool = true
+    @AppStorage(CompletionHeuristics.returnAcceptsCompletionDefaultsKey) private var returnAcceptsCompletion: Bool = false
 #endif
     @AppStorage("SelectedAIModel") private var selectedAIModelRaw: String = AIModel.appleIntelligence.rawValue
     @AppStorage("OpenCodeGoModelID") private var openCodeGoModelID: String = OpenCodeGoConfig.defaultModel
@@ -3846,6 +3847,11 @@ struct NeonSettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Toggle("Suggest Words from System Dictionary", isOn: $systemWordCompletionEnabled)
                 Text("In plain text and Markdown, suggests words from the macOS dictionary and your Text Replacements. Press Tab or Right Arrow to accept.")
+                    .font(Typography.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Toggle("Accept Suggestions with Return", isOn: $returnAcceptsCompletion)
+                Text("Like Xcode, Return inserts the selected suggestion from the list. When off, Return accepts only a suggestion you chose with the arrow keys.")
                     .font(Typography.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

@@ -302,6 +302,12 @@ def shorten_for_welcome_tour_card(text: str, limit: int = WELCOME_TOUR_CARD_TEXT
 def welcome_feature_title(description: str, index: int) -> str:
     lowered = description.lower()
     rules = (
+        (("complete as calls",), "Function Completion"),
+        (("lets return accept",), "Return Key"),
+        (("pasting a long text",), "Paste"),
+        (("output and errors panes can be resized",), "Run Console"),
+        (("stays scrolled to the start",), "Console Output"),
+        (("punctuation shortcuts",), "Text Replacements"),
         (("meierscript files",), "MeierScript"),
         (("run console",), "Run Console"),
         (("hide keyboard",), "Hide Keyboard"),
@@ -683,6 +689,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v2.2.3": ("Funktionsaufrufe vervollständigen und anpassbare Konsole", "MeierScript-Funktionen werden als Aufruf mit ihren Parametern vervollständigt, und Return kann wie in Xcode den ausgewählten Vorschlag übernehmen. In der Mac-Version von GitHub lassen sich Ausgabe und Fehler der Konsole in der Größe anpassen und bleiben am Zeilenanfang, und ein langer eingefügter Text erscheint sofort.", ["Vervollständigung", "Konsole", "Mac"]),
         "v2.2.2": ("MeierScript, Skriptkonsole und Tastatur ausblenden auf dem iPhone", "MeierScript-Dateien erhalten Syntaxhervorhebung und auf dem Mac Vorschläge beim Tippen. In der Mac-Version von GitHub führt eine Konsole MeierScript-, Python-, JavaScript-, Ruby-, PHP-, Lua-, R-, Shell- und Swift-Skripte aus. Auf dem iPhone schließt eine Taste über der Tastatur diese, und Einträge im Inhaltsverzeichnis springen auf iPhone und iPad zur Überschrift.", ["MeierScript", "Skripte", "iPhone"]),
         "v2.2.0": ("Vorschau am Falz auf dem iPhone Duo und weniger Hintergrundarbeit", "Auf dem iPhone Duo beginnt eine Vorschau neben dem Editor am Falz, sodass Dokument und Vorschau je eine Displayhälfte behalten. Die iPhone-App aktualisiert die Apple Watch nur noch bei Änderungen, Dateien auf Netzlaufwerken werden im Hintergrund nicht mehr geprüft, und API Route ist als optionaler KI-Anbieter verfügbar.", ["iPhone Duo", "Akku", "KI"]),
         "v2.1.7": ("Wortliste, Formeln offline und schnelleres Tippen", "Auf dem Mac erscheinen Wörter aus dem macOS-Wörterbuch und deinen Textersetzungen in einer Liste unter der Einfügemarke. Markdown-Vorschau und PDF-Export zeigen TeX-Formeln offline, Tippen in großen Dateien auf iPhone und iPad ist schneller, und Cheaper Inference ist als KI-Anbieter verfügbar.", ["Vervollständigung", "Markdown", "Leistung"]),
@@ -733,6 +740,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v2.2.3": ("Fuldførelse af funktionskald og justerbar konsol", "MeierScript-funktioner fuldføres som kald med deres parametre, og Retur kan acceptere det valgte forslag som i Xcode. I Mac-versionen fra GitHub kan konsollens output og fejl ændres i størrelse og bliver ved linjestarten, og en lang indsat tekst vises med det samme.", ["Fuldførelse", "Konsol", "Mac"]),
         "v2.2.2": ("MeierScript, scriptkonsol og skjul tastatur på iPhone", "MeierScript-filer får syntaksfremhævning og på Mac forslag, mens du skriver. I Mac-versionen fra GitHub kører en konsol MeierScript-, Python-, JavaScript-, Ruby-, PHP-, Lua-, R-, shell- og Swift-scripts. På iPhone lukker en knap over tastaturet det, og punkter i indholdsfortegnelsen springer til overskriften på iPhone og iPad.", ["MeierScript", "Scripts", "iPhone"]),
         "v2.2.0": ("Forhåndsvisning ved folden på iPhone Duo og mindre baggrundsarbejde", "På iPhone Duo starter en forhåndsvisning ved siden af editoren ved folden, så dokumentet og forhåndsvisningen hver beholder en halvdel af skærmen. iPhone-appen opdaterer kun Apple Watch ved ændringer, filer på netværksdrev kontrolleres ikke i baggrunden, og API Route er tilgængelig som valgfri AI-udbyder.", ["iPhone Duo", "Batteri", "AI"]),
         "v2.1.7": ("Ordliste, formler offline og hurtigere skrivning", "På Mac vises ord fra macOS-ordbogen og dine teksterstatninger i en liste under markøren. Markdown-forhåndsvisning og PDF-eksport viser TeX-formler offline, skrivning i store filer på iPhone og iPad er hurtigere, og Cheaper Inference er tilgængelig som AI-udbyder.", ["Fuldførelse", "Markdown", "Ydeevne"]),
@@ -783,6 +791,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v2.2.3": ("Complétion des appels de fonctions et console redimensionnable", "Les fonctions MeierScript se complètent en appels avec leurs paramètres, et Retour peut accepter la suggestion sélectionnée comme dans Xcode. Dans la version Mac de GitHub, la sortie et les erreurs de la console se redimensionnent et restent au début des lignes, et un long texte collé s’affiche immédiatement.", ["Complétion", "Console", "Mac"]),
         "v2.2.2": ("MeierScript, console de scripts et masquage du clavier sur iPhone", "Les fichiers MeierScript bénéficient de la coloration syntaxique et, sur Mac, de suggestions pendant la saisie. Dans la version Mac de GitHub, une console exécute des scripts MeierScript, Python, JavaScript, Ruby, PHP, Lua, R, shell et Swift. Sur iPhone, un bouton au-dessus du clavier le masque, et les entrées de la table des matières mènent au titre sur iPhone et iPad.", ["MeierScript", "Scripts", "iPhone"]),
         "v2.2.0": ("Aperçu aligné sur le pli de l’iPhone Duo et moins de travail en arrière-plan", "Sur l’iPhone Duo, un aperçu à côté de l’éditeur commence au pli, afin que le document et son aperçu gardent chacun une moitié de l’écran. L’app iPhone ne met à jour l’Apple Watch qu’en cas de changement, les fichiers sur des volumes réseau ne sont plus vérifiés en arrière-plan, et API Route est disponible comme fournisseur d’IA facultatif.", ["iPhone Duo", "Batterie", "IA"]),
         "v2.1.7": ("Liste de mots, formules hors ligne et saisie plus rapide", "Sur Mac, les mots du dictionnaire macOS et de vos remplacements de texte s’affichent dans une liste sous le curseur. L’aperçu Markdown et l’export PDF affichent les formules TeX hors ligne, la saisie dans les gros fichiers est plus rapide sur iPhone et iPad, et Cheaper Inference est disponible.", ["Complétion", "Markdown", "Performances"]),
@@ -833,6 +842,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v2.2.3": ("Completado de llamadas a funciones y consola redimensionable", "Las funciones de MeierScript se completan como llamadas con sus parámetros, y Retorno puede aceptar la sugerencia seleccionada como en Xcode. En la versión para Mac de GitHub, la salida y los errores de la consola se pueden redimensionar y se quedan al inicio de las líneas, y un texto largo pegado aparece de inmediato.", ["Completado", "Consola", "Mac"]),
         "v2.2.2": ("MeierScript, consola de scripts y ocultar el teclado en iPhone", "Los archivos MeierScript tienen resaltado de sintaxis y, en Mac, sugerencias mientras escribes. En la versión para Mac de GitHub, una consola ejecuta scripts de MeierScript, Python, JavaScript, Ruby, PHP, Lua, R, shell y Swift. En iPhone, un botón sobre el teclado lo oculta, y las entradas de la tabla de contenido saltan al encabezado en iPhone y iPad.", ["MeierScript", "Scripts", "iPhone"]),
         "v2.2.0": ("Vista previa alineada con el pliegue del iPhone Duo y menos trabajo en segundo plano", "En el iPhone Duo, una vista previa junto al editor empieza en el pliegue, para que el documento y su vista previa ocupen cada uno una mitad de la pantalla. La app de iPhone solo actualiza el Apple Watch cuando hay cambios, los archivos en volúmenes de red ya no se comprueban en segundo plano y API Route está disponible como proveedor de IA opcional.", ["iPhone Duo", "Batería", "IA"]),
         "v2.1.7": ("Lista de palabras, fórmulas sin conexión y escritura más rápida", "En Mac, las palabras del diccionario de macOS y de tus sustituciones de texto aparecen en una lista bajo el cursor. La vista previa Markdown y la exportación PDF muestran fórmulas TeX sin conexión, escribir en archivos grandes en iPhone y iPad es más rápido y Cheaper Inference está disponible.", ["Autocompletado", "Markdown", "Rendimiento"]),
@@ -883,6 +893,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v2.2.3": ("関数呼び出しの補完とサイズ変更できるコンソール", "MeierScriptの関数が引数付きの呼び出しとして補完され、Xcodeと同様にReturnキーで選択中の候補を確定できます。GitHub版のMacアプリでは、コンソールの出力とエラーの領域をサイズ変更でき、行の先頭に留まります。長いテキストをペーストするとすぐに表示されます。", ["補完", "コンソール", "Mac"]),
         "v2.2.2": ("MeierScript、スクリプトコンソール、iPhoneでのキーボードを隠す", "MeierScriptファイルに構文ハイライトが付き、Macでは入力中に候補が表示されます。GitHub版のMacアプリでは、コンソールでMeierScript、Python、JavaScript、Ruby、PHP、Lua、R、シェル、Swiftのスクリプトを実行できます。iPhoneではキーボードの上のボタンでキーボードを閉じられ、iPhoneとiPadでは目次の項目から見出しへ移動します。", ["MeierScript", "スクリプト", "iPhone"]),
         "v2.2.0": ("iPhone Duoの折り目に合わせたプレビューとバックグラウンド処理の削減", "iPhone Duoでは、エディタの横のプレビューが折り目から始まり、書類とプレビューがそれぞれ画面の半分を使います。iPhoneアプリは変更があったときだけApple Watchを更新し、ネットワークボリューム上のファイルはバックグラウンドで確認されなくなりました。API Routeを任意のAIプロバイダとして使えます。", ["iPhone Duo", "バッテリー", "AI"]),
         "v2.1.7": ("単語リスト、オフライン数式、より速い入力", "Macでは、macOSの辞書とユーザ辞書（テキスト置換）の単語がカーソルの下にリスト表示されます。MarkdownプレビューとPDF書き出しはTeX数式をオフラインで表示し、iPhoneとiPadでは大きなファイルでの入力が速くなり、Cheaper InferenceをAIプロバイダとして使えます。", ["補完", "Markdown", "パフォーマンス"]),
@@ -933,6 +944,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v2.2.3": ("函数调用补全与可调整大小的控制台", "MeierScript 函数会补全为带参数的调用，Return 键可以像在 Xcode 中一样接受选中的建议。在 GitHub 版 Mac App 中，控制台的输出和错误面板可以调整大小并保持在行首，粘贴的长文本也会立即显示。", ["补全", "控制台", "Mac"]),
         "v2.2.2": ("MeierScript、脚本控制台与 iPhone 隐藏键盘", "MeierScript 文件支持语法高亮，并在 Mac 上输入时提供建议。在 GitHub 版 Mac App 中，控制台可运行 MeierScript、Python、JavaScript、Ruby、PHP、Lua、R、Shell 和 Swift 脚本。在 iPhone 上，键盘上方的按钮可收起键盘；在 iPhone 和 iPad 上，点按目录条目会跳到对应标题。", ["MeierScript", "脚本", "iPhone"]),
         "v2.2.0": ("iPhone Duo 预览对齐折痕，后台工作更少", "在 iPhone Duo 上，编辑器旁的预览从折痕处开始，文稿和预览各占屏幕的一半。iPhone App 仅在有变化时更新 Apple Watch，网络卷上的文件在后台不再被检查，API Route 可作为可选的 AI 提供方使用。", ["iPhone Duo", "电池", "AI"]),
         "v2.1.7": ("单词列表、离线公式与更快的输入", "在 Mac 上，macOS 词典和你的文本替换中的单词会以列表形式显示在插入点下方。Markdown 预览和 PDF 导出可离线显示 TeX 公式，在 iPhone 和 iPad 上编辑大文件时输入更快，并可使用 Cheaper Inference 作为 AI 提供商。", ["补全", "Markdown", "性能"]),

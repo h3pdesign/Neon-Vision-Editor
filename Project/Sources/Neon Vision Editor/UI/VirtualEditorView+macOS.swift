@@ -1157,6 +1157,18 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     private var document: (any EditorDocument)?
+    /// The document as configured. `document` is its folded view while
+    /// folds exist; canvas offsets and lines are then folded coordinates.
+    private var baseDocument: (any EditorDocument)?
+    let foldModel = StructureFoldModel()
+    private var foldedDocument: FoldedEditorDocument?
+    private var stashedFoldsByResource: [String: StashedFolds] = [:]
+    private var foldableLineCache: [Int: Bool] = [:]
+    private struct StashedFolds {
+        let contentRevision: Int?
+        let externalContentRevision: Int?
+        let folds: [StructureFold]
+    }
     private var documentID: UUID?
     private var resourceID = ""
     private var onFirstDraw: ((UUID, String) -> Void)?
@@ -1312,10 +1324,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     private var lineHeight: CGFloat { max(1, (editorFont.ascender - editorFont.descender + editorFont.leading + 4) * lineHeightMultiplier) }
     private var editorFont: NSFont { resolvedEditorFont }
     private var gutterWidth: CGFloat {
-        let lineNumberWidth = CGFloat(max(1, document?.lineCount ?? 1).description.count) * editorFontSize * 0.7
+        let lineNumberWidth = CGFloat(max(1, (baseDocument ?? document)?.lineCount ?? 1).description.count) * editorFontSize * 0.7
         let colorPreviewAllowance: CGFloat = VirtualEditorHexColorPreview.isSupported(language: language) ? 18 : 0
-        return max(44, lineNumberWidth + 18 + colorPreviewAllowance)
+        return max(44, lineNumberWidth + 18 + colorPreviewAllowance + foldControlAllowance)
     }
+    /// Room at the gutter's trailing edge for fold controls.
+    private var foldControlAllowance: CGFloat { foldSyntax == nil ? 0 : 14 }
+    var foldSyntax: StructureFoldSyntax? { StructureFoldSyntax.forLanguage(language) }
     var minimumUsableViewportWidth: CGFloat {
         let characterWidth = ("m" as NSString).size(withAttributes: [.font: editorFont]).width
         return gutterWidth + 16 + characterWidth * 4
@@ -1503,6 +1518,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         NotificationCenter.default.addObserver(self, selector: #selector(inspectWhitespaceScalars(_:)), name: .inspectWhitespaceScalarsRequested, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(updateVimMode(_:)), name: .vimModeStateDidChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(showInlineSuggestion(_:)), name: .showVirtualEditorInlineSuggestion, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleFoldCommand(_:)), name: .editorFoldCommandRequested, object: nil)
         registerForDraggedTypes([.fileURL, .URL, .string, .rtf])
     }
 
@@ -1528,7 +1544,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     @objc private func moveToLine(_ notification: Notification) {
         guard matchesDocument(notification), let line = notification.object as? Int else { return }
         clearInlineSuggestion()
-        let targetLine = max(0, line - 1)
+        let targetLine = canvasLineRevealing(documentLine: max(0, line - 1))
         reloadViewport(anchorLine: targetLine)
         let localLine = targetLine - viewportLineOrigin
         guard lineStarts.indices.contains(localLine) else { return }
@@ -1548,9 +1564,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
 
     @objc private func moveToRange(_ notification: Notification) {
         guard matchesDocument(notification),
-              let location = notification.userInfo?[EditorCommandUserInfo.rangeLocation] as? Int,
-              let length = notification.userInfo?[EditorCommandUserInfo.rangeLength] as? Int else { return }
+              let documentLocation = notification.userInfo?[EditorCommandUserInfo.rangeLocation] as? Int,
+              let documentLength = notification.userInfo?[EditorCommandUserInfo.rangeLength] as? Int else { return }
         clearInlineSuggestion()
+        let canvasRange = canvasRangeRevealing(NSRange(location: documentLocation, length: documentLength))
+        let location = canvasRange.location
+        let length = canvasRange.length
         let line = max(0, lineForAbsoluteOffset(location))
         reloadViewport(anchorLine: line)
         absoluteCaret = max(0, min(document?.utf16Length ?? location, location))
@@ -1571,8 +1590,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             return
         }
         findMatchRanges = (notification.userInfo?[EditorCommandUserInfo.findMatchRanges] as? [NSValue] ?? [])
-            .map(\.rangeValue)
-        selectedFindMatchRange = (notification.userInfo?[EditorCommandUserInfo.selectedFindMatchRange] as? NSValue)?.rangeValue
+            .compactMap { visibleCanvasRange(forDocumentRange: $0.rangeValue) }
+        selectedFindMatchRange = ((notification.userInfo?[EditorCommandUserInfo.selectedFindMatchRange] as? NSValue)?.rangeValue)
+            .flatMap { visibleCanvasRange(forDocumentRange: $0) }
         needsDisplay = true
     }
 
@@ -1613,10 +1633,13 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     @objc private func replaceRange(_ notification: Notification) {
         guard matchesDocument(notification),
               let documentID,
-              let location = notification.userInfo?[EditorCommandUserInfo.rangeLocation] as? Int,
-              let length = notification.userInfo?[EditorCommandUserInfo.rangeLength] as? Int,
+              let documentLocation = notification.userInfo?[EditorCommandUserInfo.rangeLocation] as? Int,
+              let documentLength = notification.userInfo?[EditorCommandUserInfo.rangeLength] as? Int,
               let replacement = notification.userInfo?[EditorCommandUserInfo.replacementText] as? String,
               !isReadOnly else { return }
+        let canvasRange = canvasRangeRevealing(NSRange(location: documentLocation, length: documentLength))
+        let location = canvasRange.location
+        let length = canvasRange.length
         let boundedLocation = max(0, min(document?.utf16Length ?? location, location))
         let boundedLength = max(0, min(length, (document?.utf16Length ?? boundedLocation) - boundedLocation))
         reloadViewport(anchorLine: lineForAbsoluteOffset(boundedLocation))
@@ -1713,6 +1736,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         let themeConfigurationKey = "\(themeRefreshToken)|\(syntaxThemeKey(for: resolvedTheme))|\(editorBaseThemeKey(for: resolvedTheme))"
         let key = "\(structuralConfigurationKey)|\(themeConfigurationKey)"
         let contentChanged = configuredContentRevision != contentRevision || configuredExternalContentRevision != externalContentRevision
+        var foldsInvalidated = false
         // Undo entries hold ranges into the text this view last saw. Another
         // document, or an edit made elsewhere (the other Side by Side pane, a
         // command, a reload from disk), invalidates them. Saving an untitled
@@ -1726,15 +1750,39 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 || revisionStep < 0 || revisionStep > pendingOwnMutationCount {
                 pendingOwnMutationCount = 0
                 documentUndoManager.removeAllActions()
+                // Fold coordinates follow this view's own edits only.
+                foldsInvalidated = true
             } else {
                 pendingOwnMutationCount -= revisionStep
             }
+        }
+        let nextFoldSyntax = StructureFoldSyntax.forLanguage(language)
+        if isNewDocument {
+            stashFolds(forResource: previousResourceID)
+            foldModel.removeAll()
+            restoreFolds(
+                forResource: resourceID,
+                contentRevision: contentRevision,
+                externalContentRevision: externalContentRevision,
+                syntax: nextFoldSyntax
+            )
+        } else if !foldModel.isEmpty, foldsInvalidated || nextFoldSyntax != foldSyntax {
+            absoluteCaret = foldModel.documentOffset(forFoldedOffset: absoluteCaret)
+            selection = NSRange(location: absoluteCaret, length: 0)
+            selectionAnchor = nil
+            foldModel.removeAll()
+            // The installed window is in the former folded coordinates.
+            viewport = nil
+            viewportText = ""
+            lineStarts = [0]
+            viewportLines = []
         }
         let themeOnlyChanged = !isNewDocument && !lastConfigurationKey.isEmpty
             && structuralConfigurationKey == lastStructuralConfigurationKey
             && themeConfigurationKey != lastThemeConfigurationKey
             && !contentChanged
-        self.document = document
+        self.baseDocument = document
+        self.document = foldAwareDocument(for: document)
         self.documentID = documentID
         self.resourceID = resourceID
         self.documentDisplayName = displayName
@@ -1764,8 +1812,20 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         self.onFontSizeChange = onFontSizeChange
         self.onTextMutation = onTextMutation.map { apply in
             { [weak self] mutation in
-                let applied = apply(mutation)
-                if applied { self?.pendingOwnMutationCount += 1 }
+                guard let self else { return apply(mutation) }
+                guard let translated = self.documentMutationForFolds(mutation) else { return false }
+                let applied = apply(translated.mutation)
+                if applied {
+                    self.pendingOwnMutationCount += 1
+                    if let edit = translated.edit {
+                        self.foldModel.applyEdit(
+                            range: edit.range,
+                            replacementUTF16Length: edit.replacementLength,
+                            lineDelta: edit.lineDelta
+                        )
+                        self.document = self.foldAwareDocument(for: self.baseDocument)
+                    }
+                }
                 return applied
             }
         }
@@ -1838,11 +1898,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         visualRowsSnapshot = nil
         syntaxSpansByLine.removeAll(keepingCapacity: true)
         if isNewDocument {
-            absoluteCaret = min(max(0, caret ?? 0), document?.utf16Length ?? 0)
+            absoluteCaret = min(max(0, canvasOffset(forDocumentOffset: caret ?? 0)), self.document?.utf16Length ?? 0)
             selection = NSRange(location: absoluteCaret, length: 0)
             selectionAnchor = nil
         } else {
-            let documentLength = document?.utf16Length ?? absoluteCaret
+            let documentLength = self.document?.utf16Length ?? absoluteCaret
             absoluteCaret = min(max(0, absoluteCaret), documentLength)
             let selectionLocation = min(max(0, selection.location), documentLength)
             let selectionLength = min(max(0, selection.length), documentLength - selectionLocation)
@@ -1882,7 +1942,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 )
             }
         } else {
-            let targetLine = (try? document?.position(atUTF16Offset: absoluteCaret).line) ?? 0
+            let targetLine = (try? self.document?.position(atUTF16Offset: absoluteCaret).line) ?? 0
             reloadViewport(anchorLine: targetLine)
             setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
             if isNewDocument {
@@ -1957,10 +2017,10 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         for row in visibleRows {
             context.saveGState()
             if showsLineNumbers, row.isFirstFragment {
-                let lineNumber = "\(row.logicalLine + 1)" as NSString
+                let lineNumber = "\(documentLine(forCanvasLine: row.logicalLine) + 1)" as NSString
                 let numberWidth = lineNumber.size(withAttributes: [.font: editorFont]).width
                 lineNumber.draw(at: NSPoint(
-                    x: gutterWidth - numberWidth - Geometry.lineNumberTrailingInset,
+                    x: gutterWidth - numberWidth - Geometry.lineNumberTrailingInset - foldControlAllowance,
                     y: VirtualEditorVisualLayout.lineNumberOriginY(
                         baseline: row.baseline,
                         fontAscender: editorFont.ascender
@@ -1980,6 +2040,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             drawWhitespaceAndIndentationDecorations(for: row, dark: dark)
         }
         drawHexColorSwatches(rows: visibleRows, dirtyRect: dirtyRect)
+        drawFoldDecorations(rows: visibleRows, dark: dark)
         drawMarkedText(rows: rows, context: context)
         drawInlineSuggestion(rows: rows, context: context)
         drawCaret(rows: rows)
@@ -2557,6 +2618,9 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         window?.makeFirstResponder(self)
         clearInlineSuggestion()
         let point = convert(event.locationInWindow, from: nil)
+        if event.clickCount == 1, !event.modifierFlags.contains(.shift), handleFoldClick(at: point) {
+            return
+        }
         if let target = hexColorSwatchTargets(rows: visualRows()).first(where: { $0.rect.contains(point) }) {
             presentColorPicker(for: target.literal, relativeTo: target.rect)
             return
@@ -2610,11 +2674,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                 absoluteStart: viewportLine.startUTF16
             )
             guard !literals.isEmpty, !linesWithSwatches.contains(row.logicalLine) else { continue }
-            let lineNumber = "\(row.logicalLine + 1)" as NSString
+            let lineNumber = "\(documentLine(forCanvasLine: row.logicalLine) + 1)" as NSString
             let numberWidth = lineNumber.size(withAttributes: [.font: editorFont]).width
             let swatchSize: CGFloat = 10
             let rect = NSRect(
-                x: max(2, gutterWidth - numberWidth - Geometry.lineNumberTrailingInset - 14),
+                x: max(2, gutterWidth - numberWidth - Geometry.lineNumberTrailingInset - foldControlAllowance - 14),
                 y: row.baseline - lineHeight + 5,
                 width: swatchSize,
                 height: swatchSize
@@ -2768,6 +2832,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         }
         menu.addItem(withTitle: "Select All", action: #selector(selectAll(_:)), keyEquivalent: "")
         for item in menu.items { item.target = self }
+        addFoldMenuItems(to: menu)
         if selection.length > 0 {
             menu.addItem(.separator())
             let snapshot = NSMenuItem(
@@ -3083,10 +3148,11 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     @objc private func showInlineSuggestion(_ notification: Notification) {
         guard matchesDocument(notification),
               let suggestion = notification.userInfo?[EditorCommandUserInfo.replacementText] as? String,
-              let location = notification.userInfo?[EditorCommandUserInfo.completionCaretOffset] as? Int,
+              let documentLocation = notification.userInfo?[EditorCommandUserInfo.completionCaretOffset] as? Int,
               !suggestion.isEmpty,
               selection.length == 0,
-              absoluteCaret == location else { return }
+              absoluteCaret == canvasOffset(forDocumentOffset: documentLocation) else { return }
+        let location = absoluteCaret
         let prefix = notification.userInfo?[EditorCommandUserInfo.completionWordPrefix] as? String ?? ""
         let sanitizeRows: ([String]) -> [String] = { rows in
             rows.map(EditorTextSanitizer.sanitize).filter { !$0.isEmpty && !$0.contains(where: \.isNewline) }
@@ -3384,7 +3450,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             userInfo: [
                 EditorCommandUserInfo.windowNumber: window?.windowNumber ?? -1,
                 EditorCommandUserInfo.inspectionMessage:
-                    "Line \(lineForAbsoluteOffset(absoluteCaret) + 1) at UTF16@\(absoluteCaret), whitespace scalars:\n\(body)"
+                    "Line \(documentLine(forCanvasLine: lineForAbsoluteOffset(absoluteCaret)) + 1) at UTF16@\(documentOffset(forCanvasOffset: absoluteCaret)), whitespace scalars:\n\(body)"
             ]
         )
     }
@@ -3428,10 +3494,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     }
 
     private func registerUndo(replacement: String, range: NSRange, inverseReplacement: String) {
+        // Undo outlives fold changes, so it keeps document coordinates.
+        let undoRange = documentRange(forCanvasRange: range)
         documentUndoManager.registerUndo(withTarget: self) { target in
             target.applyUndoableReplacement(
                 replacement,
-                range: range,
+                range: target.canvasRangeRevealing(undoRange),
                 inverseReplacement: inverseReplacement
             )
         }
@@ -3838,6 +3906,12 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
               absoluteCaret <= viewport.startUTF16Offset + viewport.text.utf16.count,
               let revision = configuredContentRevision,
               let externalRevision = configuredExternalContentRevision else { return }
+        // A folded window belongs to the fold state; folds are restored with
+        // the tab and re-read instead.
+        guard foldModel.isEmpty else {
+            renderCache.remove { $0.resourceID == resourceID }
+            return
+        }
         let key = ViewportCacheKey(resourceID: resourceID, documentID: documentID,
                                    contentRevision: revision, externalContentRevision: externalRevision,
                                    caret: absoluteCaret, configuration: lastConfigurationKey, width: viewportSize.width)
@@ -3939,6 +4013,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         lineStarts = [0]
         attributedLineCache.removeAll(keepingCapacity: true)
         visualFragmentCache.removeAll(keepingCapacity: true)
+        foldableLineCache.removeAll(keepingCapacity: true)
         var offset = 0
         for scalar in viewportText.utf16 { offset += 1; if scalar == 10 { lineStarts.append(offset) } }
         let nsViewportText = viewportText as NSString
@@ -4319,7 +4394,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
             object: nil,
             userInfo: [
                 EditorCommandUserInfo.documentID: documentID.uuidString,
-                EditorCommandUserInfo.completionCaretOffset: absoluteCaret,
+                EditorCommandUserInfo.completionCaretOffset: documentOffset(forCanvasOffset: absoluteCaret),
                 EditorCommandUserInfo.completionContext: context,
                 EditorCommandUserInfo.completionNextCharacter: nextCharacter
             ]
@@ -4337,15 +4412,409 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
                   NSMaxRange(selection) <= viewportLineOriginStartUTF16 + viewportText.utf16.count else { return "" }
             return (viewportText as NSString).substring(with: NSRange(location: selection.location - viewportLineOriginStartUTF16, length: selection.length))
         }()
-        NotificationCenter.default.post(name: .caretPositionDidChange, object: nil, userInfo: [EditorCommandUserInfo.documentID: documentID.uuidString, "location": absoluteCaret, "line": viewportLineOrigin + localLine + 1, "column": localCaret - lineStart + 1 + (localLine == 0 ? viewport?.startColumnUTF16 ?? 0 : 0)])
+        NotificationCenter.default.post(name: .caretPositionDidChange, object: nil, userInfo: [EditorCommandUserInfo.documentID: documentID.uuidString, "location": documentOffset(forCanvasOffset: absoluteCaret), "line": documentLine(forCanvasLine: viewportLineOrigin + localLine) + 1, "column": localCaret - lineStart + 1 + (localLine == 0 ? viewport?.startColumnUTF16 ?? 0 : 0)])
         NotificationCenter.default.post(
             name: .editorSelectionDidChange,
             object: selectedText,
             userInfo: [
                 EditorCommandUserInfo.documentID: documentID.uuidString,
-                "range": NSValue(range: selection)
+                "range": NSValue(range: documentRange(forCanvasRange: selection))
             ]
         )
+    }
+}
+
+// MARK: - Structure folding
+
+/// Commands for `editorFoldCommandRequested`, posted as the notification object.
+enum EditorFoldCommand: String {
+    case fold
+    case unfold
+    case foldAll
+    case unfoldAll
+}
+
+extension VirtualEditorCanvas {
+    /// The view the canvas reads: the folded document while folds exist.
+    fileprivate func foldAwareDocument(for base: (any EditorDocument)?) -> (any EditorDocument)? {
+        guard let base, !foldModel.isEmpty else {
+            foldedDocument = nil
+            return base
+        }
+        if let foldedDocument, foldedDocument.base === base { return foldedDocument }
+        let folded = FoldedEditorDocument(base: base, model: foldModel)
+        foldedDocument = folded
+        return folded
+    }
+
+    fileprivate func stashFolds(forResource resource: String) {
+        guard !resource.isEmpty else { return }
+        guard !foldModel.isEmpty else {
+            stashedFoldsByResource.removeValue(forKey: resource)
+            return
+        }
+        if stashedFoldsByResource[resource] == nil, stashedFoldsByResource.count >= 16,
+           let evicted = stashedFoldsByResource.keys.first {
+            stashedFoldsByResource.removeValue(forKey: evicted)
+        }
+        stashedFoldsByResource[resource] = StashedFolds(
+            contentRevision: configuredContentRevision,
+            externalContentRevision: configuredExternalContentRevision,
+            folds: foldModel.folds
+        )
+    }
+
+    /// Folds come back with a tab only when its text is unchanged since.
+    fileprivate func restoreFolds(
+        forResource resource: String,
+        contentRevision: Int,
+        externalContentRevision: Int,
+        syntax: StructureFoldSyntax?
+    ) {
+        guard let stashed = stashedFoldsByResource.removeValue(forKey: resource),
+              syntax != nil,
+              stashed.contentRevision == contentRevision,
+              stashed.externalContentRevision == externalContentRevision else { return }
+        foldModel.setFolds(stashed.folds)
+    }
+
+    // MARK: Coordinates
+
+    func documentOffset(forCanvasOffset offset: Int) -> Int {
+        foldModel.isEmpty ? offset : foldModel.documentOffset(forFoldedOffset: offset)
+    }
+
+    func canvasOffset(forDocumentOffset offset: Int) -> Int {
+        foldModel.isEmpty ? offset : foldModel.foldedOffset(forDocumentOffset: offset)
+    }
+
+    func documentRange(forCanvasRange range: NSRange) -> NSRange {
+        foldModel.isEmpty ? range : foldModel.documentRange(forFoldedRange: range)
+    }
+
+    func documentLine(forCanvasLine line: Int) -> Int {
+        foldModel.isEmpty ? line : foldModel.documentLine(forFoldedLine: line)
+    }
+
+    /// A document range in canvas coordinates, or nil while it is folded away.
+    fileprivate func visibleCanvasRange(forDocumentRange range: NSRange) -> NSRange? {
+        guard !foldModel.isEmpty else { return range }
+        let mapped = foldModel.foldedRange(forDocumentRange: range)
+        return mapped.length == range.length ? mapped : nil
+    }
+
+    /// Opens folds that hide `range`, then maps it to canvas coordinates.
+    fileprivate func canvasRangeRevealing(_ range: NSRange) -> NSRange {
+        guard !foldModel.isEmpty else { return range }
+        changeFolds { foldModel.reveal(range) }
+        return foldModel.foldedRange(forDocumentRange: range)
+    }
+
+    fileprivate func canvasLineRevealing(documentLine line: Int) -> Int {
+        guard !foldModel.isEmpty else { return line }
+        changeFolds { foldModel.reveal(line: line) }
+        return foldModel.foldedLine(forDocumentLine: line)
+    }
+
+    /// Maps a canvas edit to the document. An edit that would replace folded
+    /// lines it cannot show opens those folds instead and is not applied.
+    fileprivate func documentMutationForFolds(
+        _ mutation: EditorTextMutation
+    ) -> (mutation: EditorTextMutation, edit: (range: NSRange, replacementLength: Int, lineDelta: Int)?)? {
+        guard !foldModel.isEmpty else { return (mutation, nil) }
+        let canvasRange = mutation.viewport.map {
+            NSRange(location: $0.startUTF16Offset + mutation.range.location, length: mutation.range.length)
+        } ?? mutation.range
+        if foldModel.foldedRangeSpansHiddenText(canvasRange) {
+            let start = foldModel.documentOffset(forFoldedOffset: canvasRange.location)
+            let end = foldModel.documentOffset(forFoldedOffset: NSMaxRange(canvasRange))
+            changeFolds { foldModel.reveal(NSRange(location: start, length: max(0, end - start))) }
+            return nil
+        }
+        let range = foldModel.documentRange(forFoldedRange: canvasRange)
+        let lineDelta = baseDocument.flatMap {
+            try? FoldedEditorDocument.lineDelta(in: $0, replacing: range, with: mutation.replacement)
+        } ?? 0
+        return (
+            EditorTextMutation(documentID: mutation.documentID, range: range, replacement: mutation.replacement),
+            (range, mutation.replacement.utf16.count, lineDelta)
+        )
+    }
+
+    /// Applies a fold change, keeping the caret, selection, and the first
+    /// visible document line where they were.
+    fileprivate func changeFolds(_ change: () -> Bool) {
+        let caret = documentOffset(forCanvasOffset: absoluteCaret)
+        let selectionStart = documentOffset(forCanvasOffset: selection.location)
+        let selectionEnd = documentOffset(forCanvasOffset: NSMaxRange(selection))
+        let anchor = selectionAnchor.map { documentOffset(forCanvasOffset: $0) }
+        let scrollView = enclosingScrollView
+        let scrollY = scrollView?.contentView.bounds.minY ?? 0
+        let rows = visualRows()
+        let topRow = visualRow(closestToBaseline: scrollY + editorFont.ascender + 2, in: rows)
+        let topDocumentLine = topRow.map { documentLine(forCanvasLine: $0.logicalLine) }
+        let topRowOffsetY = topRow.map { scrollY - ($0.baseline - editorFont.ascender - 2) } ?? 0
+        guard change() else { return }
+        document = foldAwareDocument(for: baseDocument)
+        absoluteCaret = canvasOffset(forDocumentOffset: caret)
+        let start = canvasOffset(forDocumentOffset: selectionStart)
+        selection = NSRange(location: start, length: max(0, canvasOffset(forDocumentOffset: selectionEnd) - start))
+        selectionAnchor = anchor.map { canvasOffset(forDocumentOffset: $0) }
+        clearInlineSuggestion()
+        foldableLineCache.removeAll()
+        let topLine = topDocumentLine.map { foldModel.isEmpty ? $0 : foldModel.foldedLine(forDocumentLine: $0) }
+        reloadViewport(anchorLine: topLine ?? lineForAbsoluteOffset(absoluteCaret))
+        recalculateVisualMetrics()
+        setFrameSize(NSSize(width: contentWidth, height: logicalHeight))
+        if let scrollView, let topLine {
+            let rowTop = CGFloat(visualRowIndexForFolding.rowOrigin(forLogicalLine: topLine)) * lineHeight
+            let maximumY = max(0, frame.height - scrollView.contentView.bounds.height)
+            scrollView.contentView.scroll(to: NSPoint(
+                x: scrollView.contentView.bounds.minX,
+                y: min(max(0, rowTop + topRowOffsetY), maximumY)
+            ))
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+        }
+        lastScrollY = scrollView?.contentView.bounds.minY ?? lastScrollY
+        lastReloadAnchorLine = viewportLineOrigin
+        publishCaret()
+        needsLayout = true
+        needsDisplay = true
+    }
+
+    private var visualRowIndexForFolding: VirtualEditorVisualRowIndex {
+        VirtualEditorVisualRowIndex(logicalLineCount: document?.lineCount ?? 1, estimatedRowsPerLogicalLine: estimatedRowsPerLogicalLine)
+    }
+
+    // MARK: Commands
+
+    /// True when the canvas line can start a fold or is a folded header.
+    fileprivate func canvasLineIsFoldable(_ line: Int) -> Bool {
+        guard let syntax = foldSyntax else { return false }
+        if !foldModel.isEmpty, foldModel.visibleFold(headerLine: documentLine(forCanvasLine: line)) != nil { return true }
+        let localLine = line - viewportLineOrigin
+        guard viewportLines.indices.contains(localLine) else { return false }
+        if let cached = foldableLineCache[localLine] { return cached }
+        let foldable = StructureFoldScanner.lineOpensStructure(viewportLines[localLine].text, syntax: syntax)
+        foldableLineCache[localLine] = foldable
+        return foldable
+    }
+
+    fileprivate func canvasLineIsFolded(_ line: Int) -> Bool {
+        !foldModel.isEmpty && foldModel.visibleFold(headerLine: documentLine(forCanvasLine: line)) != nil
+    }
+
+    /// Folds or unfolds the structure that starts on `line` (canvas line).
+    @discardableResult
+    func toggleFold(atCanvasLine line: Int) -> Bool {
+        let header = documentLine(forCanvasLine: line)
+        if canvasLineIsFolded(line) {
+            changeFolds { foldModel.removeFold(headerLine: header) }
+            return true
+        }
+        guard let syntax = foldSyntax, let baseDocument,
+              let region = try? StructureFoldScanner.region(startingAt: header, in: baseDocument, syntax: syntax) else {
+            return false
+        }
+        changeFolds {
+            foldModel.add(region.fold)
+            return true
+        }
+        return true
+    }
+
+    /// Folds the innermost structure around the caret: the caret line's own
+    /// structure, or the nearest enclosing one above it in the loaded lines.
+    func foldAtCaret() {
+        guard let syntax = foldSyntax, let baseDocument else { return }
+        let caretLine = lineForAbsoluteOffset(absoluteCaret)
+        let caretDocumentLine = documentLine(forCanvasLine: caretLine)
+        var line = caretLine
+        while line >= viewportLineOrigin, caretLine - line <= 2_000 {
+            if canvasLineIsFoldable(line), !canvasLineIsFolded(line) {
+                let header = documentLine(forCanvasLine: line)
+                if let region = try? StructureFoldScanner.region(startingAt: header, in: baseDocument, syntax: syntax),
+                   region.endLine >= caretDocumentLine {
+                    changeFolds {
+                        foldModel.add(region.fold)
+                        return true
+                    }
+                    return
+                }
+            }
+            line -= 1
+        }
+        NSSound.beep()
+    }
+
+    func unfoldAtCaret() {
+        let caretLine = lineForAbsoluteOffset(absoluteCaret)
+        if canvasLineIsFolded(caretLine) {
+            toggleFold(atCanvasLine: caretLine)
+        } else {
+            NSSound.beep()
+        }
+    }
+
+    /// Folds every structure below the outermost one, so the top level reads
+    /// as a list; opening a fold shows its children folded in turn.
+    func foldAll() {
+        guard let syntax = foldSyntax, let baseDocument,
+              let regions = try? StructureFoldScanner.allRegions(in: baseDocument, syntax: syntax),
+              !regions.isEmpty else { return }
+        let nested = regions.filter { $0.depth > 0 }
+        let folds = (nested.isEmpty ? regions : nested).map(\.fold)
+        changeFolds {
+            foldModel.setFolds(folds)
+            return true
+        }
+    }
+
+    func unfoldAll() {
+        changeFolds {
+            guard !foldModel.isEmpty else { return false }
+            foldModel.removeAll()
+            return true
+        }
+    }
+
+    @objc fileprivate func handleFoldCommand(_ notification: Notification) {
+        guard matchesFoldCommandTarget(notification),
+              let rawValue = notification.object as? String,
+              let command = EditorFoldCommand(rawValue: rawValue),
+              foldSyntax != nil,
+              ensureCurrentViewportForInput() else { return }
+        switch command {
+        case .fold: foldAtCaret()
+        case .unfold: unfoldAtCaret()
+        case .foldAll: foldAll()
+        case .unfoldAll: unfoldAll()
+        }
+    }
+
+    @objc fileprivate func performFoldMenuCommand(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? String,
+              let command = EditorFoldCommand(rawValue: rawValue) else { return }
+        switch command {
+        case .fold: foldAtCaret()
+        case .unfold: unfoldAtCaret()
+        case .foldAll: foldAll()
+        case .unfoldAll: unfoldAll()
+        }
+    }
+
+    fileprivate func addFoldMenuItems(to menu: NSMenu) {
+        guard foldSyntax != nil else { return }
+        menu.addItem(.separator())
+        let items: [(String, EditorFoldCommand)] = [
+            (NSLocalizedString("Fold", comment: "Editor fold command"), .fold),
+            (NSLocalizedString("Unfold", comment: "Editor unfold command"), .unfold),
+            (NSLocalizedString("Fold All", comment: "Editor fold all command"), .foldAll),
+            (NSLocalizedString("Unfold All", comment: "Editor unfold all command"), .unfoldAll)
+        ]
+        for (title, command) in items {
+            let item = NSMenuItem(title: title, action: #selector(performFoldMenuCommand(_:)), keyEquivalent: "")
+            item.representedObject = command.rawValue
+            item.target = self
+            menu.addItem(item)
+        }
+    }
+
+    // MARK: Gutter and placeholder
+
+    private var foldControlRange: ClosedRange<CGFloat> {
+        (gutterWidth - foldControlAllowance - 2)...(gutterWidth + 2)
+    }
+
+    /// Clicking a fold control or a folded placeholder toggles that fold.
+    fileprivate func handleFoldClick(at point: NSPoint) -> Bool {
+        guard foldSyntax != nil else { return false }
+        let rows = visualRows()
+        if let placeholder = foldPlaceholderRects(rows: rows[...]).first(where: { $0.rect.insetBy(dx: -2, dy: -2).contains(point) }) {
+            return toggleFold(atCanvasLine: placeholder.line)
+        }
+        guard foldControlRange.contains(point.x),
+              let row = visualRow(closestToBaseline: point.y + editorFont.ascender - lineHeight / 2, in: rows),
+              canvasLineIsFoldable(row.logicalLine) else { return false }
+        toggleFold(atCanvasLine: row.logicalLine)
+        // A control that turned out to have nothing to hide still takes the click.
+        return true
+    }
+
+    private func foldPlaceholderRects(rows: ArraySlice<VisualRow>) -> [(line: Int, rect: NSRect)] {
+        guard !foldModel.isEmpty else { return [] }
+        var result: [(line: Int, rect: NSRect)] = []
+        var index = rows.startIndex
+        while index < rows.endIndex {
+            let row = rows[index]
+            let next = rows.index(after: index)
+            let isLastFragment = next == rows.endIndex || rows[next].logicalLine != row.logicalLine
+            if isLastFragment, canvasLineIsFolded(row.logicalLine) {
+                let width = CGFloat(CTLineGetTypographicBounds(row.fragment.line, nil, nil, nil))
+                let height = max(8, lineHeight - 6)
+                result.append((row.logicalLine, NSRect(
+                    x: gutterWidth + Geometry.gutterTextInset + width + 6,
+                    y: row.baseline - lineHeight + 4,
+                    width: max(22, editorFont.pointSize * 1.8),
+                    height: height
+                )))
+            }
+            index = next
+        }
+        return result
+    }
+
+    fileprivate func drawFoldDecorations(rows: ArraySlice<VisualRow>, dark: Bool) {
+        guard foldSyntax != nil else { return }
+        let textColor = NSColor(resolvedEditorTheme.text)
+        let size = min(9, max(6, editorFont.pointSize * 0.6))
+        let centerX = gutterWidth - foldControlAllowance / 2 - 1
+        for row in rows where row.isFirstFragment && canvasLineIsFoldable(row.logicalLine) {
+            let folded = canvasLineIsFolded(row.logicalLine)
+            let centerY = row.baseline - editorFont.ascender + lineHeight / 2 - 2
+            let path = NSBezierPath()
+            if folded {
+                path.move(to: NSPoint(x: centerX - size * 0.35, y: centerY - size / 2))
+                path.line(to: NSPoint(x: centerX + size * 0.45, y: centerY))
+                path.line(to: NSPoint(x: centerX - size * 0.35, y: centerY + size / 2))
+            } else {
+                path.move(to: NSPoint(x: centerX - size / 2, y: centerY - size * 0.35))
+                path.line(to: NSPoint(x: centerX + size / 2, y: centerY - size * 0.35))
+                path.line(to: NSPoint(x: centerX, y: centerY + size * 0.45))
+            }
+            path.close()
+            textColor.withAlphaComponent(folded ? 0.8 : 0.35).setFill()
+            path.fill()
+        }
+        for placeholder in foldPlaceholderRects(rows: rows) {
+            let pill = NSBezierPath(roundedRect: placeholder.rect, xRadius: 4, yRadius: 4)
+            textColor.withAlphaComponent(dark ? 0.16 : 0.1).setFill()
+            pill.fill()
+            textColor.withAlphaComponent(0.3).setStroke()
+            pill.lineWidth = 0.75
+            pill.stroke()
+            let label = "⋯" as NSString
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: editorFont,
+                .foregroundColor: textColor.withAlphaComponent(0.75)
+            ]
+            let labelSize = label.size(withAttributes: attributes)
+            label.draw(at: NSPoint(
+                x: placeholder.rect.midX - labelSize.width / 2,
+                y: placeholder.rect.midY - labelSize.height / 2
+            ), withAttributes: attributes)
+        }
+    }
+
+    private func matchesFoldCommandTarget(_ notification: Notification) -> Bool {
+        if let requestedWindow = notification.userInfo?[EditorCommandUserInfo.windowNumber] as? Int,
+           window?.windowNumber != requestedWindow {
+            return false
+        }
+        if let requestedID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String {
+            return requestedID == documentIdentifier
+        }
+        return Self.activeCanvas(in: window).map { $0 === self } ?? true
     }
 }
 #endif

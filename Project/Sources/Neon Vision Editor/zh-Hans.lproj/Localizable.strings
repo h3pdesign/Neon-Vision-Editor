@@ -2054,3 +2054,7 @@
 "Run Console: In the Mac version from GitHub, the run console's Output and Errors panes can be resized by dragging the divider between them." = "运行控制台: 在 GitHub 版 Mac App 中，拖动分隔线即可调整运行控制台“输出”和“错误”面板的大小。";
 "Console Output: Console output stays scrolled to the start of its lines after each run instead of jumping to the middle." = "控制台输出: 每次运行后，控制台输出保持在行首，不再跳到中间。";
 "Text Replacements: On the Mac, Text Replacements with punctuation shortcuts or several lines now appear in the word list." = "文本替换: 在 Mac 上，快捷短语含标点或包含多行的文本替换现在会出现在单词列表中。";
+"Fold" = "折叠";
+"Unfold" = "展开";
+"Fold All" = "全部折叠";
+"Unfold All" = "全部展开";

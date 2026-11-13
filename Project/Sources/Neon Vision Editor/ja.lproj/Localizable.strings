@@ -2054,3 +2054,7 @@
 "Run Console: In the Mac version from GitHub, the run console's Output and Errors panes can be resized by dragging the divider between them." = "実行コンソール: GitHub版のMacアプリでは、実行コンソールの出力とエラーの領域を区切り線のドラッグでサイズ変更できます。";
 "Console Output: Console output stays scrolled to the start of its lines after each run instead of jumping to the middle." = "コンソール出力: コンソール出力は実行のたびに中央へ移動せず、行の先頭に留まります。";
 "Text Replacements: On the Mac, Text Replacements with punctuation shortcuts or several lines now appear in the word list." = "テキスト置換: Macで、ショートカットに句読点を含むテキスト置換や複数行のテキスト置換が単語リストに表示されるようになりました。";
+"Fold" = "折りたたむ";
+"Unfold" = "展開";
+"Fold All" = "すべて折りたたむ";
+"Unfold All" = "すべて展開";

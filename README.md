@@ -1,7 +1,7 @@
 <p align="center"><a href="https://apps-h3p.com"><img alt="Docs on h3p apps" src="https://img.shields.io/badge/Docs-h3p%20apps-111827?style=for-the-badge"></a><a href="https://buymeacoffee.com/h3pdesign"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy%20Me%20a-Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=111827"></a><a href="https://www.patreon.com/h3p"><img alt="Support on Patreon" src="https://img.shields.io/badge/Support%20on-Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white"></a><a href="https://www.paypal.com/paypalme/HilthartPedersen"><img alt="Support via PayPal" src="https://img.shields.io/badge/Support%20via-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white"></a></p>
 
 <p align="center">
-  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v2.2.2-0A84FF"></a>
+  <a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases"><img alt="Latest Release" src="https://img.shields.io/badge/release-v2.2.3-0A84FF"></a>
   <a href="https://apps.apple.com/de/app/neon-vision-editor/id6758950965"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20iPadOS%20%7C%20visionOS-0A84FF"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/actions/workflows/release-github-only.yml"><img alt="Primary Release" src="https://img.shields.io/github/actions/workflow/status/h3pdesign/Neon-Vision-Editor/release-github-only.yml?branch=main&label=Primary%20Release"></a>
   <a href="https://github.com/h3pdesign/Neon-Vision-Editor/blob/main/SECURITY.md"><img alt="Security Policy" src="https://img.shields.io/badge/security-policy-22C55E"></a>
@@ -52,16 +52,28 @@
 </p>
 
 > Status: **active release**  
-> Latest release: **v2.2.2**
-> Next release target: **v2.2.3**
+> Latest release: **v2.2.3**
+> Next release target: **v2.2.4**
 > Platform target: **macOS 26 (Tahoe)** compatible with **macOS Sequoia**
 > Apple Silicon: supported
-> Direct GitHub release: **v2.2.2** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-11-13** for latest release **v2.2.2**
+> Direct GitHub release: **v2.2.3** / App Store and TestFlight availability varies by platform and review status
+> Last updated (README): **2026-11-13** for latest release **v2.2.3**
 
-## What's New Since v2.2.0
+## What's New in v2.2.2 and v2.2.3
 
 ### Why Upgrade
+
+- v2.2.3: MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected.
+- v2.2.3: An optional setting lets Return accept the selected suggestion from the completion list, as in Xcode.
+- v2.2.3: On the Mac, pasting a long text shows it right away instead of an empty editor until you scroll.
+
+### v2.2.3 Highlights
+
+- In the Mac version from GitHub, the run console's Output and Errors panes can be resized by dragging the divider between them.
+- Console output stays scrolled to the start of its lines after each run instead of jumping to the middle.
+- On the Mac, Text Replacements with punctuation shortcuts or several lines now appear in the word list.
+
+### v2.2.2 Context
 
 - v2.2.2: MeierScript files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names.
 - v2.2.2: In the Mac version from GitHub, a run console runs MeierScript, Python, JavaScript, Ruby, PHP, Lua, R, shell and Swift files.
@@ -131,7 +143,7 @@
         <td><img alt="Stable" src="https://img.shields.io/badge/Stable-22C55E?style=flat-square"></td>
         <td>Direct notarized builds and fastest stable updates</td>
         <td><a href="https://github.com/h3pdesign/Neon-Vision-Editor/releases">GitHub Releases</a></td>
-        <td>v2.2.2 release docs current; v2.2.2 direct download current</td>
+        <td>v2.2.3 release docs current; v2.2.3 direct download current</td>
       </tr>
       <tr>
         <td><img alt="Store" src="https://img.shields.io/badge/Store-0A84FF?style=flat-square"></td>
@@ -152,7 +164,7 @@
 ## Download Metrics
 
 <p align="center">
-  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=17417&color=0A84FF&style=for-the-badge">
+  <img alt="All Downloads" src="https://img.shields.io/static/v1?label=All+Downloads&message=17479&color=0A84FF&style=for-the-badge">
 </p>
 
 <p align="center"><strong>Release Download + Traffic Trend</strong></p>
@@ -167,8 +179,8 @@
 
 <p align="center"><em>Styled line chart shows per-release totals with 14-day traffic counters for clones and views.</em></p>
 <p align="center">
-  <img alt="Unique cloners (14d)" src="https://img.shields.io/static/v1?label=Unique+cloners+%2814d%29&message=425&color=7C3AED&style=for-the-badge">
-  <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=195&color=0EA5E9&style=for-the-badge">
+  <img alt="Unique cloners (14d)" src="https://img.shields.io/static/v1?label=Unique+cloners+%2814d%29&message=429&color=7C3AED&style=for-the-badge">
+  <img alt="Unique visitors (14d)" src="https://img.shields.io/static/v1?label=Unique+visitors+%2814d%29&message=188&color=0EA5E9&style=for-the-badge">
 </p>
 <p align="center">
   <img alt="Clone snapshot (UTC)" src="https://img.shields.io/static/v1?label=Clone+snapshot+%28UTC%29&message=2026-11-13&color=334155&style=flat-square">
@@ -223,8 +235,8 @@ The direct GitHub release is currently ahead of the iOS/iPadOS App Store version
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
-| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v2.2.2** | Current direct download |
-| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v2.2.1** | Current public App Store listing |
+| **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v2.2.3** | Current direct download |
+| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v2.2.2** | Current public App Store listing |
 | **Store status** | macOS | Apple-managed distribution | App Store Connect | **Not verified** | GitHub publication does not confirm an App Store submission or review status |
 | **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v1.6.1** | Current recorded visionOS listing |
 | **Beta** | iOS / iPadOS / macOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **Not verified** | Check the invite for available builds; GitHub publication does not confirm TestFlight availability |
@@ -362,7 +374,7 @@ Platform-specific availability is tracked in the [Platform Matrix](#platform-mat
 - **Languages and structured documents:** Swift 6-ready highlighting includes TeX/LaTeX and Typst/CeTZ-aware editing; CSV/TSV, property lists, Apple crash reports, and recognized logs can switch between structured and raw-text views, and plain text can be transformed into validated JSON through an explicit AI-assisted action.
 - **Project and preview workflows:** project-level Markdown/PDF cards reuse the project index for bounded excerpts and thumbnails, while Markdown, HTML, SVG, PDF, and PNG previews remain integrated with the editor.
 - **macOS integration:** the embedded Quick Look extension previews supported Markdown and source files in Finder, and detached Markdown previews can use the same glass treatment without changing editor content.
-- **Latest stable additions (v2.2.2):** On iPhone and iPad, tapping a table of contents entry jumps to that heading, even far down a long document; Code completion stays quiet inside comments in more languages and keeps suggestions such as #include or $variable; On the Mac, text inside multi-line strings and MeierScript comments keeps its string or comment color.
+- **Latest stable additions (v2.2.3):** In the Mac version from GitHub, the run console's Output and Errors panes can be resized by dragging the divider between them; Console output stays scrolled to the start of its lines after each run instead of jumping to the middle; On the Mac, Text Replacements with punctuation shortcuts or several lines now appear in the word list.
 <!-- FEATURE_COVERAGE:END -->
 
 ### Editing Core
@@ -633,7 +645,7 @@ More release integrity details: [Release Integrity](#release-integrity)
 
 | Track | Current Focus | Status |
 |---|---|---|
-| Stable direct download | `v2.2.2` notarized GitHub release | Current |
+| Stable direct download | `v2.2.3` notarized GitHub release | Current |
 | App Store rollout | Platform releases are published independently after App Review | Check the relevant App Store listing |
 | Post-1.4 stabilization | Crash triage, docs freshness, platform polish, App Store/Xcode Cloud release checks | Next patch train |
 | Larger workflow work | Remote workflow hardening, minimap polish, project navigation refinements | Later `v1.5+` work |
@@ -641,19 +653,19 @@ More release integrity details: [Release Integrity](#release-integrity)
 ## Roadmap (Near Term)
 
 <p align="center">
-  <img alt="Now" src="https://img.shields.io/badge/NOW-v2.2.2-22C55E?style=for-the-badge">
-  <img alt="Next" src="https://img.shields.io/badge/NEXT-v2.2.3-F59E0B?style=for-the-badge">
+  <img alt="Now" src="https://img.shields.io/badge/NOW-v2.2.3-22C55E?style=for-the-badge">
+  <img alt="Next" src="https://img.shields.io/badge/NEXT-v2.2.4-F59E0B?style=for-the-badge">
   <img alt="Later" src="https://img.shields.io/badge/LATER-v1.5%2B-0A84FF?style=for-the-badge">
 </p>
 
-### Now (v2.2.2)
+### Now (v2.2.3)
 
 - ![v1.4.0](https://img.shields.io/badge/v1.4.0-22C55E?style=flat-square) delivers file-backed large-document editing, bounded live viewport virtualization, reliable ordinary-file installation, and the release workflow hardening shipped alongside the release.
-  Tracking: [Release v2.2.2](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.2.2)
+  Tracking: [Release v2.2.3](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.2.3)
 
-### Next (v2.2.3)
+### Next (v2.2.4)
 
-- ![v2.2.3](https://img.shields.io/badge/v2.2.3-F59E0B?style=flat-square) targets the reviewed changes listed under Unreleased in CHANGELOG.md; scope is not final until release preparation.
+- ![v2.2.4](https://img.shields.io/badge/v2.2.4-F59E0B?style=flat-square) targets the reviewed changes listed under Unreleased in CHANGELOG.md; scope is not final until release preparation.
   Tracking: [Milestones](https://github.com/h3pdesign/Neon-Vision-Editor/milestones)
 
 ### Later (v1.5+)
@@ -741,7 +753,7 @@ Vim navigation is also available on iPad with a hardware keyboard after enabling
 
 ## Changelog
 
-Latest stable: **v2.2.2** (2026-11-13)
+Latest stable: **v2.2.3** (2026-11-13)
 
 ### Editor Evolution
 
@@ -749,8 +761,6 @@ Latest stable: **v2.2.2** (2026-11-13)
 ```mermaid
 timeline
     title Neon Vision Editor — recent release story
-    26 October 2026 : v2.1.5 · Release highlights
-                : Finish words on the Mac from the macOS dictionary and your Text Replacements by pressing Tab.
     1 November 2026 : v2.1.6 · Release highlights
                 : On smaller Mac screens, every Settings page fits above the Dock again, and taller pages scroll.
     7 November 2026 : v2.1.7 · A more deliberate workflow
@@ -759,6 +769,8 @@ timeline
                 : On iPhone Duo, a preview next to the editor starts at the fold, so the document and preview each get one half.
     13 November 2026 : v2.2.2 · Release highlights
                 : MeierScript files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names.
+    13 November 2026 : v2.2.3 · Release highlights
+                : MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected.
 ```
 <!-- RELEASE_TIMELINE:END -->
 
@@ -768,13 +780,13 @@ The recent release arc is about continuity: files that change outside the app, w
 
 | Release | The editor change | What it protects or enables |
 |---|---|---|
+| [`v2.2.3`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.2.3) | **Release highlights** — MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected. | In the Mac version from GitHub, the run console's Output and Errors panes stay scrolled to the start of their lines after each run instead of… |
 | [`v2.2.2`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.2.2) | **Release highlights** — MeierScript files get syntax highlighting and, on the Mac, suggestions for keywords, built-in functions and names. | On the Mac, text inside multi-line `"""` strings in MeierScript, Swift, Kotlin, Python and TOML (and `'''` strings in Python and TOML) is colored… |
 | [`v2.2.0`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.2.0) | **Release highlights** — On iPhone Duo, a preview next to the editor starts at the fold, so the document and preview each get one half. | On iPhone Duo, a Markdown, JSON, YAML, web, image or PDF preview next to the editor starts at the fold. Without a reported fold, the split stays as… |
-| [`v2.1.7`](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.1.7) | **A more deliberate workflow** — On the Mac, words from the macOS dictionary and your Text Replacements appear in a list below the caret as you type. | Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB. |
 
 - Full release history: [`CHANGELOG.md`](CHANGELOG.md)
-- Latest release: **v2.2.2**
-- Compare recent changes: [v2.2.0...v2.2.2](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v2.2.0...v2.2.2)
+- Latest release: **v2.2.3**
+- Compare recent changes: [v2.2.2...v2.2.3](https://github.com/h3pdesign/Neon-Vision-Editor/compare/v2.2.2...v2.2.3)
 
 ## Known Limitations
 
@@ -795,12 +807,12 @@ The recent release arc is about continuity: files that change outside the app, w
 
 ## Release Integrity
 
-- Tag: `v2.2.2`
+- Tag: `v2.2.3`
 - Tagged commit: release tag target
 - Verify local tag target:
 
 ```bash
-git rev-parse --verify v2.2.2
+git rev-parse --verify v2.2.3
 ```
 
 - Verify downloaded artifact checksum locally:

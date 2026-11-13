@@ -118,7 +118,21 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v2.2.2</h2><span class="date">13 November 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v2.2.3</h2><span class="date">13 November 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>In the Mac version from GitHub, the run console&#x27;s Output and Errors panes can be resized by dragging the divider between them.</p></div>
+          <div class="item"><span class="badge new">New</span><p>Console output stays scrolled to the start of its lines after each run instead of jumping to the middle.</p></div>
+          <div class="item"><span class="badge new">New</span><p>On the Mac, Text Replacements with punctuation shortcuts or several lines now appear in the word list.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>In the Mac version from GitHub, the run console&#x27;s Output and Errors panes stay scrolled to the start of their lines after each run instead of jumping to the middle of long lines.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>On the Mac, pasting or dropping text longer than the window now shows the pasted lines at the caret right away instead of an empty editor until you scroll.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>On the Mac, Text Replacement shortcuts that contain punctuation, such as “:beta:” or “=&gt;”, now list their phrase like other shortcuts do (#994).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>On the Mac, Text Replacements whose phrase spans several lines now appear in the completion list with a one-line preview, and accepting one inserts every line (#994).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>A function signature inside a MeierScript comment no longer changes the parameters that completion inserts for that function.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v2.2.2</h2><span class="date">13 November 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>On iPhone and iPad, tapping a table of contents entry jumps to that heading, even far down a long document.</p></div>
           <div class="item"><span class="badge new">New</span><p>Code completion stays quiet inside comments in more languages and keeps suggestions such as #include or $variable.</p></div>

@@ -216,7 +216,9 @@ final class MeierScriptSupportTests: XCTestCase {
             XCTAssertEqual(MeierScriptLanguage.firstDiagnostic(in: mapped.standardError)?.line, 6, mapped.standardError)
         }
 
-        let endless = await MeierScriptRunner.execute(source: "while true { }\n", mode: .run,
+        // The CLI ends a busy loop itself after about a second (recursion
+        // budget), which raced the timeout; a long sleep only stops on it.
+        let endless = await MeierScriptRunner.execute(source: "sleep(30)\n", mode: .run,
                                                       cliURL: cli, workingDirectory: nil, timeout: 1)
         XCTAssertTrue(endless.timedOut)
         XCTAssertLessThan(endless.duration, 5)
@@ -236,6 +238,8 @@ final class MeierScriptSupportTests: XCTestCase {
         XCTAssertEqual(suffixes("func run() {}\nfunc ru"), ["nCommand", "n"], "Naming a function is not a call")
         XCTAssertEqual(suffixes("func greet(name: String) {}\n// func greet()\nlet s = \"func greet(x)\"\ngre"), ["et(name)"],
                        "Signatures in comments and strings are not declarations")
+        XCTAssertEqual(suffixes("func greet(name: String) {}\n/*\nfunc greet(fake)\n*/\nlet doc = \"\"\"\nfunc greet(other)\n\"\"\"\ngre"),
+                       ["et(name)"], "Block comments and multi-line strings are not declarations")
         XCTAssertEqual(CompletionHeuristics.vocabularySuffixes(in: "pri" as NSString, caretLocation: 3,
                                                                language: "swift", insertsCallTemplates: true).suffixes,
                        CompletionHeuristics.vocabularySuffixes(in: "pri" as NSString, caretLocation: 3, language: "swift").suffixes)

@@ -8,7 +8,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Why Upgrade
 
-- MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected so typing replaces it.
+- MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected.
 - An optional setting lets Return accept the selected suggestion from the completion list, as in Xcode.
 - On the Mac, pasting a long text shows it right away instead of an empty editor until you scroll.
 

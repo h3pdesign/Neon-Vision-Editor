@@ -2042,13 +2042,13 @@
 "Return Key" = "Retur-tast";
 "Paste" = "Indsæt";
 "Console Output" = "Konsoloutput";
-"MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected so typing replaces it." = "MeierScript-funktioner fuldføres som kald med deres parametre, f.eks. print(string), og den første parameter er markeret, så du kan skrive hen over den.";
+"MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected." = "MeierScript-funktioner fuldføres som kald med deres parametre, f.eks. print(string), med den første parameter markeret.";
 "An optional setting lets Return accept the selected suggestion from the completion list, as in Xcode." = "En valgfri indstilling lader Retur acceptere det valgte forslag fra fuldførelseslisten som i Xcode.";
 "On the Mac, pasting a long text shows it right away instead of an empty editor until you scroll." = "På Mac vises en lang indsat tekst med det samme i stedet for en tom editor, indtil du ruller.";
 "In the Mac version from GitHub, the run console's Output and Errors panes can be resized by dragging the divider between them." = "I Mac-versionen fra GitHub kan kørselskonsollens Output- og Fejl-paneler ændres i størrelse ved at trække i skillelinjen.";
 "Console output stays scrolled to the start of its lines after each run instead of jumping to the middle." = "Konsoloutput forbliver ved starten af linjerne efter hver kørsel i stedet for at springe til midten.";
 "On the Mac, Text Replacements with punctuation shortcuts or several lines now appear in the word list." = "På Mac vises teksterstatninger med tegnsætning i genvejen eller flere linjer nu i ordlisten.";
-"Function Completion: MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected so typing replaces it." = "Funktionsfuldførelse: MeierScript-funktioner fuldføres som kald med deres parametre, f.eks. print(string), og den første parameter er markeret, så du kan skrive hen over den.";
+"Function Completion: MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected." = "Funktionsfuldførelse: MeierScript-funktioner fuldføres som kald med deres parametre, f.eks. print(string), med den første parameter markeret.";
 "Return Key: An optional setting lets Return accept the selected suggestion from the completion list, as in Xcode." = "Retur-tast: En valgfri indstilling lader Retur acceptere det valgte forslag fra fuldførelseslisten som i Xcode.";
 "Paste: On the Mac, pasting a long text shows it right away instead of an empty editor until you scroll." = "Indsæt: På Mac vises en lang indsat tekst med det samme i stedet for en tom editor, indtil du ruller.";
 "Run Console: In the Mac version from GitHub, the run console's Output and Errors panes can be resized by dragging the divider between them." = "Kørselskonsol: I Mac-versionen fra GitHub kan kørselskonsollens Output- og Fejl-paneler ændres i størrelse ved at trække i skillelinjen.";

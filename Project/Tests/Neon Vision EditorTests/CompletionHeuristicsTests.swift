@@ -184,6 +184,8 @@ final class CompletionHeuristicsTests: XCTestCase {
         // The longest shortcut wins over a shorter one it ends with.
         XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: "x;sig", replacements: replacements)?.shortcut, ";sig")
         XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: "x.sig", replacements: replacements)?.shortcut, "sig")
+        // Matching keeps full Unicode case-insensitive comparison.
+        XCTAssertEqual(SystemWordCompletion.replacementMatch(beforeCaret: "STRASSE", replacements: ["straße": "Straße 1"])?.phrases, ["Straße 1"])
     }
 
     func testTextReplacementMatchSkipsShortcutsWithoutOfferablePhrase() {

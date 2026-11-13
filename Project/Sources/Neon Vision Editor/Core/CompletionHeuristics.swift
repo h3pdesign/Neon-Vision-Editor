@@ -527,17 +527,12 @@ enum SystemWordCompletion {
         guard !replacements.isEmpty, limit > 0 else { return nil }
         let run = Array(text.suffix(maximumShortcutLength).reversed().prefix { !$0.isWhitespace }.reversed())
         guard run.count >= minimumPrefixLength else { return nil }
-        var candidateLengths: [String: Int] = [:]
+        // Starts run left to right, so the first match is the longest. Each
+        // candidate uses replacementPhrases' own case-insensitive comparison,
+        // which also matches "STRASSE" to "straße".
         for start in 0...(run.count - minimumPrefixLength) {
             if start > 0, isShortcutWordCharacter(run[start - 1]), isShortcutWordCharacter(run[start]) { continue }
-            candidateLengths[String(run[start...]).lowercased()] = run.count - start
-        }
-        var matchedLengths = Set<Int>()
-        for key in replacements.keys {
-            if let length = candidateLengths[key.lowercased()] { matchedLengths.insert(length) }
-        }
-        for length in matchedLengths.sorted(by: >) {
-            let shortcut = String(run.suffix(length))
+            let shortcut = String(run[start...])
             let phrases = replacementPhrases(forShortcut: shortcut, replacements: replacements, limit: limit)
             if !phrases.isEmpty { return (shortcut, phrases) }
         }

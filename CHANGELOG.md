@@ -6,6 +6,15 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixed
+
+- On the Mac, Text Replacement shortcuts that contain punctuation, such as “:beta:” or “=>”, now list their phrase like other shortcuts do (#994).
+- On the Mac, Text Replacements whose phrase spans several lines now appear in the completion list with a one-line preview, and accepting one inserts every line (#994).
+
+### Maintenance
+
+- Development version 2.2.3 (build 1153).
+
 ## [v2.2.2] - 2026-11-13
 
 ### Why Upgrade

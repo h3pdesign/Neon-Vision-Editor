@@ -483,7 +483,10 @@ enum CompletionHeuristics {
     private static func meierScriptFunctionParameters(in text: NSString, caretLocation: Int) -> [String: String] {
         let start = max(0, caretLocation - 16_000)
         let searchText = text.substring(with: NSRange(location: start, length: max(0, caretLocation - start)))
-        guard let regex = cachedSyntaxRegex(pattern: #"\bfunc\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)\n]*)\)"#) else { return [:] }
+        // Only a declaration that starts its line counts, so a signature in
+        // a comment or string does not replace the function's parameters.
+        guard let regex = cachedSyntaxRegex(pattern: #"^[ \t]*func[ \t]+([A-Za-z_][A-Za-z0-9_]*)[ \t]*\(([^)\n]*)\)"#,
+                                            options: [.anchorsMatchLines]) else { return [:] }
         let nsSearchText = searchText as NSString
         var result: [String: String] = [:]
         for match in regex.matches(in: searchText, range: NSRange(location: 0, length: nsSearchText.length)) {

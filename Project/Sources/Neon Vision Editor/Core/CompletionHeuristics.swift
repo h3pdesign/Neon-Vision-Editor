@@ -477,14 +477,70 @@ enum CompletionHeuristics {
         return before.range(of: #"\bfunc\s+$"#, options: .regularExpression) != nil
     }
 
+    /// The text with MeierScript comments (`//`, `/* */`) and strings (`"…"`,
+    /// `"""…"""`) replaced by spaces. Line breaks and UTF-16 offsets are kept.
+    private static func meierScriptCodeOnly(_ text: String) -> String {
+        enum State { case code, lineComment, blockComment, string, multilineString }
+        let units = Array(text.utf16)
+        var output = units
+        let slash: UInt16 = 47, star: UInt16 = 42, quote: UInt16 = 34, backslash: UInt16 = 92
+        let newline: UInt16 = 10, space: UInt16 = 32
+        func unit(_ index: Int) -> UInt16 { index < units.count ? units[index] : 0 }
+        func blank(_ index: Int, count: Int = 1) {
+            for offset in index..<min(units.count, index + count) where output[offset] != newline {
+                output[offset] = space
+            }
+        }
+        var state = State.code
+        var index = 0
+        while index < units.count {
+            let current = units[index]
+            switch state {
+            case .code:
+                if current == slash, unit(index + 1) == slash {
+                    state = .lineComment; blank(index, count: 2); index += 2; continue
+                }
+                if current == slash, unit(index + 1) == star {
+                    state = .blockComment; blank(index, count: 2); index += 2; continue
+                }
+                if current == quote {
+                    if unit(index + 1) == quote, unit(index + 2) == quote {
+                        state = .multilineString; blank(index, count: 3); index += 3; continue
+                    }
+                    state = .string
+                    blank(index)
+                }
+            case .lineComment:
+                if current == newline { state = .code } else { blank(index) }
+            case .blockComment:
+                if current == star, unit(index + 1) == slash {
+                    state = .code; blank(index, count: 2); index += 2; continue
+                }
+                blank(index)
+            case .string:
+                if current == backslash { blank(index, count: 2); index += 2; continue }
+                if current == quote || current == newline { state = .code }
+                blank(index)
+            case .multilineString:
+                if current == quote, unit(index + 1) == quote, unit(index + 2) == quote {
+                    state = .code; blank(index, count: 3); index += 3; continue
+                }
+                blank(index)
+            }
+            index += 1
+        }
+        return String(decoding: output, as: UTF16.self)
+    }
+
     /// Parameter names of the MeierScript functions declared in the text
     /// before the caret, keyed by function name: `func greet(name: String)`
     /// gives `"greet": "name"`.
     private static func meierScriptFunctionParameters(in text: NSString, caretLocation: Int) -> [String: String] {
         let start = max(0, caretLocation - 16_000)
-        let searchText = text.substring(with: NSRange(location: start, length: max(0, caretLocation - start)))
-        // Only a declaration that starts its line counts, so a signature in
-        // a comment or string does not replace the function's parameters.
+        // Comments and strings are blanked first, so a signature inside one
+        // never replaces the declared function's parameters.
+        let searchText = meierScriptCodeOnly(text.substring(with: NSRange(location: start, length: max(0, caretLocation - start))))
+        // Only a declaration that starts its line counts.
         guard let regex = cachedSyntaxRegex(pattern: #"^[ \t]*func[ \t]+([A-Za-z_][A-Za-z0-9_]*)[ \t]*\(([^)\n]*)\)"#,
                                             options: [.anchorsMatchLines]) else { return [:] }
         let nsSearchText = searchText as NSString

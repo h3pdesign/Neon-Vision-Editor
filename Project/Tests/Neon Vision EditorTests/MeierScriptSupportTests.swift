@@ -236,6 +236,8 @@ final class MeierScriptSupportTests: XCTestCase {
         XCTAssertEqual(suffixes("func run() {}\nfunc ru"), ["nCommand", "n"], "Naming a function is not a call")
         XCTAssertEqual(suffixes("func greet(name: String) {}\n// func greet()\nlet s = \"func greet(x)\"\ngre"), ["et(name)"],
                        "Signatures in comments and strings are not declarations")
+        XCTAssertEqual(suffixes("func greet(name: String) {}\n/*\nfunc greet(fake)\n*/\nlet doc = \"\"\"\nfunc greet(other)\n\"\"\"\ngre"),
+                       ["et(name)"], "Block comments and multi-line strings are not declarations")
         XCTAssertEqual(CompletionHeuristics.vocabularySuffixes(in: "pri" as NSString, caretLocation: 3,
                                                                language: "swift", insertsCallTemplates: true).suffixes,
                        CompletionHeuristics.vocabularySuffixes(in: "pri" as NSString, caretLocation: 3, language: "swift").suffixes)

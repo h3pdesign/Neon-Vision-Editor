@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-11-13 (v2.2.2 release-aligned architecture)
+Last updated: 2026-11-13 (v2.2.3 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -8,6 +8,15 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v2.2.3 (2026-11-13)
+
+- In the Mac version from GitHub, the run console's Output and Errors panes can be resized by dragging the divider between them.
+- Console output stays scrolled to the start of its lines after each run instead of jumping to the middle.
+- On the Mac, Text Replacements with punctuation shortcuts or several lines now appear in the word list.
+- In the Mac version from GitHub, the run console's Output and Errors panes stay scrolled to the start of their lines after each run instead of jumping to the middle of long lines.
+- On the Mac, pasting or dropping text longer than the window now shows the pasted lines at the caret right away instead of an empty editor until you scroll.
+- On the Mac, Text Replacement shortcuts that contain punctuation, such as “:beta:” or “=>”, now list their phrase like other shortcuts do (#994).
 
 ### v2.2.2 (2026-11-13)
 
@@ -17,15 +26,6 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 - On the Mac, text inside multi-line `"""` strings in MeierScript, Swift, Kotlin, Python and TOML (and `'''` strings in Python and TOML) is colored as a string on every line, instead of picking up keyword and type colors from the second line on.
 - In MeierScript, keywords, numbers, `nil`, `true` and `false` inside comments and strings keep the comment or string color, and `/* … */` comments that span lines are colored on every line.
 - On iPhone, including iPhone Duo, a Hide Keyboard button sits above the keyboard, so you can close the keyboard and get back to the toolbar without scrolling the document. With the Keyboard Snippet Bar turned off, the button still appears on its own.
-
-### v2.2.0 (2026-11-09)
-
-- On the Mac, a Text Replacement shortcut such as “omw” lists its phrase first, and Tab or Return replaces it.
-- With Reopen Last Session, Mac tabs come back in the order you left them.
-- The Neon Pulse inbox complication on Apple Watch updates as soon as you capture a note.
-- On iPhone Duo, a Markdown, JSON, YAML, web, image or PDF preview next to the editor starts at the fold. Without a reported fold, the split stays as before.
-- API Route uses claude-haiku-4-5 by default, keeps its API key in the Keychain, and lets you set your own model id (#957).
-- On the Mac, typing a Text Replacement shortcut such as "omw" lists its phrase first in the word list. Tab, Right Arrow or Return replaces the shortcut with the phrase (#959).
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.2.3] - 2026-11-13
+
 ### Why Upgrade
 
 - MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected.

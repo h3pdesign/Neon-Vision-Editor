@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-11-09 (v2.2.0 release-aligned architecture)
+Last updated: 2026-11-13 (v2.2.2 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -8,6 +8,15 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v2.2.2 (2026-11-13)
+
+- On iPhone and iPad, tapping a table of contents entry jumps to that heading, even far down a long document.
+- Code completion stays quiet inside comments in more languages and keeps suggestions such as #include or $variable.
+- On the Mac, text inside multi-line strings and MeierScript comments keeps its string or comment color.
+- On the Mac, text inside multi-line `"""` strings in MeierScript, Swift, Kotlin, Python and TOML (and `'''` strings in Python and TOML) is colored as a string on every line, instead of picking up keyword and type colors from the second line on.
+- In MeierScript, keywords, numbers, `nil`, `true` and `false` inside comments and strings keep the comment or string color, and `/* … */` comments that span lines are colored on every line.
+- On iPhone, including iPhone Duo, a Hide Keyboard button sits above the keyboard, so you can close the keyboard and get back to the toolbar without scrolling the document. With the Keyboard Snippet Bar turned off, the button still appears on its own.
 
 ### v2.2.0 (2026-11-09)
 
@@ -17,15 +26,6 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 - On iPhone Duo, a Markdown, JSON, YAML, web, image or PDF preview next to the editor starts at the fold. Without a reported fold, the split stays as before.
 - API Route uses claude-haiku-4-5 by default, keeps its API key in the Keychain, and lets you set your own model id (#957).
 - On the Mac, typing a Text Replacement shortcut such as "omw" lists its phrase first in the word list. Tab, Right Arrow or Return replaces the shortcut with the phrase (#959).
-
-### v2.1.7 (2026-11-07)
-
-- In the word list, Up and Down Arrow pick a word, Tab or Right Arrow accepts it, and Escape closes the list.
-- Clicking a word in the list inserts it, and Return accepts a word you picked with the arrow keys.
-- Cheaper Inference uses gpt-5.4-mini by default, keeps its API token in the Keychain, and lets you set your own model id.
-- Markdown previews and PDF exports render inline and display TeX formulas offline with bundled KaTeX. Formula underscores are preserved, and document JavaScript remains disabled (#942).
-- Typing in large documents on iPhone and iPad is faster, with far less delay per keystroke in files over 1 MB.
-- "Suggest Words from System Dictionary" on the Mac shows a list of matching words below the caret while you type. Up and Down Arrow pick a word, and Tab or Right Arrow accepts it. Return accepts it once you have picked a word with the arrow keys. Clicking a word inserts it, and Escape closes the list. Right Arrow now accepts inline suggestions as the setting describes, and Tab also works with Caps Lock on (#926).
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

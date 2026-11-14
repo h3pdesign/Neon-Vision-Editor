@@ -2073,8 +2073,8 @@
 "Folded Text" = "折叠的文本";
 "Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "查找和前往行会展开所到之处的折叠，跨越折叠复制时会包含隐藏的行。";
 "Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "折叠的文本: 查找和前往行会展开所到之处的折叠，跨越折叠复制时会包含隐藏的行。";
-"Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker." = "“全部折叠”和“全部展开”位于“编辑器”菜单中，点按折叠块的 ⋯ 标记即可展开。";
-"Fold All: Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker." = "全部折叠: “全部折叠”和“全部展开”位于“编辑器”菜单中，点按折叠块的 ⋯ 标记即可展开。";
+"On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker." = "在 Mac 上，“全部折叠”和“全部展开”位于“编辑器”菜单中，点按折叠块的 ⋯ 标记即可展开。";
+"Fold All: On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker." = "全部折叠: 在 Mac 上，“全部折叠”和“全部展开”位于“编辑器”菜单中，点按折叠块的 ⋯ 标记即可展开。";
 "JSON5 and XML" = "JSON5 与 XML";
-"JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "含单引号字符串的 JSON5 文件和跨多行的 XML 标签都能正确折叠。";
-"JSON5 and XML: JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "JSON5 与 XML: 含单引号字符串的 JSON5 文件和跨多行的 XML 标签都能正确折叠。";
+"On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "在 Mac 上，含单引号字符串的 JSON5 文件和跨多行的 XML 标签都能正确折叠。";
+"JSON5 and XML: On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "JSON5 与 XML: 在 Mac 上，含单引号字符串的 JSON5 文件和跨多行的 XML 标签都能正确折叠。";

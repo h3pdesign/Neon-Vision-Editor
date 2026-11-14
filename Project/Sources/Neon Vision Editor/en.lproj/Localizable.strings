@@ -2061,3 +2061,15 @@
 "Unfold" = "Unfold";
 "Fold All" = "Fold All";
 "Unfold All" = "Unfold All";
+"What’s New in v2.2.4" = "What’s New in v2.2.4";
+"Release highlights for v2.2.4." = "Release highlights for v2.2.4.";
+"Folding" = "Folding";
+"On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline." = "On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline.";
+"Large files stay responsive while you edit and scroll after the first change." = "Large files stay responsive while you edit and scroll after the first change.";
+"In the Mac version from GitHub, the run console shows the folder a script starts in." = "In the Mac version from GitHub, the run console shows the folder a script starts in.";
+"Folding: On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline." = "Folding: On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline.";
+"Large Files: Large files stay responsive while you edit and scroll after the first change." = "Large Files: Large files stay responsive while you edit and scroll after the first change.";
+"Run Console: In the Mac version from GitHub, the run console shows the folder a script starts in." = "Run Console: In the Mac version from GitHub, the run console shows the folder a script starts in.";
+"Folded Text" = "Folded Text";
+"Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines.";
+"Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines.";

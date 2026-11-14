@@ -2061,3 +2061,15 @@
 "Unfold" = "Ausklappen";
 "Fold All" = "Alle einklappen";
 "Unfold All" = "Alle ausklappen";
+"What’s New in v2.2.4" = "Neu in v2.2.4";
+"Release highlights for v2.2.4." = "Die wichtigsten Neuerungen in v2.2.4.";
+"Folding" = "Einklappen";
+"On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline." = "Auf dem Mac lassen sich JSON-Objekte und -Arrays sowie XML-Elemente einklappen, sodass große Dateien wie eine Gliederung lesbar sind.";
+"Large files stay responsive while you edit and scroll after the first change." = "Große Dateien bleiben beim Bearbeiten und Scrollen nach der ersten Änderung flüssig.";
+"In the Mac version from GitHub, the run console shows the folder a script starts in." = "In der Mac-Version von GitHub zeigt die Ausführungskonsole den Ordner, in dem ein Skript startet.";
+"Folding: On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline." = "Einklappen: Auf dem Mac lassen sich JSON-Objekte und -Arrays sowie XML-Elemente einklappen, sodass große Dateien wie eine Gliederung lesbar sind.";
+"Large Files: Large files stay responsive while you edit and scroll after the first change." = "Große Dateien: Große Dateien bleiben beim Bearbeiten und Scrollen nach der ersten Änderung flüssig.";
+"Run Console: In the Mac version from GitHub, the run console shows the folder a script starts in." = "Ausführungskonsole: In der Mac-Version von GitHub zeigt die Ausführungskonsole den Ordner, in dem ein Skript startet.";
+"Folded Text" = "Eingeklappter Text";
+"Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Suchen und Gehe zu Zeile öffnen die Einklappungen, in denen sie landen, und beim Kopieren über eine Einklappung werden die verborgenen Zeilen mitkopiert.";
+"Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Eingeklappter Text: Suchen und Gehe zu Zeile öffnen die Einklappungen, in denen sie landen, und beim Kopieren über eine Einklappung werden die verborgenen Zeilen mitkopiert.";

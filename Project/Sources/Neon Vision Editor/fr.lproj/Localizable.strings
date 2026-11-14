@@ -2073,3 +2073,8 @@
 "Folded Text" = "Texte replié";
 "Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Rechercher et Aller à la ligne ouvrent les replis où ils arrivent, et copier à travers un repli inclut les lignes masquées.";
 "Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Texte replié: Rechercher et Aller à la ligne ouvrent les replis où ils arrivent, et copier à travers un repli inclut les lignes masquées.";
+"Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker." = "Tout replier et Tout déplier sont dans le menu Éditeur, et un bloc replié s’ouvre d’un clic sur son repère ⋯.";
+"Fold All: Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker." = "Tout replier: Tout replier et Tout déplier sont dans le menu Éditeur, et un bloc replié s’ouvre d’un clic sur son repère ⋯.";
+"JSON5 and XML" = "JSON5 et XML";
+"JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "Les fichiers JSON5 avec des chaînes entre apostrophes et les balises XML sur plusieurs lignes se replient correctement.";
+"JSON5 and XML: JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "JSON5 et XML: Les fichiers JSON5 avec des chaînes entre apostrophes et les balises XML sur plusieurs lignes se replient correctement.";

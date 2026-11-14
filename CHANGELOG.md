@@ -6,9 +6,27 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline.
+- Large files stay responsive while you edit and scroll after the first change.
+
 ### Added
 
+- On the Mac, JSON and XML files can fold their structure: click the triangle next to a line number, or use Editor › Fold (⌥⌘←), Unfold (⌥⌘→), Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→). A folded block keeps its first and closing lines visible with a ⋯ marker you can click to open it. Fold All folds everything below the top level, and opening a block shows its children still folded. Find, Go to Line and other jumps open the folds they land in, and copying a selection across a fold copies the hidden lines too.
 - In the Mac version from GitHub, the run console shows the folder a script starts in, so relative paths such as `data.csv` are easy to check. Scripts start in the folder of their file; a document that was never saved starts in the app's own folder. Run Scripts Help explains it.
+
+### Fixes
+
+- Editing a large file no longer makes later scrolling, clicking and typing slower: after the first edit, the editor found positions in the file by reading it from the start each time, and now starts from the nearest of evenly spaced markers instead.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, sessions, and preferences are preserved.
 
 ### Maintenance
 

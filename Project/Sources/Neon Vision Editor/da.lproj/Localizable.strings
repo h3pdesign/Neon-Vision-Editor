@@ -2057,3 +2057,7 @@
 "Run Console: In the Mac version from GitHub, the run console's Output and Errors panes can be resized by dragging the divider between them." = "Kørselskonsol: I Mac-versionen fra GitHub kan kørselskonsollens Output- og Fejl-paneler ændres i størrelse ved at trække i skillelinjen.";
 "Console Output: Console output stays scrolled to the start of its lines after each run instead of jumping to the middle." = "Konsoloutput: Konsoloutput forbliver ved starten af linjerne efter hver kørsel i stedet for at springe til midten.";
 "Text Replacements: On the Mac, Text Replacements with punctuation shortcuts or several lines now appear in the word list." = "Teksterstatninger: På Mac vises teksterstatninger med tegnsætning i genvejen eller flere linjer nu i ordlisten.";
+"Fold" = "Fold sammen";
+"Unfold" = "Fold ud";
+"Fold All" = "Fold alle sammen";
+"Unfold All" = "Fold alle ud";

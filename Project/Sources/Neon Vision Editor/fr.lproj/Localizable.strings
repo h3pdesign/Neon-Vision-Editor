@@ -2057,3 +2057,7 @@
 "Run Console: In the Mac version from GitHub, the run console's Output and Errors panes can be resized by dragging the divider between them." = "Console d’exécution: Dans la version Mac de GitHub, les sous-fenêtres Sortie et Erreurs de la console d’exécution se redimensionnent en faisant glisser le séparateur.";
 "Console Output: Console output stays scrolled to the start of its lines after each run instead of jumping to the middle." = "Sortie de la console: La sortie de la console reste au début de ses lignes après chaque exécution au lieu de sauter au milieu.";
 "Text Replacements: On the Mac, Text Replacements with punctuation shortcuts or several lines now appear in the word list." = "Remplacements de texte: Sur Mac, les remplacements de texte avec ponctuation dans le raccourci ou sur plusieurs lignes apparaissent désormais dans la liste de mots.";
+"Fold" = "Replier";
+"Unfold" = "Déplier";
+"Fold All" = "Tout replier";
+"Unfold All" = "Tout déplier";

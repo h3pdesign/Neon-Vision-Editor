@@ -87,6 +87,12 @@ struct NeonVisionMacAppCommands: Commands {
         return language == "json" || language == "jsonc" || language == "json5"
     }
 
+    /// JSON and XML tabs fold their objects, arrays, and elements.
+    private var selectedTabSupportsFolding: Bool {
+        guard let language = activeEditorViewModel().selectedTab?.language else { return false }
+        return StructureFoldSyntax.forLanguage(language) != nil
+    }
+
     private var selectedTabIsMeierScript: Bool {
         activeEditorViewModel().selectedTab?.language.lowercased() == MeierScriptLanguage.identifier
     }
@@ -469,6 +475,32 @@ struct NeonVisionMacAppCommands: Commands {
             }
             .keyboardShortcut(.downArrow, modifiers: [.option])
             .disabled(!hasSavableSelectedTab)
+
+            Divider()
+
+            Button("Fold") {
+                post(.editorFoldCommandRequested, object: EditorFoldCommand.fold.rawValue)
+            }
+            .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
+            .disabled(!selectedTabSupportsFolding)
+
+            Button("Unfold") {
+                post(.editorFoldCommandRequested, object: EditorFoldCommand.unfold.rawValue)
+            }
+            .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+            .disabled(!selectedTabSupportsFolding)
+
+            Button("Fold All") {
+                post(.editorFoldCommandRequested, object: EditorFoldCommand.foldAll.rawValue)
+            }
+            .keyboardShortcut(.leftArrow, modifiers: [.command, .option, .shift])
+            .disabled(!selectedTabSupportsFolding)
+
+            Button("Unfold All") {
+                post(.editorFoldCommandRequested, object: EditorFoldCommand.unfoldAll.rawValue)
+            }
+            .keyboardShortcut(.rightArrow, modifiers: [.command, .option, .shift])
+            .disabled(!selectedTabSupportsFolding)
 
             Divider()
 

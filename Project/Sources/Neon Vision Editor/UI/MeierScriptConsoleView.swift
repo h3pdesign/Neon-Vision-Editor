@@ -276,6 +276,12 @@ struct MeierScriptConsoleView: View {
 
     private var workingDirectory: URL? { tab.fileURL?.deletingLastPathComponent() }
 
+    /// Where a run starts: the file's folder, or for a never-saved document
+    /// the folder the child process inherits from the app.
+    private var displayedWorkingDirectory: String {
+        workingDirectory?.path ?? FileManager.default.currentDirectoryPath
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             resizeHandle
@@ -415,6 +421,7 @@ struct MeierScriptConsoleView: View {
             Toggle("Auto-Run", isOn: $autoRun)
                 .toggleStyle(.checkbox)
                 .help(Text("Run the script after each edit. Scripts can change files, preferences and system state."))
+            workingDirectoryLabel
             Spacer(minLength: 8)
             statusView
             Button(action: onShowHelp) { Image(systemName: "questionmark.circle") }
@@ -433,6 +440,26 @@ struct MeierScriptConsoleView: View {
         .controlSize(.small)
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
+    }
+
+    /// Shows where relative paths resolve, so a failing `open("data.csv")`
+    /// is easy to explain.
+    private var workingDirectoryLabel: some View {
+        let path = displayedWorkingDirectory
+        let description = String(format: NSLocalizedString("Working directory: %@", comment: "Run console working directory"), path)
+        return Label {
+            Text(verbatim: path)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        } icon: {
+            Image(systemName: "folder")
+        }
+        .font(.system(size: 11))
+        .foregroundStyle(.secondary)
+        .layoutPriority(-1)
+        .help(Text(verbatim: description))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: description))
     }
 
     @ViewBuilder

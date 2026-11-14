@@ -14,6 +14,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Added
 
 - On the Mac, JSON and XML files can fold their structure: click the triangle next to a line number, or use Editor › Fold (⌥⌘←), Unfold (⌥⌘→), Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→). A folded block keeps its first and closing lines visible with a ⋯ marker you can click to open it. Fold All folds everything below the top level, and opening a block shows its children still folded. Find, Go to Line and other jumps open the folds they land in, and copying a selection across a fold copies the hidden lines too.
+- In the Mac version from GitHub, the run console shows the folder a script starts in, so relative paths such as `data.csv` are easy to check. Scripts start in the folder of their file; a document that was never saved starts in the app's own folder. Run Scripts Help explains it.
 
 ### Fixes
 

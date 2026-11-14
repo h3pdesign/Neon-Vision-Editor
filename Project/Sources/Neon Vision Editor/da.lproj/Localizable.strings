@@ -2018,6 +2018,9 @@
 "Checks the syntax without running the script, where the interpreter offers a check. Click the error in the status bar to jump to its line." = "Tjekker syntaksen uden at køre scriptet, hvor fortolkeren tilbyder et tjek. Klik på fejlen i statuslinjen for at gå til dens linje.";
 "The console opens when you run a script and stays hidden otherwise. Auto-Check and Auto-Run work as for MeierScript. Python uses the interpreter set in Settings or a .venv next to the file." = "Konsollen åbner, når du kører et script, og er ellers skjult. Auto-tjek og Auto-kør virker som for MeierScript. Python bruger den fortolker, der er valgt i Indstillinger, eller en .venv ved siden af filen.";
 "Scripts run with Neon Vision Editor's permissions and reach only files the app may access. Unsaved edits run as they are in the editor." = "Scripts kører med Neon Vision Editors tilladelser og når kun filer, som appen har adgang til. Ikke-gemte ændringer kører, som de står i editoren.";
+"Working Directory" = "Arbejdsmappe";
+"A script starts in the folder of its file, shown in the console toolbar, so relative paths such as data.csv are read from there. A new document that was never saved starts in the app's own folder." = "Et script starter i sin fils mappe, som vises i konsollens værktøjslinje, så relative stier som data.csv læses derfra. Et nyt dokument, der aldrig er gemt, starter i appens egen mappe.";
+"Working directory: %@" = "Arbejdsmappe: %@";
 "What’s New in v2.2.2" = "Nyt i v2.2.2";
 "Release highlights for v2.2.2." = "De vigtigste nyheder i v2.2.2.";
 "MeierScript" = "MeierScript";

@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.2.3",
-            subtitle: "Release highlights for v2.2.3.",
+            title: "What’s New in v2.2.4",
+            subtitle: "Release highlights for v2.2.4.",
             bullets: [
-                "Function Completion: MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected.",
-                "Return Key: An optional setting lets Return accept the selected suggestion from the completion list, as in Xcode.",
-                "Paste: On the Mac, pasting a long text shows it right away instead of an empty editor until you scroll.",
-                "Run Console: In the Mac version from GitHub, the run console's Output and Errors panes can be resized by dragging the divider between them.",
-                "Console Output: Console output stays scrolled to the start of its lines after each run instead of jumping to the middle.",
-                "Text Replacements: On the Mac, Text Replacements with punctuation shortcuts or several lines now appear in the word list."
+                "Folding: On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline.",
+                "Large Files: Large files stay responsive while you edit and scroll after the first change.",
+                "Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines.",
+                "Run Console: In the Mac version from GitHub, the run console shows the folder a script starts in.",
+                "Fold All: On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker.",
+                "JSON5 and XML: On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4207,6 +4207,9 @@ struct EditorHelpView: View {
             meierScriptItem("Scripts and Permissions",
                             "Scripts run with Neon Vision Editor's permissions and reach only files the app may access. Unsaved edits run as they are in the editor.",
                             icon: "lock.shield"),
+            meierScriptItem("Working Directory",
+                            "A script starts in the folder of its file, shown in the console toolbar, so relative paths such as data.csv are read from there. A new document that was never saved starts in the app's own folder.",
+                            icon: "folder"),
         ]
         return [HelpSection(key: ScriptRunHelp.sectionKey, title: "Run Scripts", iconName: "play.rectangle", items: items)]
 #else
@@ -4568,6 +4571,7 @@ extension Notification.Name {
     static let keyboardAccessoryBarVisibilityChanged = Notification.Name("keyboardAccessoryBarVisibilityChanged")
     static let keyboardAccessoryActionRequested = Notification.Name("keyboardAccessoryActionRequested")
     static let moveSelectedLinesRequested = Notification.Name("moveSelectedLinesRequested")
+    static let editorFoldCommandRequested = Notification.Name("editorFoldCommandRequested")
     static let showUpdaterRequested = Notification.Name("showUpdaterRequested")
     static let showSettingsRequested = Notification.Name("showSettingsRequested")
     static let closeSelectedTabRequested = Notification.Name("closeSelectedTabRequested")
@@ -4608,6 +4612,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.2.4", version: "2.2.4", date: "2026-11-14", highlights: [
+            "On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline.",
+            "Large files stay responsive while you edit and scroll after the first change.",
+            "Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines."
+        ]),
         Release(id: "2.2.3", version: "2.2.3", date: "2026-11-13", highlights: [
             "MeierScript functions complete as calls with their parameters, such as print(string), with the first parameter selected.",
             "An optional setting lets Return accept the selected suggestion from the completion list, as in Xcode.",

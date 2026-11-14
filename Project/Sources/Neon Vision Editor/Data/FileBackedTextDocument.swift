@@ -19,6 +19,9 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
         let data: Data
         let utf16Length: Int
         let newlineOffsets: [Int]
+        /// UTF-16 offsets at scalar boundaries in large UTF-8 pieces, so offset
+        /// conversion scans one stride instead of the whole piece prefix.
+        var checkpoints = UTF16Checkpoints()
 
         var length: Int { data.count }
 
@@ -49,10 +52,24 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
                     encoding: encoding,
                     startingAt: 0,
                     includesByteOrderMark: includesByteOrderMark
+                ),
+                checkpoints: FileBackedTextDocument.utf16Checkpoints(
+                    in: data,
+                    encoding: encoding,
+                    includesByteOrderMark: includesByteOrderMark
                 )
             )
         }
     }
+
+    struct UTF16Checkpoints: Sendable, Equatable {
+        var bytes: [Int] = []
+        var units: [Int] = []
+
+        var isEmpty: Bool { bytes.isEmpty }
+    }
+
+    nonisolated static let utf16CheckpointStride = 64 * 1024
 
     struct Window: Equatable {
         let text: String
@@ -398,7 +415,8 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
             sourceOffset: 0,
             data: mappedData,
             utf16Length: utf16Length,
-            newlineOffsets: newlineOffsets
+            newlineOffsets: newlineOffsets,
+            checkpoints: Self.utf16Checkpoints(in: mappedData, encoding: encoding, includesByteOrderMark: true)
         )]
         self.lineStarts = lineStarts
         self.cachedUTF16Length = utf16Length
@@ -1358,12 +1376,127 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
     private func slice(_ piece: Piece, _ range: Range<Int>) -> Piece {
         let data = Data(piece.data[range])
         let sourceOffset = piece.sourceOffset.map { $0 + range.lowerBound }
-        return Piece(sourceOffset: sourceOffset, data: data,
-            utf16Length: Self.utf16Length(in: data, encoding: encodingDescriptor,
-                includesByteOrderMark: sourceOffset == 0),
-            newlineOffsets: piece.newlineOffsets.lazy
-                .filter { $0 > range.lowerBound && $0 <= range.upperBound }
-                .map { $0 - range.lowerBound })
+        // Newline offsets are sorted: find the slice's run instead of testing
+        // every newline of a large piece.
+        let firstNewline = Self.firstIndex(in: piece.newlineOffsets) { $0 > range.lowerBound }
+        let endNewline = Self.firstIndex(in: piece.newlineOffsets) { $0 > range.upperBound }
+        let newlineOffsets = piece.newlineOffsets[firstNewline..<max(firstNewline, endNewline)].map { $0 - range.lowerBound }
+        guard !piece.checkpoints.isEmpty else {
+            return Piece(sourceOffset: sourceOffset, data: data,
+                utf16Length: Self.utf16Length(in: data, encoding: encodingDescriptor,
+                    includesByteOrderMark: sourceOffset == 0),
+                newlineOffsets: newlineOffsets)
+        }
+        // Derive the slice's length and checkpoints from the parent's, so
+        // splitting a large piece for an edit does not decode either half.
+        let includesByteOrderMark = piece.sourceOffset == 0
+        let lowerUnits = Self.utf16Count(in: piece, throughByte: range.lowerBound, encoding: encodingDescriptor,
+                                         includesByteOrderMark: includesByteOrderMark)
+        let upperUnits = Self.utf16Count(in: piece, throughByte: range.upperBound, encoding: encodingDescriptor,
+                                         includesByteOrderMark: includesByteOrderMark)
+        let firstCheckpoint = Self.firstIndex(in: piece.checkpoints.bytes) { $0 > range.lowerBound }
+        let endCheckpoint = Self.firstIndex(in: piece.checkpoints.bytes) { $0 >= range.upperBound }
+        var checkpoints = UTF16Checkpoints()
+        if firstCheckpoint < endCheckpoint {
+            checkpoints.bytes = piece.checkpoints.bytes[firstCheckpoint..<endCheckpoint].map { $0 - range.lowerBound }
+            checkpoints.units = piece.checkpoints.units[firstCheckpoint..<endCheckpoint].map { $0 - lowerUnits }
+        }
+        return Piece(sourceOffset: sourceOffset, data: data, utf16Length: upperUnits - lowerUnits,
+                     newlineOffsets: newlineOffsets, checkpoints: checkpoints)
+    }
+
+    private static func firstIndex(in sorted: [Int], where isAfter: (Int) -> Bool) -> Int {
+        var low = 0
+        var high = sorted.count
+        while low < high {
+            let middle = (low + high) / 2
+            if isAfter(sorted[middle]) { high = middle } else { low = middle + 1 }
+        }
+        return low
+    }
+
+    /// Checkpoints for UTF-8 pieces larger than one stride; other encodings
+    /// and small pieces keep the direct conversion.
+    static func utf16Checkpoints(
+        in data: Data,
+        encoding: TextEncodingDescriptor,
+        includesByteOrderMark: Bool
+    ) -> UTF16Checkpoints {
+        guard encoding.identifier == .utf8 || encoding.identifier == .utf8WithBOM,
+              data.count > utf16CheckpointStride else { return UTF16Checkpoints() }
+        let start = includesByteOrderMark ? byteOrderMarkLength(for: encoding) : 0
+        var result = UTF16Checkpoints()
+        data.withUnsafeBytes { bytes in
+            var units = 0
+            var offset = start
+            var next = start + utf16CheckpointStride
+            while offset < bytes.count {
+                if offset >= next {
+                    result.bytes.append(offset)
+                    result.units.append(units)
+                    next = offset + utf16CheckpointStride
+                }
+                let width = utf8ScalarWidth(bytes[offset])
+                units += width == 4 ? 2 : 1
+                offset += min(width, bytes.count - offset)
+            }
+        }
+        return result
+    }
+
+    private static func utf8ScalarWidth(_ first: UInt8) -> Int {
+        first < 0x80 ? 1 : (first < 0xE0 ? 2 : (first < 0xF0 ? 3 : 4))
+    }
+
+    /// UTF-16 length of `piece.data[..<target]`, scanning from the nearest
+    /// checkpoint. Matches the decoded length for the valid UTF-8 pieces hold.
+    private static func utf16Count(
+        in piece: Piece,
+        throughByte target: Int,
+        encoding: TextEncodingDescriptor,
+        includesByteOrderMark: Bool
+    ) -> Int {
+        let start = includesByteOrderMark ? byteOrderMarkLength(for: encoding) : 0
+        guard target > start else { return 0 }
+        let index = firstIndex(in: piece.checkpoints.bytes) { $0 > target } - 1
+        var offset = index >= 0 ? piece.checkpoints.bytes[index] : start
+        var units = index >= 0 ? piece.checkpoints.units[index] : 0
+        let end = min(target, piece.data.count)
+        piece.data.withUnsafeBytes { bytes in
+            while offset < end {
+                let width = utf8ScalarWidth(bytes[offset])
+                units += width == 4 ? 2 : 1
+                offset += min(width, bytes.count - offset)
+            }
+        }
+        return units
+    }
+
+    /// Byte offset of UTF-16 offset `target` in `piece`, with the same
+    /// rounding as the direct scan, starting from the nearest checkpoint.
+    private static func byteOffset(
+        forUTF16Offset target: Int,
+        in piece: Piece,
+        encoding: TextEncodingDescriptor,
+        includesByteOrderMark: Bool
+    ) -> Int {
+        let start = includesByteOrderMark ? byteOrderMarkLength(for: encoding) : 0
+        guard target > 0 else { return start }
+        let index = firstIndex(in: piece.checkpoints.units) { $0 > target } - 1
+        var offset = index >= 0 ? piece.checkpoints.bytes[index] : start
+        var units = index >= 0 ? piece.checkpoints.units[index] : 0
+        if units == target { return offset }
+        return piece.data.withUnsafeBytes { bytes in
+            while offset < bytes.count {
+                let width = utf8ScalarWidth(bytes[offset])
+                let unitWidth = width == 4 ? 2 : 1
+                if units + unitWidth > target { return offset }
+                units += unitWidth
+                offset += min(width, bytes.count - offset)
+                if units == target { return offset }
+            }
+            return bytes.count
+        }
     }
 
     func hasExternalConflict(at coordinatedURL: URL? = nil) -> Bool {
@@ -1390,7 +1523,10 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
             let data = try handle.readToEnd() ?? Data()
             let index = try Self.indexSegment(in: data, baseByteOffset: 0, encoding: encodingDescriptor, atDocumentStart: true)
             originalData = data
-            pieces = [Piece(sourceOffset: 0, data: data, utf16Length: index.utf16Length, newlineOffsets: index.newlineOffsets)]
+            pieces = [Piece(
+                sourceOffset: 0, data: data, utf16Length: index.utf16Length, newlineOffsets: index.newlineOffsets,
+                checkpoints: Self.utf16Checkpoints(in: data, encoding: encodingDescriptor, includesByteOrderMark: true)
+            )]
             lineStarts = index.lineStarts
             cachedUTF16Length = index.utf16Length
             if savedFileMetadata?.fingerprint == 0 {
@@ -1478,6 +1614,9 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
                 // Repeated edits land at piece boundaries. Their byte offsets are
                 // already known; decoding the unchanged prefix makes typing linear.
                 if local == length, local > 0 { return byteOffset + piece.length }
+                if !piece.checkpoints.isEmpty {
+                    return byteOffset + Self.byteOffset(forUTF16Offset: local, in: piece, encoding: encodingDescriptor, includesByteOrderMark: byteOffset == 0)
+                }
                 return byteOffset + Self.byteOffset(forUTF16Offset: local, in: piece.data, encoding: encodingDescriptor, includesByteOrderMark: byteOffset == 0)
             }
             utf16 += length
@@ -1496,6 +1635,10 @@ nonisolated final class FileBackedTextDocument: EditorDocument, @unchecked Senda
                 offset += piece.utf16Length
             } else {
                 guard remaining > 0 else { return offset }
+                if !piece.checkpoints.isEmpty {
+                    return offset + Self.utf16Count(in: piece, throughByte: remaining, encoding: encodingDescriptor,
+                                                    includesByteOrderMark: offset == 0)
+                }
                 return offset + Self.utf16Length(in: piece.data.prefix(remaining), encoding: encodingDescriptor, includesByteOrderMark: offset == 0)
             }
         }

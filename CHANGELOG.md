@@ -6,6 +6,14 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Added
+
+- In the Mac version from GitHub, the run console shows the folder a script starts in, so relative paths such as `data.csv` are easy to check. Scripts start in the folder of their file; a document that was never saved starts in the app's own folder. Run Scripts Help explains it.
+
+### Maintenance
+
+- Development version 2.2.4 (build 1156).
+
 ## [v2.2.3] - 2026-11-13
 
 ### Why Upgrade

@@ -11,6 +11,10 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline.
 - Large files stay responsive while you edit and scroll after the first change.
 
+### Highlights
+
+- In the Mac version from GitHub, the run console shows the folder a script starts in.
+
 ### Added
 
 - On the Mac, JSON and XML files can fold their structure: click the triangle next to a line number, or use Editor › Fold (⌥⌘←), Unfold (⌥⌘→), Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→). A folded block keeps its first and closing lines visible with a ⋯ marker you can click to open it. Fold All folds everything below the top level, and opening a block shows its children still folded. Find, Go to Line and other jumps open the folds they land in, and copying a selection across a fold copies the hidden lines too.

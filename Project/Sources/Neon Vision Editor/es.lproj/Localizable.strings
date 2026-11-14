@@ -2061,3 +2061,12 @@
 "Unfold" = "Expandir";
 "Fold All" = "Contraer todo";
 "Unfold All" = "Expandir todo";
+"What’s New in v2.2.4" = "Novedades de la v2.2.4";
+"Release highlights for v2.2.4." = "Lo más destacado de la v2.2.4.";
+"Folding" = "Plegado";
+"On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline." = "En Mac, los objetos y arrays JSON y los elementos XML se pueden plegar, para leer los archivos grandes como un esquema.";
+"Large files stay responsive while you edit and scroll after the first change." = "Los archivos grandes siguen respondiendo con fluidez al editar y desplazarse tras el primer cambio.";
+"In the Mac version from GitHub, the run console shows the folder a script starts in." = "En la versión para Mac de GitHub, la consola de ejecución muestra la carpeta en la que se inicia un script.";
+"Folding: On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline." = "Plegado: En Mac, los objetos y arrays JSON y los elementos XML se pueden plegar, para leer los archivos grandes como un esquema.";
+"Large Files: Large files stay responsive while you edit and scroll after the first change." = "Archivos grandes: Los archivos grandes siguen respondiendo con fluidez al editar y desplazarse tras el primer cambio.";
+"Run Console: In the Mac version from GitHub, the run console shows the folder a script starts in." = "Consola de ejecución: En la versión para Mac de GitHub, la consola de ejecución muestra la carpeta en la que se inicia un script.";

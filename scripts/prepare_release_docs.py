@@ -305,6 +305,8 @@ def welcome_feature_title(description: str, index: int) -> str:
         (("can be folded",), "Folding"),
         (("stay responsive",), "Large Files"),
         (("copying across a fold",), "Folded Text"),
+        (("unfold all",), "Fold All"),
+        (("json5",), "JSON5 and XML"),
         (("complete as calls",), "Function Completion"),
         (("lets return accept",), "Return Key"),
         (("pasting a long text",), "Paste"),

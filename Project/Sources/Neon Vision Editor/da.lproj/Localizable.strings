@@ -2073,3 +2073,8 @@
 "Folded Text" = "Foldet tekst";
 "Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Søg og Gå til linje åbner de foldninger, de lander i, og kopiering hen over en foldning tager de skjulte linjer med.";
 "Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Foldet tekst: Søg og Gå til linje åbner de foldninger, de lander i, og kopiering hen over en foldning tager de skjulte linjer med.";
+"On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker." = "På Mac findes Fold alle og Fold alle ud i menuen Editor, og en foldet blok åbnes med et klik på dens ⋯-markør.";
+"Fold All: On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker." = "Fold alle: På Mac findes Fold alle og Fold alle ud i menuen Editor, og en foldet blok åbnes med et klik på dens ⋯-markør.";
+"JSON5 and XML" = "JSON5 og XML";
+"On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "På Mac foldes JSON5-filer med strenge i enkelte anførselstegn og XML-tags over flere linjer korrekt.";
+"JSON5 and XML: On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "JSON5 og XML: På Mac foldes JSON5-filer med strenge i enkelte anførselstegn og XML-tags over flere linjer korrekt.";

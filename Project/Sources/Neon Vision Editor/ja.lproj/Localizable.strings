@@ -2073,3 +2073,8 @@
 "Folded Text" = "折りたたまれたテキスト";
 "Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "検索や行へ移動では移動先の折りたたみが開き、折りたたみをまたいでコピーすると隠れた行も含まれます。";
 "Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "折りたたまれたテキスト: 検索や行へ移動では移動先の折りたたみが開き、折りたたみをまたいでコピーすると隠れた行も含まれます。";
+"On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker." = "Macでは、「すべて折りたたむ」と「すべて展開」は「エディタ」メニューにあり、折りたたんだブロックは⋯マークをクリックすると開きます。";
+"Fold All: On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker." = "すべて折りたたむ: Macでは、「すべて折りたたむ」と「すべて展開」は「エディタ」メニューにあり、折りたたんだブロックは⋯マークをクリックすると開きます。";
+"JSON5 and XML" = "JSON5とXML";
+"On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "Macでは、一重引用符の文字列を含むJSON5ファイルや、複数行にわたるXMLタグも正しく折りたためます。";
+"JSON5 and XML: On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "JSON5とXML: Macでは、一重引用符の文字列を含むJSON5ファイルや、複数行にわたるXMLタグも正しく折りたためます。";

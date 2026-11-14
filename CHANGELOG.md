@@ -15,6 +15,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Highlights
 
 - In the Mac version from GitHub, the run console shows the folder a script starts in.
+- On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker.
+- On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly.
 
 ### Added
 

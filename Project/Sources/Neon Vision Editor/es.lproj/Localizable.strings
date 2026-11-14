@@ -2073,3 +2073,8 @@
 "Folded Text" = "Texto plegado";
 "Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Buscar e Ir a la línea abren los pliegues donde llegan, y copiar a través de un pliegue incluye las líneas ocultas.";
 "Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Texto plegado: Buscar e Ir a la línea abren los pliegues donde llegan, y copiar a través de un pliegue incluye las líneas ocultas.";
+"On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker." = "En el Mac, Plegar todo y Desplegar todo están en el menú Editor, y un bloque plegado se abre con un clic en su marca ⋯.";
+"Fold All: On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker." = "Plegar todo: En el Mac, Plegar todo y Desplegar todo están en el menú Editor, y un bloque plegado se abre con un clic en su marca ⋯.";
+"JSON5 and XML" = "JSON5 y XML";
+"On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "En el Mac, los archivos JSON5 con cadenas entre comillas simples y las etiquetas XML de varias líneas se pliegan correctamente.";
+"JSON5 and XML: On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "JSON5 y XML: En el Mac, los archivos JSON5 con cadenas entre comillas simples y las etiquetas XML de varias líneas se pliegan correctamente.";

@@ -2070,3 +2070,6 @@
 "Folding: On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline." = "Repli: Sur Mac, les objets et tableaux JSON ainsi que les éléments XML peuvent être repliés, pour lire les gros fichiers comme un plan.";
 "Large Files: Large files stay responsive while you edit and scroll after the first change." = "Fichiers volumineux: Les gros fichiers restent réactifs pendant l’édition et le défilement après la première modification.";
 "Run Console: In the Mac version from GitHub, the run console shows the folder a script starts in." = "Console d’exécution: Dans la version Mac de GitHub, la console d’exécution affiche le dossier dans lequel un script démarre.";
+"Folded Text" = "Texte replié";
+"Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Rechercher et Aller à la ligne ouvrent les replis où ils arrivent, et copier à travers un repli inclut les lignes masquées.";
+"Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Texte replié: Rechercher et Aller à la ligne ouvrent les replis où ils arrivent, et copier à travers un repli inclut les lignes masquées.";

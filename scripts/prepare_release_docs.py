@@ -304,6 +304,7 @@ def welcome_feature_title(description: str, index: int) -> str:
     rules = (
         (("can be folded",), "Folding"),
         (("stay responsive",), "Large Files"),
+        (("copying across a fold",), "Folded Text"),
         (("complete as calls",), "Function Completion"),
         (("lets return accept",), "Return Key"),
         (("pasting a long text",), "Paste"),

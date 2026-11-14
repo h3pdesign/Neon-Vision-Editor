@@ -10,6 +10,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline.
 - Large files stay responsive while you edit and scroll after the first change.
+- Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines.
 
 ### Highlights
 

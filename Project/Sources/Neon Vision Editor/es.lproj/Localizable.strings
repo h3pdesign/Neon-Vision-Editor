@@ -2070,3 +2070,6 @@
 "Folding: On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline." = "Plegado: En Mac, los objetos y arrays JSON y los elementos XML se pueden plegar, para leer los archivos grandes como un esquema.";
 "Large Files: Large files stay responsive while you edit and scroll after the first change." = "Archivos grandes: Los archivos grandes siguen respondiendo con fluidez al editar y desplazarse tras el primer cambio.";
 "Run Console: In the Mac version from GitHub, the run console shows the folder a script starts in." = "Consola de ejecución: En la versión para Mac de GitHub, la consola de ejecución muestra la carpeta en la que se inicia un script.";
+"Folded Text" = "Texto plegado";
+"Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Buscar e Ir a la línea abren los pliegues donde llegan, y copiar a través de un pliegue incluye las líneas ocultas.";
+"Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "Texto plegado: Buscar e Ir a la línea abren los pliegues donde llegan, y copiar a través de un pliegue incluye las líneas ocultas.";

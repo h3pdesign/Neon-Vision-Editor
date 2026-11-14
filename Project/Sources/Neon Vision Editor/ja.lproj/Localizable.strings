@@ -2070,3 +2070,6 @@
 "Folding: On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline." = "折りたたみ: MacでJSONのオブジェクトや配列、XMLの要素を折りたためるようになり、大きなファイルをアウトラインのように読めます。";
 "Large Files: Large files stay responsive while you edit and scroll after the first change." = "大ファイル: 大きなファイルでも、最初の変更の後の編集やスクロールが軽快なままです。";
 "Run Console: In the Mac version from GitHub, the run console shows the folder a script starts in." = "実行コンソール: GitHub版のMacアプリでは、実行コンソールにスクリプトの開始フォルダが表示されます。";
+"Folded Text" = "折りたたまれたテキスト";
+"Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "検索や行へ移動では移動先の折りたたみが開き、折りたたみをまたいでコピーすると隠れた行も含まれます。";
+"Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "折りたたまれたテキスト: 検索や行へ移動では移動先の折りたたみが開き、折りたたみをまたいでコピーすると隠れた行も含まれます。";

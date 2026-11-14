@@ -2070,3 +2070,6 @@
 "Folding: On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline." = "折叠: 在 Mac 上，JSON 对象和数组以及 XML 元素可以折叠，大文件读起来就像大纲。";
 "Large Files: Large files stay responsive while you edit and scroll after the first change." = "大文件: 大文件在首次修改后的编辑和滚动中依然流畅。";
 "Run Console: In the Mac version from GitHub, the run console shows the folder a script starts in." = "运行控制台: 在 GitHub 版 Mac App 中，运行控制台会显示脚本启动时所在的文件夹。";
+"Folded Text" = "折叠的文本";
+"Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "查找和前往行会展开所到之处的折叠，跨越折叠复制时会包含隐藏的行。";
+"Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines." = "折叠的文本: 查找和前往行会展开所到之处的折叠，跨越折叠复制时会包含隐藏的行。";

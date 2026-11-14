@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.2.4] - 2026-11-14
+
 ### Why Upgrade
 
 - On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline.

@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-11-13 (v2.2.3 release-aligned architecture)
+Last updated: 2026-11-14 (v2.2.4 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -8,6 +8,13 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
+
+### v2.2.4 (2026-11-14)
+
+- In the Mac version from GitHub, the run console shows the folder a script starts in.
+- On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker.
+- On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly.
+- Editing a large file no longer makes later scrolling, clicking and typing slower: after the first edit, the editor found positions in the file by reading it from the start each time, and now starts from the nearest of evenly spaced markers instead.
 
 ### v2.2.3 (2026-11-13)
 
@@ -17,15 +24,6 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 - In the Mac version from GitHub, the run console's Output and Errors panes stay scrolled to the start of their lines after each run instead of jumping to the middle of long lines.
 - On the Mac, pasting or dropping text longer than the window now shows the pasted lines at the caret right away instead of an empty editor until you scroll.
 - On the Mac, Text Replacement shortcuts that contain punctuation, such as “:beta:” or “=>”, now list their phrase like other shortcuts do (#994).
-
-### v2.2.2 (2026-11-13)
-
-- On iPhone and iPad, tapping a table of contents entry jumps to that heading, even far down a long document.
-- Code completion stays quiet inside comments in more languages and keeps suggestions such as #include or $variable.
-- On the Mac, text inside multi-line strings and MeierScript comments keeps its string or comment color.
-- On the Mac, text inside multi-line `"""` strings in MeierScript, Swift, Kotlin, Python and TOML (and `'''` strings in Python and TOML) is colored as a string on every line, instead of picking up keyword and type colors from the second line on.
-- In MeierScript, keywords, numbers, `nil`, `true` and `false` inside comments and strings keep the comment or string color, and `/* … */` comments that span lines are colored on every line.
-- On iPhone, including iPhone Duo, a Hide Keyboard button sits above the keyboard, so you can close the keyboard and get back to the toolbar without scrolling the document. With the Keyboard Snippet Bar turned off, the button still appears on its own.
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

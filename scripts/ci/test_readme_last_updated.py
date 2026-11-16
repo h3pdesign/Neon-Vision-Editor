@@ -49,7 +49,7 @@ class ReadmeLastUpdatedTests(unittest.TestCase):
                 self.assertNotIn("currently in Apple review", updated)
                 # Rows for macOS App Store and TestFlight are maintained by hand
                 # from App Store Connect; the sync must leave them untouched.
-                for row in ("| **Store status** | macOS |", "| **Store** | visionOS |", "| **Beta** | iOS / iPadOS / macOS |"):
+                for row in ("| **Store status** | macOS |", "| **Store** | visionOS |", "| **Beta** | iOS / iPadOS / macOS / visionOS |"):
                     before = next(line for line in readme.splitlines() if line.startswith(row))
                     after = next(line for line in updated.splitlines() if line.startswith(row))
                     self.assertEqual(after, before)

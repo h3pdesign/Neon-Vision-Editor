@@ -152,6 +152,11 @@ final class IntegratedTerminalSession: ObservableObject {
 
         let masterHandle = FileHandle(fileDescriptor: masterFileDescriptor, closeOnDealloc: true)
 
+        // Queue the banner before reading the PTY so zsh's first prompt can't land ahead of it.
+        // Local output bypasses the PTY's ONLCR translation, so end lines with CRLF.
+        // A bare LF leaves the cursor mid-row and zsh's PROMPT_SP prints a stray "%".
+        enqueueOutput(Self.startupBanner(for: directory), generation: currentGeneration)
+
         let outputContinuation = outputContinuation
         masterHandle.readabilityHandler = { handle in
             let data = handle.availableData
@@ -163,9 +168,6 @@ final class IntegratedTerminalSession: ObservableObject {
         masterTerminalFileDescriptor = masterFileDescriptor
         isRunning = true
         usesPTY = true
-        // Local output bypasses the PTY's ONLCR translation, so end lines with CRLF.
-        // A bare LF leaves the cursor mid-row and zsh's PROMPT_SP prints a stray "%".
-        enqueueOutput(Self.startupBanner(for: directory), generation: currentGeneration)
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
             var status: Int32 = 0
@@ -241,7 +243,11 @@ final class IntegratedTerminalSession: ObservableObject {
         } else {
             displayPath = path
         }
-        return "zsh in \(displayPath)\r\n"
+        // A folder name could hold escape sequences; drop control characters so it can't rewrite the screen.
+        let printablePath = String(String.UnicodeScalarView(displayPath.unicodeScalars.filter {
+            !CharacterSet.controlCharacters.contains($0)
+        }))
+        return "zsh in \(printablePath)\r\n"
     }
 
     /// The account's real home; the sandbox container path would never match a project folder.

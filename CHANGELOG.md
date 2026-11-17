@@ -6,6 +6,10 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Added
+
+- On iPhone and iPad, JSON and XML files can fold their structure: tap the chevron next to a line number to fold or unfold a block, or tap the ⋯ marker after a folded line to open it. Fold, Fold All and Unfold All are in the text menu, and on an iPad keyboard Fold (⌥⌘←), Unfold (⌥⌘→), Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→) work as on the Mac. Folding only hides lines: saving, copying across a fold and undo keep the whole document, and Find or Go to Line open the fold they land in.
+
 ### Fixed
 
 - On the Mac, the integrated terminal starts without a stray `%` line and without a wrapped banner: zsh now gets the panel's real width, and the banner is a short "zsh in <folder>" line with the home folder shown as `~`. iCloud Drive folders show by name instead of their Mobile Documents path.

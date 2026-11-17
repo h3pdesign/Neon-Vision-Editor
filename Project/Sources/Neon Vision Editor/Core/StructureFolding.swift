@@ -301,6 +301,29 @@ nonisolated enum StructureFoldScanner {
         in document: any EditorDocument,
         syntax: StructureFoldSyntax
     ) throws -> [StructureFoldRegion] {
+        var offset = 0
+        return try allRegions(syntax: syntax) {
+            let chunk = try document.textChunk(startByteOffset: offset, maximumByteCount: 256 * 1024)
+            guard chunk.byteCount > 0 else { return nil }
+            offset += chunk.byteCount
+            return chunk.text
+        }
+    }
+
+    /// Every multi-line region in an in-memory text, for editors that hold
+    /// the whole document (iPhone and iPad).
+    static func allRegions(inText text: String, syntax: StructureFoldSyntax) -> [StructureFoldRegion] {
+        var pending: String? = text
+        return (try? allRegions(syntax: syntax) {
+            defer { pending = nil }
+            return pending
+        }) ?? []
+    }
+
+    private static func allRegions(
+        syntax: StructureFoldSyntax,
+        nextChunk: () throws -> String?
+    ) throws -> [StructureFoldRegion] {
         struct Open {
             let line: Int
             let depth: Int
@@ -309,16 +332,12 @@ nonisolated enum StructureFoldScanner {
         var tokenizer = StructureFoldTokenizer(syntax: syntax)
         var stack: [Open] = []
         var byHeader: [Int: StructureFoldRegion] = [:]
-        var offset = 0
         var utf16 = 0
         var line = 0
         var lineStartUTF16 = 0
         while true {
             try Task.checkCancellation()
-            let chunk = try document.textChunk(startByteOffset: offset, maximumByteCount: 256 * 1024)
-            guard chunk.byteCount > 0 else { break }
-            offset += chunk.byteCount
-            var text = chunk.text
+            guard var text = try nextChunk() else { break }
             text.withUTF8 { bytes in
                 for byte in bytes {
                     // UTF-16 length of each scalar, counted at its lead byte.
@@ -404,6 +423,19 @@ nonisolated final class StructureFoldModel {
             if visibleFolds[middle].headerLine < line { low = middle + 1 } else { high = middle }
         }
         return low < visibleFolds.count && visibleFolds[low].headerLine == line ? visibleFolds[low] : nil
+    }
+
+    /// The visible fold whose hidden text contains the UTF-16 `offset`.
+    func visibleFold(hiding offset: Int) -> StructureFold? {
+        let index = countVisibleFolds { $0.hiddenEndUTF16 <= offset }
+        guard index < visibleFolds.count, visibleFolds[index].hiddenStartUTF16 <= offset else { return nil }
+        return visibleFolds[index]
+    }
+
+    /// True when any visible fold hides text in `lower ..< upper`.
+    func hidesText(from lower: Int, to upper: Int) -> Bool {
+        let index = countVisibleFolds { $0.hiddenEndUTF16 <= lower }
+        return index < visibleFolds.count && visibleFolds[index].hiddenStartUTF16 < upper
     }
 
     /// Removes every fold that hides part of `range` or would be cut by an

@@ -367,6 +367,8 @@
 "Close %@" = "关闭 %@";
 "Close All Tabs" = "关闭所有标签页";
 "Close Diff" = "关闭差异";
+"Ignore Whitespace" = "忽略空白";
+"Hides changes that only differ in indentation or spacing." = "隐藏仅在缩进或空格上不同的更改。";
 "Close Find and Replace" = "关闭查找和替换";
 "Close Folder" = "关闭文件夹";
 "Close Folder and Project Tabs?" = "关闭文件夹和项目标签页？";

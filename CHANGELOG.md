@@ -6,13 +6,17 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Added
+
+- Compare can ignore whitespace: turn on Ignore Whitespace in the compare panel, and lines that differ only in indentation or spacing count as unchanged. JSON exported by two tools with different indentation now highlights only the values that changed. The setting is remembered and works for Compare with Tab, Compare with Disk and Git diffs on Mac, iPhone and iPad.
+
 ### Fixed
 
 - On the Mac, the integrated terminal starts without a stray `%` line and without a wrapped banner: zsh now gets the panel's real width, and the banner is a short "zsh in <folder>" line with the home folder shown as `~`. iCloud Drive folders show by name instead of their Mobile Documents path.
 
 ### Maintenance
 
-- Development version 2.2.5 (build 1158).
+- Development version 2.2.5 (build 1159).
 
 ## [v2.2.4] - 2026-11-14
 

@@ -5326,30 +5326,28 @@ struct ContentView: View {
         leftContent: String,
         rightContent: String
     ) {
+        let ignoresWhitespace = UserDefaults.standard.bool(forKey: DocumentDiffPresentation.ignoresWhitespaceDefaultsKey)
         Task { @MainActor in
-            let diff = await Task.detached(priority: .userInitiated) {
-                DocumentDiffBuilder.build(leftContent: leftContent, rightContent: rightContent)
+            let presentation = await Task.detached(priority: .userInitiated) {
+                DocumentDiffPresentation.make(
+                    title: title,
+                    leftTitle: leftTitle,
+                    rightTitle: rightTitle,
+                    leftContent: leftContent,
+                    rightContent: rightContent,
+                    ignoresWhitespace: ignoresWhitespace
+                )
             }.value
             await Task.yield()
 #if os(iOS) || os(visionOS)
             if usesCompactIOSLayout {
-                sidebarCompareDiffPresentation = DocumentDiffPresentation(
-                    title: title,
-                    leftTitle: leftTitle,
-                    rightTitle: rightTitle,
-                    diff: diff
-                )
+                sidebarCompareDiffPresentation = presentation
                 dismissKeyboard()
                 showCompactProjectSidebarSheet = true
                 return
             }
 #endif
-            editorDiffPresentation = DocumentDiffPresentation(
-                title: title,
-                leftTitle: leftTitle,
-                rightTitle: rightTitle,
-                diff: diff
-            )
+            editorDiffPresentation = presentation
         }
     }
 

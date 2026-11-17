@@ -1403,6 +1403,22 @@ struct DiffEditorSurface: View {
     let presentation: DocumentDiffPresentation
     let onClose: () -> Void
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage(DocumentDiffPresentation.ignoresWhitespaceDefaultsKey) private var ignoresWhitespace = false
+    @State private var rebuiltPresentation: (baseID: UUID, presentation: DocumentDiffPresentation)?
+
+    /// The diff on screen: the caller's, or one rebuilt for the whitespace option.
+    private var shownPresentation: DocumentDiffPresentation {
+        if let rebuiltPresentation, rebuiltPresentation.baseID == presentation.id,
+           rebuiltPresentation.presentation.ignoresWhitespace == ignoresWhitespace {
+            return rebuiltPresentation.presentation
+        }
+        return presentation
+    }
+
+    private struct RebuildKey: Equatable {
+        let presentationID: UUID
+        let ignoresWhitespace: Bool
+    }
 
     private var isCompact: Bool {
 #if os(macOS)
@@ -1419,7 +1435,8 @@ struct DiffEditorSurface: View {
                     outline
                         .frame(maxHeight: 220)
                     Divider()
-                    InlineDiffView(presentation: presentation)
+                    InlineDiffView(presentation: shownPresentation)
+                        .id(shownPresentation.id)
                 }
             } else {
                 HStack(spacing: 0) {
@@ -1427,7 +1444,8 @@ struct DiffEditorSurface: View {
                         .frame(minWidth: 340, idealWidth: 400, maxWidth: 480)
                         .layoutPriority(1)
                     Divider()
-                    InlineDiffView(presentation: presentation)
+                    InlineDiffView(presentation: shownPresentation)
+                        .id(shownPresentation.id)
                         .frame(minWidth: 0, maxWidth: .infinity)
                 }
             }
@@ -1435,6 +1453,27 @@ struct DiffEditorSurface: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Diff editor for \(presentation.title)")
+        .task(id: RebuildKey(presentationID: presentation.id, ignoresWhitespace: ignoresWhitespace)) {
+            await rebuildForWhitespaceOptionIfNeeded()
+        }
+    }
+
+    private func rebuildForWhitespaceOptionIfNeeded() async {
+        let base = presentation
+        let wanted = ignoresWhitespace
+        guard base.sources != nil, base.ignoresWhitespace != wanted else {
+            rebuiltPresentation = nil
+            return
+        }
+        if let rebuiltPresentation, rebuiltPresentation.baseID == base.id,
+           rebuiltPresentation.presentation.ignoresWhitespace == wanted {
+            return
+        }
+        let rebuilt = await Task.detached(priority: .userInitiated) {
+            base.rebuilt(ignoringWhitespace: wanted)
+        }.value
+        guard !Task.isCancelled, let rebuilt else { return }
+        rebuiltPresentation = (base.id, rebuilt)
     }
 
     private var outline: some View {
@@ -1474,14 +1513,21 @@ struct DiffEditorSurface: View {
             .truncationMode(.middle)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
+            if presentation.sources != nil {
+                Toggle("Ignore Whitespace", isOn: $ignoresWhitespace)
+                    .font(.caption)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 10)
+                    .accessibilityHint("Hides changes that only differ in indentation or spacing.")
+            }
             if !isCompact {
                 Divider()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 6) {
-                        ForEach(presentation.changedRows) { row in
+                        ForEach(shownPresentation.changedRows) { row in
                             changedRow(row)
                         }
-                        if presentation.changedRows.isEmpty {
+                        if shownPresentation.changedRows.isEmpty {
                             ContentUnavailableView("No Changes", systemImage: "checkmark.circle")
                                 .frame(maxWidth: .infinity, minHeight: 140)
                         }

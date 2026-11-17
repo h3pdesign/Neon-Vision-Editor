@@ -790,6 +790,13 @@ class EditorInputTextView: UITextView {
             name: "Select Line", target: self, selector: #selector(selectCurrentLogicalLine))]
     }
 
+    /// VoiceOver cannot reach the gutter chevrons or ⋯ markers, so the
+    /// rotor's Actions list carries the fold commands for JSON and XML.
+    override var accessibilityCustomActions: [UIAccessibilityCustomAction]? {
+        get { (super.accessibilityCustomActions ?? []) + structureFolding.accessibilityActions() }
+        set { super.accessibilityCustomActions = newValue }
+    }
+
     @objc private func selectTappedLine(_ gesture: UITapGestureRecognizer) {
         guard gesture.state == .ended, isSelectable,
               let position = closestPosition(to: gesture.location(in: self)) else { return }
@@ -5075,10 +5082,16 @@ final class StructureFoldController: NSObject {
     /// Unfolds the fold whose header holds the caret.
     @discardableResult
     func unfoldAtCaret() -> Bool {
+        guard let next = foldedHeaderNextLineAtCaret() else { return false }
+        return changeFolds { model.reveal(NSRange(location: next, length: 0)) }
+    }
+
+    /// Where the hidden text starts when the caret sits on a folded header.
+    private func foldedHeaderNextLineAtCaret() -> Int? {
         guard isAvailable, let textView,
               let next = nextLineStart(afterLineContaining: textView.selectedRange.location),
-              let fold = model.visibleFold(hiding: next), fold.hiddenStartUTF16 == next else { return false }
-        return changeFolds { model.reveal(NSRange(location: next, length: 0)) }
+              let fold = model.visibleFold(hiding: next), fold.hiddenStartUTF16 == next else { return nil }
+        return next
     }
 
     /// Folds every structure below the outermost one, as on the Mac.
@@ -5116,6 +5129,30 @@ final class StructureFoldController: NSObject {
                                     image: UIImage(systemName: "rectangle.expand.vertical")) { [weak self] _ in
                 self?.unfoldAll()
             })
+        }
+        return actions
+    }
+
+    /// Fold commands for VoiceOver, offered only where they can act.
+    func accessibilityActions() -> [UIAccessibilityCustomAction] {
+        guard isAvailable else { return [] }
+        @MainActor func action(_ title: String, _ comment: String, _ perform: @escaping (StructureFoldController) -> Bool)
+            -> UIAccessibilityCustomAction {
+            UIAccessibilityCustomAction(name: NSLocalizedString(title, comment: comment)) { [weak self] _ in
+                guard let self, perform(self) else { return false }
+                UIAccessibility.post(notification: .layoutChanged, argument: self.textView)
+                return true
+            }
+        }
+        var actions: [UIAccessibilityCustomAction] = []
+        if foldedHeaderNextLineAtCaret() != nil {
+            actions.append(action("Unfold", "Editor unfold command") { $0.unfoldAtCaret() })
+        } else {
+            actions.append(action("Fold", "Editor fold command") { $0.foldAtCaret() })
+        }
+        actions.append(action("Fold All", "Editor fold all command") { $0.foldAll() })
+        if !model.isEmpty {
+            actions.append(action("Unfold All", "Editor unfold all command") { $0.unfoldAll() })
         }
         return actions
     }

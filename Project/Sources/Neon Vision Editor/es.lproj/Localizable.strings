@@ -367,6 +367,8 @@
 "Close %@" = "Cerrar %@";
 "Close All Tabs" = "Cerrar todas las pestañas";
 "Close Diff" = "Cerrar Diferencias";
+"Ignore Whitespace" = "Ignorar espacios en blanco";
+"Hides changes that only differ in indentation or spacing." = "Oculta los cambios que solo difieren en la sangría o los espacios.";
 "Close Find and Replace" = "Cerrar Buscar y Reemplazar";
 "Close Folder" = "Cerrar Carpeta";
 "Close Folder and Project Tabs?" = "Cerrar Carpeta y Pestañas del Proyecto?";

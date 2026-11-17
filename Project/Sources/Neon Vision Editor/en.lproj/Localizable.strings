@@ -367,6 +367,8 @@
 "Close %@" = "Close %@";
 "Close All Tabs" = "Close All Tabs";
 "Close Diff" = "Close Diff";
+"Ignore Whitespace" = "Ignore Whitespace";
+"Hides changes that only differ in indentation or spacing." = "Hides changes that only differ in indentation or spacing.";
 "Close Find and Replace" = "Close Find and Replace";
 "Close Folder" = "Close Folder";
 "Close Folder and Project Tabs?" = "Close Folder and Project Tabs?";

@@ -367,6 +367,8 @@
 "Close %@" = "Luk %@";
 "Close All Tabs" = "Luk alle faner";
 "Close Diff" = "Luk forskel";
+"Ignore Whitespace" = "Ignorer mellemrum";
+"Hides changes that only differ in indentation or spacing." = "Skjuler ændringer, der kun adskiller sig i indrykning eller mellemrum.";
 "Close Find and Replace" = "Luk find og erstat";
 "Close Folder" = "Luk mappe";
 "Close Folder and Project Tabs?" = "Luk mappe og projektfaner?";

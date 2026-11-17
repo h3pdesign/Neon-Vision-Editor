@@ -367,6 +367,8 @@
 "Close %@" = "Fermer %@";
 "Close All Tabs" = "Fermer tous les onglets";
 "Close Diff" = "Fermer la différence";
+"Ignore Whitespace" = "Ignorer les espaces";
+"Hides changes that only differ in indentation or spacing." = "Masque les modifications qui ne diffèrent que par l’indentation ou les espaces.";
 "Close Find and Replace" = "Fermer Trouver et Remplacer";
 "Close Folder" = "Fermer le dossier";
 "Close Folder and Project Tabs?" = "Fermer le dossier et les onglets du projet ?";

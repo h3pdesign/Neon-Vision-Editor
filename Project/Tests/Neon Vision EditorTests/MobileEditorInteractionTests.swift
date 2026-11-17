@@ -118,6 +118,24 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
+    func testTouchPlacedCaretIsNotTreatedAsKeyboardNavigation() {
+        XCTAssertTrue(EditorTouchSelectionPolicy.isTouchDriven(
+            activeTouchCount: 1, secondsSinceLastTouchEnded: .infinity, isTracking: false, hasActiveGesture: false))
+        XCTAssertTrue(EditorTouchSelectionPolicy.isTouchDriven(
+            activeTouchCount: 0, secondsSinceLastTouchEnded: 0.05, isTracking: false, hasActiveGesture: false))
+        XCTAssertTrue(EditorTouchSelectionPolicy.isTouchDriven(
+            activeTouchCount: 0, secondsSinceLastTouchEnded: .infinity, isTracking: false, hasActiveGesture: true))
+        XCTAssertFalse(EditorTouchSelectionPolicy.isTouchDriven(
+            activeTouchCount: 0, secondsSinceLastTouchEnded: 2, isTracking: false, hasActiveGesture: false))
+
+        let editor = EditorInputTextView(frame: CGRect(x: 0, y: 0, width: 320, height: 200), textContainer: nil)
+        XCTAssertFalse(editor.isSelectionDrivenByTouch)
+        editor.touchesCancelled([], with: nil)
+        XCTAssertTrue(editor.isSelectionDrivenByTouch, "A touch that just ended still owns the caret move")
+        editor.pressesBegan([], with: nil)
+        XCTAssertFalse(editor.isSelectionDrivenByTouch, "A key press hands caret moves back to keyboard reveal")
+    }
+
     func testNativeTextSnapshotIgnoresAttributeOnlyEdits() {
         let editor = EditorInputTextView(frame: .zero, textContainer: nil)
         editor.text = "highlight me"

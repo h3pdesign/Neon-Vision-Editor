@@ -68,13 +68,26 @@ struct DocumentDiffPresentation: Identifiable, Sendable {
     let sideBySideRows: [DisplayRow]
     let inlineRows: [DisplayRow]
     let language: String?
+    /// The compared texts, kept so the diff can be rebuilt with other options.
+    /// Nil when the caller only has a prebuilt diff.
+    let sources: Sources?
+    let ignoresWhitespace: Bool
+
+    nonisolated static let ignoresWhitespaceDefaultsKey = "DiffIgnoresWhitespace"
+
+    struct Sources: Sendable {
+        let left: String
+        let right: String
+    }
 
     nonisolated init(
         title: String,
         leftTitle: String,
         rightTitle: String,
         diff: DocumentDiff,
-        language: String? = nil
+        language: String? = nil,
+        sources: Sources? = nil,
+        ignoresWhitespace: Bool = false
     ) {
         self.id = UUID()
         self.title = title
@@ -84,6 +97,49 @@ struct DocumentDiffPresentation: Identifiable, Sendable {
         self.changedRows = diff.rows.filter(\.isChanged)
         (self.sideBySideRows, self.inlineRows) = Self.makeDisplayRows(from: diff.rows)
         self.language = language
+        self.sources = sources
+        self.ignoresWhitespace = ignoresWhitespace
+    }
+
+    /// Builds the presentation for two texts, honoring the whitespace option.
+    nonisolated static func make(
+        title: String,
+        leftTitle: String,
+        rightTitle: String,
+        leftContent: String,
+        rightContent: String,
+        ignoresWhitespace: Bool
+    ) -> DocumentDiffPresentation {
+        DocumentDiffPresentation(
+            title: title,
+            leftTitle: leftTitle,
+            rightTitle: rightTitle,
+            diff: DocumentDiffBuilder.build(
+                leftContent: leftContent,
+                rightContent: rightContent,
+                ignoringWhitespace: ignoresWhitespace
+            ),
+            sources: Sources(left: leftContent, right: rightContent),
+            ignoresWhitespace: ignoresWhitespace
+        )
+    }
+
+    /// Rebuilds the diff from the kept sources with another whitespace option.
+    nonisolated func rebuilt(ignoringWhitespace: Bool) -> DocumentDiffPresentation? {
+        guard let sources else { return nil }
+        return DocumentDiffPresentation(
+            title: title,
+            leftTitle: leftTitle,
+            rightTitle: rightTitle,
+            diff: DocumentDiffBuilder.build(
+                leftContent: sources.left,
+                rightContent: sources.right,
+                ignoringWhitespace: ignoringWhitespace
+            ),
+            language: language,
+            sources: sources,
+            ignoresWhitespace: ignoringWhitespace
+        )
     }
 
     private nonisolated static func makeDisplayRows(
@@ -158,15 +214,52 @@ enum DocumentDiffBuilder {
     nonisolated private static let guardedDiffUTF16LengthThreshold = 1_000_000
     nonisolated private static let maxDynamicProgrammingCells = 1_200_000
 
-    nonisolated static func build(leftContent: String, rightContent: String) -> DocumentDiff {
+    /// With `ignoringWhitespace`, lines that differ only in whitespace
+    /// (indentation, spacing, trailing spaces) are treated as equal, like
+    /// `git diff -w` but keeping whitespace inside double-quoted strings.
+    /// Rows still show each side's original text.
+    nonisolated static func build(
+        leftContent: String,
+        rightContent: String,
+        ignoringWhitespace: Bool = false
+    ) -> DocumentDiff {
         if shouldReturnGuardedDiff(leftContent: leftContent, rightContent: rightContent) {
             return guardedDiff(leftContent: leftContent, rightContent: rightContent)
         }
         let leftLines = splitLines(leftContent)
         let rightLines = splitLines(rightContent)
-        let operations = diffOperations(leftLines: leftLines, rightLines: rightLines)
-        let rows = rows(from: operations)
+        let operations = diffOperations(
+            leftLines: ignoringWhitespace ? leftLines.map(whitespaceInsensitiveKey) : leftLines,
+            rightLines: ignoringWhitespace ? rightLines.map(whitespaceInsensitiveKey) : rightLines
+        )
+        let rows = rows(from: operations, leftLines: leftLines, rightLines: rightLines)
         return DocumentDiff(rows: rows, hunks: hunks(from: rows))
+    }
+
+    /// Drops whitespace outside double-quoted strings, so formatting is ignored
+    /// but a changed string value such as "a b" vs "ab" still shows.
+    nonisolated static func whitespaceInsensitiveKey(_ line: String) -> String {
+        var key = String.UnicodeScalarView()
+        var insideString = false
+        var escaped = false
+        for scalar in line.unicodeScalars {
+            if insideString {
+                key.append(scalar)
+                if escaped {
+                    escaped = false
+                } else if scalar == "\\" {
+                    escaped = true
+                } else if scalar == "\"" {
+                    insideString = false
+                }
+            } else if scalar == "\"" {
+                insideString = true
+                key.append(scalar)
+            } else if !scalar.properties.isWhitespace {
+                key.append(scalar)
+            }
+        }
+        return String(key)
     }
 
     nonisolated private static func shouldReturnGuardedDiff(leftContent: String, rightContent: String) -> Bool {
@@ -357,20 +450,27 @@ enum DocumentDiffBuilder {
         return result.reversed()
     }
 
-    nonisolated private static func rows(from operations: [Operation]) -> [DocumentDiff.Row] {
+    // Operations consume left and right lines strictly in order, so each row's
+    // text comes from the original lines. The operation payload may be a
+    // normalized comparison key when whitespace is ignored.
+    nonisolated private static func rows(
+        from operations: [Operation],
+        leftLines: [String],
+        rightLines: [String]
+    ) -> [DocumentDiff.Row] {
         var rows: [DocumentDiff.Row] = []
         var leftLineNumber = 1
         var rightLineNumber = 1
         var index = 0
 
-        func appendEqual(_ text: String) {
+        func appendEqual() {
             rows.append(
                 DocumentDiff.Row(
                     id: rows.count,
                     leftLineNumber: leftLineNumber,
                     rightLineNumber: rightLineNumber,
-                    leftText: text,
-                    rightText: text,
+                    leftText: leftLines[leftLineNumber - 1],
+                    rightText: rightLines[rightLineNumber - 1],
                     kind: .equal
                 )
             )
@@ -380,18 +480,18 @@ enum DocumentDiffBuilder {
 
         while index < operations.count {
             switch operations[index] {
-            case let .equal(text):
-                appendEqual(text)
+            case .equal:
+                appendEqual()
                 index += 1
             case .remove, .insert:
                 var removed: [String] = []
                 var inserted: [String] = []
                 while index < operations.count {
                     switch operations[index] {
-                    case let .remove(text):
-                        removed.append(text)
-                    case let .insert(text):
-                        inserted.append(text)
+                    case .remove:
+                        removed.append(leftLines[leftLineNumber - 1 + removed.count])
+                    case .insert:
+                        inserted.append(rightLines[rightLineNumber - 1 + inserted.count])
                     case .equal:
                         break
                     }

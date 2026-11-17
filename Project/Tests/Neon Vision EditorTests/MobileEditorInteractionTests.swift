@@ -35,6 +35,10 @@ final class MobileEditorInteractionTests: XCTestCase {
 
         let editor = EditorInputTextView(frame: CGRect(x: 0, y: 0, width: 320, height: 200), textContainer: nil)
         XCTAssertFalse(editor.isSelectionDrivenByTouch)
+        editor.touchesCancelled([], with: nil)
+        XCTAssertTrue(editor.isSelectionDrivenByTouch, "A touch that just ended still owns the caret move")
+        editor.pressesBegan([], with: nil)
+        XCTAssertFalse(editor.isSelectionDrivenByTouch, "A key press hands caret moves back to keyboard reveal")
     }
 
     func testNativeTextSnapshotIgnoresAttributeOnlyEdits() {

@@ -34,13 +34,6 @@ nonisolated func iPadShiftScrollFontSizeDelta(contentOffsetDeltaY: CGFloat) -> C
     -contentOffsetDeltaY * 0.04
 }
 
-#if os(iOS)
-enum EditorPointerSelectionPolicy {
-    static func shouldEnableTextDragInteraction(for idiom: UIUserInterfaceIdiom) -> Bool {
-        false
-    }
-}
-
 enum EditorTouchSelectionPolicy {
     /// UIKit can report a tap's selection change just after the touch ends.
     static let trailingTouchWindow: TimeInterval = 0.35
@@ -55,6 +48,13 @@ enum EditorTouchSelectionPolicy {
             isTracking ||
             hasActiveGesture ||
             (secondsSinceLastTouchEnded >= 0 && secondsSinceLastTouchEnded < trailingTouchWindow)
+    }
+}
+
+#if os(iOS)
+enum EditorPointerSelectionPolicy {
+    static func shouldEnableTextDragInteraction(for idiom: UIUserInterfaceIdiom) -> Bool {
+        false
     }
 }
 
@@ -215,7 +215,10 @@ class EditorInputTextView: UITextView {
             activeTouchCount: activeDirectTouchCount,
             secondsSinceLastTouchEnded: ProcessInfo.processInfo.systemUptime - lastDirectTouchEndUptime,
             isTracking: isTracking,
-            hasActiveGesture: gestureRecognizers?.contains { $0.state == .began || $0.state == .changed } ?? false
+            hasActiveGesture: gestureRecognizers?.contains {
+                // Pencil hover is not a touch and must not hide keyboard moves.
+                !($0 is UIHoverGestureRecognizer) && ($0.state == .began || $0.state == .changed)
+            } ?? false
         )
     }
 
@@ -473,6 +476,8 @@ class EditorInputTextView: UITextView {
     }
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        // A key press ends the trailing touch window: its caret moves keep context.
+        lastDirectTouchEndUptime = -.infinity
         for press in presses where press.key?.modifierFlags.contains(.shift) == true {
             activeShiftPressIdentifiers.insert(ObjectIdentifier(press))
         }

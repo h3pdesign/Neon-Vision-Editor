@@ -34,6 +34,23 @@ nonisolated func iPadShiftScrollFontSizeDelta(contentOffsetDeltaY: CGFloat) -> C
     -contentOffsetDeltaY * 0.04
 }
 
+enum EditorTouchSelectionPolicy {
+    /// UIKit can report a tap's selection change just after the touch ends.
+    static let trailingTouchWindow: TimeInterval = 0.35
+
+    static func isTouchDriven(
+        activeTouchCount: Int,
+        secondsSinceLastTouchEnded: TimeInterval,
+        isTracking: Bool,
+        hasActiveGesture: Bool
+    ) -> Bool {
+        activeTouchCount > 0 ||
+            isTracking ||
+            hasActiveGesture ||
+            (secondsSinceLastTouchEnded >= 0 && secondsSinceLastTouchEnded < trailingTouchWindow)
+    }
+}
+
 #if os(iOS)
 enum EditorPointerSelectionPolicy {
     static func shouldEnableTextDragInteraction(for idiom: UIUserInterfaceIdiom) -> Bool {
@@ -185,6 +202,44 @@ class EditorInputTextView: UITextView {
 #endif
     var isHardwareKeyboardShiftPressed: Bool {
         !activeShiftPressIdentifiers.isEmpty
+    }
+    private var activeDirectTouchCount = 0
+    private var lastDirectTouchEndUptime: TimeInterval = -.infinity
+
+    /// True while a finger places or drags the caret (tap, loupe, selection
+    /// handles) and briefly after it lifts. Selection changes made this way
+    /// must not scroll the text: moving the content under the finger makes
+    /// the next tap or drag land on a different character (#770, #1036).
+    var isSelectionDrivenByTouch: Bool {
+        EditorTouchSelectionPolicy.isTouchDriven(
+            activeTouchCount: activeDirectTouchCount,
+            secondsSinceLastTouchEnded: ProcessInfo.processInfo.systemUptime - lastDirectTouchEndUptime,
+            isTracking: isTracking,
+            hasActiveGesture: gestureRecognizers?.contains {
+                // Pencil hover is not a touch and must not hide keyboard moves.
+                !($0 is UIHoverGestureRecognizer) && ($0.state == .began || $0.state == .changed)
+            } ?? false
+        )
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        activeDirectTouchCount += touches.count
+        super.touchesBegan(touches, with: event)
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        endDirectTouches(touches.count)
+        super.touchesEnded(touches, with: event)
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        endDirectTouches(touches.count)
+        super.touchesCancelled(touches, with: event)
+    }
+
+    private func endDirectTouches(_ count: Int) {
+        activeDirectTouchCount = max(0, activeDirectTouchCount - count)
+        lastDirectTouchEndUptime = ProcessInfo.processInfo.systemUptime
     }
     var markdownFormattingEnabled: Bool = false
 
@@ -421,6 +476,8 @@ class EditorInputTextView: UITextView {
     }
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        // A key press ends the trailing touch window: its caret moves keep context.
+        lastDirectTouchEndUptime = -.infinity
         for press in presses where press.key?.modifierFlags.contains(.shift) == true {
             activeShiftPressIdentifiers.insert(ObjectIdentifier(press))
         }
@@ -4162,7 +4219,11 @@ struct CustomTextEditor: UIViewRepresentable {
                 }
                 textView.textStorage.endEditing()
                 syntaxHighlightSignposter.emitEvent("applied_ios")
-                textView.selectedRange = selectedRange
+                // Attribute-only styling keeps the selection; skip a no-op
+                // reassignment so an in-progress touch selection is left alone.
+                if textView.selectedRange != selectedRange {
+                    textView.selectedRange = selectedRange
+                }
                 if wasFirstResponder {
                     textView.setEditorContentOffset(priorOffset, animated: false)
                 }
@@ -4278,7 +4339,11 @@ struct CustomTextEditor: UIViewRepresentable {
             let generation = selectionUpdateGeneration
             guard textView.selectedRange.length > 0 else {
                 publishSelectionState(for: textView)
-                editorTextView?.revealCaretWithContext()
+                // Keyboard and command moves keep three lines of context; a
+                // caret the finger just placed is already where the user looks.
+                if editorTextView?.isSelectionDrivenByTouch == false {
+                    editorTextView?.revealCaretWithContext()
+                }
                 return
             }
 

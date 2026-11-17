@@ -367,6 +367,8 @@
 "Close %@" = "%@ を閉じる";
 "Close All Tabs" = "すべてのタブを閉じる";
 "Close Diff" = "差分を閉じる";
+"Ignore Whitespace" = "空白を無視";
+"Hides changes that only differ in indentation or spacing." = "インデントや空白だけが異なる変更を非表示にします。";
 "Close Find and Replace" = "検索と置換を閉じる";
 "Close Folder" = "フォルダーを閉じる";
 "Close Folder and Project Tabs?" = "フォルダーとプロジェクトのタブを閉じる?";

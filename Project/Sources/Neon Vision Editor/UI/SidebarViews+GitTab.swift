@@ -116,6 +116,10 @@ struct GitChangesEditorView: View {
         .onChange(of: ignoresWhitespace) { _, newValue in
             rebuildInlineDiff(ignoringWhitespace: newValue)
         }
+        .onChange(of: inlineDiff?.id) { _, _ in
+            // A diff that finished building after the option flipped catches up here.
+            rebuildInlineDiff(ignoringWhitespace: ignoresWhitespace)
+        }
         .confirmationDialog(
             "Commit staged changes?",
             isPresented: Binding(

@@ -148,11 +148,18 @@ final class MobileEditorInteractionTests: XCTestCase {
             XCTAssertEqual(folding.model.folds.map(\.hiddenStartUTF16), [lineStart(6)])
 
             // VoiceOver gets the same commands, with Unfold on a folded header.
+            let fold = NSLocalizedString("Fold", comment: "Editor fold command")
+            let unfold = NSLocalizedString("Unfold", comment: "Editor unfold command")
+            let foldAll = NSLocalizedString("Fold All", comment: "Editor fold all command")
+            let unfoldAll = NSLocalizedString("Unfold All", comment: "Editor unfold all command")
             view.selectedRange = NSRange(location: lineStart(5), length: 0)
-            XCTAssertEqual(view.accessibilityCustomActions?.map(\.name), ["Select Line", "Unfold", "Fold All", "Unfold All"])
+            XCTAssertEqual(view.accessibilityCustomActions?.map(\.name), ["Select Line", unfold, foldAll, unfoldAll])
             XCTAssertTrue(view.accessibilityCustomActions?[1].actionHandler?(view.accessibilityCustomActions![1]) ?? false)
             XCTAssertTrue(folding.model.isEmpty)
-            XCTAssertEqual(view.accessibilityCustomActions?.map(\.name), ["Select Line", "Fold", "Fold All"])
+            XCTAssertEqual(view.accessibilityCustomActions?.map(\.name), ["Select Line", fold, foldAll])
+            // After the closing brace no structure holds the caret, so Fold is not offered.
+            view.selectedRange = NSRange(location: view.textStorage.length, length: 0)
+            XCTAssertEqual(view.accessibilityCustomActions?.map(\.name), ["Select Line", foldAll])
         }
     }
 

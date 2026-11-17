@@ -8,15 +8,16 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Added
 
-- Compare can ignore whitespace: turn on Ignore Whitespace in the compare panel, and lines that differ only in indentation or spacing count as unchanged. JSON exported by two tools with different indentation now highlights only the values that changed. The setting is remembered and works for Compare with Tab and Compare with Disk on Mac, iPhone and iPad.
+- Compare can ignore whitespace: turn on Ignore Whitespace in the compare panel, and lines that differ only in indentation or spacing count as unchanged. JSON exported by two tools with different indentation now highlights only the values that changed. The setting is remembered and works for Compare with Tab, Compare with Disk and the Git panel's change and commit diffs on Mac, iPhone and iPad.
 
 ### Fixed
 
 - On the Mac, the integrated terminal starts without a stray `%` line and without a wrapped banner: zsh now gets the panel's real width, and the banner is a short "zsh in <folder>" line with the home folder shown as `~`. iCloud Drive folders show by name instead of their Mobile Documents path.
+- On iPhone and iPad, tapping or dragging to place the cursor no longer scrolls the text under your finger, so a second tap on the same line lands where you aim instead of jumping elsewhere ([#1036](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1036), [#770](https://github.com/h3pdesign/Neon-Vision-Editor/issues/770)).
 
 ### Maintenance
 
-- Development version 2.2.5 (build 1159).
+- Development version 2.2.5 (build 1160).
 
 ## [v2.2.4] - 2026-11-14
 

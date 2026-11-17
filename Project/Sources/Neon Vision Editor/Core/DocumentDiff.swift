@@ -108,6 +108,7 @@ struct DocumentDiffPresentation: Identifiable, Sendable {
         rightTitle: String,
         leftContent: String,
         rightContent: String,
+        language: String? = nil,
         ignoresWhitespace: Bool
     ) -> DocumentDiffPresentation {
         DocumentDiffPresentation(
@@ -119,6 +120,7 @@ struct DocumentDiffPresentation: Identifiable, Sendable {
                 rightContent: rightContent,
                 ignoringWhitespace: ignoresWhitespace
             ),
+            language: language,
             sources: Sources(left: leftContent, right: rightContent),
             ignoresWhitespace: ignoresWhitespace
         )

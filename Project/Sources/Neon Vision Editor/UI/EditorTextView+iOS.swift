@@ -203,6 +203,14 @@ class EditorInputTextView: UITextView {
     var isHardwareKeyboardShiftPressed: Bool {
         !activeShiftPressIdentifiers.isEmpty
     }
+    /// JSON and XML folding; inactive until the editor sets a fold syntax.
+    /// Lazy because `init(usingTextLayoutManager:)` (the segmented long-line
+    /// editor) skips Swift's stored-property initializers.
+    private(set) lazy var structureFolding: StructureFoldController = {
+        let controller = StructureFoldController()
+        controller.attach(to: self)
+        return controller
+    }()
     private var activeDirectTouchCount = 0
     private var lastDirectTouchEndUptime: TimeInterval = -.infinity
 
@@ -417,6 +425,10 @@ class EditorInputTextView: UITextView {
     @objc private func handleTextStorageDidProcessEditing(_ notification: Notification) {
         guard textStorage.editedMask.contains(.editedCharacters) else { return }
         textContentRevision &+= 1
+        structureFolding.textStorageDidEditCharacters(
+            editedRange: textStorage.editedRange,
+            changeInLength: textStorage.changeInLength
+        )
     }
 
     func invalidateTextMetrics() {
@@ -1043,6 +1055,16 @@ class EditorInputTextView: UITextView {
             action: #selector(moveLineDownFromHardwareKeyboard)
         )
         moveLineDownCommand.discoverabilityTitle = "Move Line Down"
+        let foldCommands = structureFolding.isAvailable ? [
+            foldCommand(input: UIKeyCommand.inputLeftArrow, modifiers: [.command, .alternate],
+                        action: #selector(foldFromHardwareKeyboard), title: "Fold"),
+            foldCommand(input: UIKeyCommand.inputRightArrow, modifiers: [.command, .alternate],
+                        action: #selector(unfoldFromHardwareKeyboard), title: "Unfold"),
+            foldCommand(input: UIKeyCommand.inputLeftArrow, modifiers: [.command, .alternate, .shift],
+                        action: #selector(foldAllFromHardwareKeyboard), title: "Fold All"),
+            foldCommand(input: UIKeyCommand.inputRightArrow, modifiers: [.command, .alternate, .shift],
+                        action: #selector(unfoldAllFromHardwareKeyboard), title: "Unfold All")
+        ] : []
         let markdownCommands = markdownFormattingEnabled ? [
             markdownFormattingCommand(input: "b", action: #selector(requestMarkdownBold), title: "Bold"),
             markdownFormattingCommand(input: "i", action: #selector(requestMarkdownItalic), title: "Italic"),
@@ -1052,11 +1074,25 @@ class EditorInputTextView: UITextView {
             contentsOf: [
                 selectAllCommand, copyCommand, cutCommand, pasteCommand, undoCommand, redoCommand,
                 moveLineUpCommand, moveLineDownCommand
-            ] + markdownCommands,
+            ] + foldCommands + markdownCommands,
             at: 0
         )
         return commands
     }
+
+    private func foldCommand(input: String, modifiers: UIKeyModifierFlags, action: Selector, title: String) -> UIKeyCommand {
+        let command = UIKeyCommand(input: input, modifierFlags: modifiers, action: action)
+        command.discoverabilityTitle = NSLocalizedString(title, comment: "Editor fold command")
+        if #available(iOS 15.0, *) {
+            command.wantsPriorityOverSystemBehavior = true
+        }
+        return command
+    }
+
+    @objc private func foldFromHardwareKeyboard() { structureFolding.foldAtCaret() }
+    @objc private func unfoldFromHardwareKeyboard() { structureFolding.unfoldAtCaret() }
+    @objc private func foldAllFromHardwareKeyboard() { structureFolding.foldAll() }
+    @objc private func unfoldAllFromHardwareKeyboard() { structureFolding.unfoldAll() }
 
     private func markdownFormattingCommand(input: String, action: Selector, title: String) -> UIKeyCommand {
         let command = UIKeyCommand(input: input, modifierFlags: .command, action: action)
@@ -1155,6 +1191,7 @@ class EditorInputTextView: UITextView {
     }
 
     override func scrollRangeToVisible(_ range: NSRange) {
+        structureFolding.reveal(range)
         super.scrollRangeToVisible(range)
         guard let position = position(from: beginningOfDocument, offset: range.location) else { return }
         let caret = caretRect(for: position)
@@ -1814,6 +1851,7 @@ final class CurrentLineHighlightOverlayView: UIView {
     override func draw(_ rect: CGRect) {
         super.draw(rect)
         drawCurrentLineHighlight()
+        textView?.structureFolding.drawMarkers(color: textView?.textColor ?? .label)
     }
 
     private func drawCurrentLineHighlight() {
@@ -1907,15 +1945,31 @@ final class LineNumberGutterView: UIView {
             return
         }
         let stickyTopY = textContainerTop + 1
-        let visibleStartChar = layoutManager.characterIndexForGlyph(at: glyphRange.location)
+        let visibleStartChar = (textView as? EditorInputTextView)?.structureFolding
+            .visibleCharacterIndex(for: layoutManager.characterIndexForGlyph(at: glyphRange.location))
+            ?? layoutManager.characterIndexForGlyph(at: glyphRange.location)
         let stickyLineIndex = lineNumberForCharacterIndex(visibleStartChar)
         let stickyLineStart = lineStarts[stickyLineIndex]
         let shouldShowStickyLineNumber = stickyLineStart < visibleStartChar
         var drawnLineIndices = Set<Int>()
 
+        let folding = (textView as? EditorInputTextView)?.structureFolding
         layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, _, glyphRange, _ in
-            let charIndex = layoutManager.characterIndexForGlyph(at: glyphRange.location)
+            // A fragment after a folded header starts with hidden text; its
+            // number is the closing line's. Fully folded fragments have no height.
+            if folding?.model.isEmpty == false, usedRect.height <= 0 { return }
+            let rawCharIndex = layoutManager.characterIndexForGlyph(at: glyphRange.location)
+            let charIndex = folding?.visibleCharacterIndex(for: rawCharIndex) ?? rawCharIndex
             let lineIndex = self.lineNumberForCharacterIndex(charIndex)
+            if let folding, folding.isAvailable {
+                self.drawFoldControl(
+                    folding.controlState(
+                        lineStart: self.lineStarts[lineIndex],
+                        nextLineStart: lineIndex + 1 < self.lineStarts.count ? self.lineStarts[lineIndex + 1] : nil
+                    ),
+                    lineMidY: usedRect.midY + textContainerTop - contentOffsetY
+                )
+            }
             if shouldShowStickyLineNumber && lineIndex == stickyLineIndex {
                 return
             }
@@ -1942,6 +1996,23 @@ final class LineNumberGutterView: UIView {
                 in: CGRect(x: 0, y: y, width: bounds.width - rightPadding, height: font.lineHeight),
                 withAttributes: attrs)
         }
+    }
+
+    static let foldControlWidth: CGFloat = 12
+
+    private func drawFoldControl(_ state: StructureFoldController.ControlState, lineMidY: CGFloat) {
+        let symbol: String
+        switch state {
+        case .none: return
+        case .foldable: symbol = "chevron.down"
+        case .folded: symbol = "chevron.right"
+        }
+        let configuration = UIImage.SymbolConfiguration(pointSize: max(7, font.pointSize * 0.62), weight: .semibold)
+        guard let image = UIImage(systemName: symbol, withConfiguration: configuration)?
+            .withTintColor(textColor.withAlphaComponent(state == .folded ? 0.95 : 0.45), renderingMode: .alwaysOriginal)
+        else { return }
+        let size = image.size
+        image.draw(at: CGPoint(x: (Self.foldControlWidth - size.width) / 2 + 1, y: lineMidY - size.height / 2))
     }
 
     private func lineNumberForCharacterIndex(_ index: Int) -> Int {
@@ -2030,7 +2101,9 @@ final class LineNumberedTextViewContainer: UIView, UIScrollViewDelegate {
 
         lineNumberView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.65)
         lineNumberView.textColor = UIColor.label.withAlphaComponent(0.70)
-        lineNumberView.isUserInteractionEnabled = false
+        // Taps in the gutter fold JSON and XML structure.
+        lineNumberView.isUserInteractionEnabled = true
+        lineNumberView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleGutterTap(_:))))
 
         textView.contentInsetAdjustmentBehavior = .never
         syncEditorInsets()
@@ -2217,7 +2290,7 @@ final class LineNumberedTextViewContainer: UIView, UIScrollViewDelegate {
         let lineCount = max(1, lineStarts.count)
         let digits = max(2, String(lineCount).count)
         let glyphWidth = NSString(string: "8").size(withAttributes: [.font: numberFont]).width
-        let targetWidth = ceil((glyphWidth * CGFloat(digits)) + 14)
+        let targetWidth = ceil((glyphWidth * CGFloat(digits)) + 14 + foldControlAllowance)
         if abs(cachedLineNumberWidth - targetWidth) > 0.5 {
             cachedLineNumberWidth = targetWidth
             lineNumberWidthConstraint?.constant = targetWidth
@@ -2228,6 +2301,28 @@ final class LineNumberedTextViewContainer: UIView, UIScrollViewDelegate {
         if needsDisplayRefresh {
             lineNumberView.setNeedsDisplay()
         }
+    }
+
+    private var foldControlAllowance: CGFloat {
+        textView.structureFolding.isAvailable ? LineNumberGutterView.foldControlWidth : 0
+    }
+
+    /// Recomputes the gutter width when fold controls appear or disappear.
+    func refreshLineNumberWidth() {
+        guard !lineNumberView.isHidden, cachedFontPointSize > 0 else { return }
+        let digits = max(2, String(max(1, cachedLineStarts.count)).count)
+        let glyphWidth = NSString(string: "8").size(withAttributes: [.font: lineNumberView.font]).width
+        let targetWidth = ceil((glyphWidth * CGFloat(digits)) + 14 + foldControlAllowance)
+        guard abs(cachedLineNumberWidth - targetWidth) > 0.5 else { return }
+        cachedLineNumberWidth = targetWidth
+        lineNumberWidthConstraint?.constant = targetWidth
+        setNeedsLayout()
+        lineNumberView.setNeedsDisplay()
+    }
+
+    @objc private func handleGutterTap(_ recognizer: UITapGestureRecognizer) {
+        guard recognizer.state == .ended else { return }
+        textView.structureFolding.handleGutterTap(at: recognizer.location(in: lineNumberView), in: lineNumberView)
     }
 
     func updateLineNumbersAfterInteractiveEdit(for text: String, fontSize: CGFloat) {
@@ -2259,7 +2354,7 @@ final class LineNumberedTextViewContainer: UIView, UIScrollViewDelegate {
         }
         let digits = max(2, String(max(1, cachedLineStarts.count)).count)
         let glyphWidth = NSString(string: "8").size(withAttributes: [.font: numberFont]).width
-        let targetWidth = ceil((glyphWidth * CGFloat(digits)) + 14)
+        let targetWidth = ceil((glyphWidth * CGFloat(digits)) + 14 + foldControlAllowance)
         if abs(cachedLineNumberWidth - targetWidth) > 0.5 {
             cachedLineNumberWidth = targetWidth
             lineNumberWidthConstraint?.constant = targetWidth
@@ -2577,6 +2672,7 @@ struct CustomTextEditor: UIViewRepresentable {
         // JSON), starving the run loop and making the editor appear frozen.
         textView.layoutManager.allowsNonContiguousLayout = true
         textView.markdownFormattingEnabled = language.lowercased() == "markdown"
+        textView.structureFolding.setSyntax(isLargeFileMode ? nil : StructureFoldSyntax.forLanguage(language))
         let initialFont = resolvedUIFont()
         textView.font = initialFont
         let paragraphStyle = NSMutableParagraphStyle()
@@ -2810,6 +2906,7 @@ struct CustomTextEditor: UIViewRepresentable {
         let baseColor = UIColor(theme.text)
         textView.tintColor = UIColor(theme.cursor)
         textView.markdownFormattingEnabled = language.lowercased() == "markdown"
+        textView.structureFolding.setSyntax(isLargeFileMode ? nil : StructureFoldSyntax.forLanguage(language))
         textView.isOpaque = false
         textView.backgroundColor = .clear
         textView.highlightsCurrentLine = highlightCurrentLine && !isLargeFileMode
@@ -3359,10 +3456,15 @@ struct CustomTextEditor: UIViewRepresentable {
                 explicitValue: notification.userInfo?[EditorCommandUserInfo.focusEditor] as? Bool
             )
             let shouldCenterSelection = notification.userInfo?[EditorCommandUserInfo.centerSelection] as? Bool ?? false
+            let targetDocumentID = parent.documentID
             DispatchQueue.main.async {
+                // The editor may have switched documents before this runs.
+                guard self.textView === textView, self.parent.documentID == targetDocumentID,
+                      NSMaxRange(range) <= textView.textStorage.length else { return }
                 if shouldFocusEditor {
                     _ = textView.becomeFirstResponder()
                 }
+                textView.structureFolding.reveal(range)
                 textView.selectedRange = range
                 if shouldCenterSelection {
                     self.centerEditorLine(at: range, in: textView)
@@ -3587,6 +3689,7 @@ struct CustomTextEditor: UIViewRepresentable {
             } else if textView.isFirstResponder {
                 _ = textView.resignFirstResponder()
             }
+            textView.structureFolding.reveal(target)
             textView.selectedRange = target
             (textView as? EditorInputTextView)?.navigationHighlightLocation = shouldFocusEditor ? nil : target.location
             centerEditorLine(at: target, in: textView)
@@ -4329,6 +4432,7 @@ struct CustomTextEditor: UIViewRepresentable {
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isApplyingHighlight else { return }
+            (textView as? EditorInputTextView)?.structureFolding.selectionDidChange()
             textView.setNeedsDisplay()
             let editorTextView = textView as? EditorInputTextView
             if let editorTextView, !editorTextView.isAtNavigationHighlight {
@@ -4423,7 +4527,10 @@ struct CustomTextEditor: UIViewRepresentable {
             editMenuForTextIn range: NSRange,
             suggestedActions: [UIMenuElement]
         ) -> UIMenu? {
-            guard !EditorEditMenuPolicy.shouldUseDefaultMenu(for: range) else { return nil }
+            let foldActions = (textView as? EditorInputTextView)?.structureFolding.menuActions() ?? []
+            guard !EditorEditMenuPolicy.shouldUseDefaultMenu(for: range) else {
+                return foldActions.isEmpty ? nil : UIMenu(children: suggestedActions + foldActions)
+            }
             let snapshotAction = UIAction(
                 title: "Create Code Snapshot",
                 image: UIImage(systemName: "camera.viewfinder")
@@ -4433,7 +4540,7 @@ struct CustomTextEditor: UIViewRepresentable {
                 self.publishSelectionSnapshot(from: nsText, selectedRange: textView.selectedRange)
                 NotificationCenter.default.post(name: .editorRequestCodeSnapshotFromSelection, object: nil)
             }
-            return UIMenu(children: suggestedActions + [snapshotAction])
+            return UIMenu(children: suggestedActions + [snapshotAction] + foldActions)
         }
 
         private func publishSelectionSnapshot(from text: NSString, selectedRange: NSRange) {
@@ -4653,7 +4760,7 @@ struct CustomTextEditor: UIViewRepresentable {
             if textView.rendersInvisibleCharacters || textView.rendersIndentationGuides {
                 textView.invisibleCharactersOverlayView?.requestRedraw()
             }
-            if textView.highlightsCurrentLine {
+            if textView.highlightsCurrentLine || !textView.structureFolding.model.isEmpty {
                 textView.currentLineHighlightOverlayView?.setNeedsDisplay()
             }
             if !textView.matchingBracketHighlightRanges.isEmpty {
@@ -4814,6 +4921,430 @@ struct CustomTextEditor: UIViewRepresentable {
                 self.postMinimapViewportIfNeeded(textView: textView, scrollView: textView, force: true)
             }
         }
+    }
+}
+
+
+// MARK: - Structure Folding
+
+/// Folds JSON and XML structure in the UIKit editor (iPhone, iPad, Vision Pro).
+/// Folded lines stay in the text storage, so saving, copying, undo and search
+/// still see the whole document; TextKit only lays them out as nothing. Folds
+/// are tracked by UTF-16 offsets here: the model's line numbers are not kept
+/// current after edits and are not read.
+final class StructureFoldController: NSObject {
+    enum ControlState {
+        case none
+        case foldable
+        case folded
+    }
+
+    weak var textView: EditorInputTextView?
+    let model = StructureFoldModel()
+    private(set) var syntax: StructureFoldSyntax?
+    private var regionCache: (revision: Int, regions: [StructureFoldRegion])?
+    private var lastCaretLocation = 0
+    private lazy var markerTapRecognizer: UITapGestureRecognizer = {
+        let recognizer = UITapGestureRecognizer(target: self, action: #selector(handleMarkerTap(_:)))
+        recognizer.delegate = self
+        return recognizer
+    }()
+
+    static let markerGap: CGFloat = 6
+    static let markerSize = CGSize(width: 28, height: 16)
+
+    var isAvailable: Bool { syntax != nil }
+
+    /// Does not touch `layoutManager`: reading it moves a TextKit 2 view
+    /// (the segmented long-line editor) to TextKit 1.
+    func attach(to textView: EditorInputTextView) {
+        self.textView = textView
+        textView.addGestureRecognizer(markerTapRecognizer)
+    }
+
+    func setSyntax(_ syntax: StructureFoldSyntax?) {
+        guard syntax != self.syntax else { return }
+        // Folds made under another syntax may not match structures in this one.
+        unfoldAll()
+        if syntax != nil, let textView, textView.layoutManager.delegate !== self {
+            textView.layoutManager.delegate = self
+        }
+        self.syntax = syntax
+        regionCache = nil
+        textView?.editorContainer?.refreshLineNumberWidth()
+        refreshViews()
+    }
+
+    // MARK: Regions
+
+    private func regions() -> [StructureFoldRegion] {
+        guard let syntax, let textView else { return [] }
+        let revision = textView.textContentRevision
+        if let regionCache, regionCache.revision == revision { return regionCache.regions }
+        let regions = StructureFoldScanner.allRegions(inText: textView.textStorage.string, syntax: syntax)
+        regionCache = (revision, regions)
+        return regions
+    }
+
+    /// The region whose header line ends where its hidden text starts.
+    private func region(hiddenStart: Int) -> StructureFoldRegion? {
+        let regions = regions()
+        var low = 0
+        var high = regions.count
+        while low < high {
+            let middle = (low + high) / 2
+            if regions[middle].hiddenStartUTF16 < hiddenStart { low = middle + 1 } else { high = middle }
+        }
+        return low < regions.count && regions[low].hiddenStartUTF16 == hiddenStart ? regions[low] : nil
+    }
+
+    private func nextLineStart(afterLineContaining location: Int) -> Int? {
+        guard let text = textView?.textStorage.string as NSString?, location <= text.length else { return nil }
+        let next = NSMaxRange(text.lineRange(for: NSRange(location: min(location, text.length), length: 0)))
+        return next < text.length ? next : nil
+    }
+
+    /// End of the header line's text, before its line break.
+    private func headerContentEnd(of fold: StructureFold) -> Int {
+        guard let text = textView?.textStorage.string as NSString?, fold.hiddenStartUTF16 > 0 else { return 0 }
+        var contentsEnd = 0
+        text.getLineStart(nil, end: nil, contentsEnd: &contentsEnd,
+                          for: NSRange(location: min(fold.hiddenStartUTF16 - 1, text.length), length: 0))
+        return contentsEnd
+    }
+
+    // MARK: Gutter
+
+    func controlState(lineStart: Int, nextLineStart: Int?) -> ControlState {
+        guard let syntax, let nextLineStart, let textView else { return .none }
+        if let fold = model.visibleFold(hiding: nextLineStart), fold.hiddenStartUTF16 == nextLineStart {
+            return .folded
+        }
+        let text = textView.textStorage.string as NSString
+        guard lineStart < nextLineStart, nextLineStart <= text.length,
+              nextLineStart - lineStart <= StructureFoldScanner.maximumHeaderLineUTF16Length else { return .none }
+        let line = text.substring(with: NSRange(location: lineStart, length: nextLineStart - lineStart))
+        return StructureFoldScanner.lineOpensStructure(line, syntax: syntax) ? .foldable : .none
+    }
+
+    /// The document offset a line fragment starts at, skipping folded text.
+    func visibleCharacterIndex(for characterIndex: Int) -> Int {
+        model.visibleFold(hiding: characterIndex)?.hiddenEndUTF16 ?? characterIndex
+    }
+
+    // MARK: Commands
+
+    /// Folds or unfolds the structure that starts on the line at `lineStart`.
+    @discardableResult
+    func toggleFold(lineStart: Int) -> Bool {
+        guard isAvailable, let next = nextLineStart(afterLineContaining: lineStart) else { return false }
+        if let fold = model.visibleFold(hiding: next), fold.hiddenStartUTF16 == next {
+            return changeFolds { model.reveal(NSRange(location: next, length: 0)) }
+        }
+        guard let region = region(hiddenStart: next) else { return false }
+        return changeFolds {
+            model.add(region.fold)
+            return true
+        }
+    }
+
+    /// Folds the innermost open structure around the caret.
+    @discardableResult
+    func foldAtCaret() -> Bool {
+        guard isAvailable, let textView else { return false }
+        let caret = textView.selectedRange.location
+        let text = textView.textStorage.string as NSString
+        let candidate = regions().last { region in
+            let headerStart = text.lineRange(for: NSRange(location: region.hiddenStartUTF16 - 1, length: 0)).location
+            var closingEnd = region.hiddenEndUTF16
+            if closingEnd < text.length {
+                text.getLineStart(nil, end: nil, contentsEnd: &closingEnd,
+                                  for: NSRange(location: closingEnd, length: 0))
+            }
+            // The closing line belongs to the structure, as on the Mac.
+            guard headerStart <= caret, caret <= closingEnd else { return false }
+            return model.visibleFold(hiding: region.hiddenStartUTF16)?.hiddenStartUTF16 != region.hiddenStartUTF16
+        }
+        guard let candidate else { return false }
+        return changeFolds {
+            model.add(candidate.fold)
+            return true
+        }
+    }
+
+    /// Unfolds the fold whose header holds the caret.
+    @discardableResult
+    func unfoldAtCaret() -> Bool {
+        guard isAvailable, let textView,
+              let next = nextLineStart(afterLineContaining: textView.selectedRange.location),
+              let fold = model.visibleFold(hiding: next), fold.hiddenStartUTF16 == next else { return false }
+        return changeFolds { model.reveal(NSRange(location: next, length: 0)) }
+    }
+
+    /// Folds every structure below the outermost one, as on the Mac.
+    @discardableResult
+    func foldAll() -> Bool {
+        let regions = regions()
+        guard !regions.isEmpty else { return false }
+        let nested = regions.filter { $0.depth > 0 }
+        let folds = (nested.isEmpty ? regions : nested).map(\.fold)
+        return changeFolds {
+            model.setFolds(folds)
+            return true
+        }
+    }
+
+    @discardableResult
+    func unfoldAll() -> Bool {
+        changeFolds {
+            guard !model.isEmpty else { return false }
+            model.removeAll()
+            return true
+        }
+    }
+
+    func menuActions() -> [UIMenuElement] {
+        guard isAvailable else { return [] }
+        var actions: [UIMenuElement] = [
+            UIAction(title: NSLocalizedString("Fold", comment: "Editor fold command"),
+                     image: UIImage(systemName: "chevron.down")) { [weak self] _ in self?.foldAtCaret() },
+            UIAction(title: NSLocalizedString("Fold All", comment: "Editor fold all command"),
+                     image: UIImage(systemName: "rectangle.compress.vertical")) { [weak self] _ in self?.foldAll() }
+        ]
+        if !model.isEmpty {
+            actions.append(UIAction(title: NSLocalizedString("Unfold All", comment: "Editor unfold all command"),
+                                    image: UIImage(systemName: "rectangle.expand.vertical")) { [weak self] _ in
+                self?.unfoldAll()
+            })
+        }
+        return actions
+    }
+
+    // MARK: Selection and edits
+
+    /// A caret that lands in folded text moves to the nearest visible edge in
+    /// the direction it travelled, so arrow keys and taps step over a fold.
+    func selectionDidChange() {
+        guard let textView else { return }
+        let selection = textView.selectedRange
+        defer { lastCaretLocation = textView.selectedRange.location }
+        guard selection.length == 0, let fold = model.visibleFold(hiding: selection.location) else { return }
+        let target = lastCaretLocation >= fold.hiddenEndUTF16 && selection.location < lastCaretLocation
+            ? headerContentEnd(of: fold)
+            : fold.hiddenEndUTF16
+        textView.selectedRange = NSRange(location: min(target, textView.textStorage.length), length: 0)
+    }
+
+    /// Jumps (Find, Go to Line, bookmarks) open the folds they land in.
+    func reveal(_ range: NSRange) {
+        guard !model.isEmpty else { return }
+        // Opens every fold that hides any part of the range, nested ones too.
+        changeFolds { model.reveal(range) }
+    }
+
+    func textStorageDidEditCharacters(editedRange: NSRange, changeInLength: Int) {
+        guard !model.isEmpty, let textView else { return }
+        let before = model.visibleFolds
+        let count = model.folds.count
+        let replacedLength = max(0, editedRange.length - changeInLength)
+        model.applyEdit(range: NSRange(location: editedRange.location, length: replacedLength),
+                        replacementUTF16Length: editedRange.length, lineDelta: 0)
+        guard model.folds.count != count, let lower = before.map(\.hiddenStartUTF16).min(),
+              let upper = before.map(\.hiddenEndUTF16).max() else { return }
+        // A fold the edit cut is gone; its text outside the edited range still
+        // carries hidden glyphs until TextKit regenerates them. The storage is
+        // mid-edit here, so regenerate on the next turn.
+        let start = min(lower, editedRange.location)
+        let end = max(upper + max(0, changeInLength), NSMaxRange(editedRange))
+        DispatchQueue.main.async { [weak self, weak textView] in
+            guard let self, let textView, self.textView === textView else { return }
+            self.invalidateLayout(lower: start, upper: end)
+            self.refreshViews()
+        }
+    }
+
+    // MARK: Layout
+
+    @discardableResult
+    private func changeFolds(_ change: () -> Bool) -> Bool {
+        let before = model.visibleFolds
+        guard change() else { return false }
+        let all = before + model.visibleFolds
+        if let lower = all.map(\.hiddenStartUTF16).min(), let upper = all.map(\.hiddenEndUTF16).max() {
+            invalidateLayout(lower: lower, upper: upper)
+        }
+        moveSelectionOutOfFoldedText()
+        refreshViews()
+        return true
+    }
+
+    private func invalidateLayout(lower: Int, upper: Int) {
+        guard let textView else { return }
+        let length = textView.textStorage.length
+        let start = max(0, min(lower, length))
+        let range = NSRange(location: start, length: max(start, min(upper, length)) - start)
+        let layoutManager = textView.layoutManager
+        layoutManager.invalidateGlyphs(forCharacterRange: range, changeInLength: 0, actualCharacterRange: nil)
+        layoutManager.invalidateLayout(forCharacterRange: range, actualCharacterRange: nil)
+        layoutManager.invalidateDisplay(forCharacterRange: range)
+    }
+
+    private func moveSelectionOutOfFoldedText() {
+        guard let textView else { return }
+        let selection = textView.selectedRange
+        let location = model.visibleFold(hiding: selection.location).map(headerContentEnd(of:))
+        let end = NSMaxRange(selection)
+        let endFold = selection.length > 0 ? model.visibleFold(hiding: end - 1) : nil
+        guard location != nil || endFold != nil else { return }
+        let start = location ?? selection.location
+        let newEnd = endFold.map(headerContentEnd(of:)) ?? (selection.length > 0 ? end : start)
+        textView.selectedRange = NSRange(location: start, length: max(0, newEnd - start))
+        lastCaretLocation = start
+    }
+
+    private func refreshViews() {
+        guard let textView else { return }
+        textView.setNeedsLayout()
+        textView.setNeedsDisplay()
+        textView.editorContainer?.lineNumberView.setNeedsDisplay()
+        textView.editorContainer?.currentLineHighlightOverlayView.setNeedsDisplay()
+        textView.invisibleCharactersOverlayView?.requestRedraw(immediate: true)
+    }
+
+    // MARK: Folded markers
+
+    /// The ⋯ marker after each visible folded header, in text-container coordinates.
+    func markerRects(in containerRect: CGRect) -> [(fold: StructureFold, rect: CGRect)] {
+        guard !model.isEmpty, let textView else { return [] }
+        let layoutManager = textView.layoutManager
+        let glyphRange = layoutManager.glyphRange(forBoundingRect: containerRect, in: textView.textContainer)
+        guard glyphRange.length > 0 else { return [] }
+        let characters = layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
+        let folds = model.visibleFolds(startingIn: characters.location..<(NSMaxRange(characters) + 1))
+        return folds.compactMap { fold in
+            let header = fold.hiddenStartUTF16 - 1
+            guard header >= 0, header < textView.textStorage.length else { return nil }
+            let glyph = layoutManager.glyphIndexForCharacter(at: header)
+            guard glyph < layoutManager.numberOfGlyphs else { return nil }
+            let used = layoutManager.lineFragmentUsedRect(forGlyphAt: glyph, effectiveRange: nil)
+            let height = min(Self.markerSize.height, max(10, used.height - 2))
+            return (fold, CGRect(x: used.maxX + Self.markerGap,
+                                 y: used.minY + (used.height - height) / 2,
+                                 width: Self.markerSize.width, height: height))
+        }
+    }
+
+    /// Draws the markers into a view laid over the editor, whose origin is the
+    /// text view's visible origin.
+    func drawMarkers(color: UIColor) {
+        guard !model.isEmpty, let textView else { return }
+        let inset = textView.textContainerInset
+        let offset = textView.editorContentOffset
+        let visible = textView.editorViewport.offsetBy(dx: -inset.left, dy: -inset.top)
+        let font = UIFont.systemFont(ofSize: 11, weight: .bold)
+        let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
+        let label = "⋯" as NSString
+        let labelSize = label.size(withAttributes: attributes)
+        for marker in markerRects(in: visible) {
+            let rect = marker.rect.offsetBy(dx: inset.left - offset.x, dy: inset.top - offset.y)
+            color.withAlphaComponent(0.16).setFill()
+            UIBezierPath(roundedRect: rect, cornerRadius: rect.height / 2).fill()
+            label.draw(at: CGPoint(x: rect.midX - labelSize.width / 2, y: rect.midY - labelSize.height / 2),
+                       withAttributes: attributes)
+        }
+    }
+
+    private func markerFold(at point: CGPoint) -> StructureFold? {
+        guard !model.isEmpty, let textView else { return nil }
+        let inset = textView.textContainerInset
+        let containerPoint = CGPoint(x: point.x - inset.left, y: point.y - inset.top)
+        let probe = CGRect(x: 0, y: containerPoint.y - 40, width: textView.textContainer.size.width, height: 80)
+        return markerRects(in: probe).first { $0.rect.insetBy(dx: -8, dy: -8).contains(containerPoint) }?.fold
+    }
+
+    @objc private func handleMarkerTap(_ recognizer: UITapGestureRecognizer) {
+        guard recognizer.state == .ended,
+              let fold = markerFold(at: recognizer.location(in: recognizer.view)) else { return }
+        changeFolds { model.reveal(NSRange(location: fold.hiddenStartUTF16, length: 0)) }
+    }
+
+    /// A tap in the gutter toggles the fold that starts on that line.
+    func handleGutterTap(at point: CGPoint, in gutter: UIView) {
+        guard isAvailable, let textView else { return }
+        let containerY = point.y + textView.editorContentOffset.y - textView.textContainerInset.top
+        let layoutManager = textView.layoutManager
+        guard layoutManager.numberOfGlyphs > 0 else { return }
+        let glyph = layoutManager.glyphIndex(for: CGPoint(x: 1, y: containerY), in: textView.textContainer)
+        let fragment = layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+        guard containerY >= fragment.minY - 2, containerY <= fragment.maxY + 2 else { return }
+        let character = visibleCharacterIndex(for: layoutManager.characterIndexForGlyph(at: glyph))
+        let text = textView.textStorage.string as NSString
+        let lineStart = text.lineRange(for: NSRange(location: min(character, text.length), length: 0)).location
+        toggleFold(lineStart: lineStart)
+    }
+}
+
+extension StructureFoldController: UIGestureRecognizerDelegate {
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard gestureRecognizer === markerTapRecognizer else { return true }
+        return markerFold(at: gestureRecognizer.location(in: gestureRecognizer.view)) != nil
+    }
+
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        false
+    }
+}
+
+extension StructureFoldController: @preconcurrency NSLayoutManagerDelegate {
+    func layoutManager(
+        _ layoutManager: NSLayoutManager,
+        shouldGenerateGlyphs glyphs: UnsafePointer<CGGlyph>,
+        properties: UnsafePointer<NSLayoutManager.GlyphProperty>,
+        characterIndexes: UnsafePointer<Int>,
+        font: UIFont,
+        forGlyphRange glyphRange: NSRange
+    ) -> Int {
+        let count = glyphRange.length
+        guard count > 0, !model.isEmpty,
+              model.hidesText(from: characterIndexes[0], to: characterIndexes[count - 1] + 1) else { return 0 }
+        var adjusted = [NSLayoutManager.GlyphProperty](repeating: [], count: count)
+        for index in 0..<count {
+            adjusted[index] = model.visibleFold(hiding: characterIndexes[index]) == nil ? properties[index] : .null
+        }
+        adjusted.withUnsafeBufferPointer { buffer in
+            layoutManager.setGlyphs(glyphs, properties: buffer.baseAddress!, characterIndexes: characterIndexes,
+                                    font: font, forGlyphRange: glyphRange)
+        }
+        return count
+    }
+
+    func layoutManager(
+        _ layoutManager: NSLayoutManager,
+        shouldUse action: NSLayoutManager.ControlCharacterAction,
+        forControlCharacterAt characterIndex: Int
+    ) -> NSLayoutManager.ControlCharacterAction {
+        model.visibleFold(hiding: characterIndex) == nil ? action : .zeroAdvancement
+    }
+
+    func layoutManager(
+        _ layoutManager: NSLayoutManager,
+        shouldSetLineFragmentRect lineFragmentRect: UnsafeMutablePointer<CGRect>,
+        lineFragmentUsedRect: UnsafeMutablePointer<CGRect>,
+        baselineOffset: UnsafeMutablePointer<CGFloat>,
+        in textContainer: NSTextContainer,
+        forGlyphRange glyphRange: NSRange
+    ) -> Bool {
+        // A fragment holding only folded text takes no height.
+        guard !model.isEmpty, glyphRange.length > 0 else { return false }
+        let characters = layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
+        guard let fold = model.visibleFold(hiding: characters.location),
+              NSMaxRange(characters) <= fold.hiddenEndUTF16 else { return false }
+        lineFragmentRect.pointee.size.height = 0
+        lineFragmentUsedRect.pointee.size.height = 0
+        return true
     }
 }
 

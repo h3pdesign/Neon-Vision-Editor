@@ -24,6 +24,7 @@ struct GitChangesEditorView: View {
     @State private var inlineDiff: DocumentDiffPresentation?
     @State private var selectedHistoryHash: String?
     @State private var pendingCommit: GitCommitPreview?
+    @AppStorage(DocumentDiffPresentation.ignoresWhitespaceDefaultsKey) private var ignoresWhitespace = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
@@ -111,6 +112,13 @@ struct GitChangesEditorView: View {
         }
         .onChange(of: gitViewModel.history.first?.id) { _, _ in
             selectLatestCommitIfNeeded()
+        }
+        .onChange(of: ignoresWhitespace) { _, newValue in
+            rebuildInlineDiff(ignoringWhitespace: newValue)
+        }
+        .onChange(of: inlineDiff?.id) { _, _ in
+            // A diff that finished building after the option flipped catches up here.
+            rebuildInlineDiff(ignoringWhitespace: ignoresWhitespace)
         }
         .confirmationDialog(
             "Commit staged changes?",
@@ -202,6 +210,7 @@ struct GitChangesEditorView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
+            ignoreWhitespaceToggle
             Button {
                 gitViewModel.refresh()
             } label: {
@@ -224,6 +233,21 @@ struct GitChangesEditorView: View {
         .padding(.vertical, 12)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Working Copy Changes")
+    }
+
+    @ViewBuilder
+    private var ignoreWhitespaceToggle: some View {
+        let toggle = Toggle(isOn: $ignoresWhitespace) {
+            Label("Ignore Whitespace", systemImage: "space")
+        }
+        .toggleStyle(.button)
+        .help("Ignore Whitespace")
+        .accessibilityHint("Hides changes that only differ in indentation or spacing.")
+        if isCompactWidth {
+            toggle.labelStyle(.iconOnly)
+        } else {
+            toggle.labelStyle(.titleAndIcon)
+        }
     }
 
     @ViewBuilder
@@ -895,16 +919,19 @@ struct GitChangesEditorView: View {
             let content = await Task.detached { () -> String in
                 (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
             }.value
-            let diff = await Task.detached(priority: .userInitiated) {
-                DocumentDiffBuilder.build(leftContent: "", rightContent: content)
+            let language = LanguageDetector.shared.preferredLanguage(for: fileURL)
+            let ignoresWhitespace = self.ignoresWhitespace
+            inlineDiff = await Task.detached(priority: .userInitiated) {
+                DocumentDiffPresentation.make(
+                    title: entry.path,
+                    leftTitle: "Empty",
+                    rightTitle: "Working Copy",
+                    leftContent: "",
+                    rightContent: content,
+                    language: language,
+                    ignoresWhitespace: ignoresWhitespace
+                )
             }.value
-            inlineDiff = DocumentDiffPresentation(
-                title: entry.path,
-                leftTitle: "Empty",
-                rightTitle: "Working Copy",
-                diff: diff,
-                language: LanguageDetector.shared.preferredLanguage(for: fileURL)
-            )
         }
     }
 
@@ -912,16 +939,33 @@ struct GitChangesEditorView: View {
         selectedHistoryHash = entry.hash
         Task { @MainActor in
             guard let diff = await gitViewModel.prepareCommitDiff(for: entry) else { return }
-            let documentDiff = await Task.detached(priority: .userInitiated) {
-                DocumentDiffBuilder.build(leftContent: diff.leftContent, rightContent: diff.rightContent)
+            let language = languageForCommitDiff(diff.rightContent)
+            let ignoresWhitespace = self.ignoresWhitespace
+            inlineDiff = await Task.detached(priority: .userInitiated) {
+                DocumentDiffPresentation.make(
+                    title: diff.title,
+                    leftTitle: diff.leftTitle,
+                    rightTitle: diff.rightTitle,
+                    leftContent: diff.leftContent,
+                    rightContent: diff.rightContent,
+                    language: language,
+                    ignoresWhitespace: ignoresWhitespace
+                )
             }.value
-            inlineDiff = DocumentDiffPresentation(
-                title: diff.title,
-                leftTitle: diff.leftTitle,
-                rightTitle: diff.rightTitle,
-                diff: documentDiff,
-                language: languageForCommitDiff(diff.rightContent)
-            )
+        }
+    }
+
+    private func rebuildInlineDiff(ignoringWhitespace: Bool) {
+        guard let current = inlineDiff, current.sources != nil,
+              current.ignoresWhitespace != ignoringWhitespace else { return }
+        Task { @MainActor in
+            let rebuilt = await Task.detached(priority: .userInitiated) {
+                current.rebuilt(ignoringWhitespace: ignoringWhitespace)
+            }.value
+            // Drop the result if another diff was opened or the option flipped back meanwhile.
+            guard let rebuilt, inlineDiff?.id == current.id,
+                  ignoresWhitespace == ignoringWhitespace else { return }
+            inlineDiff = rebuilt
         }
     }
 

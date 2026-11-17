@@ -23,6 +23,131 @@ final class MobileEditorInteractionTests: XCTestCase {
         XCTAssertEqual(editor.nativeTextSnapshot, "")
     }
 
+    func testJSONFoldingHidesLinesWithoutChangingText() {
+        let json = """
+        {
+          "name": "demo",
+          "items": [
+            1,
+            2,
+            3
+          ],
+          "meta": {
+            "a": true
+          }
+        }
+        """
+        withEditor(json, language: "json") { container in
+            let view = container.textView
+            let folding = view.structureFolding
+            XCTAssertTrue(folding.isAvailable)
+            @MainActor func lineStart(_ line: Int) -> Int {
+                let text = view.textStorage.string as NSString
+                var start = 0
+                for _ in 0..<line { start = NSMaxRange(text.lineRange(for: NSRange(location: start, length: 0))) }
+                return start
+            }
+            @MainActor func lineRect(_ line: Int) -> CGRect {
+                let start = folding.visibleCharacterIndex(for: lineStart(line))
+                view.layoutManager.ensureLayout(for: view.textContainer)
+                let glyph = view.layoutManager.glyphIndexForCharacter(at: start)
+                return view.layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+            }
+            @MainActor func snapshot(_ name: String) {
+                container.layoutIfNeeded()
+                RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+                let image = UIGraphicsImageRenderer(bounds: container.bounds).image { _ in
+                    container.drawHierarchy(in: container.bounds, afterScreenUpdates: true)
+                }
+                try? image.pngData()?.write(to: URL(fileURLWithPath: "/tmp/nve-fold-\(name).png"))
+                let attachment = XCTAttachment(image: image)
+                attachment.name = name
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
+            RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+            view.textStorage.addAttribute(.foregroundColor, value: UIColor.black,
+                                          range: NSRange(location: 0, length: view.textStorage.length))
+            let lineHeight = lineRect(1).height
+            let unfoldedClosingY = lineRect(6).minY
+            snapshot("unfolded")
+
+            XCTAssertEqual(folding.controlState(lineStart: lineStart(2), nextLineStart: lineStart(3)), .foldable)
+            XCTAssertTrue(folding.foldAll())
+            snapshot("folded")
+            XCTAssertEqual(view.textStorage.string, json, "Folding must not change the document")
+            XCTAssertEqual(folding.model.visibleFolds.count, 2)
+            XCTAssertEqual(folding.controlState(lineStart: lineStart(2), nextLineStart: lineStart(3)), .folded)
+            XCTAssertEqual(lineRect(6).minY, lineRect(2).maxY, accuracy: 0.5, "The closing line follows its header")
+            XCTAssertEqual(unfoldedClosingY - lineRect(6).minY, lineHeight * 3, accuracy: 1)
+            XCTAssertEqual(lineRect(9).minY, lineRect(7).maxY, accuracy: 0.5)
+
+            // A caret that steps into folded text moves on in its direction:
+            // down onto the closing line, back up onto the header.
+            view.selectedRange = NSRange(location: lineStart(1), length: 0)
+            folding.selectionDidChange()
+            view.selectedRange = NSRange(location: lineStart(4), length: 0)
+            folding.selectionDidChange()
+            XCTAssertEqual(view.selectedRange.location, lineStart(6))
+            view.selectedRange = NSRange(location: lineStart(6) - 1, length: 0)
+            folding.selectionDidChange()
+            XCTAssertEqual(view.selectedRange.location, lineStart(3) - 1)
+
+            // An edit before a fold moves it; an edit inside a fold opens it.
+            view.textStorage.replaceCharacters(in: NSRange(location: 1, length: 0), with: " ")
+            XCTAssertEqual(folding.model.visibleFolds.count, 2)
+            XCTAssertEqual(folding.controlState(lineStart: lineStart(2), nextLineStart: lineStart(3)), .folded)
+            view.textStorage.replaceCharacters(in: NSRange(location: lineStart(8) + 2, length: 0), with: " ")
+            XCTAssertEqual(folding.model.visibleFolds.count, 1)
+
+            // Jumps open the fold they land in; the gutter toggles the rest.
+            view.scrollRangeToVisible(NSRange(location: lineStart(4), length: 1))
+            XCTAssertTrue(folding.model.isEmpty)
+            XCTAssertTrue(folding.toggleFold(lineStart: lineStart(7)))
+            XCTAssertEqual(folding.controlState(lineStart: lineStart(7), nextLineStart: lineStart(8)), .folded)
+            XCTAssertTrue(folding.toggleFold(lineStart: lineStart(7)))
+            XCTAssertTrue(folding.model.isEmpty)
+            XCTAssertEqual(lineRect(6).minY, unfoldedClosingY, accuracy: 0.5)
+        }
+    }
+
+    func testPlainTextHasNoFoldControls() {
+        withEditor("{\n  \"a\": 1\n}\n") { container in
+            XCTAssertFalse(container.textView.structureFolding.isAvailable)
+            XCTAssertFalse(container.textView.structureFolding.foldAll())
+        }
+    }
+
+    func testFoldsSurviveLineShiftsAndRevealCoversSpannedFolds() {
+        let json = "{\n  \"items\": [\n    1,\n    2\n  ],\n  \"meta\": {\n    \"a\": true,\n    \"b\": false\n  }\n}\n"
+        withEditor(json, language: "json") { container in
+            let view = container.textView
+            let folding = view.structureFolding
+            @MainActor func lineStart(_ line: Int) -> Int {
+                let text = view.textStorage.string as NSString
+                var start = 0
+                for _ in 0..<line { start = NSMaxRange(text.lineRange(for: NSRange(location: start, length: 0))) }
+                return start
+            }
+            XCTAssertTrue(folding.toggleFold(lineStart: lineStart(5)))
+            // Four new lines move "items" to line 5, the old line of the "meta" fold.
+            view.selectedRange = NSRange(location: lineStart(1), length: 0)
+            view.insertText("\n\n\n\n")
+            XCTAssertEqual(folding.model.folds.count, 1)
+            XCTAssertTrue(folding.toggleFold(lineStart: lineStart(5)))
+            XCTAssertEqual(folding.model.folds.count, 2)
+
+            // A range that spans folds opens them even when both ends are visible.
+            folding.reveal(NSRange(location: lineStart(5), length: lineStart(13) - lineStart(5)))
+            XCTAssertTrue(folding.model.isEmpty)
+
+            // Fold from the closing line folds that structure, as on the Mac.
+            view.selectedRange = NSRange(location: lineStart(8) + 2, length: 0)
+            XCTAssertTrue(folding.foldAtCaret())
+            XCTAssertEqual(folding.model.folds.map(\.hiddenStartUTF16), [lineStart(6)])
+        }
+    }
+
     func testTouchPlacedCaretIsNotTreatedAsKeyboardNavigation() {
         XCTAssertTrue(EditorTouchSelectionPolicy.isTouchDriven(
             activeTouchCount: 1, secondsSinceLastTouchEnded: .infinity, isTracking: false, hasActiveGesture: false))

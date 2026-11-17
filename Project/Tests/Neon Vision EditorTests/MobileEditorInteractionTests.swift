@@ -115,6 +115,7 @@ final class MobileEditorInteractionTests: XCTestCase {
         withEditor("{\n  \"a\": 1\n}\n") { container in
             XCTAssertFalse(container.textView.structureFolding.isAvailable)
             XCTAssertFalse(container.textView.structureFolding.foldAll())
+            XCTAssertEqual(container.textView.accessibilityCustomActions?.map(\.name), ["Select Line"])
         }
     }
 
@@ -145,6 +146,13 @@ final class MobileEditorInteractionTests: XCTestCase {
             view.selectedRange = NSRange(location: lineStart(8) + 2, length: 0)
             XCTAssertTrue(folding.foldAtCaret())
             XCTAssertEqual(folding.model.folds.map(\.hiddenStartUTF16), [lineStart(6)])
+
+            // VoiceOver gets the same commands, with Unfold on a folded header.
+            view.selectedRange = NSRange(location: lineStart(5), length: 0)
+            XCTAssertEqual(view.accessibilityCustomActions?.map(\.name), ["Select Line", "Unfold", "Fold All", "Unfold All"])
+            XCTAssertTrue(view.accessibilityCustomActions?[1].actionHandler?(view.accessibilityCustomActions![1]) ?? false)
+            XCTAssertTrue(folding.model.isEmpty)
+            XCTAssertEqual(view.accessibilityCustomActions?.map(\.name), ["Select Line", "Fold", "Fold All"])
         }
     }
 

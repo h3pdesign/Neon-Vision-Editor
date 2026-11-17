@@ -8,7 +8,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Added
 
-- On iPhone and iPad, JSON and XML files can fold their structure: tap the chevron next to a line number to fold or unfold a block, or tap the ⋯ marker after a folded line to open it. Fold, Fold All and Unfold All are in the text menu, and on an iPad keyboard Fold (⌥⌘←), Unfold (⌥⌘→), Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→) work as on the Mac. Folding only hides lines: saving, copying across a fold and undo keep the whole document, and Find or Go to Line open the fold they land in.
+- On iPhone and iPad, JSON and XML files can fold their structure: tap the chevron next to a line number to fold or unfold a block, or tap the ⋯ marker after a folded line to open it. Fold, Fold All and Unfold All are in the text menu, and on an iPad keyboard Fold (⌥⌘←), Unfold (⌥⌘→), Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→) work as on the Mac. With VoiceOver, the same commands are in the Actions rotor. Folding only hides lines: saving, copying across a fold and undo keep the whole document, and Find or Go to Line open the fold they land in.
 - Compare can ignore whitespace: turn on Ignore Whitespace in the compare panel, and lines that differ only in indentation or spacing count as unchanged. JSON exported by two tools with different indentation now highlights only the values that changed. The setting is remembered and works for Compare with Tab and Compare with Disk on Mac, iPhone and iPad.
 
 ### Fixed

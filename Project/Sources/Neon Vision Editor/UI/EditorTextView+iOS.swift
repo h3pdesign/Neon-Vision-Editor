@@ -3456,10 +3456,15 @@ struct CustomTextEditor: UIViewRepresentable {
                 explicitValue: notification.userInfo?[EditorCommandUserInfo.focusEditor] as? Bool
             )
             let shouldCenterSelection = notification.userInfo?[EditorCommandUserInfo.centerSelection] as? Bool ?? false
+            let targetDocumentID = parent.documentID
             DispatchQueue.main.async {
+                // The editor may have switched documents before this runs.
+                guard self.textView === textView, self.parent.documentID == targetDocumentID,
+                      NSMaxRange(range) <= textView.textStorage.length else { return }
                 if shouldFocusEditor {
                     _ = textView.becomeFirstResponder()
                 }
+                textView.structureFolding.reveal(range)
                 textView.selectedRange = range
                 if shouldCenterSelection {
                     self.centerEditorLine(at: range, in: textView)
@@ -3684,6 +3689,7 @@ struct CustomTextEditor: UIViewRepresentable {
             } else if textView.isFirstResponder {
                 _ = textView.resignFirstResponder()
             }
+            textView.structureFolding.reveal(target)
             textView.selectedRange = target
             (textView as? EditorInputTextView)?.navigationHighlightLocation = shouldFocusEditor ? nil : target.location
             centerEditorLine(at: target, in: textView)
@@ -4958,7 +4964,8 @@ final class StructureFoldController: NSObject {
 
     func setSyntax(_ syntax: StructureFoldSyntax?) {
         guard syntax != self.syntax else { return }
-        if syntax == nil { unfoldAll() }
+        // Folds made under another syntax may not match structures in this one.
+        unfoldAll()
         if syntax != nil, let textView, textView.layoutManager.delegate !== self {
             textView.layoutManager.delegate = self
         }
@@ -5049,7 +5056,13 @@ final class StructureFoldController: NSObject {
         let text = textView.textStorage.string as NSString
         let candidate = regions().last { region in
             let headerStart = text.lineRange(for: NSRange(location: region.hiddenStartUTF16 - 1, length: 0)).location
-            guard headerStart <= caret, caret < region.hiddenEndUTF16 else { return false }
+            var closingEnd = region.hiddenEndUTF16
+            if closingEnd < text.length {
+                text.getLineStart(nil, end: nil, contentsEnd: &closingEnd,
+                                  for: NSRange(location: closingEnd, length: 0))
+            }
+            // The closing line belongs to the structure, as on the Mac.
+            guard headerStart <= caret, caret <= closingEnd else { return false }
             return model.visibleFold(hiding: region.hiddenStartUTF16)?.hiddenStartUTF16 != region.hiddenStartUTF16
         }
         guard let candidate else { return false }
@@ -5125,19 +5138,8 @@ final class StructureFoldController: NSObject {
     /// Jumps (Find, Go to Line, bookmarks) open the folds they land in.
     func reveal(_ range: NSRange) {
         guard !model.isEmpty else { return }
-        let endpoints = range.length == 0 ? [range.location] : [range.location, NSMaxRange(range) - 1]
-        let hidden = endpoints.filter { model.visibleFold(hiding: $0) != nil }
-        guard !hidden.isEmpty else { return }
-        changeFolds {
-            var changed = false
-            for point in hidden {
-                while model.visibleFold(hiding: point) != nil {
-                    guard model.reveal(NSRange(location: point, length: 0)) else { break }
-                    changed = true
-                }
-            }
-            return changed
-        }
+        // Opens every fold that hides any part of the range, nested ones too.
+        changeFolds { model.reveal(range) }
     }
 
     func textStorageDidEditCharacters(editedRange: NSRange, changeInLength: Int) {

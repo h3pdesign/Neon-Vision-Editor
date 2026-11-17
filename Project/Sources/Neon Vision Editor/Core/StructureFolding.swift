@@ -394,7 +394,9 @@ nonisolated final class StructureFoldModel {
 
     func add(_ fold: StructureFold) {
         guard fold.hiddenLineCount > 0, fold.hiddenUTF16Length > 0 else { return }
-        folds.removeAll { $0.headerLine == fold.headerLine }
+        // Same header line means same hidden start; the offset stays current
+        // on iPhone and iPad, where edits do not track line numbers.
+        folds.removeAll { $0.hiddenStartUTF16 == fold.hiddenStartUTF16 }
         folds.append(fold)
         rebuild()
     }

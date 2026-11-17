@@ -118,6 +118,36 @@ final class MobileEditorInteractionTests: XCTestCase {
         }
     }
 
+    func testFoldsSurviveLineShiftsAndRevealCoversSpannedFolds() {
+        let json = "{\n  \"items\": [\n    1,\n    2\n  ],\n  \"meta\": {\n    \"a\": true,\n    \"b\": false\n  }\n}\n"
+        withEditor(json, language: "json") { container in
+            let view = container.textView
+            let folding = view.structureFolding
+            @MainActor func lineStart(_ line: Int) -> Int {
+                let text = view.textStorage.string as NSString
+                var start = 0
+                for _ in 0..<line { start = NSMaxRange(text.lineRange(for: NSRange(location: start, length: 0))) }
+                return start
+            }
+            XCTAssertTrue(folding.toggleFold(lineStart: lineStart(5)))
+            // Four new lines move "items" to line 5, the old line of the "meta" fold.
+            view.selectedRange = NSRange(location: lineStart(1), length: 0)
+            view.insertText("\n\n\n\n")
+            XCTAssertEqual(folding.model.folds.count, 1)
+            XCTAssertTrue(folding.toggleFold(lineStart: lineStart(5)))
+            XCTAssertEqual(folding.model.folds.count, 2)
+
+            // A range that spans folds opens them even when both ends are visible.
+            folding.reveal(NSRange(location: lineStart(5), length: lineStart(13) - lineStart(5)))
+            XCTAssertTrue(folding.model.isEmpty)
+
+            // Fold from the closing line folds that structure, as on the Mac.
+            view.selectedRange = NSRange(location: lineStart(8) + 2, length: 0)
+            XCTAssertTrue(folding.foldAtCaret())
+            XCTAssertEqual(folding.model.folds.map(\.hiddenStartUTF16), [lineStart(6)])
+        }
+    }
+
     func testTouchPlacedCaretIsNotTreatedAsKeyboardNavigation() {
         XCTAssertTrue(EditorTouchSelectionPolicy.isTouchDriven(
             activeTouchCount: 1, secondsSinceLastTouchEnded: .infinity, isTracking: false, hasActiveGesture: false))

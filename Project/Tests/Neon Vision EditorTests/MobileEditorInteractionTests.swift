@@ -23,6 +23,20 @@ final class MobileEditorInteractionTests: XCTestCase {
         XCTAssertEqual(editor.nativeTextSnapshot, "")
     }
 
+    func testTouchPlacedCaretIsNotTreatedAsKeyboardNavigation() {
+        XCTAssertTrue(EditorTouchSelectionPolicy.isTouchDriven(
+            activeTouchCount: 1, secondsSinceLastTouchEnded: .infinity, isTracking: false, hasActiveGesture: false))
+        XCTAssertTrue(EditorTouchSelectionPolicy.isTouchDriven(
+            activeTouchCount: 0, secondsSinceLastTouchEnded: 0.05, isTracking: false, hasActiveGesture: false))
+        XCTAssertTrue(EditorTouchSelectionPolicy.isTouchDriven(
+            activeTouchCount: 0, secondsSinceLastTouchEnded: .infinity, isTracking: false, hasActiveGesture: true))
+        XCTAssertFalse(EditorTouchSelectionPolicy.isTouchDriven(
+            activeTouchCount: 0, secondsSinceLastTouchEnded: 2, isTracking: false, hasActiveGesture: false))
+
+        let editor = EditorInputTextView(frame: CGRect(x: 0, y: 0, width: 320, height: 200), textContainer: nil)
+        XCTAssertFalse(editor.isSelectionDrivenByTouch)
+    }
+
     func testNativeTextSnapshotIgnoresAttributeOnlyEdits() {
         let editor = EditorInputTextView(frame: .zero, textContainer: nil)
         editor.text = "highlight me"

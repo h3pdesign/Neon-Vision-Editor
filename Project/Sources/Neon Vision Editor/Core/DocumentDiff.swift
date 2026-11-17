@@ -215,8 +215,9 @@ enum DocumentDiffBuilder {
     nonisolated private static let maxDynamicProgrammingCells = 1_200_000
 
     /// With `ignoringWhitespace`, lines that differ only in whitespace
-    /// (indentation, spacing, trailing spaces) are treated as equal,
-    /// like `git diff -w`. Rows still show each side's original text.
+    /// (indentation, spacing, trailing spaces) are treated as equal, like
+    /// `git diff -w` but keeping whitespace inside double-quoted strings.
+    /// Rows still show each side's original text.
     nonisolated static func build(
         leftContent: String,
         rightContent: String,
@@ -235,8 +236,30 @@ enum DocumentDiffBuilder {
         return DocumentDiff(rows: rows, hunks: hunks(from: rows))
     }
 
+    /// Drops whitespace outside double-quoted strings, so formatting is ignored
+    /// but a changed string value such as "a b" vs "ab" still shows.
     nonisolated static func whitespaceInsensitiveKey(_ line: String) -> String {
-        String(line.unicodeScalars.filter { !$0.properties.isWhitespace })
+        var key = String.UnicodeScalarView()
+        var insideString = false
+        var escaped = false
+        for scalar in line.unicodeScalars {
+            if insideString {
+                key.append(scalar)
+                if escaped {
+                    escaped = false
+                } else if scalar == "\\" {
+                    escaped = true
+                } else if scalar == "\"" {
+                    insideString = false
+                }
+            } else if scalar == "\"" {
+                insideString = true
+                key.append(scalar)
+            } else if !scalar.properties.isWhitespace {
+                key.append(scalar)
+            }
+        }
+        return String(key)
     }
 
     nonisolated private static func shouldReturnGuardedDiff(leftContent: String, rightContent: String) -> Bool {

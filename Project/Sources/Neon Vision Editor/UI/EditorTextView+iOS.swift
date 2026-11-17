@@ -5058,10 +5058,19 @@ final class StructureFoldController: NSObject {
     /// Folds the innermost open structure around the caret.
     @discardableResult
     func foldAtCaret() -> Bool {
-        guard isAvailable, let textView else { return false }
+        guard let candidate = foldCandidateAtCaret() else { return false }
+        return changeFolds {
+            model.add(candidate.fold)
+            return true
+        }
+    }
+
+    /// The innermost open structure around the caret.
+    private func foldCandidateAtCaret() -> StructureFoldRegion? {
+        guard isAvailable, let textView else { return nil }
         let caret = textView.selectedRange.location
         let text = textView.textStorage.string as NSString
-        let candidate = regions().last { region in
+        return regions().last { region in
             let headerStart = text.lineRange(for: NSRange(location: region.hiddenStartUTF16 - 1, length: 0)).location
             var closingEnd = region.hiddenEndUTF16
             if closingEnd < text.length {
@@ -5071,11 +5080,6 @@ final class StructureFoldController: NSObject {
             // The closing line belongs to the structure, as on the Mac.
             guard headerStart <= caret, caret <= closingEnd else { return false }
             return model.visibleFold(hiding: region.hiddenStartUTF16)?.hiddenStartUTF16 != region.hiddenStartUTF16
-        }
-        guard let candidate else { return false }
-        return changeFolds {
-            model.add(candidate.fold)
-            return true
         }
     }
 
@@ -5133,7 +5137,8 @@ final class StructureFoldController: NSObject {
         return actions
     }
 
-    /// Fold commands for VoiceOver, offered only where they can act.
+    /// Fold commands for VoiceOver, offered only where they can act. The
+    /// region scan is cached per text revision, so repeated queries are cheap.
     func accessibilityActions() -> [UIAccessibilityCustomAction] {
         guard isAvailable else { return [] }
         @MainActor func action(_ title: String, _ comment: String, _ perform: @escaping (StructureFoldController) -> Bool)
@@ -5147,10 +5152,12 @@ final class StructureFoldController: NSObject {
         var actions: [UIAccessibilityCustomAction] = []
         if foldedHeaderNextLineAtCaret() != nil {
             actions.append(action("Unfold", "Editor unfold command") { $0.unfoldAtCaret() })
-        } else {
+        } else if foldCandidateAtCaret() != nil {
             actions.append(action("Fold", "Editor fold command") { $0.foldAtCaret() })
         }
-        actions.append(action("Fold All", "Editor fold all command") { $0.foldAll() })
+        if !regions().isEmpty {
+            actions.append(action("Fold All", "Editor fold all command") { $0.foldAll() })
+        }
         if !model.isEmpty {
             actions.append(action("Unfold All", "Editor unfold all command") { $0.unfoldAll() })
         }

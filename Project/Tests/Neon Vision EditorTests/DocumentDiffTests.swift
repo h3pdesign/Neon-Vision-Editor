@@ -128,6 +128,19 @@ final class DocumentDiffTests: XCTestCase {
         XCTAssertEqual(diff.rows[1].rightText, "    \"name\":\"Neon\",")
     }
 
+    func testIgnoringWhitespaceStillShowsWhitespaceChangesInsideStrings() {
+        let diff = DocumentDiffBuilder.build(
+            leftContent: "{\n  \"name\": \"Neon Vision\",\n  \"path\": \"a\\\" b\"\n}",
+            rightContent: "{\n\t\"name\":\"NeonVision\",\n\t\"path\":\"a\\\" b\"\n}",
+            ignoringWhitespace: true
+        )
+
+        let changed = diff.rows.filter(\.isChanged)
+        XCTAssertEqual(changed.count, 1)
+        XCTAssertEqual(changed.first?.leftText, "  \"name\": \"Neon Vision\",")
+        XCTAssertEqual(DocumentDiffBuilder.whitespaceInsensitiveKey("  \"k\" : \"a b\" , 1"), "\"k\":\"a b\",1")
+    }
+
     func testIgnoringWhitespaceKeepsOriginalTextAcrossInsertionsAndRemovals() {
         let diff = DocumentDiffBuilder.build(
             leftContent: "a\n  b\nc\n  d",
@@ -158,6 +171,8 @@ final class DocumentDiffTests: XCTestCase {
         XCTAssertEqual(rebuilt?.ignoresWhitespace, true)
         XCTAssertEqual(rebuilt?.changedRows.count, 0)
         XCTAssertEqual(rebuilt?.title, "Compare")
+        XCTAssertEqual(rebuilt?.diff.rows.map(\.leftText), ["{", "  \"a\": 1", "}"])
+        XCTAssertEqual(rebuilt?.diff.rows.map(\.rightText), ["{", "\t\"a\": 1", "}"])
 
         let prebuilt = DocumentDiffPresentation(
             title: "Prebuilt",

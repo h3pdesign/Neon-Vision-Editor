@@ -4856,8 +4856,11 @@ final class WindowViewModelRegistry {
         return nil
     }
 
-    func activeViewModel() -> EditorViewModel? {
-        viewModel(for: NSApp.keyWindow?.windowNumber ?? NSApp.mainWindow?.windowNumber)
+    /// `NSApp` is still nil while SwiftUI builds the app's scenes at launch on macOS 14,
+    /// so it must not be force-unwrapped here (#1042).
+    func activeViewModel(in application: NSApplication? = NSApp) -> EditorViewModel? {
+        guard let application else { return nil }
+        return viewModel(for: application.keyWindow?.windowNumber ?? application.mainWindow?.windowNumber)
     }
 
     func externalOpenTarget(for url: URL?, currentDesktopOnly: Bool,

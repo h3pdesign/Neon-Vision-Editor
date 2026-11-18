@@ -66,7 +66,7 @@ struct MacDocumentToolbar: NSViewRepresentable {
     }
 
     /// AppKit requests the menu form when constructing its overflow menu.
-    /// Keep the hosting menu alive for its copied item's action dispatcher.
+    /// Keep the hosting menu alive for its moved items' action dispatcher.
     final class Item: NSToolbarItem {
         var makeOverflow: (() -> AnyView)?
         private var overflowHost: NSHostingMenu<AnyView>?
@@ -76,12 +76,35 @@ struct MacDocumentToolbar: NSViewRepresentable {
                 let menu = NSHostingMenu(rootView: makeOverflow())
                 menu.update()
                 overflowHost = menu
-                if menu.items.count == 1 { return menu.items[0].copy() as? NSMenuItem }
+                let plain = Item.plainMenu(movingItemsOf: menu, title: label)
+                if plain.items.count == 1 {
+                    let only = plain.items[0]
+                    plain.removeItem(only)
+                    return only
+                }
                 let item = NSMenuItem(title: label, action: nil, keyEquivalent: "")
-                item.submenu = menu
+                item.submenu = plain
                 return item
             }
             set { super.menuFormRepresentation = newValue }
+        }
+
+        /// A toolbar group copies its items' menu forms while it lays out the
+        /// overflow menu, and copying a hosting menu traps in its unavailable
+        /// `init(title:)` (#1055). Moving the hosted items into plain menus
+        /// keeps every menu that AppKit may copy a plain `NSMenu`.
+        static func plainMenu(movingItemsOf source: NSMenu, title: String) -> NSMenu {
+            let plain = NSMenu(title: title)
+            plain.autoenablesItems = source.autoenablesItems
+            for item in source.items {
+                source.removeItem(item)
+                if let submenu = item.submenu {
+                    item.submenu = nil
+                    item.submenu = plainMenu(movingItemsOf: submenu, title: submenu.title)
+                }
+                plain.addItem(item)
+            }
+            return plain
         }
     }
 

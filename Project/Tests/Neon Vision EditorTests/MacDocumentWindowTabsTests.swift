@@ -277,6 +277,61 @@ final class MacDocumentWindowTabsTests: XCTestCase {
         XCTAssertNil(lateToolbarWindow.toolbar, "A closed document must not bind a new toolbar coordinator")
     }
 
+    /// A toolbar group copies its items' menu forms while it checks for
+    /// overflow during a window resize. Copying a hosting menu traps in
+    /// `NSHostingMenu.init(title:)` (#1055), so no menu form may hold one.
+    func testToolbarOverflowMenuFormsCopyWithoutHostingMenus() throws {
+        final class Fired { var ids: [String] = [] }
+        let fired = Fired()
+        func item(_ content: some View) -> MacDocumentToolbar.Item {
+            let item = MacDocumentToolbar.Item(itemIdentifier: .init("overflowTest"))
+            item.label = "Overflow Test"
+            item.makeOverflow = { AnyView(content) }
+            return item
+        }
+        func assertPlain(_ menu: NSMenu?, line: UInt = #line) {
+            guard let menu else { return }
+            XCTAssertTrue(type(of: menu) == NSMenu.self, "\(type(of: menu)) must not reach AppKit's copy", line: line)
+            for entry in menu.items { assertPlain(entry.submenu, line: line) }
+        }
+        func perform(_ entry: NSMenuItem?) throws {
+            let entry = try XCTUnwrap(entry)
+            let action = try XCTUnwrap(entry.action)
+            XCTAssertTrue(NSApp.sendAction(action, to: entry.target, from: entry))
+        }
+
+        let several = item(Group {
+            Button("One") { fired.ids.append("one") }
+            Button("Two") { fired.ids.append("two") }
+        })
+        let severalForm = try XCTUnwrap(several.menuFormRepresentation)
+        XCTAssertEqual(severalForm.title, "Overflow Test")
+        XCTAssertEqual(severalForm.submenu?.items.map(\.title), ["One", "Two"])
+        assertPlain(severalForm.submenu)
+        let severalCopy = try XCTUnwrap(severalForm.copy() as? NSMenuItem)
+        XCTAssertEqual(severalCopy.submenu?.items.map(\.title), ["One", "Two"])
+        try perform(severalCopy.submenu?.items.last)
+
+        let nested = item(Menu("Layout") {
+            Button("Left") { fired.ids.append("left") }
+            Button("Right") { fired.ids.append("right") }
+        })
+        let nestedForm = try XCTUnwrap(nested.menuFormRepresentation)
+        XCTAssertEqual(nestedForm.title, "Layout")
+        XCTAssertEqual(nestedForm.submenu?.items.map(\.title), ["Left", "Right"])
+        assertPlain(nestedForm.submenu)
+        let nestedCopy = try XCTUnwrap(nestedForm.copy() as? NSMenuItem)
+        try perform(nestedCopy.submenu?.items.first)
+
+        let single = item(Button("Only") { fired.ids.append("only") })
+        let singleForm = try XCTUnwrap(single.menuFormRepresentation)
+        XCTAssertEqual(singleForm.title, "Only")
+        XCTAssertNil(singleForm.submenu)
+        try perform(singleForm.copy() as? NSMenuItem)
+
+        XCTAssertEqual(fired.ids, ["two", "left", "only"])
+    }
+
     /// Each native tab's window owns one document, so Side by Side and Compare
     /// Open Tabs must find the other documents through the tab group.
     func testSideBySideFindsOtherDocumentsOnlyInTheSameTabGroup() throws {

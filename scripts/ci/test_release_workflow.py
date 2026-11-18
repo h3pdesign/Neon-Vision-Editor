@@ -343,6 +343,17 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 for value in forbidden:
                     self.assertNotIn(value, workflow)
 
+    def test_primary_release_updates_project_homebrew_tap_after_publish(self):
+        primary = (ROOT / ".github/workflows/release-github-only.yml").read_text()
+        self.assertIn("repos/h3pdesign/homebrew-tap/dispatches", primary)
+        self.assertIn("GH_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}", primary)
+        tap_step = primary.index("- name: Update h3pdesign/homebrew-tap cask")
+        self.assertLess(primary.index("- name: Publish verified GitHub release"), tap_step)
+        self.assertLess(tap_step, primary.index("- name: Generate and publish signed Sparkle appcast"))
+        self.assertIn("timeout-minutes: 10", primary[tap_step:primary.index("- name: Generate and publish signed Sparkle appcast")])
+        for value in ("HOMEBREW_CASK_APP_CLIENT_ID", "create_homebrew_cask_pr.sh", "repositories: homebrew-cask"):
+            self.assertNotIn(value, primary)
+
     def test_release_all_forwards_resume_auto_to_both_preparation_calls(self):
         script = (ROOT / "scripts/release_all.sh").read_text()
         self.assertEqual(script.count('prep_cmd+=(--resume)'), 1)

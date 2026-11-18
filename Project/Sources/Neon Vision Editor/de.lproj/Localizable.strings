@@ -2110,3 +2110,5 @@
 "Current Font" = "Aktuelle Schrift";
 "On iPhone and iPad, the system font picker opens on the editor font you use now." = "Auf iPhone und iPad öffnet sich die Schriftauswahl des Systems bei der Editorschrift, die Sie gerade verwenden.";
 "Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now." = "Aktuelle Schrift: Auf iPhone und iPad öffnet sich die Schriftauswahl des Systems bei der Editorschrift, die Sie gerade verwenden.";
+"On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…" = "Auf dem Mac beendet sich die App nicht mehr, wenn Sie ein Fenster so schmal machen, dass Symbolleistentasten ins Überlaufmenü wandern…";
+"Window Resizing: On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…" = "Fenstergröße: Auf dem Mac beendet sich die App nicht mehr, wenn Sie ein Fenster so schmal machen, dass Symbolleistentasten ins Überlaufmenü wandern…";

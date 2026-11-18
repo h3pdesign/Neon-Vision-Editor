@@ -2110,3 +2110,5 @@
 "Current Font" = "現在のフォント";
 "On iPhone and iPad, the system font picker opens on the editor font you use now." = "iPhoneとiPadで、システムのフォントピッカーは現在使っているエディタのフォントを選択した状態で開きます。";
 "Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now." = "現在のフォント: iPhoneとiPadで、システムのフォントピッカーは現在使っているエディタのフォントを選択した状態で開きます。";
+"On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…" = "Macで、ウインドウを狭くしてツールバーのボタンがオーバーフローメニューに移るときにAppが終了しなくなりました…";
+"Window Resizing: On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…" = "ウインドウのサイズ変更: Macで、ウインドウを狭くしてツールバーのボタンがオーバーフローメニューに移るときにAppが終了しなくなりました…";

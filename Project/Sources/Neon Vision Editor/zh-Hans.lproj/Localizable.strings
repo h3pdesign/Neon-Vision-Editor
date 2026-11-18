@@ -2110,3 +2110,5 @@
 "Current Font" = "当前字体";
 "On iPhone and iPad, the system font picker opens on the editor font you use now." = "在 iPhone 和 iPad 上，系统字体选择器打开时会选中你当前使用的编辑器字体。";
 "Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now." = "当前字体: 在 iPhone 和 iPad 上，系统字体选择器打开时会选中你当前使用的编辑器字体。";
+"On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…" = "在 Mac 上，把窗口调窄到工具栏按钮移入溢出菜单时，App 不再退出…";
+"Window Resizing: On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…" = "调整窗口大小: 在 Mac 上，把窗口调窄到工具栏按钮移入溢出菜单时，App 不再退出…";

@@ -2110,3 +2110,5 @@
 "Current Font" = "Police actuelle";
 "On iPhone and iPad, the system font picker opens on the editor font you use now." = "Sur iPhone et iPad, le sélecteur de polices du système s’ouvre sur la police de l’éditeur que vous utilisez.";
 "Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now." = "Police actuelle: Sur iPhone et iPad, le sélecteur de polices du système s’ouvre sur la police de l’éditeur que vous utilisez.";
+"On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…" = "Sur Mac, l’app ne quitte plus quand vous rendez une fenêtre assez étroite pour que des boutons de la barre d’outils passent dans le menu de débordement…";
+"Window Resizing: On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…" = "Redimensionnement: Sur Mac, l’app ne quitte plus quand vous rendez une fenêtre assez étroite pour que des boutons de la barre d’outils passent dans le menu de débordement…";

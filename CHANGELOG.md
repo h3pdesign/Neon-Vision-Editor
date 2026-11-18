@@ -6,6 +6,16 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixes
+
+- On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu. This happened on macOS 26 when resizing a window ([#1055](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1055)).
+
+### Maintenance
+
+- Development version 2.2.6 (build 1164).
+
+## [v2.2.5] - 2026-11-18
+
 ### Why Upgrade
 
 - On iPhone and iPad, JSON objects and arrays and XML elements can be folded with a tap next to the line number.

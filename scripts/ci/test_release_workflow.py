@@ -88,6 +88,22 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 self.assertEqual(docs.normalize_welcome_tour_bullets(["- v1.9.3: " + description])[0],
                                  "- " + expected + ": " + docs.shorten_for_welcome_tour_card(description))
 
+    def test_readme_roadmap_now_bullet_follows_the_release(self):
+        readme = textwrap.dedent("""\
+            ### Now (v2.2.4)
+
+            - ![v1.4.0](https://img.shields.io/badge/v1.4.0-22C55E?style=flat-square) delivers file-backed editing.
+              Tracking: [Release v2.2.4](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.2.4)
+            """)
+        section = "### Why Upgrade\n\n- On the Mac, a narrow window no longer quits the app.\n"
+        updated = docs.update_readme_roadmap_windows(readme, "v2.2.6", section)
+        self.assertIn("### Now (v2.2.6)", updated)
+        self.assertIn("- ![v2.2.6](https://img.shields.io/badge/v2.2.6-22C55E?style=flat-square) "
+                      "On the Mac, a narrow window no longer quits the app.", updated)
+        self.assertNotIn("v1.4.0", updated)
+        self.assertIn("[Release v2.2.6](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.2.6)", updated)
+        self.assertEqual(docs.update_readme_roadmap_windows(updated, "v2.2.6", section), updated)
+
     def test_in_app_changelog_is_current_idempotent_and_keeps_history(self):
         source = (ROOT / "Project/Sources/Neon Vision Editor/UI/PanelsAndHelpers.swift").read_text()
         changelog = (ROOT / "CHANGELOG.md").read_text()

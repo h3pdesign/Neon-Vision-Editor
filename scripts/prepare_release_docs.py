@@ -1487,11 +1487,14 @@ def update_readme_roadmap_windows(readme: str, tag: str, section: str = "") -> s
         f"### Next (v{major}.{minor}.{next_patch})",
         readme,
     )
+    # The Now bullet once read "delivers …", which this pattern did not
+    # match, so the README kept describing v1.4.0. Any green Now bullet is
+    # rewritten to the current release.
     readme = re.sub(
-        r"(?m)^- !\[v[^]]+\]\(https://img\.shields\.io/badge/v[^)]+-22C55E\?style=flat-square\) focuses on .*$",
-        (
+        r"(?m)^- !\[v[^]]+\]\(https://img\.shields\.io/badge/v[^)]+-22C55E\?style=flat-square\) .*$",
+        lambda _: (
             f"- ![v{major}.{minor}.{patch}](https://img.shields.io/badge/v{major}.{minor}.{patch}-22C55E?style=flat-square) "
-            f"focuses on {release_timeline_description(section)}"
+            f"{release_timeline_description(section)}"
         ),
         readme,
     )

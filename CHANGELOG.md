@@ -16,10 +16,11 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - On the Mac, the integrated terminal starts without a stray `%` line and without a wrapped banner: zsh now gets the panel's real width, and the banner is a short "zsh in <folder>" line with the home folder shown as `~`. iCloud Drive folders show by name instead of their Mobile Documents path.
 - On iPhone and iPad, tapping or dragging to place the cursor no longer scrolls the text under your finger, so a second tap on the same line lands where you aim instead of jumping elsewhere ([#1036](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1036), [#770](https://github.com/h3pdesign/Neon-Vision-Editor/issues/770)).
 - On macOS 14 Sonoma, the app no longer crashes as soon as it opens ([#1042](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1042)).
+- MeierScript completion finds functions declared after a comment in a file with CR-only (classic Mac) line breaks, after a string line ending in a backslash, and after an escaped quote inside a `"""` string, so their calls complete with the right parameters.
 
 ### Maintenance
 
-- Development version 2.2.5 (build 1161).
+- Development version 2.2.5 (build 1162).
 
 ## [v2.2.4] - 2026-11-14
 

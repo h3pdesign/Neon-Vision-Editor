@@ -669,6 +669,53 @@ jobs:
           fi
           gh_retry gh release edit "$TAG_NAME" --draft=false "${RELEASE_FLAGS[@]}"
 
+      - name: Update h3pdesign/homebrew-tap cask
+        # The official Homebrew cask updates itself through livecheck; the
+        # project tap only moves when it receives this dispatch. A tap failure
+        # must not block the appcast, so it is reported instead of failing.
+        if: ${{ !(inputs.dry_run || false) && !(inputs.prerelease || false) }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "::error::TAP_BOT_TOKEN is not set; h3pdesign/homebrew-tap was not updated for ${TAG_NAME}." >&2
+            exit 1
+          fi
+          dispatched_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          dispatched=false
+          for attempt in 1 2 3 4 5; do
+            if gh api repos/h3pdesign/homebrew-tap/dispatches \
+              -f event_type=notarized_release \
+              -F "client_payload[tag]=${TAG_NAME}"; then
+              dispatched=true
+              break
+            fi
+            sleep $((attempt * 3))
+          done
+          if [[ "$dispatched" != true ]]; then
+            echo "::error::Could not dispatch the homebrew-tap update for ${TAG_NAME}." >&2
+            exit 1
+          fi
+
+          run_id=""
+          for _ in {1..20}; do
+            sleep 6
+            run_id="$(gh run list -R h3pdesign/homebrew-tap \
+              --workflow update-cask.yml \
+              --event repository_dispatch \
+              --limit 10 \
+              --json databaseId,createdAt \
+              --jq "[.[] | select(.createdAt >= \"${dispatched_at}\")][0].databaseId // empty" || true)"
+            [[ -n "$run_id" ]] && break
+          done
+          if [[ -z "$run_id" ]]; then
+            echo "::error::No homebrew-tap update run appeared for ${TAG_NAME}." >&2
+            exit 1
+          fi
+          gh run watch -R h3pdesign/homebrew-tap "$run_id" --exit-status
+
       - name: Generate and publish signed Sparkle appcast
         if: ${{ !(inputs.dry_run || false) }}
         id: publish_appcast

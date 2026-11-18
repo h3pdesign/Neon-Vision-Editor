@@ -36,6 +36,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Maintenance
 
 - Development version 2.2.6 (build 1166).
+- Release preparation now updates the README roadmap's Now entry, which still described v1.4.0.
 
 ## [v2.2.5] - 2026-11-18
 

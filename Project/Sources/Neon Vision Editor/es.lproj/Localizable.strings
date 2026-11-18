@@ -2096,3 +2096,14 @@
 "Fold All: On an iPad keyboard, Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→) work as on the Mac." = "Contraer todo: Con un teclado de iPad, Contraer todo (⌥⇧⌘←) y Expandir todo (⌥⇧⌘→) funcionan como en el Mac.";
 "What’s New in v2.2.5" = "Novedades de la v2.2.5";
 "Release highlights for v2.2.5." = "Lo más destacado de la v2.2.5.";
+"Window Resizing" = "Cambiar tamaño";
+"Font Picker" = "Selector de fuentes";
+"Font Faces" = "Estilos de fuente";
+"On the Mac, the app no longer quits when a narrow window moves toolbar buttons into the overflow menu." = "En Mac, la app ya no se cierra cuando una ventana estrecha mueve botones de la barra de herramientas al menú de desbordamiento.";
+"Window Resizing: On the Mac, the app no longer quits when a narrow window moves toolbar buttons into the overflow menu." = "Cambiar tamaño: En Mac, la app ya no se cierra cuando una ventana estrecha mueve botones de la barra de herramientas al menú de desbordamiento.";
+"On iPhone and iPad, Choose… next to the editor font opens the system font picker, with previews and search." = "En iPhone y iPad, Seleccionar… junto a la fuente del editor abre el selector de fuentes del sistema, con vista previa y búsqueda.";
+"Font Picker: On iPhone and iPad, Choose… next to the editor font opens the system font picker, with previews and search." = "Selector de fuentes: En iPhone y iPad, Seleccionar… junto a la fuente del editor abre el selector de fuentes del sistema, con vista previa y búsqueda.";
+"On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font." = "En iPhone y iPad, cualquier estilo de una fuente instalada, como negrita o ligera, puede ser la fuente del editor.";
+"Font Faces: On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font." = "Estilos de fuente: En iPhone y iPad, cualquier estilo de una fuente instalada, como negrita o ligera, puede ser la fuente del editor.";
+"What’s New in v2.2.6" = "Novedades de la v2.2.6";
+"Release highlights for v2.2.6." = "Lo más destacado de la v2.2.6.";

@@ -2096,3 +2096,14 @@
 "Fold All: On an iPad keyboard, Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→) work as on the Mac." = "Tout replier: Avec un clavier d’iPad, Tout replier (⌥⇧⌘←) et Tout déplier (⌥⇧⌘→) fonctionnent comme sur Mac.";
 "What’s New in v2.2.5" = "Nouveautés de la v2.2.5";
 "Release highlights for v2.2.5." = "Points forts de la v2.2.5.";
+"Window Resizing" = "Redimensionnement";
+"Font Picker" = "Sélecteur de polices";
+"Font Faces" = "Styles de police";
+"On the Mac, the app no longer quits when a narrow window moves toolbar buttons into the overflow menu." = "Sur Mac, l’app ne quitte plus quand une fenêtre étroite déplace des boutons de la barre d’outils dans le menu de débordement.";
+"Window Resizing: On the Mac, the app no longer quits when a narrow window moves toolbar buttons into the overflow menu." = "Redimensionnement: Sur Mac, l’app ne quitte plus quand une fenêtre étroite déplace des boutons de la barre d’outils dans le menu de débordement.";
+"On iPhone and iPad, Choose… next to the editor font opens the system font picker, with previews and search." = "Sur iPhone et iPad, Sélectionner… à côté de la police de l’éditeur ouvre le sélecteur de polices du système, avec aperçu et recherche.";
+"Font Picker: On iPhone and iPad, Choose… next to the editor font opens the system font picker, with previews and search." = "Sélecteur de polices: Sur iPhone et iPad, Sélectionner… à côté de la police de l’éditeur ouvre le sélecteur de polices du système, avec aperçu et recherche.";
+"On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font." = "Sur iPhone et iPad, tout style d’une police installée, comme gras ou léger, peut servir de police de l’éditeur.";
+"Font Faces: On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font." = "Styles de police: Sur iPhone et iPad, tout style d’une police installée, comme gras ou léger, peut servir de police de l’éditeur.";
+"What’s New in v2.2.6" = "Nouveautés de la v2.2.6";
+"Release highlights for v2.2.6." = "Points forts de la v2.2.6.";

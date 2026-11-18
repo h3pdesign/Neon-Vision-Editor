@@ -675,6 +675,7 @@ jobs:
         # must not block the appcast, so it is reported instead of failing.
         if: ${{ !(inputs.dry_run || false) && !(inputs.prerelease || false) }}
         continue-on-error: true
+        timeout-minutes: 10
         env:
           GH_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}
         run: |

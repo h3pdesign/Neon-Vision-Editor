@@ -350,6 +350,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         tap_step = primary.index("- name: Update h3pdesign/homebrew-tap cask")
         self.assertLess(primary.index("- name: Publish verified GitHub release"), tap_step)
         self.assertLess(tap_step, primary.index("- name: Generate and publish signed Sparkle appcast"))
+        self.assertIn("timeout-minutes: 10", primary[tap_step:primary.index("- name: Generate and publish signed Sparkle appcast")])
         for value in ("HOMEBREW_CASK_APP_CLIENT_ID", "create_homebrew_cask_pr.sh", "repositories: homebrew-cask"):
             self.assertNotIn(value, primary)
 

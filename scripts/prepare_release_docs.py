@@ -303,6 +303,7 @@ def welcome_feature_title(description: str, index: int) -> str:
     lowered = description.lower()
     rules = (
         (("overflow menu",), "Window Resizing"),
+        (("declared far above",), "Function Completion"),
         (("opens on the editor font",), "Current Font"),
         (("font picker",), "Font Picker"),
         (("face of an installed font",), "Font Faces"),

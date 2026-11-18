@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.2.5] - 2026-11-18
+
 ### Why Upgrade
 
 - On iPhone and iPad, JSON objects and arrays and XML elements can be folded with a tap next to the line number.

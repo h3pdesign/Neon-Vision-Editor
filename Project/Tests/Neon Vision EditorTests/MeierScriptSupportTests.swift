@@ -265,6 +265,43 @@ final class MeierScriptSupportTests: XCTestCase {
                        ["et(name)"], "An escaped quote does not end a multi-line string")
     }
 
+    func testVocabularyCompletionReadsDeclarationsBeyondTheEditorContext() {
+        let filler = String(repeating: "let value = 1 // filler line\n", count: 120)
+        let document = "func greet(name: String) {}\n" + filler + "gre"
+        let nsDocument = document as NSString
+        let caret = nsDocument.length
+        let context = nsDocument.substring(from: caret - 1_200)
+        func suffixes(_ text: String) -> [String] {
+            let source = text as NSString
+            return CompletionHeuristics.vocabularySuffixes(in: source, caretLocation: source.length, language: "meierscript",
+                                                           insertsCallTemplates: true).suffixes
+        }
+        XCTAssertFalse(suffixes(context).contains("et(name)"), "The editor context alone misses the declaration")
+
+        let source = CompletionHeuristics.vocabularyCompletionSource(context: context, caretLocation: caret) { range in
+            nsDocument.substring(with: range)
+        }
+        XCTAssertEqual(source, document)
+        XCTAssertEqual(suffixes(source), ["et(name)"])
+
+        XCTAssertEqual(CompletionHeuristics.vocabularyCompletionSource(context: context, caretLocation: caret) { _ in
+            "func greet(stale: Int) {}\nolder text"
+        }, context, "A document that does not end with the context is not used")
+        XCTAssertEqual(CompletionHeuristics.vocabularyCompletionSource(context: context, caretLocation: caret) { _ in nil },
+                       context)
+        XCTAssertEqual(CompletionHeuristics.vocabularyCompletionSource(context: "gre", caretLocation: 3) { _ in
+            XCTFail("A context that starts at the document start is complete")
+            return nil
+        }, "gre")
+
+        let long = String(repeating: "x", count: 20_000) + "gre"
+        let nsLong = long as NSString
+        let window = CompletionHeuristics.vocabularyCompletionSource(context: "gre", caretLocation: nsLong.length) { range in
+            nsLong.substring(with: range)
+        }
+        XCTAssertEqual((window as NSString).length, CompletionHeuristics.vocabularyLookbehindUTF16)
+    }
+
     func testCallArgumentPlaceholderRangeSelectsTheFirstArgument() {
         XCTAssertEqual(CompletionHeuristics.callArgumentPlaceholderRange(in: "print(string)"), NSRange(location: 6, length: 6))
         XCTAssertEqual(CompletionHeuristics.callArgumentPlaceholderRange(in: "split(string, separator)"), NSRange(location: 6, length: 6))

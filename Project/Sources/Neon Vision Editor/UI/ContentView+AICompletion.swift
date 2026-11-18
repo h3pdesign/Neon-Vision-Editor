@@ -230,7 +230,15 @@ extension ContentView {
               !effectiveLargeFileModeEnabled,
               CompletionHeuristics.usesLocalVocabularyCompletion(for: currentLanguage),
               viewModel.selectedTab?.id == tabID else { return false }
-        let source = context as NSString
+        let document = viewModel.selectedTab?.document
+        let source = CompletionHeuristics.vocabularyCompletionSource(
+            context: context,
+            caretLocation: caretLocation,
+            documentText: { range in
+                guard let document, NSMaxRange(range) <= document.utf16Length else { return nil }
+                return try? document.text(inUTF16Range: range)
+            }
+        ) as NSString
         // A call that already has its parentheses completes the name only.
         let insertsCallTemplates = nextCharacter != "("
         let match = CompletionHeuristics.vocabularySuffixes(

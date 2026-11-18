@@ -397,6 +397,31 @@ enum CompletionHeuristics {
         language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == MeierScriptLanguage.identifier
     }
 
+    /// How far before the caret vocabulary completion looks for declared
+    /// functions and nearby identifiers.
+    static let vocabularyLookbehindUTF16 = 16_000
+
+    /// The text vocabulary completion reads: up to
+    /// `vocabularyLookbehindUTF16` units of the document before the caret.
+    /// The editor only reports a short context, so a function declared further
+    /// up would otherwise never complete with its parameters. The document is
+    /// used only when it ends with that context; otherwise the context is
+    /// returned, because a document that has not caught up with the editor
+    /// must not offer stale text.
+    static func vocabularyCompletionSource(
+        context: String,
+        caretLocation: Int,
+        documentText: (NSRange) -> String?
+    ) -> String {
+        let contextLength = (context as NSString).length
+        guard caretLocation > contextLength else { return context }
+        let start = max(0, caretLocation - vocabularyLookbehindUTF16)
+        guard let text = documentText(NSRange(location: start, length: caretLocation - start)),
+              (text as NSString).length > contextLength,
+              text.hasSuffix(context) else { return context }
+        return text
+    }
+
     /// Completion suffixes for the identifier before the caret: language
     /// vocabulary first (shortest first), then identifiers from the nearby
     /// document. Only case-sensitive prefix matches qualify, because the editor
@@ -544,7 +569,7 @@ enum CompletionHeuristics {
     /// before the caret, keyed by function name: `func greet(name: String)`
     /// gives `"greet": "name"`.
     private static func meierScriptFunctionParameters(in text: NSString, caretLocation: Int) -> [String: String] {
-        let start = max(0, caretLocation - 16_000)
+        let start = max(0, caretLocation - vocabularyLookbehindUTF16)
         // Comments and strings are blanked first, so a signature inside one
         // never replaces the declared function's parameters.
         let searchText = meierScriptCodeOnly(text.substring(with: NSRange(location: start, length: max(0, caretLocation - start))))

@@ -23,6 +23,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 ### Fixes
 
 - On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu. This happened on macOS 26 when resizing a window ([#1055](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1055)).
+- On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret. Before, only functions within about 1,200 characters above the caret were found.
 
 ### Breaking changes
 
@@ -34,7 +35,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Maintenance
 
-- Development version 2.2.6 (build 1165).
+- Development version 2.2.6 (build 1166).
+- Release preparation now updates the README roadmap's Now entry, which still described v1.4.0.
 
 ## [v2.2.5] - 2026-11-18
 

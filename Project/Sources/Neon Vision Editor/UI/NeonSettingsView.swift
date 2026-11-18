@@ -213,6 +213,9 @@ struct NeonSettingsView: View {
     @State private var showRemoteConnectSheet: Bool = false
     @State private var showRemoteAttachSheet: Bool = false
     @State private var availableEditorFonts: [String] = []
+#if os(iOS)
+    @State private var showsSystemFontPicker = false
+#endif
     @State private var moreSectionTab: String = "support"
     @State private var editorSectionTab: String = "basics"
 #if os(macOS)
@@ -2450,14 +2453,37 @@ struct NeonSettingsView: View {
             iOSToggleRow(LocalizedStringKey(localized("Use System Font")), isOn: $useSystemFont)
 
             iOSLabeledRow(LocalizedStringKey(localized("Font"))) {
-                Picker("", selection: selectedFontBinding) {
-                    Text(localized("System")).tag(systemFontSentinel)
-                    ForEach(availableEditorFonts, id: \.self) { fontName in
-                        Text(fontName).tag(fontName)
+                HStack(spacing: UI.space8) {
+                    Picker("", selection: selectedFontBinding) {
+                        Text(localized("System")).tag(systemFontSentinel)
+                        ForEach(availableEditorFonts, id: \.self) { fontName in
+                            Text(fontName).tag(fontName)
+                        }
                     }
+                    .neonSettingsDropdown(maxWidth: .infinity)
+                    .accessibilityLabel(localized("Font"))
+#if os(iOS)
+                    // The system font picker groups fonts by family, previews
+                    // them and has search, which the plain list of PostScript
+                    // names cannot offer.
+                    Button(localized("Choose…")) {
+                        showsSystemFontPicker = true
+                    }
+                    .buttonStyle(.borderless)
+                    .fixedSize()
+                    .sheet(isPresented: $showsSystemFontPicker) {
+                        SystemEditorFontPicker(
+                            selectedPostScriptName: useSystemFont ? "" : editorFontName,
+                            onPick: { postScriptName in
+                                selectPickedEditorFont(postScriptName)
+                                showsSystemFontPicker = false
+                            },
+                            onCancel: { showsSystemFontPicker = false }
+                        )
+                        .ignoresSafeArea()
+                    }
+#endif
                 }
-                .neonSettingsDropdown(maxWidth: .infinity)
-                .accessibilityLabel(localized("Font"))
             }
 
             iOSLabeledRow(LocalizedStringKey(localized("Font Size"))) {
@@ -3298,6 +3324,23 @@ struct NeonSettingsView: View {
 #else
         Color.primary
 #endif
+    }
+#endif
+
+#if os(iOS)
+    /// Uses a font chosen in the system font picker as the editor font and
+    /// adds it to the font list when the list does not have it yet.
+    private func selectPickedEditorFont(_ postScriptName: String) {
+        guard !postScriptName.isEmpty else { return }
+        if !availableEditorFonts.contains(postScriptName) {
+            availableEditorFonts.insert(postScriptName, at: 0)
+        }
+        if !Self.cachedEditorFonts.isEmpty, !Self.cachedEditorFonts.contains(postScriptName) {
+            Self.cachedEditorFonts.insert(postScriptName, at: 0)
+        }
+        useSystemFont = false
+        editorFontName = postScriptName
+        syncSelectedFontValue()
     }
 #endif
 
@@ -7372,6 +7415,67 @@ private struct CustomProviderConnectionControls: View {
 }
 
 #if os(iOS)
+// MARK: - System Font Picker
+
+/// The system font picker with every face listed. It reports the PostScript
+/// name of the chosen face, which the editor resolves with `UIFont(name:size:)`.
+struct SystemEditorFontPicker: UIViewControllerRepresentable {
+    let selectedPostScriptName: String
+    let onPick: (String) -> Void
+    let onCancel: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onPick: onPick, onCancel: onCancel)
+    }
+
+    func makeUIViewController(context: Context) -> UIFontPickerViewController {
+        let configuration = UIFontPickerViewController.Configuration()
+        configuration.includeFaces = true
+        let picker = UIFontPickerViewController(configuration: configuration)
+        picker.delegate = context.coordinator
+        if !selectedPostScriptName.isEmpty,
+           UIFont(name: selectedPostScriptName, size: 12) != nil {
+            picker.selectedFontDescriptor = UIFontDescriptor(name: selectedPostScriptName, size: 0)
+        }
+        return picker
+    }
+
+    func updateUIViewController(_ picker: UIFontPickerViewController, context: Context) {
+        context.coordinator.onPick = onPick
+        context.coordinator.onCancel = onCancel
+    }
+
+    /// The PostScript name of the face a descriptor from the picker names,
+    /// or nil when no installed font matches it.
+    static func postScriptName(for descriptor: UIFontDescriptor?) -> String? {
+        guard let descriptor else { return nil }
+        let name = UIFont(descriptor: descriptor, size: 12).fontName
+        return name.isEmpty ? nil : name
+    }
+
+    final class Coordinator: NSObject, UIFontPickerViewControllerDelegate {
+        var onPick: (String) -> Void
+        var onCancel: () -> Void
+
+        init(onPick: @escaping (String) -> Void, onCancel: @escaping () -> Void) {
+            self.onPick = onPick
+            self.onCancel = onCancel
+        }
+
+        func fontPickerViewControllerDidPickFont(_ viewController: UIFontPickerViewController) {
+            guard let name = SystemEditorFontPicker.postScriptName(for: viewController.selectedFontDescriptor) else {
+                onCancel()
+                return
+            }
+            onPick(name)
+        }
+
+        func fontPickerViewControllerDidCancel(_ viewController: UIFontPickerViewController) {
+            onCancel()
+        }
+    }
+}
+
 // MARK: - iPad Keyboard Shortcut Bridge
 
 // Hidden responder used only to expose Command-Arrow tab switching on iPad hardware keyboards.

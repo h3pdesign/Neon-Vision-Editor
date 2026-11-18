@@ -5,6 +5,28 @@ import SwiftUI
 
 @MainActor
 final class MobileEditorInteractionTests: XCTestCase {
+    func testSystemFontPickerReportsThePostScriptNameOfTheChosenFace() {
+        XCTAssertEqual(SystemEditorFontPicker.postScriptName(for: UIFontDescriptor(name: "Menlo-Bold", size: 0)), "Menlo-Bold")
+        let family = UIFontDescriptor(fontAttributes: [.family: "Courier New"])
+        XCTAssertEqual(SystemEditorFontPicker.postScriptName(for: family), "CourierNewPSMT")
+        XCTAssertNil(SystemEditorFontPicker.postScriptName(for: nil))
+
+        var picked: [String] = []
+        var cancelled = 0
+        let coordinator = SystemEditorFontPicker.Coordinator(
+            onPick: { picked.append($0) },
+            onCancel: { cancelled += 1 }
+        )
+        let picker = UIFontPickerViewController(configuration: UIFontPickerViewController.Configuration())
+        picker.selectedFontDescriptor = UIFontDescriptor(name: "Menlo-Italic", size: 0)
+        coordinator.fontPickerViewControllerDidPickFont(picker)
+        coordinator.fontPickerViewControllerDidCancel(picker)
+        XCTAssertEqual(picked, ["Menlo-Italic"])
+        XCTAssertEqual(cancelled, 1)
+        // A picked font resolves to the same face the editor loads by name.
+        XCTAssertEqual(UIFont(name: picked[0], size: 14)?.fontName, "Menlo-Italic")
+    }
+
     func testNativeTextSnapshotFollowsEveryKindOfBufferEdit() {
         let editor = EditorInputTextView(frame: .zero, textContainer: nil)
         XCTAssertEqual(editor.nativeTextSnapshot, "")

@@ -6,13 +6,17 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Added
+
+- On iPhone and iPad, Settings > Editor > Font has a Choose… button that opens the system font picker, with fonts grouped by family, a preview of each and search. Pick any face, such as a bold or a Retina weight, and the editor uses it.
+
 ### Fixes
 
 - On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu. This happened on macOS 26 when resizing a window ([#1055](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1055)).
 
 ### Maintenance
 
-- Development version 2.2.6 (build 1164).
+- Development version 2.2.6 (build 1165).
 
 ## [v2.2.5] - 2026-11-18
 

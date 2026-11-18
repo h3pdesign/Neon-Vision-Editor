@@ -2080,3 +2080,17 @@
 "JSON5 and XML" = "JSON5 y XML";
 "On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "En el Mac, los archivos JSON5 con cadenas entre comillas simples y las etiquetas XML de varias líneas se pliegan correctamente.";
 "JSON5 and XML: On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "JSON5 y XML: En el Mac, los archivos JSON5 con cadenas entre comillas simples y las etiquetas XML de varias líneas se pliegan correctamente.";
+"macOS 14" = "macOS 14";
+"VoiceOver" = "VoiceOver";
+"On iPhone and iPad, JSON objects and arrays and XML elements can be folded with a tap next to the line number." = "En iPhone y iPad, los objetos y arrays JSON y los elementos XML se contraen con un toque junto al número de línea.";
+"Folding: On iPhone and iPad, JSON objects and arrays and XML elements can be folded with a tap next to the line number." = "Plegado: En iPhone y iPad, los objetos y arrays JSON y los elementos XML se contraen con un toque junto al número de línea.";
+"Compare and the Git panel can ignore whitespace, so changes in indentation or spacing alone stay hidden." = "Comparar y el panel Git pueden ignorar los espacios en blanco, así los cambios solo de sangría o espaciado quedan ocultos.";
+"Ignore Whitespace: Compare and the Git panel can ignore whitespace, so changes in indentation or spacing alone stay hidden." = "Ignorar espacios en blanco: Comparar y el panel Git pueden ignorar los espacios en blanco, así los cambios solo de sangría o espaciado quedan ocultos.";
+"On macOS 14 Sonoma, the app opens again instead of crashing at launch." = "En macOS 14 Sonoma, la app vuelve a abrirse en lugar de cerrarse inesperadamente al iniciarse.";
+"macOS 14: On macOS 14 Sonoma, the app opens again instead of crashing at launch." = "macOS 14: En macOS 14 Sonoma, la app vuelve a abrirse en lugar de cerrarse inesperadamente al iniciarse.";
+"On iPhone and iPad, placing the cursor no longer scrolls the text under your finger." = "En iPhone y iPad, colocar el cursor ya no desplaza el texto bajo tu dedo.";
+"Cursor Placement: On iPhone and iPad, placing the cursor no longer scrolls the text under your finger." = "Posición del cursor: En iPhone y iPad, colocar el cursor ya no desplaza el texto bajo tu dedo.";
+"With VoiceOver on iPhone and iPad, Fold, Unfold, Fold All and Unfold All are in the Actions rotor." = "Con VoiceOver en iPhone y iPad, Contraer, Expandir, Contraer todo y Expandir todo están en el rotor Acciones.";
+"VoiceOver: With VoiceOver on iPhone and iPad, Fold, Unfold, Fold All and Unfold All are in the Actions rotor." = "VoiceOver: Con VoiceOver en iPhone y iPad, Contraer, Expandir, Contraer todo y Expandir todo están en el rotor Acciones.";
+"On an iPad keyboard, Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→) work as on the Mac." = "Con un teclado de iPad, Contraer todo (⌥⇧⌘←) y Expandir todo (⌥⇧⌘→) funcionan como en el Mac.";
+"Fold All: On an iPad keyboard, Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→) work as on the Mac." = "Contraer todo: Con un teclado de iPad, Contraer todo (⌥⇧⌘←) y Expandir todo (⌥⇧⌘→) funcionan como en el Mac.";

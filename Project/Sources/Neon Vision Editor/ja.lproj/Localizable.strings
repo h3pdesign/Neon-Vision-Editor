@@ -2080,3 +2080,17 @@
 "JSON5 and XML" = "JSON5とXML";
 "On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "Macでは、一重引用符の文字列を含むJSON5ファイルや、複数行にわたるXMLタグも正しく折りたためます。";
 "JSON5 and XML: On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly." = "JSON5とXML: Macでは、一重引用符の文字列を含むJSON5ファイルや、複数行にわたるXMLタグも正しく折りたためます。";
+"macOS 14" = "macOS 14";
+"VoiceOver" = "VoiceOver";
+"On iPhone and iPad, JSON objects and arrays and XML elements can be folded with a tap next to the line number." = "iPhoneとiPadで、JSONのオブジェクトや配列、XMLの要素を行番号の横をタップして折りたためます。";
+"Folding: On iPhone and iPad, JSON objects and arrays and XML elements can be folded with a tap next to the line number." = "折りたたみ: iPhoneとiPadで、JSONのオブジェクトや配列、XMLの要素を行番号の横をタップして折りたためます。";
+"Compare and the Git panel can ignore whitespace, so changes in indentation or spacing alone stay hidden." = "比較とGitパネルで空白を無視でき、インデントや間隔だけの変更は表示されません。";
+"Ignore Whitespace: Compare and the Git panel can ignore whitespace, so changes in indentation or spacing alone stay hidden." = "空白を無視: 比較とGitパネルで空白を無視でき、インデントや間隔だけの変更は表示されません。";
+"On macOS 14 Sonoma, the app opens again instead of crashing at launch." = "macOS 14 Sonomaで、起動時にクラッシュせず再び開くようになりました。";
+"macOS 14: On macOS 14 Sonoma, the app opens again instead of crashing at launch." = "macOS 14: macOS 14 Sonomaで、起動時にクラッシュせず再び開くようになりました。";
+"On iPhone and iPad, placing the cursor no longer scrolls the text under your finger." = "iPhoneとiPadで、カーソルを置いても指の下のテキストがスクロールしなくなりました。";
+"Cursor Placement: On iPhone and iPad, placing the cursor no longer scrolls the text under your finger." = "カーソル位置: iPhoneとiPadで、カーソルを置いても指の下のテキストがスクロールしなくなりました。";
+"With VoiceOver on iPhone and iPad, Fold, Unfold, Fold All and Unfold All are in the Actions rotor." = "iPhoneとiPadのVoiceOverで、「折りたたむ」「展開」「すべて折りたたむ」「すべて展開」がアクションローターに表示されます。";
+"VoiceOver: With VoiceOver on iPhone and iPad, Fold, Unfold, Fold All and Unfold All are in the Actions rotor." = "VoiceOver: iPhoneとiPadのVoiceOverで、「折りたたむ」「展開」「すべて折りたたむ」「すべて展開」がアクションローターに表示されます。";
+"On an iPad keyboard, Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→) work as on the Mac." = "iPadのキーボードで、すべて折りたたむ（⌥⇧⌘←）とすべて展開（⌥⇧⌘→）がMacと同じように使えます。";
+"Fold All: On an iPad keyboard, Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→) work as on the Mac." = "すべて折りたたむ: iPadのキーボードで、すべて折りたたむ（⌥⇧⌘←）とすべて展開（⌥⇧⌘→）がMacと同じように使えます。";

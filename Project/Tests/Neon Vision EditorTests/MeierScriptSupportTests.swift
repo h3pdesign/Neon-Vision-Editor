@@ -249,6 +249,22 @@ final class MeierScriptSupportTests: XCTestCase {
         XCTAssertNil(MeierScriptLanguage.callTemplate(forBuiltin: "let"))
     }
 
+    func testFunctionCompletionFindsDeclarationsAfterStringAndCommentEdgeCases() {
+        func suffixes(_ sample: String) -> [String] {
+            let text = sample as NSString
+            return CompletionHeuristics.vocabularySuffixes(in: text, caretLocation: text.length, language: "meierscript",
+                                                           insertsCallTemplates: true).suffixes
+        }
+        XCTAssertEqual(suffixes("// note\rfunc greet(name: String) {}\rgre"), ["et(name)"],
+                       "A line comment ends at a CR-only line break")
+        XCTAssertEqual(suffixes("// note\r\nfunc greet(name: String) {}\r\ngre"), ["et(name)"],
+                       "A line comment ends at a CRLF line break")
+        XCTAssertEqual(suffixes("let path = \"C:\\\nfunc greet(name: String) {}\ngre"), ["et(name)"],
+                       "A backslash before a line break does not continue a single-line string")
+        XCTAssertEqual(suffixes("let doc = \"\"\"\nsay \\\"\"\" here\nfunc greet(fake)\n\"\"\"\nfunc greet(name: String) {}\ngre"),
+                       ["et(name)"], "An escaped quote does not end a multi-line string")
+    }
+
     func testCallArgumentPlaceholderRangeSelectsTheFirstArgument() {
         XCTAssertEqual(CompletionHeuristics.callArgumentPlaceholderRange(in: "print(string)"), NSRange(location: 6, length: 6))
         XCTAssertEqual(CompletionHeuristics.callArgumentPlaceholderRange(in: "split(string, separator)"), NSRange(location: 6, length: 6))

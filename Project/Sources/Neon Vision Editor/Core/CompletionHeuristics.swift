@@ -478,16 +478,18 @@ enum CompletionHeuristics {
     }
 
     /// The text with MeierScript comments (`//`, `/* */`) and strings (`"…"`,
-    /// `"""…"""`) replaced by spaces. Line breaks and UTF-16 offsets are kept.
+    /// `"""…"""`) replaced by spaces. Line breaks (LF, CRLF and CR) and UTF-16
+    /// offsets are kept.
     private static func meierScriptCodeOnly(_ text: String) -> String {
         enum State { case code, lineComment, blockComment, string, multilineString }
         let units = Array(text.utf16)
         var output = units
         let slash: UInt16 = 47, star: UInt16 = 42, quote: UInt16 = 34, backslash: UInt16 = 92
-        let newline: UInt16 = 10, space: UInt16 = 32
+        let newline: UInt16 = 10, carriageReturn: UInt16 = 13, space: UInt16 = 32
         func unit(_ index: Int) -> UInt16 { index < units.count ? units[index] : 0 }
+        func isLineBreak(_ value: UInt16) -> Bool { value == newline || value == carriageReturn }
         func blank(_ index: Int, count: Int = 1) {
-            for offset in index..<min(units.count, index + count) where output[offset] != newline {
+            for offset in index..<min(units.count, index + count) where !isLineBreak(output[offset]) {
                 output[offset] = space
             }
         }
@@ -511,17 +513,23 @@ enum CompletionHeuristics {
                     blank(index)
                 }
             case .lineComment:
-                if current == newline { state = .code } else { blank(index) }
+                if isLineBreak(current) { state = .code } else { blank(index) }
             case .blockComment:
                 if current == star, unit(index + 1) == slash {
                     state = .code; blank(index, count: 2); index += 2; continue
                 }
                 blank(index)
             case .string:
-                if current == backslash { blank(index, count: 2); index += 2; continue }
-                if current == quote || current == newline { state = .code }
+                // A backslash escapes the next character, but never a line break:
+                // a single-line string always ends with its line.
+                if current == backslash, !isLineBreak(unit(index + 1)) {
+                    blank(index, count: 2); index += 2; continue
+                }
+                if current == quote || isLineBreak(current) { state = .code }
                 blank(index)
             case .multilineString:
+                // `\"""` is an escaped quote followed by two quotes, not the end.
+                if current == backslash { blank(index, count: 2); index += 2; continue }
                 if current == quote, unit(index + 1) == quote, unit(index + 2) == quote {
                     state = .code; blank(index, count: 3); index += 3; continue
                 }

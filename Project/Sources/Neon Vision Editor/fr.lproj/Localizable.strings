@@ -2107,3 +2107,6 @@
 "Font Faces: On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font." = "Styles de police: Sur iPhone et iPad, tout style d’une police installée, comme gras ou léger, peut servir de police de l’éditeur.";
 "What’s New in v2.2.6" = "Nouveautés de la v2.2.6";
 "Release highlights for v2.2.6." = "Points forts de la v2.2.6.";
+"Current Font" = "Police actuelle";
+"On iPhone and iPad, the system font picker opens on the editor font you use now." = "Sur iPhone et iPad, le sélecteur de polices du système s’ouvre sur la police de l’éditeur que vous utilisez.";
+"Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now." = "Police actuelle: Sur iPhone et iPad, le sélecteur de polices du système s’ouvre sur la police de l’éditeur que vous utilisez.";

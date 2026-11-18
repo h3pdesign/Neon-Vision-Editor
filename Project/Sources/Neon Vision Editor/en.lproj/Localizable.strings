@@ -2107,3 +2107,6 @@
 "Font Faces: On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font." = "Font Faces: On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font.";
 "What’s New in v2.2.6" = "What’s New in v2.2.6";
 "Release highlights for v2.2.6." = "Release highlights for v2.2.6.";
+"Current Font" = "Current Font";
+"On iPhone and iPad, the system font picker opens on the editor font you use now." = "On iPhone and iPad, the system font picker opens on the editor font you use now.";
+"Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now." = "Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now.";

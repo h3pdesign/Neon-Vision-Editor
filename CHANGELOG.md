@@ -10,10 +10,11 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - On the Mac, the app no longer quits when a narrow window moves toolbar buttons into the overflow menu.
 - On iPhone and iPad, Choose… next to the editor font opens the system font picker, with previews and search.
+- On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font.
 
 ### Highlights
 
-- On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font.
+- On iPhone and iPad, the system font picker opens on the editor font you use now.
 
 ### Added
 

@@ -2107,3 +2107,6 @@
 "Font Faces: On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font." = "Schriftschnitte: Auf iPhone und iPad kann jeder Schnitt einer installierten Schrift, etwa fett oder leicht, die Editorschrift sein.";
 "What’s New in v2.2.6" = "Neu in v2.2.6";
 "Release highlights for v2.2.6." = "Die wichtigsten Neuerungen in v2.2.6.";
+"Current Font" = "Aktuelle Schrift";
+"On iPhone and iPad, the system font picker opens on the editor font you use now." = "Auf iPhone und iPad öffnet sich die Schriftauswahl des Systems bei der Editorschrift, die Sie gerade verwenden.";
+"Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now." = "Aktuelle Schrift: Auf iPhone und iPad öffnet sich die Schriftauswahl des Systems bei der Editorschrift, die Sie gerade verwenden.";

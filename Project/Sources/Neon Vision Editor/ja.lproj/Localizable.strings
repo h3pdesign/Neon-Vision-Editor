@@ -2107,3 +2107,6 @@
 "Font Faces: On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font." = "フォントのスタイル: iPhoneとiPadで、インストール済みフォントの太字や細字など、どのスタイルもエディタのフォントにできます。";
 "What’s New in v2.2.6" = "v2.2.6の新機能";
 "Release highlights for v2.2.6." = "v2.2.6の主な変更点。";
+"Current Font" = "現在のフォント";
+"On iPhone and iPad, the system font picker opens on the editor font you use now." = "iPhoneとiPadで、システムのフォントピッカーは現在使っているエディタのフォントを選択した状態で開きます。";
+"Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now." = "現在のフォント: iPhoneとiPadで、システムのフォントピッカーは現在使っているエディタのフォントを選択した状態で開きます。";

@@ -2107,3 +2107,6 @@
 "Font Faces: On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font." = "Estilos de fuente: En iPhone y iPad, cualquier estilo de una fuente instalada, como negrita o ligera, puede ser la fuente del editor.";
 "What’s New in v2.2.6" = "Novedades de la v2.2.6";
 "Release highlights for v2.2.6." = "Lo más destacado de la v2.2.6.";
+"Current Font" = "Fuente actual";
+"On iPhone and iPad, the system font picker opens on the editor font you use now." = "En iPhone y iPad, el selector de fuentes del sistema se abre en la fuente del editor que usas ahora.";
+"Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now." = "Fuente actual: En iPhone y iPad, el selector de fuentes del sistema se abre en la fuente del editor que usas ahora.";

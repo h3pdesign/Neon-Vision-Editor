@@ -2107,3 +2107,6 @@
 "Font Faces: On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font." = "字体样式: 在 iPhone 和 iPad 上，已安装字体的任何样式（例如粗体或细体）都可以用作编辑器字体。";
 "What’s New in v2.2.6" = "v2.2.6 新功能";
 "Release highlights for v2.2.6." = "v2.2.6 的主要更新。";
+"Current Font" = "当前字体";
+"On iPhone and iPad, the system font picker opens on the editor font you use now." = "在 iPhone 和 iPad 上，系统字体选择器打开时会选中你当前使用的编辑器字体。";
+"Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now." = "当前字体: 在 iPhone 和 iPad 上，系统字体选择器打开时会选中你当前使用的编辑器字体。";

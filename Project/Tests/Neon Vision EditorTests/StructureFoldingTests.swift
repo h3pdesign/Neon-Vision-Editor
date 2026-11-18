@@ -68,6 +68,16 @@ final class StructureFoldingTests: XCTestCase {
         XCTAssertEqual(try StructureFoldScanner.allRegions(in: xml, syntax: .xml).map(\.headerLine), [0, 1])
     }
 
+    func testInMemoryRegionScanMatchesDocumentScan() throws {
+        for (text, syntax) in [(json, StructureFoldSyntax.json), (xml, .xml), ("{\n  \"é😀\": [\n    1\n  ]\n}\n", .json)] {
+            let document = FileBackedTextDocument(content: text)
+            XCTAssertEqual(
+                StructureFoldScanner.allRegions(inText: text, syntax: syntax),
+                try StructureFoldScanner.allRegions(in: document, syntax: syntax)
+            )
+        }
+    }
+
     func testJSONRegionsEndOnTheMatchingCloserLine() throws {
         let document = FileBackedTextDocument(content: json)
         XCTAssertEqual(try StructureFoldScanner.region(startingAt: 0, in: document, syntax: .json)?.endLine, 10)

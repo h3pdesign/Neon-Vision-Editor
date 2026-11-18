@@ -408,17 +408,20 @@ extension ContentView {
         guard let selected = viewModel.selectedTab, let other = tabForID(tabID),
               let snapshot = EditorViewModel.compareTabsSnapshot(left: selected, right: other) else { return }
         showCompareTabsPicker = false
+        let ignoresWhitespace = UserDefaults.standard.bool(forKey: DocumentDiffPresentation.ignoresWhitespaceDefaultsKey)
         Task { @MainActor in
-            let diff = await Task.detached(priority: .userInitiated) {
-                DocumentDiffBuilder.build(leftContent: snapshot.leftContent, rightContent: snapshot.rightContent)
+            let presentation = await Task.detached(priority: .userInitiated) {
+                DocumentDiffPresentation.make(
+                    title: snapshot.title,
+                    leftTitle: snapshot.leftTitle,
+                    rightTitle: snapshot.rightTitle,
+                    leftContent: snapshot.leftContent,
+                    rightContent: snapshot.rightContent,
+                    ignoresWhitespace: ignoresWhitespace
+                )
             }.value
             await Task.yield()
-            editorDiffPresentation = DocumentDiffPresentation(
-                title: snapshot.title,
-                leftTitle: snapshot.leftTitle,
-                rightTitle: snapshot.rightTitle,
-                diff: diff
-            )
+            editorDiffPresentation = presentation
 #if os(iOS) || os(visionOS)
             dismissKeyboard()
 #endif
@@ -452,15 +455,17 @@ extension ContentView {
 
     @MainActor
     func presentDocumentDiff(_ snapshot: EditorViewModel.DocumentComparisonSnapshot) async {
-        let diff = await Task.detached(priority: .userInitiated) {
-            DocumentDiffBuilder.build(leftContent: snapshot.leftContent, rightContent: snapshot.rightContent)
+        let ignoresWhitespace = UserDefaults.standard.bool(forKey: DocumentDiffPresentation.ignoresWhitespaceDefaultsKey)
+        editorDiffPresentation = await Task.detached(priority: .userInitiated) {
+            DocumentDiffPresentation.make(
+                title: snapshot.title,
+                leftTitle: snapshot.leftTitle,
+                rightTitle: snapshot.rightTitle,
+                leftContent: snapshot.leftContent,
+                rightContent: snapshot.rightContent,
+                ignoresWhitespace: ignoresWhitespace
+            )
         }.value
-        editorDiffPresentation = DocumentDiffPresentation(
-            title: snapshot.title,
-            leftTitle: snapshot.leftTitle,
-            rightTitle: snapshot.rightTitle,
-            diff: diff
-        )
 #if os(iOS) || os(visionOS)
         dismissKeyboard()
 #endif

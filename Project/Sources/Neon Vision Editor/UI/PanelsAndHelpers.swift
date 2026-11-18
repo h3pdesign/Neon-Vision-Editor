@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.2.4",
-            subtitle: "Release highlights for v2.2.4.",
+            title: "What’s New in v2.2.5",
+            subtitle: "Release highlights for v2.2.5.",
             bullets: [
-                "Folding: On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline.",
-                "Large Files: Large files stay responsive while you edit and scroll after the first change.",
-                "Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines.",
-                "Run Console: In the Mac version from GitHub, the run console shows the folder a script starts in.",
-                "Fold All: On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker.",
-                "JSON5 and XML: On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly."
+                "Folding: On iPhone and iPad, JSON objects and arrays and XML elements can be folded with a tap next to the line number.",
+                "Ignore Whitespace: Compare and the Git panel can ignore whitespace, so changes in indentation or spacing alone stay hidden.",
+                "macOS 14: On macOS 14 Sonoma, the app opens again instead of crashing at launch.",
+                "Cursor Placement: On iPhone and iPad, placing the cursor no longer scrolls the text under your finger.",
+                "VoiceOver: With VoiceOver on iPhone and iPad, Fold, Unfold, Fold All and Unfold All are in the Actions rotor.",
+                "Fold All: On an iPad keyboard, Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→) work as on the Mac."
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4612,6 +4612,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.2.5", version: "2.2.5", date: "2026-11-18", highlights: [
+            "On iPhone and iPad, JSON objects and arrays and XML elements can be folded with a tap next to the line number.",
+            "Compare and the Git panel can ignore whitespace, so changes in indentation or spacing alone stay hidden.",
+            "On macOS 14 Sonoma, the app opens again instead of crashing at launch."
+        ]),
         Release(id: "2.2.4", version: "2.2.4", date: "2026-11-14", highlights: [
             "On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline.",
             "Large files stay responsive while you edit and scroll after the first change.",
@@ -4856,8 +4861,11 @@ final class WindowViewModelRegistry {
         return nil
     }
 
-    func activeViewModel() -> EditorViewModel? {
-        viewModel(for: NSApp.keyWindow?.windowNumber ?? NSApp.mainWindow?.windowNumber)
+    /// `NSApp` is still nil while SwiftUI builds the app's scenes at launch on macOS 14,
+    /// so it must not be force-unwrapped here (#1042).
+    func activeViewModel(in application: NSApplication? = NSApp) -> EditorViewModel? {
+        guard let application else { return nil }
+        return viewModel(for: application.keyWindow?.windowNumber ?? application.mainWindow?.windowNumber)
     }
 
     func externalOpenTarget(for url: URL?, currentDesktopOnly: Bool,

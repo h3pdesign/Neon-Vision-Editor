@@ -24,6 +24,7 @@ struct GitChangesEditorView: View {
     @State private var inlineDiff: DocumentDiffPresentation?
     @State private var selectedHistoryHash: String?
     @State private var pendingCommit: GitCommitPreview?
+    @AppStorage(DocumentDiffPresentation.ignoresWhitespaceDefaultsKey) private var ignoresWhitespace = false
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
@@ -111,6 +112,13 @@ struct GitChangesEditorView: View {
         }
         .onChange(of: gitViewModel.history.first?.id) { _, _ in
             selectLatestCommitIfNeeded()
+        }
+        .onChange(of: ignoresWhitespace) { _, newValue in
+            rebuildInlineDiff(ignoringWhitespace: newValue)
+        }
+        .onChange(of: inlineDiff?.id) { _, _ in
+            // A diff that finished building after the option flipped catches up here.
+            rebuildInlineDiff(ignoringWhitespace: ignoresWhitespace)
         }
         .confirmationDialog(
             "Commit staged changes?",
@@ -202,6 +210,7 @@ struct GitChangesEditorView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
+            ignoreWhitespaceToggle
             Button {
                 gitViewModel.refresh()
             } label: {
@@ -224,6 +233,21 @@ struct GitChangesEditorView: View {
         .padding(.vertical, 12)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Working Copy Changes")
+    }
+
+    @ViewBuilder
+    private var ignoreWhitespaceToggle: some View {
+        let toggle = Toggle(isOn: $ignoresWhitespace) {
+            Label("Ignore Whitespace", systemImage: "space")
+        }
+        .toggleStyle(.button)
+        .help("Ignore Whitespace")
+        .accessibilityHint("Hides changes that only differ in indentation or spacing.")
+        if isCompactWidth {
+            toggle.labelStyle(.iconOnly)
+        } else {
+            toggle.labelStyle(.titleAndIcon)
+        }
     }
 
     @ViewBuilder
@@ -895,16 +919,19 @@ struct GitChangesEditorView: View {
             let content = await Task.detached { () -> String in
                 (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
             }.value
-            let diff = await Task.detached(priority: .userInitiated) {
-                DocumentDiffBuilder.build(leftContent: "", rightContent: content)
+            let language = LanguageDetector.shared.preferredLanguage(for: fileURL)
+            let ignoresWhitespace = self.ignoresWhitespace
+            inlineDiff = await Task.detached(priority: .userInitiated) {
+                DocumentDiffPresentation.make(
+                    title: entry.path,
+                    leftTitle: "Empty",
+                    rightTitle: "Working Copy",
+                    leftContent: "",
+                    rightContent: content,
+                    language: language,
+                    ignoresWhitespace: ignoresWhitespace
+                )
             }.value
-            inlineDiff = DocumentDiffPresentation(
-                title: entry.path,
-                leftTitle: "Empty",
-                rightTitle: "Working Copy",
-                diff: diff,
-                language: LanguageDetector.shared.preferredLanguage(for: fileURL)
-            )
         }
     }
 
@@ -912,16 +939,33 @@ struct GitChangesEditorView: View {
         selectedHistoryHash = entry.hash
         Task { @MainActor in
             guard let diff = await gitViewModel.prepareCommitDiff(for: entry) else { return }
-            let documentDiff = await Task.detached(priority: .userInitiated) {
-                DocumentDiffBuilder.build(leftContent: diff.leftContent, rightContent: diff.rightContent)
+            let language = languageForCommitDiff(diff.rightContent)
+            let ignoresWhitespace = self.ignoresWhitespace
+            inlineDiff = await Task.detached(priority: .userInitiated) {
+                DocumentDiffPresentation.make(
+                    title: diff.title,
+                    leftTitle: diff.leftTitle,
+                    rightTitle: diff.rightTitle,
+                    leftContent: diff.leftContent,
+                    rightContent: diff.rightContent,
+                    language: language,
+                    ignoresWhitespace: ignoresWhitespace
+                )
             }.value
-            inlineDiff = DocumentDiffPresentation(
-                title: diff.title,
-                leftTitle: diff.leftTitle,
-                rightTitle: diff.rightTitle,
-                diff: documentDiff,
-                language: languageForCommitDiff(diff.rightContent)
-            )
+        }
+    }
+
+    private func rebuildInlineDiff(ignoringWhitespace: Bool) {
+        guard let current = inlineDiff, current.sources != nil,
+              current.ignoresWhitespace != ignoringWhitespace else { return }
+        Task { @MainActor in
+            let rebuilt = await Task.detached(priority: .userInitiated) {
+                current.rebuilt(ignoringWhitespace: ignoringWhitespace)
+            }.value
+            // Drop the result if another diff was opened or the option flipped back meanwhile.
+            guard let rebuilt, inlineDiff?.id == current.id,
+                  ignoresWhitespace == ignoringWhitespace else { return }
+            inlineDiff = rebuilt
         }
     }
 
@@ -1403,6 +1447,22 @@ struct DiffEditorSurface: View {
     let presentation: DocumentDiffPresentation
     let onClose: () -> Void
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage(DocumentDiffPresentation.ignoresWhitespaceDefaultsKey) private var ignoresWhitespace = false
+    @State private var rebuiltPresentation: (baseID: UUID, presentation: DocumentDiffPresentation)?
+
+    /// The diff on screen: the caller's, or one rebuilt for the whitespace option.
+    private var shownPresentation: DocumentDiffPresentation {
+        if let rebuiltPresentation, rebuiltPresentation.baseID == presentation.id,
+           rebuiltPresentation.presentation.ignoresWhitespace == ignoresWhitespace {
+            return rebuiltPresentation.presentation
+        }
+        return presentation
+    }
+
+    private struct RebuildKey: Equatable {
+        let presentationID: UUID
+        let ignoresWhitespace: Bool
+    }
 
     private var isCompact: Bool {
 #if os(macOS)
@@ -1419,7 +1479,8 @@ struct DiffEditorSurface: View {
                     outline
                         .frame(maxHeight: 220)
                     Divider()
-                    InlineDiffView(presentation: presentation)
+                    InlineDiffView(presentation: shownPresentation)
+                        .id(shownPresentation.id)
                 }
             } else {
                 HStack(spacing: 0) {
@@ -1427,7 +1488,8 @@ struct DiffEditorSurface: View {
                         .frame(minWidth: 340, idealWidth: 400, maxWidth: 480)
                         .layoutPriority(1)
                     Divider()
-                    InlineDiffView(presentation: presentation)
+                    InlineDiffView(presentation: shownPresentation)
+                        .id(shownPresentation.id)
                         .frame(minWidth: 0, maxWidth: .infinity)
                 }
             }
@@ -1435,6 +1497,27 @@ struct DiffEditorSurface: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Diff editor for \(presentation.title)")
+        .task(id: RebuildKey(presentationID: presentation.id, ignoresWhitespace: ignoresWhitespace)) {
+            await rebuildForWhitespaceOptionIfNeeded()
+        }
+    }
+
+    private func rebuildForWhitespaceOptionIfNeeded() async {
+        let base = presentation
+        let wanted = ignoresWhitespace
+        guard base.sources != nil, base.ignoresWhitespace != wanted else {
+            rebuiltPresentation = nil
+            return
+        }
+        if let rebuiltPresentation, rebuiltPresentation.baseID == base.id,
+           rebuiltPresentation.presentation.ignoresWhitespace == wanted {
+            return
+        }
+        let rebuilt = await Task.detached(priority: .userInitiated) {
+            base.rebuilt(ignoringWhitespace: wanted)
+        }.value
+        guard !Task.isCancelled, let rebuilt else { return }
+        rebuiltPresentation = (base.id, rebuilt)
     }
 
     private var outline: some View {
@@ -1474,14 +1557,21 @@ struct DiffEditorSurface: View {
             .truncationMode(.middle)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
+            if presentation.sources != nil {
+                Toggle("Ignore Whitespace", isOn: $ignoresWhitespace)
+                    .font(.caption)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 10)
+                    .accessibilityHint("Hides changes that only differ in indentation or spacing.")
+            }
             if !isCompact {
                 Divider()
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 6) {
-                        ForEach(presentation.changedRows) { row in
+                        ForEach(shownPresentation.changedRows) { row in
                             changedRow(row)
                         }
-                        if presentation.changedRows.isEmpty {
+                        if shownPresentation.changedRows.isEmpty {
                             ContentUnavailableView("No Changes", systemImage: "checkmark.circle")
                                 .frame(maxWidth: .infinity, minHeight: 140)
                         }

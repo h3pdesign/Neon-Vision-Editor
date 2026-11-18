@@ -3248,7 +3248,14 @@ struct NeonSettingsView: View {
             if !selectedEditorFont.isEmpty && !names.contains(selectedEditorFont) {
                 names.insert(selectedEditorFont, at: 0)
             }
+            let discoveredNames = names
             DispatchQueue.main.async {
+                var names = discoveredNames
+                // A font chosen while the list was loading (for example in
+                // the system font picker) stays in the list.
+                if !useSystemFont, !editorFontName.isEmpty, !names.contains(editorFontName) {
+                    names.insert(editorFontName, at: 0)
+                }
                 Self.cachedEditorFonts = names
                 availableEditorFonts = names
                 syncSelectedFontValue()
@@ -3338,8 +3345,10 @@ struct NeonSettingsView: View {
         if !Self.cachedEditorFonts.isEmpty, !Self.cachedEditorFonts.contains(postScriptName) {
             Self.cachedEditorFonts.insert(postScriptName, at: 0)
         }
-        useSystemFont = false
+        // Store the name first, so the previous font name never becomes
+        // active on its own when system-font mode turns off.
         editorFontName = postScriptName
+        useSystemFont = false
         syncSelectedFontValue()
     }
 #endif

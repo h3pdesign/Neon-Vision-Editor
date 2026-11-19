@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.2.4",
-            subtitle: "Release highlights for v2.2.4.",
+            title: "What’s New in v2.2.6",
+            subtitle: "Release highlights for v2.2.6.",
             bullets: [
-                "Folding: On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline.",
-                "Large Files: Large files stay responsive while you edit and scroll after the first change.",
-                "Folded Text: Find and Go to Line open the folds they land in, and copying across a fold includes the hidden lines.",
-                "Run Console: In the Mac version from GitHub, the run console shows the folder a script starts in.",
-                "Fold All: On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker.",
-                "JSON5 and XML: On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly."
+                "Window Resizing: On the Mac, the app no longer quits when a narrow window moves toolbar buttons into the overflow menu.",
+                "Font Picker: On iPhone and iPad, Choose… next to the editor font opens the system font picker, with previews and search.",
+                "Font Faces: On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font.",
+                "Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now.",
+                "Window Resizing: On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…",
+                "Function Completion: On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4612,6 +4612,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.2.6", version: "2.2.6", date: "2026-11-19", highlights: [
+            "On the Mac, the app no longer quits when a narrow window moves toolbar buttons into the overflow menu.",
+            "On iPhone and iPad, Choose… next to the editor font opens the system font picker, with previews and search.",
+            "On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font."
+        ]),
         Release(id: "2.2.4", version: "2.2.4", date: "2026-11-14", highlights: [
             "On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline.",
             "Large files stay responsive while you edit and scroll after the first change.",

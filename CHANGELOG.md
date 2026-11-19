@@ -6,6 +6,15 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixes
+
+- The minimap marks only comments as section markers. Before, code lines such as `let sectionCount = 3` or a string containing "TODO:" showed up as section markers. Trailing comments such as `value = 1 // TODO: check` still count.
+
+### Maintenance
+
+- Development version 2.2.7 (build 1168).
+- develop now includes the v2.2.6 release commit from main, so the next release branch merges cleanly.
+
 ## [v2.2.6] - 2026-11-19
 
 ### Why Upgrade

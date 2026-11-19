@@ -781,6 +781,28 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(snapshot.markers.contains { $0.kind == .code })
     }
 
+    func testCodeMinimapSectionMarkersComeOnlyFromComments() {
+        let sample = """
+        let sectionCount = 3
+        let note = "TODO: not a marker"
+        let total = a * b
+        let value = 1 // TODO: trailing marker
+        #pragma mark - Legacy
+        """
+
+        let snapshot = buildCodeMinimapSnapshot(text: sample, language: "swift")
+        let kinds = snapshot.markers.map(\.kind)
+
+        XCTAssertEqual(kinds, [.property, .property, .property, .section, .section])
+
+        let python = buildCodeMinimapSnapshot(
+            text: "sections = []\nvalue = 1  # FIXME: later",
+            language: "python"
+        )
+        XCTAssertEqual(python.markers.map(\.kind).last, .section)
+        XCTAssertNotEqual(python.markers.first?.kind, .section)
+    }
+
     func testCodeMinimapViewportTracksVisibleOffset() {
         let viewport = codeMinimapViewport(
             visibleY: 450,

@@ -229,12 +229,12 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-The iOS/iPadOS App Store listing is currently aligned with the direct GitHub release.
+The direct GitHub release is currently ahead of the iOS/iPadOS App Store version. The App Store version may temporarily lag while updates are in Apple review.
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
 | **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v2.2.6** | Current direct download |
-| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v2.2.4** | Current public App Store listing |
+| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v2.2.5** | Current public App Store listing |
 | **Store status** | macOS | Apple-managed distribution | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v2.2.0** | Current public Mac App Store listing; v2.2.4 is waiting for Apple review (App Store Connect, checked 2026-11-16) |
 | **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v2.2.4** | Current public visionOS listing (App Store Connect, checked 2026-11-16) |
 | **Beta** | iOS / iPadOS / macOS / visionOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | **iOS v2.1.0 / macOS v1.9.3 / visionOS v2.1.3** | Newest public-link builds are older than the App Store releases: iOS 2.1.0 (1067), macOS 1.9.3 (1063), visionOS 2.1.3 (1131) (App Store Connect, checked 2026-11-16) |

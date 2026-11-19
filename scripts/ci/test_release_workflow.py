@@ -88,6 +88,22 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 self.assertEqual(docs.normalize_welcome_tour_bullets(["- v1.9.3: " + description])[0],
                                  "- " + expected + ": " + docs.shorten_for_welcome_tour_card(description))
 
+    def test_readme_roadmap_now_bullet_follows_the_release(self):
+        readme = textwrap.dedent("""\
+            ### Now (v2.2.4)
+
+            - ![v1.4.0](https://img.shields.io/badge/v1.4.0-22C55E?style=flat-square) delivers file-backed editing.
+              Tracking: [Release v2.2.4](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.2.4)
+            """)
+        section = "### Why Upgrade\n\n- On the Mac, a narrow window no longer quits the app.\n"
+        updated = docs.update_readme_roadmap_windows(readme, "v2.2.6", section)
+        self.assertIn("### Now (v2.2.6)", updated)
+        self.assertIn("- ![v2.2.6](https://img.shields.io/badge/v2.2.6-22C55E?style=flat-square) "
+                      "On the Mac, a narrow window no longer quits the app.", updated)
+        self.assertNotIn("v1.4.0", updated)
+        self.assertIn("[Release v2.2.6](https://github.com/h3pdesign/Neon-Vision-Editor/releases/tag/v2.2.6)", updated)
+        self.assertEqual(docs.update_readme_roadmap_windows(updated, "v2.2.6", section), updated)
+
     def test_in_app_changelog_is_current_idempotent_and_keeps_history(self):
         source = (ROOT / "Project/Sources/Neon Vision Editor/UI/PanelsAndHelpers.swift").read_text()
         changelog = (ROOT / "CHANGELOG.md").read_text()
@@ -342,6 +358,17 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 self.assertIn("repos/h3pdesign/homebrew-tap/dispatches", workflow)
                 for value in forbidden:
                     self.assertNotIn(value, workflow)
+
+    def test_primary_release_updates_project_homebrew_tap_after_publish(self):
+        primary = (ROOT / ".github/workflows/release-github-only.yml").read_text()
+        self.assertIn("repos/h3pdesign/homebrew-tap/dispatches", primary)
+        self.assertIn("GH_TOKEN: ${{ secrets.TAP_BOT_TOKEN }}", primary)
+        tap_step = primary.index("- name: Update h3pdesign/homebrew-tap cask")
+        self.assertLess(primary.index("- name: Publish verified GitHub release"), tap_step)
+        self.assertLess(tap_step, primary.index("- name: Generate and publish signed Sparkle appcast"))
+        self.assertIn("timeout-minutes: 10", primary[tap_step:primary.index("- name: Generate and publish signed Sparkle appcast")])
+        for value in ("HOMEBREW_CASK_APP_CLIENT_ID", "create_homebrew_cask_pr.sh", "repositories: homebrew-cask"):
+            self.assertNotIn(value, primary)
 
     def test_release_all_forwards_resume_auto_to_both_preparation_calls(self):
         script = (ROOT / "scripts/release_all.sh").read_text()

@@ -302,6 +302,11 @@ def shorten_for_welcome_tour_card(text: str, limit: int = WELCOME_TOUR_CARD_TEXT
 def welcome_feature_title(description: str, index: int) -> str:
     lowered = description.lower()
     rules = (
+        (("overflow menu",), "Window Resizing"),
+        (("declared far above",), "Function Completion"),
+        (("opens on the editor font",), "Current Font"),
+        (("font picker",), "Font Picker"),
+        (("face of an installed font",), "Font Faces"),
         (("ignore whitespace",), "Ignore Whitespace"),
         (("macos 14",), "macOS 14"),
         (("voiceover",), "VoiceOver"),
@@ -697,6 +702,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v2.2.6": ("Schriftauswahl auf iPhone und iPad und stabile Mac-Fenster", "Auf iPhone und iPad öffnet „Auswählen…“ neben der Editorschrift die Schriftauswahl des Systems mit Vorschau, Suche und jedem Schriftschnitt. Auf dem Mac beendet sich die App unter macOS 26 nicht mehr, wenn ein schmales Fenster Symbolleistentasten ins Überlaufmenü verschiebt.", ["Schriften", "Stabilität", "iPhone"]),
         "v2.2.5": ("Einklappen auf iPhone und iPad und Leerraum im Vergleich ignorieren", "Auf iPhone und iPad lassen sich JSON- und XML-Strukturen einklappen, auch per iPad-Tastatur und VoiceOver. Vergleichen und der Git-Bereich können Leerraum ignorieren, das Setzen des Cursors auf iPhone und iPad scrollt den Text nicht mehr weg, und unter macOS 14 startet die App wieder.", ["Einklappen", "Vergleichen", "iPhone"]),
         "v2.2.4": ("Einklappen für JSON und XML und schnellere große Dateien", "Auf dem Mac lassen sich JSON-Objekte und -Arrays sowie XML-Elemente einklappen, sodass große Dateien wie eine Gliederung lesbar sind. Große Dateien bleiben nach der ersten Änderung beim Bearbeiten und Scrollen flüssig, und die Konsole der GitHub-Version zeigt den Startordner eines Skripts.", ["Einklappen", "Leistung", "Mac"]),
         "v2.2.3": ("Funktionsaufrufe vervollständigen und anpassbare Konsole", "MeierScript-Funktionen werden als Aufruf mit ihren Parametern vervollständigt, und Return kann wie in Xcode den ausgewählten Vorschlag übernehmen. In der Mac-Version von GitHub lassen sich Ausgabe und Fehler der Konsole in der Größe anpassen und bleiben am Zeilenanfang, und ein langer eingefügter Text erscheint sofort.", ["Vervollständigung", "Konsole", "Mac"]),
@@ -750,6 +756,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v2.2.6": ("Skriftvælger på iPhone og iPad og stabile Mac-vinduer", "På iPhone og iPad åbner Vælg… ved editorskriften systemets skriftvælger med forhåndsvisning, søgning og alle skriftsnit. På Mac lukker appen ikke længere på macOS 26, når et smalt vindue flytter værktøjslinjeknapper ind i overløbsmenuen.", ["Skrifter", "Stabilitet", "iPhone"]),
         "v2.2.5": ("Foldning på iPhone og iPad og ignorer mellemrum i sammenligning", "På iPhone og iPad kan JSON- og XML-strukturer foldes sammen, også med iPad-tastatur og VoiceOver. Sammenlign og Git-panelet kan ignorere mellemrum, markøren ruller ikke længere teksten væk på iPhone og iPad, og appen starter igen på macOS 14.", ["Foldning", "Sammenlign", "iPhone"]),
         "v2.2.4": ("Foldning af JSON og XML og hurtigere store filer", "På Mac kan JSON-objekter og -arrays samt XML-elementer foldes sammen, så store filer kan læses som en disposition. Store filer forbliver hurtige efter den første ændring, og konsollen i GitHub-versionen viser den mappe, et script starter i.", ["Foldning", "Ydelse", "Mac"]),
         "v2.2.3": ("Fuldførelse af funktionskald og justerbar konsol", "MeierScript-funktioner fuldføres som kald med deres parametre, og Retur kan acceptere det valgte forslag som i Xcode. I Mac-versionen fra GitHub kan konsollens output og fejl ændres i størrelse og bliver ved linjestarten, og en lang indsat tekst vises med det samme.", ["Fuldførelse", "Konsol", "Mac"]),
@@ -803,6 +810,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v2.2.6": ("Sélecteur de polices sur iPhone et iPad et fenêtres Mac stables", "Sur iPhone et iPad, Sélectionner… à côté de la police de l’éditeur ouvre le sélecteur de polices du système, avec aperçu, recherche et tous les styles. Sur Mac, l’app ne quitte plus sous macOS 26 quand une fenêtre étroite déplace des boutons de la barre d’outils dans le menu de débordement.", ["Polices", "Stabilité", "iPhone"]),
         "v2.2.5": ("Repli sur iPhone et iPad et espaces ignorés dans la comparaison", "Sur iPhone et iPad, les structures JSON et XML se replient, aussi au clavier d’iPad et avec VoiceOver. Comparer et le panneau Git peuvent ignorer les espaces, placer le curseur ne fait plus défiler le texte sur iPhone et iPad, et l’app se lance de nouveau sous macOS 14.", ["Repli", "Comparer", "iPhone"]),
         "v2.2.4": ("Repli JSON et XML et gros fichiers plus rapides", "Sur Mac, les objets et tableaux JSON ainsi que les éléments XML se replient, pour lire les gros fichiers comme un plan. Les gros fichiers restent réactifs après la première modification, et la console de la version GitHub affiche le dossier de démarrage d’un script.", ["Repli", "Performances", "Mac"]),
         "v2.2.3": ("Complétion des appels de fonctions et console redimensionnable", "Les fonctions MeierScript se complètent en appels avec leurs paramètres, et Retour peut accepter la suggestion sélectionnée comme dans Xcode. Dans la version Mac de GitHub, la sortie et les erreurs de la console se redimensionnent et restent au début des lignes, et un long texte collé s’affiche immédiatement.", ["Complétion", "Console", "Mac"]),
@@ -856,6 +864,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v2.2.6": ("Selector de fuentes en iPhone y iPad y ventanas de Mac estables", "En iPhone y iPad, Seleccionar… junto a la fuente del editor abre el selector de fuentes del sistema, con vista previa, búsqueda y todos los estilos. En Mac, la app ya no se cierra en macOS 26 cuando una ventana estrecha mueve botones de la barra de herramientas al menú de desbordamiento.", ["Fuentes", "Estabilidad", "iPhone"]),
         "v2.2.5": ("Plegado en iPhone y iPad e ignorar espacios al comparar", "En iPhone y iPad, las estructuras JSON y XML se pueden contraer, también con el teclado del iPad y VoiceOver. Comparar y el panel Git pueden ignorar los espacios en blanco, colocar el cursor ya no desplaza el texto en iPhone y iPad, y la app vuelve a abrirse en macOS 14.", ["Plegado", "Comparar", "iPhone"]),
         "v2.2.4": ("Plegado de JSON y XML y archivos grandes más rápidos", "En Mac, los objetos y arrays JSON y los elementos XML se pueden plegar para leer los archivos grandes como un esquema. Los archivos grandes siguen fluidos tras el primer cambio, y la consola de la versión de GitHub muestra la carpeta en la que se inicia un script.", ["Plegado", "Rendimiento", "Mac"]),
         "v2.2.3": ("Completado de llamadas a funciones y consola redimensionable", "Las funciones de MeierScript se completan como llamadas con sus parámetros, y Retorno puede aceptar la sugerencia seleccionada como en Xcode. En la versión para Mac de GitHub, la salida y los errores de la consola se pueden redimensionar y se quedan al inicio de las líneas, y un texto largo pegado aparece de inmediato.", ["Completado", "Consola", "Mac"]),
@@ -909,6 +918,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v2.2.6": ("iPhoneとiPadのフォントピッカーと安定したMacウインドウ", "iPhoneとiPadで、エディタのフォントの横にある「選択してください…」から、プレビューと検索付きでどのスタイルも選べるシステムのフォントピッカーを開けます。Macでは、macOS 26でウインドウを狭くしてツールバーのボタンがオーバーフローメニューに移ってもAppが終了しなくなりました。", ["フォント", "安定性", "iPhone"]),
         "v2.2.5": ("iPhoneとiPadでの折りたたみと比較での空白無視", "iPhoneとiPadでJSONとXMLの構造を折りたためるようになり、iPadのキーボードやVoiceOverからも操作できます。比較とGitパネルで空白を無視でき、iPhoneとiPadでカーソルを置いてもテキストがスクロールせず、macOS 14でも再び起動します。", ["折りたたみ", "比較", "iPhone"]),
         "v2.2.4": ("JSONとXMLの折りたたみと大きなファイルの高速化", "MacでJSONのオブジェクトや配列、XMLの要素を折りたためるようになり、大きなファイルをアウトラインのように読めます。大きなファイルは最初の変更の後も軽快なままで、GitHub版のコンソールにはスクリプトの開始フォルダが表示されます。", ["折りたたみ", "パフォーマンス", "Mac"]),
         "v2.2.3": ("関数呼び出しの補完とサイズ変更できるコンソール", "MeierScriptの関数が引数付きの呼び出しとして補完され、Xcodeと同様にReturnキーで選択中の候補を確定できます。GitHub版のMacアプリでは、コンソールの出力とエラーの領域をサイズ変更でき、行の先頭に留まります。長いテキストをペーストするとすぐに表示されます。", ["補完", "コンソール", "Mac"]),
@@ -962,6 +972,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v2.2.6": ("iPhone 和 iPad 上的字体选择器，Mac 窗口更稳定", "在 iPhone 和 iPad 上，编辑器字体旁的“选择…”会打开系统字体选择器，支持预览、搜索和所有字体样式。在 Mac 上，macOS 26 中窗口变窄导致工具栏按钮移入溢出菜单时，App 不再退出。", ["字体", "稳定性", "iPhone"]),
         "v2.2.5": ("iPhone 和 iPad 上的折叠，比较时忽略空白", "在 iPhone 和 iPad 上可以折叠 JSON 和 XML 结构，也支持 iPad 键盘和 VoiceOver。比较和 Git 面板可以忽略空白，在 iPhone 和 iPad 上放置光标不再滚动文本，App 在 macOS 14 上也能重新启动。", ["折叠", "比较", "iPhone"]),
         "v2.2.4": ("JSON 与 XML 折叠，大文件更快", "在 Mac 上，JSON 对象和数组以及 XML 元素可以折叠，大文件读起来就像大纲。大文件在首次修改后依然流畅，GitHub 版的控制台会显示脚本启动时所在的文件夹。", ["折叠", "性能", "Mac"]),
         "v2.2.3": ("函数调用补全与可调整大小的控制台", "MeierScript 函数会补全为带参数的调用，Return 键可以像在 Xcode 中一样接受选中的建议。在 GitHub 版 Mac App 中，控制台的输出和错误面板可以调整大小并保持在行首，粘贴的长文本也会立即显示。", ["补全", "控制台", "Mac"]),
@@ -1477,11 +1488,14 @@ def update_readme_roadmap_windows(readme: str, tag: str, section: str = "") -> s
         f"### Next (v{major}.{minor}.{next_patch})",
         readme,
     )
+    # The Now bullet once read "delivers …", which this pattern did not
+    # match, so the README kept describing v1.4.0. Any green Now bullet is
+    # rewritten to the current release.
     readme = re.sub(
-        r"(?m)^- !\[v[^]]+\]\(https://img\.shields\.io/badge/v[^)]+-22C55E\?style=flat-square\) focuses on .*$",
-        (
+        r"(?m)^- !\[v[^]]+\]\(https://img\.shields\.io/badge/v[^)]+-22C55E\?style=flat-square\) .*$",
+        lambda _: (
             f"- ![v{major}.{minor}.{patch}](https://img.shields.io/badge/v{major}.{minor}.{patch}-22C55E?style=flat-square) "
-            f"focuses on {release_timeline_description(section)}"
+            f"{release_timeline_description(section)}"
         ),
         readme,
     )

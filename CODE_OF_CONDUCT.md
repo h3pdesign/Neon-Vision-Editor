@@ -47,7 +47,9 @@ context, and avoid deciding significant conflicts of interest where practical.
 ## Reporting concerns
 
 Conduct concerns may be reported privately to
-[`contact@apps-h3p.com`](mailto:contact@apps-h3p.com). Reports
+[`appsupport@hpedersen.de`](mailto:appsupport@hpedersen.de), or publicly by
+opening an issue at
+[GitHub Issues](https://github.com/h3pdesign/Neon-Vision-Editor/issues). Reports
 will be handled with appropriate discretion. Please include the relevant
 project space, links or other evidence, and any immediate safety or access
 concerns when it is safe to do so.

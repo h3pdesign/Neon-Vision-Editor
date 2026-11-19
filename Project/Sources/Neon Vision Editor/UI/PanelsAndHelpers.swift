@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.2.5",
-            subtitle: "Release highlights for v2.2.5.",
+            title: "What’s New in v2.2.6",
+            subtitle: "Release highlights for v2.2.6.",
             bullets: [
-                "Folding: On iPhone and iPad, JSON objects and arrays and XML elements can be folded with a tap next to the line number.",
-                "Ignore Whitespace: Compare and the Git panel can ignore whitespace, so changes in indentation or spacing alone stay hidden.",
-                "macOS 14: On macOS 14 Sonoma, the app opens again instead of crashing at launch.",
-                "Cursor Placement: On iPhone and iPad, placing the cursor no longer scrolls the text under your finger.",
-                "VoiceOver: With VoiceOver on iPhone and iPad, Fold, Unfold, Fold All and Unfold All are in the Actions rotor.",
-                "Fold All: On an iPad keyboard, Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→) work as on the Mac."
+                "Window Resizing: On the Mac, the app no longer quits when a narrow window moves toolbar buttons into the overflow menu.",
+                "Font Picker: On iPhone and iPad, Choose… next to the editor font opens the system font picker, with previews and search.",
+                "Font Faces: On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font.",
+                "Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now.",
+                "Window Resizing: On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…",
+                "Function Completion: On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4612,6 +4612,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.2.6", version: "2.2.6", date: "2026-11-19", highlights: [
+            "On the Mac, the app no longer quits when a narrow window moves toolbar buttons into the overflow menu.",
+            "On iPhone and iPad, Choose… next to the editor font opens the system font picker, with previews and search.",
+            "On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font."
+        ]),
         Release(id: "2.2.5", version: "2.2.5", date: "2026-11-18", highlights: [
             "On iPhone and iPad, JSON objects and arrays and XML elements can be folded with a tap next to the line number.",
             "Compare and the Git panel can ignore whitespace, so changes in indentation or spacing alone stay hidden.",

@@ -4617,6 +4617,11 @@ struct InAppChangelogView: View {
             "On iPhone and iPad, Choose… next to the editor font opens the system font picker, with previews and search.",
             "On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font."
         ]),
+        Release(id: "2.2.5", version: "2.2.5", date: "2026-11-18", highlights: [
+            "On iPhone and iPad, JSON objects and arrays and XML elements can be folded with a tap next to the line number.",
+            "Compare and the Git panel can ignore whitespace, so changes in indentation or spacing alone stay hidden.",
+            "On macOS 14 Sonoma, the app opens again instead of crashing at launch."
+        ]),
         Release(id: "2.2.4", version: "2.2.4", date: "2026-11-14", highlights: [
             "On the Mac, JSON objects and arrays and XML elements can be folded, so large files read as an outline.",
             "Large files stay responsive while you edit and scroll after the first change.",

@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.2.6] - 2026-11-19
+
 ### Why Upgrade
 
 - On the Mac, the app no longer quits when a narrow window moves toolbar buttons into the overflow menu.

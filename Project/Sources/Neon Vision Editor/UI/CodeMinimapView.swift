@@ -280,6 +280,12 @@ private nonisolated func codeMinimapCommentText(
             } else if character == quote {
                 openQuote = nil
             }
+        } else if character == "'", !quoteCharacters.contains("'"),
+                  let literalEnd = codeMinimapCharacterLiteralEnd(in: trimmedLine, from: index) {
+            // Step over a character literal such as '"' so its quote
+            // doesn't open a string that hides a real trailing comment.
+            index = literalEnd
+            continue
         } else if quoteCharacters.contains(character) {
             openQuote = character
         } else if trailingPrefixes.contains(where: { trimmedLine[index...].hasPrefix($0) }) {
@@ -288,6 +294,23 @@ private nonisolated func codeMinimapCommentText(
         index = trimmedLine.index(after: index)
     }
     return nil
+}
+
+/// The index just past a `'X'` or `'\X'` character literal that starts at
+/// `start`, or nil when the quote does not open one (e.g. a Rust lifetime).
+private nonisolated func codeMinimapCharacterLiteralEnd(
+    in line: String,
+    from start: String.Index
+) -> String.Index? {
+    var index = line.index(after: start)
+    guard index < line.endIndex else { return nil }
+    if line[index] == "\\" {
+        index = line.index(after: index)
+        guard index < line.endIndex else { return nil }
+    }
+    index = line.index(after: index)
+    guard index < line.endIndex, line[index] == "'" else { return nil }
+    return line.index(after: index)
 }
 
 private nonisolated func codeMinimapMarkerKind(

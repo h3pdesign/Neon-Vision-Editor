@@ -814,6 +814,12 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         )
         XCTAssertEqual(swift.markers.map(\.kind), [.property, .section, .section])
 
+        let c = buildCodeMinimapSnapshot(
+            text: "char q = '\"'; // TODO: after a quote character\nchar e = '\\''; // FIXME: after an escaped quote",
+            language: "c"
+        )
+        XCTAssertEqual(c.markers.map(\.kind), [.section, .section])
+
         let python = buildCodeMinimapSnapshot(
             text: "label = '# TODO: not a comment'\nvalue = \"#\"  # FIXME: real",
             language: "python"

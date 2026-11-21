@@ -251,16 +251,38 @@ private nonisolated func codeMinimapCommentPrefixes(language: String) -> [String
     }
 }
 
+/// The comment part of a trimmed line: the whole line when it starts with a
+/// comment prefix, the text after a trailing comment otherwise, or nil.
+/// A bare `*` only counts at the start, since mid-line it is usually code.
+private nonisolated func codeMinimapCommentText(
+    in trimmedLine: String,
+    commentPrefixes: [String]
+) -> Substring? {
+    if commentPrefixes.contains(where: { trimmedLine.hasPrefix($0) }) {
+        return Substring(trimmedLine)
+    }
+    let trailingStarts = commentPrefixes
+        .filter { $0 != "*" }
+        .compactMap { trimmedLine.range(of: $0)?.lowerBound }
+    guard let start = trailingStarts.min() else { return nil }
+    return trimmedLine[start...]
+}
+
 private nonisolated func codeMinimapMarkerKind(
     for trimmedLine: String,
     commentPrefixes: [String]
 ) -> CodeMinimapMarkerKind {
     let upper = trimmedLine.uppercased()
-    if upper.contains("MARK:") ||
-        upper.contains("TODO:") ||
-        upper.contains("FIXME:") ||
-        upper.contains("SECTION") ||
-        upper.contains("#PRAGMA MARK") {
+    if upper.hasPrefix("#PRAGMA MARK") {
+        return .section
+    }
+    // Only comments become section markers, so code such as `sectionCount`
+    // or a "TODO:" inside a string literal stays an ordinary code line.
+    if let commentText = codeMinimapCommentText(in: upper, commentPrefixes: commentPrefixes),
+       commentText.contains("MARK:") ||
+        commentText.contains("TODO:") ||
+        commentText.contains("FIXME:") ||
+        commentText.contains("SECTION") {
         return .section
     }
     if commentPrefixes.contains(where: { trimmedLine.hasPrefix($0) }) {

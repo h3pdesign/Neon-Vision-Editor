@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-11-14 (v2.2.4 release-aligned architecture)
+Last updated: 2026-11-19 (v2.2.6 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -9,21 +9,20 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
-### v2.2.4 (2026-11-14)
+### v2.2.6 (2026-11-19)
 
-- In the Mac version from GitHub, the run console shows the folder a script starts in.
-- On the Mac, Fold All and Unfold All work from the Editor menu, and a folded block opens with a click on its ⋯ marker.
-- On the Mac, JSON5 files with single-quoted strings and XML tags that span several lines fold correctly.
-- Editing a large file no longer makes later scrolling, clicking and typing slower: after the first edit, the editor found positions in the file by reading it from the start each time, and now starts from the nearest of evenly spaced markers instead.
+- On iPhone and iPad, the system font picker opens on the editor font you use now.
+- On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu. This happened on macOS 26 when resizing a window ([#1055](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1055)).
+- On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret. Before, only functions within about 1,200 characters above the caret were found.
 
-### v2.2.3 (2026-11-13)
+### v2.2.5 (2026-11-18)
 
-- In the Mac version from GitHub, the run console's Output and Errors panes can be resized by dragging the divider between them.
-- Console output stays scrolled to the start of its lines after each run instead of jumping to the middle.
-- On the Mac, Text Replacements with punctuation shortcuts or several lines now appear in the word list.
-- In the Mac version from GitHub, the run console's Output and Errors panes stay scrolled to the start of their lines after each run instead of jumping to the middle of long lines.
-- On the Mac, pasting or dropping text longer than the window now shows the pasted lines at the caret right away instead of an empty editor until you scroll.
-- On the Mac, Text Replacement shortcuts that contain punctuation, such as “:beta:” or “=>”, now list their phrase like other shortcuts do (#994).
+- On iPhone and iPad, placing the cursor no longer scrolls the text under your finger.
+- With VoiceOver on iPhone and iPad, Fold, Unfold, Fold All and Unfold All are in the Actions rotor.
+- On an iPad keyboard, Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→) work as on the Mac.
+- On the Mac, the integrated terminal starts without a stray `%` line and without a wrapped banner: zsh now gets the panel's real width, and the banner is a short "zsh in <folder>" line with the home folder shown as `~`. iCloud Drive folders show by name instead of their Mobile Documents path.
+- On iPhone and iPad, tapping or dragging to place the cursor no longer scrolls the text under your finger, so a second tap on the same line lands where you aim instead of jumping elsewhere ([#1036](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1036), [#770](https://github.com/h3pdesign/Neon-Vision-Editor/issues/770)).
+- On macOS 14 Sonoma, the app no longer crashes as soon as it opens ([#1042](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1042)).
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

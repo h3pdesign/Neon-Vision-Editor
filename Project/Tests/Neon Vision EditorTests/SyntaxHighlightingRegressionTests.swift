@@ -803,6 +803,24 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertNotEqual(python.markers.first?.kind, .section)
     }
 
+    func testCodeMinimapIgnoresCommentPrefixesInsideStrings() {
+        let swift = buildCodeMinimapSnapshot(
+            text: """
+            let url = "https://example.com/TODO:"
+            let quoted = "say \\"// MARK: no\\"" // FIXME: real
+            let c = 'x' // TODO: after a character literal
+            """,
+            language: "swift"
+        )
+        XCTAssertEqual(swift.markers.map(\.kind), [.property, .section, .section])
+
+        let python = buildCodeMinimapSnapshot(
+            text: "label = '# TODO: not a comment'\nvalue = \"#\"  # FIXME: real",
+            language: "python"
+        )
+        XCTAssertEqual(python.markers.map(\.kind), [.code, .section])
+    }
+
     func testCodeMinimapViewportTracksVisibleOffset() {
         let viewport = codeMinimapViewport(
             visibleY: 450,

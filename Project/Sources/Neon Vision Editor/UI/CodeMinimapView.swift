@@ -261,11 +261,33 @@ private nonisolated func codeMinimapCommentText(
     if commentPrefixes.contains(where: { trimmedLine.hasPrefix($0) }) {
         return Substring(trimmedLine)
     }
-    let trailingStarts = commentPrefixes
-        .filter { $0 != "*" }
-        .compactMap { trimmedLine.range(of: $0)?.lowerBound }
-    guard let start = trailingStarts.min() else { return nil }
-    return trimmedLine[start...]
+    let trailingPrefixes = commentPrefixes.filter { $0 != "*" }
+    guard trailingPrefixes.contains(where: { trimmedLine.contains($0) }) else { return nil }
+    // Skip prefixes inside string literals, such as the `//` of a URL.
+    // Single quotes delimit strings only in `#`-comment languages; elsewhere
+    // they are character literals or lifetimes and would hide real comments.
+    let quoteCharacters: Set<Character> = commentPrefixes.contains("#") ? ["\"", "'"] : ["\""]
+    var openQuote: Character?
+    var isEscaped = false
+    var index = trimmedLine.startIndex
+    while index < trimmedLine.endIndex {
+        let character = trimmedLine[index]
+        if let quote = openQuote {
+            if isEscaped {
+                isEscaped = false
+            } else if character == "\\" {
+                isEscaped = true
+            } else if character == quote {
+                openQuote = nil
+            }
+        } else if quoteCharacters.contains(character) {
+            openQuote = character
+        } else if trailingPrefixes.contains(where: { trimmedLine[index...].hasPrefix($0) }) {
+            return trimmedLine[index...]
+        }
+        index = trimmedLine.index(after: index)
+    }
+    return nil
 }
 
 private nonisolated func codeMinimapMarkerKind(

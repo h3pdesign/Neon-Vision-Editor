@@ -286,7 +286,8 @@ private nonisolated func codeMinimapCommentText(
             // doesn't open a string that hides a real trailing comment.
             index = literalEnd
             continue
-        } else if quoteCharacters.contains(character) {
+        } else if quoteCharacters.contains(character),
+                  !(character == "'" && codeMinimapIsApostrophe(in: trimmedLine, at: index)) {
             openQuote = character
         } else if trailingPrefixes.contains(where: { trimmedLine[index...].hasPrefix($0) }) {
             return trimmedLine[index...]
@@ -294,6 +295,21 @@ private nonisolated func codeMinimapCommentText(
         index = trimmedLine.index(after: index)
     }
     return nil
+}
+
+/// True when the single quote at `index` sits inside a word, as in YAML's
+/// `title: don't panic`, so it is an apostrophe rather than a string opener.
+/// One-letter string prefixes such as Python's `f'…'` or `r'…'` still open.
+private nonisolated func codeMinimapIsApostrophe(in line: String, at index: String.Index) -> Bool {
+    guard index > line.startIndex else { return false }
+    let previousIndex = line.index(before: index)
+    let previous = line[previousIndex]
+    guard previous.isLetter || previous.isNumber else { return false }
+    let isPrefixLetter = "fFrRbBuU".contains(previous)
+    guard isPrefixLetter else { return true }
+    guard previousIndex > line.startIndex else { return false }
+    let beforePrefix = line[line.index(before: previousIndex)]
+    return beforePrefix.isLetter || beforePrefix.isNumber
 }
 
 /// The index just past a `'X'` or `'\X'` character literal that starts at

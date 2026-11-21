@@ -821,10 +821,22 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertEqual(c.markers.map(\.kind), [.section, .section])
 
         let python = buildCodeMinimapSnapshot(
-            text: "label = '# TODO: not a comment'\nvalue = \"#\"  # FIXME: real",
+            text: "label = '# TODO: not a comment'\nvalue = \"#\"  # FIXME: real\npattern = r'# MARK: raw string'",
             language: "python"
         )
-        XCTAssertEqual(python.markers.map(\.kind), [.code, .section])
+        XCTAssertEqual(python.markers.map(\.kind), [.code, .section, .code])
+
+        let escaped = buildCodeMinimapSnapshot(
+            text: "let quoted = \"say \\\"// MARK: no\\\" here\"",
+            language: "swift"
+        )
+        XCTAssertEqual(escaped.markers.map(\.kind), [.property])
+
+        let yaml = buildCodeMinimapSnapshot(
+            text: "title: don't panic # TODO: update\nnote: '# TODO: quoted, not a comment'",
+            language: "yaml"
+        )
+        XCTAssertEqual(yaml.markers.map(\.kind), [.section, .code])
     }
 
     func testCodeMinimapViewportTracksVisibleOffset() {

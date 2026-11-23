@@ -261,11 +261,72 @@ private nonisolated func codeMinimapCommentText(
     if commentPrefixes.contains(where: { trimmedLine.hasPrefix($0) }) {
         return Substring(trimmedLine)
     }
-    let trailingStarts = commentPrefixes
-        .filter { $0 != "*" }
-        .compactMap { trimmedLine.range(of: $0)?.lowerBound }
-    guard let start = trailingStarts.min() else { return nil }
-    return trimmedLine[start...]
+    let trailingPrefixes = commentPrefixes.filter { $0 != "*" }
+    guard trailingPrefixes.contains(where: { trimmedLine.contains($0) }) else { return nil }
+    // Skip prefixes inside string literals, such as the `//` of a URL.
+    // Single quotes delimit strings only in `#`-comment languages; elsewhere
+    // they are character literals or lifetimes and would hide real comments.
+    let quoteCharacters: Set<Character> = commentPrefixes.contains("#") ? ["\"", "'"] : ["\""]
+    var openQuote: Character?
+    var isEscaped = false
+    var index = trimmedLine.startIndex
+    while index < trimmedLine.endIndex {
+        let character = trimmedLine[index]
+        if let quote = openQuote {
+            if isEscaped {
+                isEscaped = false
+            } else if character == "\\" {
+                isEscaped = true
+            } else if character == quote {
+                openQuote = nil
+            }
+        } else if character == "'", !quoteCharacters.contains("'"),
+                  let literalEnd = codeMinimapCharacterLiteralEnd(in: trimmedLine, from: index) {
+            // Step over a character literal such as '"' so its quote
+            // doesn't open a string that hides a real trailing comment.
+            index = literalEnd
+            continue
+        } else if quoteCharacters.contains(character),
+                  !(character == "'" && codeMinimapIsApostrophe(in: trimmedLine, at: index)) {
+            openQuote = character
+        } else if trailingPrefixes.contains(where: { trimmedLine[index...].hasPrefix($0) }) {
+            return trimmedLine[index...]
+        }
+        index = trimmedLine.index(after: index)
+    }
+    return nil
+}
+
+/// True when the single quote at `index` sits inside a word, as in YAML's
+/// `title: don't panic`, so it is an apostrophe rather than a string opener.
+/// One-letter string prefixes such as Python's `f'…'` or `r'…'` still open.
+private nonisolated func codeMinimapIsApostrophe(in line: String, at index: String.Index) -> Bool {
+    guard index > line.startIndex else { return false }
+    let previousIndex = line.index(before: index)
+    let previous = line[previousIndex]
+    guard previous.isLetter || previous.isNumber else { return false }
+    let isPrefixLetter = "fFrRbBuU".contains(previous)
+    guard isPrefixLetter else { return true }
+    guard previousIndex > line.startIndex else { return false }
+    let beforePrefix = line[line.index(before: previousIndex)]
+    return beforePrefix.isLetter || beforePrefix.isNumber
+}
+
+/// The index just past a `'X'` or `'\X'` character literal that starts at
+/// `start`, or nil when the quote does not open one (e.g. a Rust lifetime).
+private nonisolated func codeMinimapCharacterLiteralEnd(
+    in line: String,
+    from start: String.Index
+) -> String.Index? {
+    var index = line.index(after: start)
+    guard index < line.endIndex else { return nil }
+    if line[index] == "\\" {
+        index = line.index(after: index)
+        guard index < line.endIndex else { return nil }
+    }
+    index = line.index(after: index)
+    guard index < line.endIndex, line[index] == "'" else { return nil }
+    return line.index(after: index)
 }
 
 private nonisolated func codeMinimapMarkerKind(

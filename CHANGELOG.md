@@ -6,6 +6,17 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Why Upgrade
+
+- Line commands such as Join Lines, Delete Line, Toggle Comment and Sort Lines change only the lines you selected. Before, they could rewrite the whole document.
+- The Copy button on Markdown preview code blocks works, and single quotes in those code blocks show correctly.
+- On the Mac, closing restored tabs no longer quits the app, and folders you expanded in the project sidebar stay expanded when you open a file.
+
+### Highlights
+
+- Toggle Comment (⌘/), Duplicate Line (⌥⇧⌘↓) and Delete Line (⇧⌘K) in the Mac Editor menu and on the iPad keyboard.
+- The table of contents sidebar can sit on the right of the editor on the Mac, and its text size can be changed.
+
 ### Added
 
 - On the Mac, Settings > Layout & Status Bar can place the table of contents sidebar on the right of the editor ([#1087](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1087)).
@@ -19,15 +30,24 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - The Copy button on a code block in the Markdown preview copies the code to the clipboard. Before, it did nothing ([#1081](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1081)).
 - A single quote in a Markdown preview code block shows as `'`, not `&#39;` ([#1082](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1082)).
 - On the Mac, closing restored tabs one after another no longer quits the app, and closing the last window keeps its documents from reopening at the next launch ([#1085](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1085)).
+- On the Mac, folders you expanded in the project sidebar stay expanded when you open a file from it. Before, the file opened in a new tab whose sidebar showed every folder collapsed except the one holding the file.
 - Join Lines joins the selected lines, or the current line with the next one. Before, it joined the whole document into one line and dropped blank lines.
 - Duplicate Line, Delete Line, Toggle Comment, Convert to Uppercase or Lowercase and Sort Lines in the command palette change only the selected lines or the current line. Before, they changed the whole document.
 - Trim Trailing Whitespace keeps indentation and Windows line endings. Before, it also removed spaces at the start of each line.
-- The minimap marks only comments as section markers. Before, code lines such as `let sectionCount = 3` or a string containing "TODO:" showed up as section markers. Trailing comments such as `value = 1 // TODO: check` still count.
-- The minimap ignores comment markers inside strings, so a URL such as `"https://example.com/TODO:"` or a Python string `'# TODO:'` no longer shows up as a section marker.
+- The minimap marks only comments as section markers. Before, code lines such as `let sectionCount = 3` or a string containing a marker word such as FIXME showed up as section markers. Trailing comments such as `value = 1 // FIXME: check` still count.
+- The minimap ignores comment markers inside strings, so a URL such as `"https://example.com/FIXME:"` or a Python string `'# FIXME:'` no longer shows up as a section marker.
+
+### Breaking changes
+
+- None.
+
+### Migration
+
+- No migration required. Existing documents, sessions, and preferences are preserved. On the Mac, the project sidebar starts with its folders collapsed once after the update.
 
 ### Maintenance
 
-- Development version 2.2.7 (build 1172).
+- Development version 2.2.7 (build 1173).
 - develop now includes the v2.2.6 release commit from main, so the next release branch merges cleanly.
 
 ## [v2.2.6] - 2026-11-19

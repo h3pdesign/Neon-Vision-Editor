@@ -140,6 +140,8 @@ struct NeonSettingsView: View {
     @AppStorage("EditorVimModeEnabled") private var vimModeEnabled: Bool = false
     @AppStorage("EditorVimInterceptionEnabled") private var vimInterceptionEnabled: Bool = false
     @AppStorage("SettingsProjectNavigatorPlacement") private var projectNavigatorPlacementRaw: String = ContentView.ProjectNavigatorPlacement.trailing.rawValue
+    @AppStorage("SettingsTOCSidebarPlacement") private var tocSidebarPlacementRaw: String = ContentView.ProjectNavigatorPlacement.leading.rawValue
+    @AppStorage(SidebarView.fontSizePreferenceKey) private var tocSidebarFontSize: Double = SidebarView.defaultFontSize
     @AppStorage("SettingsProjectSidebarDisclosureSymbolStyle") private var projectSidebarDisclosureSymbolStyleRaw: String = "chevron"
     @AppStorage("SettingsPerformancePreset") private var performancePresetRaw: String = ContentView.PerformancePreset.balanced.rawValue
     @AppStorage("SettingsLargeFileSyntaxHighlighting") private var largeFileSyntaxHighlightingRaw: String = "minimal"
@@ -3521,6 +3523,8 @@ struct NeonSettingsView: View {
                 }
                 .pickerStyle(.segmented)
 
+                tocSidebarFontSizeStepper
+
                 iOSLabeledRow(LocalizedStringKey(localized("Disclosure Icon"))) {
                     Picker("", selection: $projectSidebarDisclosureSymbolStyleRaw) {
                         ForEach(ProjectSidebarDisclosureSymbolStyleOption.allCases) { style in
@@ -3577,6 +3581,13 @@ struct NeonSettingsView: View {
             .padding(UI.groupPadding)
         }
 #endif
+    }
+
+    /// Text size of the table of contents sidebar, separate from the project navigator (#1086).
+    private var tocSidebarFontSizeStepper: some View {
+        Stepper(value: $tocSidebarFontSize, in: SidebarView.fontSizeRange, step: 1) {
+            Text(localized("Table of Contents Text Size: %lld", Int64(tocSidebarFontSize.rounded())))
+        }
     }
 
     private var statusBarSettingsContent: some View {
@@ -3645,6 +3656,14 @@ struct NeonSettingsView: View {
                         Text("Right").tag(ContentView.ProjectNavigatorPlacement.trailing.rawValue)
                     }
                     .pickerStyle(.segmented)
+
+                    Picker("Table of Contents Position", selection: $tocSidebarPlacementRaw) {
+                        Text("Left").tag(ContentView.ProjectNavigatorPlacement.leading.rawValue)
+                        Text("Right").tag(ContentView.ProjectNavigatorPlacement.trailing.rawValue)
+                    }
+                    .pickerStyle(.segmented)
+
+                    tocSidebarFontSizeStepper
 
                     HStack(alignment: .center, spacing: UI.space12) {
                         Text(localized("Disclosure Icon"))

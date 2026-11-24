@@ -27,6 +27,18 @@ final class ProjectTreePerformanceTests: XCTestCase {
         XCTAssertEqual(result.entries, previous.entries)
     }
 
+    func testTableOfContentsTextSizeScalesEntriesAndKeepsDefault() {
+        XCTAssertEqual(SidebarView.defaultFontSize, 13)
+        XCTAssertEqual(SidebarView.scaledFontSize(13, baseSize: 13), 13, "The default keeps the original sizes")
+        XCTAssertEqual(SidebarView.scaledFontSize(12.5, baseSize: 13), 12.5)
+        XCTAssertEqual(SidebarView.scaledFontSize(13, baseSize: 10), 10)
+        XCTAssertLessThan(SidebarView.scaledFontSize(12, baseSize: 10), SidebarView.scaledFontSize(13, baseSize: 10),
+                          "Smaller sizes keep the heading hierarchy")
+        XCTAssertEqual(SidebarView.scaledFontSize(13, baseSize: 2), SidebarView.scaledFontSize(13, baseSize: 9),
+                       "Out-of-range preferences clamp to the supported range")
+        XCTAssertEqual(SidebarView.scaledFontSize(13, baseSize: 40), SidebarView.scaledFontSize(13, baseSize: 18))
+    }
+
     func testInitialProjectTreeOnlyLoadsRootLevelChildren() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("project-tree-\(UUID().uuidString)", isDirectory: true)

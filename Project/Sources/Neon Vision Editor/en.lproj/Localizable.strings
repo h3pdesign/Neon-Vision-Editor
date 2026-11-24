@@ -2114,3 +2114,5 @@
 "Window Resizing: On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…" = "Window Resizing: On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…";
 "On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret…" = "On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret…";
 "Function Completion: On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret…" = "Function Completion: On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret…";
+"Table of Contents Position" = "Table of Contents Position";
+"Table of Contents Text Size: %lld" = "Table of Contents Text Size: %lld";

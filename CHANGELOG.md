@@ -10,19 +10,23 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 - On the Mac, Settings > Layout & Status Bar can place the table of contents sidebar on the right of the editor ([#1087](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1087)).
 - Settings > Layout can make the table of contents text smaller or larger, separately from the project navigator, so more of long headings fits ([#1086](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1086)).
+- Toggle Comment is in the Mac Editor menu and on the iPad keyboard with ⌘/. It uses the comment syntax of the document's language, such as `#` in Python or `<!-- -->` in HTML.
+- More files open with the right syntax highlighting: SCSS and Less, `.cxx` and `.hxx`, JSON Lines and GeoJSON, Xcode storyboards, XIBs and entitlements, and Gemfile, Podfile, Brewfile, Fastfile, Containerfile, Pipfile, `.zshenv` and `.editorconfig`.
 
 ### Fixes
 
 - The Copy button on a code block in the Markdown preview copies the code to the clipboard. Before, it did nothing ([#1081](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1081)).
 - A single quote in a Markdown preview code block shows as `'`, not `&#39;` ([#1082](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1082)).
 - On the Mac, closing restored tabs one after another no longer quits the app, and closing the last window keeps its documents from reopening at the next launch ([#1085](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1085)).
-
+- Join Lines joins the selected lines, or the current line with the next one. Before, it joined the whole document into one line and dropped blank lines.
+- Duplicate Line, Delete Line, Toggle Comment, Convert to Uppercase or Lowercase and Sort Lines in the command palette change only the selected lines or the current line. Before, they changed the whole document.
+- Trim Trailing Whitespace keeps indentation and Windows line endings. Before, it also removed spaces at the start of each line.
 - The minimap marks only comments as section markers. Before, code lines such as `let sectionCount = 3` or a string containing "TODO:" showed up as section markers. Trailing comments such as `value = 1 // TODO: check` still count.
 - The minimap ignores comment markers inside strings, so a URL such as `"https://example.com/TODO:"` or a Python string `'# TODO:'` no longer shows up as a section marker.
 
 ### Maintenance
 
-- Development version 2.2.7 (build 1170).
+- Development version 2.2.7 (build 1171).
 - develop now includes the v2.2.6 release commit from main, so the next release branch merges cleanly.
 
 ## [v2.2.6] - 2026-11-19

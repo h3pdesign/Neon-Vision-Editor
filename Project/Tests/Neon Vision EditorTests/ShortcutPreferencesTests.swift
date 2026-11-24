@@ -84,6 +84,9 @@ final class ShortcutPreferencesTests: XCTestCase {
         XCTAssertTrue(ShortcutPreferences.reservedMobileCommandShortcuts.contains(
             .init(key: "z", modifiers: [.command, .shift])
         ))
+        // Toggle Comment and Delete Line belong to the editor's line commands.
+        XCTAssertTrue(ShortcutPreferences.reservedMobileCommandShortcuts.contains(.init(key: "/", modifiers: [.command])))
+        XCTAssertTrue(ShortcutPreferences.reservedMobileCommandShortcuts.contains(.init(key: "k", modifiers: [.command, .shift])))
     }
 
     func testKeyboardAccessoryActionsUseDefaultsAndIgnoreUnknownValues() {

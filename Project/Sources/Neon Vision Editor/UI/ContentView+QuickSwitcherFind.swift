@@ -982,64 +982,49 @@ extension ContentView {
         )
     }
 
+    /// Line commands edit only the lines the selection touches, in the editor,
+    /// so they keep the selection and register a single undo step.
+    func transformSelectedLines(_ transform: EditorLineTransform) {
+        var userInfo: [String: Any] = [EditorCommandUserInfo.language: currentLanguage]
+        if let documentID = viewModel.selectedTab?.id {
+            userInfo[EditorCommandUserInfo.documentID] = documentID.uuidString
+        }
+#if os(macOS)
+        if let hostWindowNumber {
+            userInfo[EditorCommandUserInfo.windowNumber] = hostWindowNumber
+        }
+#endif
+        NotificationCenter.default.post(
+            name: .transformSelectedLinesRequested,
+            object: transform.rawValue,
+            userInfo: userInfo
+        )
+    }
+
     func duplicateCurrentLine() {
-        guard !requiresMaterializedEditorTransform() else { return }
-        let source = currentContentBinding.wrappedValue
-        let lines = source.components(separatedBy: .newlines)
-        guard !lines.isEmpty else { return }
-        let lastLine = lines.last ?? ""
-        currentContentBinding.wrappedValue = source + "\n" + lastLine
+        transformSelectedLines(.duplicate)
     }
 
     func deleteCurrentLine() {
-        guard !requiresMaterializedEditorTransform() else { return }
-        guard !currentContentBinding.wrappedValue.isEmpty else { return }
-        var lines = currentContentBinding.wrappedValue.components(separatedBy: .newlines)
-        if lines.count > 1 {
-            lines.removeLast()
-            currentContentBinding.wrappedValue = lines.joined(separator: "\n")
-        } else {
-            currentContentBinding.wrappedValue = ""
-        }
+        transformSelectedLines(.delete)
     }
 
     func toggleLineComment() {
-        guard !requiresMaterializedEditorTransform() else { return }
-        let source = currentContentBinding.wrappedValue
-        let commentSymbols: [String: String] = [
-            "swift": "//", "python": "#", "javascript": "//", "typescript": "//",
-            "php": "//", "java": "//", "kotlin": "//", "go": "//", "ruby": "#",
-            "rust": "//", "c": "//", "cpp": "//", "csharp": "//", "objective-c": "//",
-            "bash": "#", "zsh": "#", "sql": "--", "html": "<!--", "css": "/*"
-        ]
-        let sym = commentSymbols[singleLanguage] ?? "//"
-        var lines = source.components(separatedBy: .newlines)
-        let allCommented = lines.allSatisfy { $0.trimmingCharacters(in: .whitespaces).hasPrefix(sym) }
-        for i in lines.indices {
-            let trimmed = lines[i].trimmingCharacters(in: .whitespaces)
-            if allCommented {
-                if let range = lines[i].range(of: sym) {
-                    lines[i].removeSubrange(range)
-                }
-            } else {
-                if !trimmed.hasPrefix(sym) {
-                    let leadingWS = lines[i].prefix { $0.isWhitespace }
-                    lines[i] = leadingWS + sym + " " + lines[i].dropFirst(leadingWS.count)
-                }
-            }
-        }
-        currentContentBinding.wrappedValue = lines.joined(separator: "\n")
+        transformSelectedLines(.toggleComment)
     }
 
     func convertSelectionCase(to target: CaseConverter) {
-        guard !requiresMaterializedEditorTransform() else { return }
-        let source = currentContentBinding.wrappedValue
-        currentContentBinding.wrappedValue = target == .upper ? source.uppercased() : source.lowercased()
+        transformSelectedLines(target == .upper ? .uppercase : .lowercase)
     }
 
     enum CaseConverter { case upper, lower }
 
+    /// Sorts the selected lines, or the whole document without a selection.
     func sortSelectedLines() {
+        if hasMultiLineEditorSelection {
+            transformSelectedLines(.sort)
+            return
+        }
         guard !requiresMaterializedEditorTransform() else { return }
         let source = currentContentBinding.wrappedValue
         let lines = source.components(separatedBy: .newlines).sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
@@ -1047,8 +1032,19 @@ extension ContentView {
     }
 
     func sortSelectedLinesUniquely() {
+        if hasMultiLineEditorSelection {
+            transformSelectedLines(.sortUnique)
+            return
+        }
         guard !requiresMaterializedEditorTransform() else { return }
         currentContentBinding.wrappedValue = Self.sortedUniqueLines(currentContentBinding.wrappedValue)
+    }
+
+    private var hasMultiLineEditorSelection: Bool {
+        guard currentSelectionSnapshotTabID == viewModel.selectedTabID,
+              let range = currentSelectionSnapshotRange,
+              range.length > 0 else { return false }
+        return currentSelectionSnapshotText.contains("\n")
     }
 
     static func sortedUniqueLines(_ source: String) -> String {
@@ -1059,17 +1055,21 @@ extension ContentView {
     }
 
     func joinSelectedLines() {
-        guard !requiresMaterializedEditorTransform() else { return }
-        let source = currentContentBinding.wrappedValue
-        let lines = source.components(separatedBy: .newlines).filter { !$0.isEmpty }
-        currentContentBinding.wrappedValue = lines.joined(separator: " ")
+        transformSelectedLines(.join)
     }
 
     func trimTrailingWhitespaceInDocument() {
         guard !requiresMaterializedEditorTransform() else { return }
         let source = currentContentBinding.wrappedValue
-        let lines = source.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }
-        currentContentBinding.wrappedValue = lines.joined(separator: "\n")
+        let trimmed = Self.trimmingTrailingWhitespace(source)
+        guard trimmed != source else { return }
+        currentContentBinding.wrappedValue = trimmed
+    }
+
+    /// Removes spaces and tabs at the end of each line. Indentation and line
+    /// endings stay as they are.
+    static func trimmingTrailingWhitespace(_ source: String) -> String {
+        source.replacingOccurrences(of: "[ \\t]+(?=\\r?\\n|\\r|$)", with: "", options: .regularExpression)
     }
 
     func scheduleWordCountRefresh(for text: String) {

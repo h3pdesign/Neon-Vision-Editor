@@ -141,6 +141,42 @@ final class LanguageDetectorTests: XCTestCase {
         }
     }
 
+    func testPreferredLanguageForCommonProjectFiles() {
+        let cases: [(String, String)] = [
+            ("styles.scss", "css"),
+            ("theme.less", "css"),
+            ("engine.cxx", "cpp"),
+            ("engine.hxx", "cpp"),
+            ("main.c++", "cpp"),
+            ("events.jsonl", "json"),
+            ("map.geojson", "json"),
+            ("site.webmanifest", "json"),
+            ("Main.storyboard", "xml"),
+            ("View.xib", "xml"),
+            ("App.entitlements", "xml"),
+            ("PrivacyInfo.xcprivacy", "xml"),
+            ("server.mts", "typescript"),
+            ("tasks.rake", "ruby"),
+            ("Kit.podspec", "ruby"),
+            ("build.command", "bash"),
+            ("Gemfile", "ruby"),
+            ("Podfile", "ruby"),
+            ("Brewfile", "ruby"),
+            ("Fastfile", "ruby"),
+            ("Containerfile", "dockerfile"),
+            ("Pipfile", "toml"),
+            (".zshenv", "zsh"),
+            (".editorconfig", "ini"),
+            (".gitmodules", "ini")
+        ]
+
+        for (name, expected) in cases {
+            let url = URL(fileURLWithPath: "/tmp/\(name)")
+            let detected = LanguageDetector.shared.preferredLanguage(for: url)
+            XCTAssertEqual(detected, expected, "Expected \(expected) for \(name), got \(String(describing: detected))")
+        }
+    }
+
     func testDetectByContentSamples() {
         let cases: [(String, String)] = [
             ("import SwiftUI\n@main\nstruct App: App {\n var body: some Scene { WindowGroup { Text(\"Hi\") } } }", "swift"),

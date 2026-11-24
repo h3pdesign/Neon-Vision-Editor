@@ -4571,6 +4571,7 @@ extension Notification.Name {
     static let keyboardAccessoryBarVisibilityChanged = Notification.Name("keyboardAccessoryBarVisibilityChanged")
     static let keyboardAccessoryActionRequested = Notification.Name("keyboardAccessoryActionRequested")
     static let moveSelectedLinesRequested = Notification.Name("moveSelectedLinesRequested")
+    static let transformSelectedLinesRequested = Notification.Name("transformSelectedLinesRequested")
     static let editorFoldCommandRequested = Notification.Name("editorFoldCommandRequested")
     static let showUpdaterRequested = Notification.Name("showUpdaterRequested")
     static let showSettingsRequested = Notification.Name("showSettingsRequested")
@@ -4817,6 +4818,7 @@ enum EditorCommandUserInfo {
     nonisolated static let replacementRanges = "replacementRanges"
     nonisolated static let replacementTexts = "replacementTexts"
     nonisolated static let bracketToken = "bracketToken"
+    nonisolated static let language = "language"
     nonisolated static let sourceTextView = "sourceTextView"
     nonisolated static let completionContext = "completionContext"
     nonisolated static let completionNextCharacter = "completionNextCharacter"

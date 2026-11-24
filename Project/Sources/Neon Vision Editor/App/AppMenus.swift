@@ -476,6 +476,24 @@ struct NeonVisionMacAppCommands: Commands {
             .keyboardShortcut(.downArrow, modifiers: [.option])
             .disabled(!hasSavableSelectedTab)
 
+            Button("Toggle Comment") {
+                post(.transformSelectedLinesRequested, object: EditorLineTransform.toggleComment.rawValue)
+            }
+            .keyboardShortcut("/", modifiers: [.command])
+            .disabled(!hasSavableSelectedTab)
+
+            Button("Duplicate Line") {
+                post(.transformSelectedLinesRequested, object: EditorLineTransform.duplicate.rawValue)
+            }
+            .keyboardShortcut(.downArrow, modifiers: [.command, .option, .shift])
+            .disabled(!hasSavableSelectedTab)
+
+            Button("Delete Line") {
+                post(.transformSelectedLinesRequested, object: EditorLineTransform.delete.rawValue)
+            }
+            .keyboardShortcut("k", modifiers: [.command, .shift])
+            .disabled(!hasSavableSelectedTab)
+
             Divider()
 
             Button("Fold") {

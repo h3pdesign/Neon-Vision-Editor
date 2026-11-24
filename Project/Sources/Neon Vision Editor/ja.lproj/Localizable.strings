@@ -952,6 +952,9 @@
 "More Section" = "追加セクション";
 "More ways to support" = "サポートする方法をもっと";
 "Move Line Down" = "行を下に移動";
+"Toggle Comment" = "コメントの切り替え";
+"Duplicate Line" = "行を複製";
+"Delete Line" = "行を削除";
 "Move Line Up" = "行を上に移動";
 "Name" = "名前";
 "Needs attention on iPhone" = "iPhoneで注意が必要";

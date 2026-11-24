@@ -3765,8 +3765,9 @@ class EditorViewModel {
         // A known filename is a stronger signal than document prose. This also
         // repairs restored tabs whose legacy session metadata did not retain the
         // filename-derived lock before the first edit.
-        let nameExt = URL(fileURLWithPath: tabs[index].name).pathExtension.lowercased()
-        if let extLang = languageMap[nameExt], !extLang.isEmpty {
+        let nameURL = URL(fileURLWithPath: tabs[index].name)
+        if let extLang = LanguageDetector.shared.preferredLanguage(for: nameURL) ??
+            languageMap[nameURL.pathExtension.lowercased()], !extLang.isEmpty {
             // If extension says C# but content looks Swift-ish, preserve the
             // existing compatibility behavior for misnamed Swift documents.
             if extLang == "csharp" {

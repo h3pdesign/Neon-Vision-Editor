@@ -2226,6 +2226,12 @@ struct ContentView: View {
         didNotifyWindowClosed = true
         MacDocumentWindowTabs.shared.unregister(viewModel)
         persistUnsavedDraftSnapshotIfNeeded()
+        if !MacDocumentWindowTabs.shared.isTerminating, !MacDocumentWindowTabs.shared.hasSessionOwner {
+            // No remaining editor will persist the session (the last window
+            // closed), so drop this document now or it reopens on launch (#1085).
+            lastPersistedSessionSignature = ""
+            persistSessionIfReady()
+        }
         // The closed document must not reopen; let AppKit select the next tab first.
         DispatchQueue.main.async { MacDocumentWindowTabs.shared.persistSessionFromSelectedOwner() }
         onWindowClosed?()

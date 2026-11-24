@@ -322,9 +322,17 @@ final class MacDocumentWindowTabs {
 
     func takePendingModel(for id: UUID) -> EditorViewModel? {
         guard let item = pending[id] else { return nil }
-        if let parent = item.parent { parents[ObjectIdentifier(item.model)] = Parent(parent) }
+        // A shell from presentPendingWindow is already grouped. Its editor is
+        // built later, on selection, when the parent tab may have closed;
+        // regrouping into that closed window raises in AppKit (#1085).
+        if let parent = item.parent, windowControllers[ObjectIdentifier(item.model)] == nil {
+            parents[ObjectIdentifier(item.model)] = Parent(parent)
+        }
         return item.model
     }
+
+    /// True while a registered editor can persist the shared session.
+    var hasSessionOwner: Bool { persistingOwner() != nil }
 
     /// Attach at the scene root, before AppKit presents the window. Waiting for
     /// the editor's registration allows SwiftUI to display a standalone window.
@@ -413,7 +421,8 @@ final class MacDocumentWindowTabs {
             guard let model else { return }
             self?.reveal(model)
         }
-        if let parent = parents.removeValue(forKey: identity)?.window, parent !== window, !isTerminating {
+        if let parent = parents.removeValue(forKey: identity)?.window, parent !== window, !isTerminating,
+           entries.values.contains(where: { $0.window === parent }) {
             if window.tabGroup !== parent.tabGroup || window.tabGroup == nil {
                 attach(window, toGroupOf: parent)
             }

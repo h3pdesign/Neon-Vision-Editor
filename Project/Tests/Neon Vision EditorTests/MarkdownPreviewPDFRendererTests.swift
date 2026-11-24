@@ -469,6 +469,71 @@ final class MarkdownPreviewPDFRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("<span class=\"syntax-kw\">true</span>"))
     }
 
+    func testCodeBlockHighlightingKeepsApostropheEntitiesIntact() {
+        let samples: [(language: String, code: String)] = [
+            ("python", "name = 'Neon' # it's fine"),
+            ("shell", "echo 'it works' # don't"),
+            ("ruby", "puts 'hi' # isn't"),
+            ("php", "echo 'x'; # won't"),
+            ("yaml", "title: it's # note"),
+            ("json", "{\"note\": \"it's 39\", \"count\": 39}")
+        ]
+        for sample in samples {
+            let html = ContentView.markdownPreviewHighlightedCodeHTML(sample.code, language: sample.language)
+            XCTAssertFalse(html.contains("&<span"), "\(sample.language) split an entity: \(html)")
+            XCTAssertFalse(html.contains("&#<span"), "\(sample.language) split an entity: \(html)")
+            XCTAssertEqual(
+                html.components(separatedBy: "&#39;").count - 1,
+                sample.code.filter { $0 == "'" }.count,
+                "\(sample.language) lost an apostrophe entity: \(html)"
+            )
+        }
+        let python = ContentView.markdownPreviewHighlightedCodeHTML("name = 'Neon' # it's fine", language: "python")
+        XCTAssertTrue(python.contains("<span class=\"syntax-comment\"># it&#39;s fine</span>"), python)
+        let json = ContentView.markdownPreviewHighlightedCodeHTML("{\"count\": 39}", language: "json")
+        XCTAssertTrue(json.contains("<span class=\"syntax-num\">39</span>"), json)
+    }
+
+    func testCodeBlockCopyBridgeCopiesRawCodeWithPageJavaScriptDisabled() async throws {
+        let source = "name = 'Neon' # it's <fine> & \"done\""
+        let body = ContentView.simpleMarkdownToHTML("```python\n\(source)\n```", dialect: .gfm)
+        let configuration = WKWebViewConfiguration()
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = false
+        let copied = expectation(description: "Code block copy message")
+        let spy = CodeCopyMessageSpy(received: copied)
+        installMarkdownPreviewCodeCopyBridge(in: configuration.userContentController, handler: spy)
+        let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 800, height: 600), configuration: configuration)
+        let loaded = expectation(description: "Code block preview loaded")
+        let waiter = PDFExportNavigationWaiter(loaded: loaded)
+        webView.navigationDelegate = waiter
+        webView.loadHTMLString("<html><body>\(body)</body></html>", baseURL: nil)
+        await fulfillment(of: [loaded], timeout: 10)
+
+        let visible = try await webView.evaluateJavaScript(
+            "document.querySelector('pre code').textContent",
+            in: nil,
+            contentWorld: .defaultClient
+        ) as? String
+        XCTAssertEqual(visible, source + "\n", "The preview must show the source characters, not entity text.")
+
+        _ = try await webView.evaluateJavaScript(
+            "window.__nveCopyCodeBlock(document.querySelector('.code-block-copy'))",
+            in: nil,
+            contentWorld: .defaultClient
+        )
+        await fulfillment(of: [copied], timeout: 5)
+        XCTAssertEqual(spy.texts, [source])
+
+        let pageWorldBridge = try await webView.evaluateJavaScript(
+            "typeof window.__nveCopyCodeBlock",
+            in: nil,
+            contentWorld: .page
+        ) as? String
+        XCTAssertEqual(pageWorldBridge, "undefined", "Preview content must not reach the copy bridge.")
+        webView.navigationDelegate = nil
+        withExtendedLifetime(waiter) {}
+    }
+
     func testCodeBlockRuntimeIncludesLocalSyntaxHighlighter() {
         let html = ContentView.markdownPreviewCodeBlockScript()
 
@@ -560,5 +625,17 @@ private final class PDFExportNavigationWaiter: NSObject, WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         XCTFail(error.localizedDescription)
         loaded.fulfill()
+    }
+}
+
+@MainActor
+private final class CodeCopyMessageSpy: NSObject, WKScriptMessageHandler {
+    let received: XCTestExpectation
+    var texts: [String] = []
+    init(received: XCTestExpectation) { self.received = received }
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard let payload = message.body as? [String: Any], let text = payload["text"] as? String else { return }
+        texts.append(text)
+        received.fulfill()
     }
 }

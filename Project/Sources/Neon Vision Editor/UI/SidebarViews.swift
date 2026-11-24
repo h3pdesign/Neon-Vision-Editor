@@ -996,7 +996,15 @@ struct ProjectStructureSidebarView: View {
     var onLoadDirectory: ((URL, @escaping @MainActor @Sendable () -> Void) -> Void)? = nil
     var onExpandAllDirectories: ((@escaping @MainActor @Sendable () -> Void) -> Void)? = nil
     @State private var expandedDirectories: Set<String> = []
+#if os(macOS)
+    /// Each native Mac tab is its own window with its own sidebar. Opening a
+    /// file from the sidebar creates a new tab, so folder expansion is shared
+    /// app state, like the sidebar's width and mode; per-window storage made
+    /// the new tab's sidebar start collapsed.
+    @AppStorage(ProjectSidebarExpansionStore.sharedStorageKey) private var persistedExpansionState: String = ""
+#else
     @EditorWindowStorage("ProjectSidebarExpandedDirectories.v1") private var persistedExpansionState: String = ""
+#endif
     @State private var persistedExpansionByRoot: [String: [String]] = [:]
     @State private var expansionPersistenceTask: Task<Void, Never>?
     @State private var loadingDirectoryIDs: Set<String> = []
@@ -1072,6 +1080,19 @@ struct ProjectStructureSidebarView: View {
             restorePersistedExpansionState()
             loadExpandedUnloadedDirectories()
         }
+#if os(macOS)
+        .onChange(of: persistedExpansionState) { _, newValue in
+            // Another tab's sidebar expanded or collapsed folders of this project.
+            guard expansionPersistenceTask == nil,
+                  let rootPath = rootFolderURL?.standardizedFileURL.path else { return }
+            let stored = ProjectSidebarExpansionStore.decode(newValue)
+            persistedExpansionByRoot = stored
+            let shared = Set(stored[rootPath] ?? [])
+            guard shared != expandedDirectories else { return }
+            expandedDirectories = shared
+            loadExpandedUnloadedDirectories()
+        }
+#endif
         .onChange(of: nodes.count) { _, _ in
             refreshFileIconStyleCache()
             revealTargetIfNeeded()
@@ -1791,19 +1812,16 @@ struct ProjectStructureSidebarView: View {
             expandedDirectories.removeAll()
             return
         }
-        guard let data = persistedExpansionState.data(using: .utf8),
-              let stored = try? JSONDecoder().decode([String: [String]].self, from: data) else {
-            persistedExpansionByRoot = [:]
-            expandedDirectories.removeAll()
-            return
-        }
+        let stored = ProjectSidebarExpansionStore.decode(persistedExpansionState)
         persistedExpansionByRoot = stored
         expandedDirectories = Set(stored[rootPath] ?? [])
     }
 
     private func persistExpansionState() {
         guard let rootPath = rootFolderURL?.standardizedFileURL.path else { return }
-        var stored = persistedExpansionByRoot
+        // Start from the stored value, which other tabs may have changed for
+        // other projects since this sidebar read it.
+        var stored = ProjectSidebarExpansionStore.decode(persistedExpansionState)
         stored[rootPath] = expandedDirectories.sorted()
         persistedExpansionByRoot = stored
         expansionPersistenceTask?.cancel()
@@ -1815,11 +1833,11 @@ struct ProjectStructureSidebarView: View {
     }
 
     private func persistExpansionStateNow() {
+        expansionPersistenceTask = nil
         guard !persistedExpansionByRoot.isEmpty,
               let data = try? JSONEncoder().encode(persistedExpansionByRoot),
               let value = String(data: data, encoding: .utf8) else { return }
         persistedExpansionState = value
-        expansionPersistenceTask = nil
     }
 
     private var filteredNodes: [ProjectTreeNode] {
@@ -2049,6 +2067,12 @@ struct ProjectStructureSidebarView: View {
             let gitStatus = gitFileStatusMap[gitRelPath]
             return AnyView(
                 Button {
+                    // The file may open in a new tab whose sidebar reads the
+                    // stored expansion, so store a pending change first.
+                    if expansionPersistenceTask != nil {
+                        expansionPersistenceTask?.cancel()
+                        persistExpansionStateNow()
+                    }
                     onOpenProjectFile(node.url)
                 } label: {
                     HStack(spacing: 6) {
@@ -2741,4 +2765,15 @@ struct ProjectTreeNode: Identifiable {
     /// This distinguishes it from an expanded directory that was read and is empty.
     var childrenLoaded: Bool = false
     var id: String { url.path }
+}
+
+/// Folder expansion of the project sidebar, stored as JSON keyed by project root path.
+enum ProjectSidebarExpansionStore {
+    static let sharedStorageKey = "ProjectSidebarExpandedDirectories.shared.v1"
+
+    static func decode(_ value: String) -> [String: [String]] {
+        guard let data = value.data(using: .utf8),
+              let stored = try? JSONDecoder().decode([String: [String]].self, from: data) else { return [:] }
+        return stored
+    }
 }

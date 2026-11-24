@@ -19,6 +19,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - The Copy button on a code block in the Markdown preview copies the code to the clipboard. Before, it did nothing ([#1081](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1081)).
 - A single quote in a Markdown preview code block shows as `'`, not `&#39;` ([#1082](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1082)).
 - On the Mac, closing restored tabs one after another no longer quits the app, and closing the last window keeps its documents from reopening at the next launch ([#1085](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1085)).
+- On the Mac, folders you expanded in the project sidebar stay expanded when you open a file from it. Before, the file opened in a new tab whose sidebar showed every folder collapsed except the one holding the file.
 - Join Lines joins the selected lines, or the current line with the next one. Before, it joined the whole document into one line and dropped blank lines.
 - Duplicate Line, Delete Line, Toggle Comment, Convert to Uppercase or Lowercase and Sort Lines in the command palette change only the selected lines or the current line. Before, they changed the whole document.
 - Trim Trailing Whitespace keeps indentation and Windows line endings. Before, it also removed spaces at the start of each line.
@@ -27,7 +28,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Maintenance
 
-- Development version 2.2.7 (build 1172).
+- Development version 2.2.7 (build 1173).
 - develop now includes the v2.2.6 release commit from main, so the next release branch merges cleanly.
 
 ## [v2.2.6] - 2026-11-19

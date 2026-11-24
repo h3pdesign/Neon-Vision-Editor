@@ -2789,15 +2789,15 @@ struct WelcomeTourView: View {
 
     private let pages: [TourPage] = [
         TourPage(
-            title: "What’s New in v2.2.6",
-            subtitle: "Release highlights for v2.2.6.",
+            title: "What’s New in v2.2.7",
+            subtitle: "Release highlights for v2.2.7.",
             bullets: [
-                "Window Resizing: On the Mac, the app no longer quits when a narrow window moves toolbar buttons into the overflow menu.",
-                "Font Picker: On iPhone and iPad, Choose… next to the editor font opens the system font picker, with previews and search.",
-                "Font Faces: On iPhone and iPad, any face of an installed font, such as a bold or a light weight, can be the editor font.",
-                "Current Font: On iPhone and iPad, the system font picker opens on the editor font you use now.",
-                "Window Resizing: On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…",
-                "Function Completion: On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret…"
+                "Editor Improvements: Line commands such as Join Lines, Delete Line, Toggle Comment and Sort Lines change only the lines you selected. Before…",
+                "Workflow Refinements: The Copy button on Markdown preview code blocks works, and single quotes in those code blocks show correctly.",
+                "Performance Updates: On the Mac, closing restored tabs no longer quits the app, and folders you expanded in the project sidebar stay expanded…",
+                "Usability Updates: Toggle Comment (⌘/), Duplicate Line (⌥⇧⌘↓) and Delete Line (⇧⌘K) in the Mac Editor menu and on the iPad keyboard.",
+                "Table of Contents: The table of contents sidebar can sit on the right of the editor on the Mac, and its text size can be changed.",
+                "Workflow Refinements: The Copy button on a code block in the Markdown preview copies the code to the clipboard. Before, it did nothing…"
             ],
             iconName: "sparkles.rectangle.stack",
             colors: [Color(red: 0.40, green: 0.28, blue: 0.90), Color(red: 0.96, green: 0.46, blue: 0.55)],
@@ -4613,6 +4613,11 @@ struct InAppChangelogView: View {
     }
 
     private let releases: [Release] = [
+        Release(id: "2.2.7", version: "2.2.7", date: "2026-11-24", highlights: [
+            "Line commands such as Join Lines, Delete Line, Toggle Comment and Sort Lines change only the lines you selected. Before, they could rewrite the whole document.",
+            "The Copy button on Markdown preview code blocks works, and single quotes in those code blocks show correctly.",
+            "On the Mac, closing restored tabs no longer quits the app, and folders you expanded in the project sidebar stay expanded when you open a file."
+        ]),
         Release(id: "2.2.6", version: "2.2.6", date: "2026-11-19", highlights: [
             "On the Mac, the app no longer quits when a narrow window moves toolbar buttons into the overflow menu.",
             "On iPhone and iPad, Choose… next to the editor font opens the system font picker, with previews and search.",

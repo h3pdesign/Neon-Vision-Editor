@@ -118,6 +118,265 @@ func editorLineMove(
     )
 }
 
+/// Line commands of the command palette and the Editor menu. Each changes only
+/// the lines the selection touches, or the caret line without a selection.
+enum EditorLineTransform: String {
+    case duplicate
+    case delete
+    case toggleComment
+    case uppercase
+    case lowercase
+    case sort
+    case sortUnique
+    case join
+}
+
+struct EditorCommentDelimiters: Equatable {
+    let open: String
+    let close: String?
+}
+
+/// The comment syntax Toggle Comment uses, or nil for formats without comments.
+func editorCommentDelimiters(for language: String) -> EditorCommentDelimiters? {
+    switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    case "swift", "javascript", "typescript", "php", "java", "kotlin", "go", "rust", "c", "cpp",
+         "csharp", "objective-c", "proto", "meierscript", "xcconfig", "strings", "typst":
+        return EditorCommentDelimiters(open: "//", close: nil)
+    case "python", "ruby", "bash", "zsh", "fish", "perl", "r", "powershell", "yaml", "toml",
+         "nix", "dotenv", "nginx", "makefile", "dockerfile", "hcl", "graphql":
+        return EditorCommentDelimiters(open: "#", close: nil)
+    case "sql", "lua", "ada":
+        return EditorCommentDelimiters(open: "--", close: nil)
+    case "ini":
+        return EditorCommentDelimiters(open: ";", close: nil)
+    case "tex":
+        return EditorCommentDelimiters(open: "%", close: nil)
+    case "vim":
+        return EditorCommentDelimiters(open: "\"", close: nil)
+    case "html", "xml", "markdown":
+        return EditorCommentDelimiters(open: "<!--", close: "-->")
+    case "css":
+        return EditorCommentDelimiters(open: "/*", close: "*/")
+    default:
+        return nil
+    }
+}
+
+/// The full lines a selection touches, without the final line break. A
+/// selection that ends just after a line break does not include the next line.
+private func editorSelectedLineBlock(in text: NSString, selection: NSRange) -> NSRange {
+    let newline: unichar = 10
+    var start = selection.location
+    while start > 0, text.character(at: start - 1) != newline {
+        start -= 1
+    }
+    var end = selection.length > 0 ? NSMaxRange(selection) - 1 : selection.location
+    while end < text.length, text.character(at: end) != newline {
+        end += 1
+    }
+    return NSRange(location: start, length: max(0, end - start))
+}
+
+/// Splits a line into its text and a trailing carriage return, so CRLF
+/// documents keep their line endings.
+private func editorSplitCarriageReturn(_ line: String) -> (body: String, lineEnd: String) {
+    line.hasSuffix("\r") ? (String(line.dropLast()), "\r") : (line, "")
+}
+
+func editorLineTransform(
+    in text: String,
+    selectedRange rawSelection: NSRange,
+    transform: EditorLineTransform,
+    language: String = ""
+) -> EditorLineMoveResult? {
+    let nsText = text as NSString
+    guard rawSelection.location != NSNotFound else { return nil }
+    let selectionLocation = min(max(0, rawSelection.location), nsText.length)
+    let selectionLength = min(max(0, rawSelection.length), max(0, nsText.length - selectionLocation))
+    let selection = NSRange(location: selectionLocation, length: selectionLength)
+    let block = editorSelectedLineBlock(in: nsText, selection: selection)
+    let blockText = nsText.substring(with: block)
+    let lines = blockText.components(separatedBy: "\n")
+
+    let result: EditorLineMoveResult
+    switch transform {
+    case .duplicate:
+        result = EditorLineMoveResult(
+            replacementRange: NSRange(location: NSMaxRange(block), length: 0),
+            replacement: "\n" + blockText,
+            selectedRange: NSRange(location: selection.location + block.length + 1, length: selection.length)
+        )
+
+    case .delete:
+        guard nsText.length > 0 else { return nil }
+        if NSMaxRange(block) < nsText.length {
+            result = EditorLineMoveResult(
+                replacementRange: NSRange(location: block.location, length: block.length + 1),
+                replacement: "",
+                selectedRange: NSRange(location: block.location, length: 0)
+            )
+        } else if block.location > 0 {
+            let previousLine = editorSelectedLineBlock(
+                in: nsText,
+                selection: NSRange(location: block.location - 1, length: 0)
+            )
+            result = EditorLineMoveResult(
+                replacementRange: NSRange(location: block.location - 1, length: block.length + 1),
+                replacement: "",
+                selectedRange: NSRange(location: previousLine.location, length: 0)
+            )
+        } else {
+            result = EditorLineMoveResult(
+                replacementRange: block,
+                replacement: "",
+                selectedRange: NSRange(location: 0, length: 0)
+            )
+        }
+
+    case .uppercase, .lowercase:
+        let target = selection.length > 0 ? selection : block
+        let original = nsText.substring(with: target)
+        let converted = transform == .uppercase ? original.uppercased() : original.lowercased()
+        let convertedLength = (converted as NSString).length
+        let selectedRange = selection.length > 0
+            ? NSRange(location: target.location, length: convertedLength)
+            : NSRange(location: min(selection.location, target.location + convertedLength), length: 0)
+        result = EditorLineMoveResult(replacementRange: target, replacement: converted, selectedRange: selectedRange)
+
+    case .sort, .sortUnique:
+        guard lines.count > 1 else { return nil }
+        var sorted = lines.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        if transform == .sortUnique {
+            var seen = Set<String>()
+            sorted = sorted.filter { seen.insert($0).inserted }
+        }
+        let replacement = sorted.joined(separator: "\n")
+        result = EditorLineMoveResult(
+            replacementRange: block,
+            replacement: replacement,
+            selectedRange: NSRange(location: block.location, length: (replacement as NSString).length)
+        )
+
+    case .join:
+        var joinBlock = block
+        if lines.count < 2 {
+            // Without a multi-line selection, join the caret line with the next one.
+            guard NSMaxRange(block) < nsText.length else { return nil }
+            let nextLine = editorSelectedLineBlock(
+                in: nsText,
+                selection: NSRange(location: NSMaxRange(block) + 1, length: 0)
+            )
+            joinBlock = NSRange(location: block.location, length: NSMaxRange(nextLine) - block.location)
+        }
+        let joinLines = nsText.substring(with: joinBlock).components(separatedBy: "\n")
+        let lineEnd = editorSplitCarriageReturn(joinLines.last ?? "").lineEnd
+        var first = editorSplitCarriageReturn(joinLines[0]).body
+        while let last = first.last, last.isWhitespace {
+            first.removeLast()
+        }
+        let rest = joinLines.dropFirst()
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let parts = (first.trimmingCharacters(in: .whitespaces).isEmpty ? [] : [first]) + rest
+        let joined = parts.joined(separator: " ")
+        let selectedRange = selection.length > 0
+            ? NSRange(location: joinBlock.location, length: (joined as NSString).length)
+            : NSRange(location: joinBlock.location + (parts.count > 1 ? (first as NSString).length : 0), length: 0)
+        result = EditorLineMoveResult(
+            replacementRange: joinBlock,
+            replacement: joined + lineEnd,
+            selectedRange: selectedRange
+        )
+
+    case .toggleComment:
+        guard let delimiters = editorCommentDelimiters(for: language) else { return nil }
+        let open = delimiters.open
+        let split = lines.map(editorSplitCarriageReturn)
+        func leadingWhitespace(_ body: String) -> Substring {
+            body.prefix { $0 == " " || $0 == "\t" }
+        }
+        func trailingWhitespaceTrimmed(_ text: Substring) -> Substring {
+            var end = text.endIndex
+            while end > text.startIndex {
+                let previous = text.index(before: end)
+                guard text[previous] == " " || text[previous] == "\t" else { break }
+                end = previous
+            }
+            return text[text.startIndex..<end]
+        }
+        func isCommented(_ body: String) -> Bool {
+            let code = trailingWhitespaceTrimmed(body.dropFirst(leadingWhitespace(body).count))
+            guard code.hasPrefix(open) else { return false }
+            guard let close = delimiters.close else { return true }
+            return code.count >= open.count + close.count && code.hasSuffix(close)
+        }
+        let codeLines = split.filter { !$0.body.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard !codeLines.isEmpty else { return nil }
+        let uncomment = codeLines.allSatisfy { isCommented($0.body) }
+        let indent = codeLines.map { leadingWhitespace($0.body).count }.min() ?? 0
+
+        var caretColumnDelta = 0
+        var caretColumnStart = 0
+        let updated: [String] = split.map { line in
+            guard !line.body.trimmingCharacters(in: .whitespaces).isEmpty else {
+                return line.body + line.lineEnd
+            }
+            if uncomment {
+                let whitespace = leadingWhitespace(line.body)
+                var inner = String(line.body.dropFirst(whitespace.count + open.count))
+                var removed = (open as NSString).length
+                if inner.hasPrefix(" ") {
+                    inner.removeFirst()
+                    removed += 1
+                }
+                var trailing = ""
+                if let close = delimiters.close {
+                    while let last = inner.last, last == " " || last == "\t" {
+                        trailing = String(last) + trailing
+                        inner.removeLast()
+                    }
+                    if inner.hasSuffix(close) {
+                        inner.removeLast(close.count)
+                    }
+                    if inner.hasSuffix(" ") {
+                        inner.removeLast()
+                    }
+                }
+                caretColumnStart = (String(whitespace) as NSString).length
+                caretColumnDelta = -removed
+                return whitespace + inner + trailing + line.lineEnd
+            }
+            let prefix = String(line.body.prefix(indent))
+            var body = String(line.body.dropFirst(indent))
+            if delimiters.close != nil {
+                while let last = body.last, last == " " || last == "\t" {
+                    body.removeLast()
+                }
+            }
+            caretColumnStart = (prefix as NSString).length
+            caretColumnDelta = ((open + " ") as NSString).length
+            let suffix = delimiters.close.map { " " + $0 } ?? ""
+            return prefix + open + " " + body + suffix + line.lineEnd
+        }
+        let replacement = updated.joined(separator: "\n")
+        let selectedRange: NSRange
+        if selection.length == 0, lines.count == 1 {
+            let column = selection.location - block.location
+            let lineLength = (editorSplitCarriageReturn(replacement).body as NSString).length
+            let newColumn = column >= caretColumnStart
+                ? max(caretColumnStart, column + caretColumnDelta)
+                : column
+            selectedRange = NSRange(location: block.location + min(newColumn, lineLength), length: 0)
+        } else {
+            selectedRange = NSRange(location: block.location, length: (replacement as NSString).length)
+        }
+        result = EditorLineMoveResult(replacementRange: block, replacement: replacement, selectedRange: selectedRange)
+    }
+
+    guard nsText.substring(with: result.replacementRange) != result.replacement else { return nil }
+    return result
+}
+
 func htmlAutoCloseInsertion(
     in text: NSString,
     insertionRange: NSRange,

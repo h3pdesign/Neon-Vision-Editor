@@ -36,6 +36,22 @@ struct SidebarView: View {
     ]
     @State private var tocRefreshTask: Task<Void, Never>?
     @State private var selectedTOCItemID: String?
+    /// Base text size of table of contents entries; 13 keeps the original sizes (#1086).
+    @AppStorage(SidebarView.fontSizePreferenceKey) private var tocFontSize: Double = SidebarView.defaultFontSize
+
+    static let fontSizePreferenceKey = "SettingsTOCSidebarFontSize"
+    static let defaultFontSize: Double = 13
+    static let fontSizeRange: ClosedRange<Double> = 9...18
+
+    /// Scales a design size so entries keep their relative hierarchy at any base size.
+    static func scaledFontSize(_ designSize: CGFloat, baseSize: Double) -> CGFloat {
+        let base = min(max(baseSize, fontSizeRange.lowerBound), fontSizeRange.upperBound)
+        return (designSize * CGFloat(base / defaultFontSize) * 2).rounded() / 2
+    }
+
+    private func scaled(_ designSize: CGFloat) -> CGFloat {
+        Self.scaledFontSize(designSize, baseSize: tocFontSize)
+    }
 
     var body: some View {
         List {
@@ -137,7 +153,7 @@ struct SidebarView: View {
 
             if let line = item.line {
                 Text("L\(line)")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(.system(size: scaled(10), weight: .medium, design: .monospaced))
                     .foregroundStyle(isSelected ? Color.accentColor.opacity(0.85) : Color.secondary.opacity(0.78))
             }
         }
@@ -178,12 +194,12 @@ struct SidebarView: View {
             EmptyView()
         } else if item.kind == .heading {
             Text(String(repeating: "#", count: max(1, min(item.level, 3))))
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .font(.system(size: scaled(10), weight: .bold, design: .monospaced))
                 .foregroundStyle(color)
                 .frame(width: 24, alignment: .leading)
         } else {
             Image(systemName: tocIconName(for: item.kind))
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: scaled(11), weight: .semibold))
                 .foregroundStyle(color)
                 .frame(width: 18)
         }
@@ -193,23 +209,23 @@ struct SidebarView: View {
         if language == "markdown", item.kind == .heading {
             switch item.level {
             case 1:
-                return .system(size: 13, weight: .bold)
+                return .system(size: scaled(13), weight: .bold)
             case 2:
-                return .system(size: 12.5, weight: .semibold)
+                return .system(size: scaled(12.5), weight: .semibold)
             case 3:
-                return .system(size: 12, weight: .medium)
+                return .system(size: scaled(12), weight: .medium)
             default:
-                return .system(size: 12, weight: .regular)
+                return .system(size: scaled(12), weight: .regular)
             }
         }
 
         switch item.level {
         case 1:
-            return .system(size: 13, weight: .semibold)
+            return .system(size: scaled(13), weight: .semibold)
         case 2:
-            return .system(size: 12.5, weight: .medium)
+            return .system(size: scaled(12.5), weight: .medium)
         default:
-            return .system(size: 12, weight: .regular)
+            return .system(size: scaled(12), weight: .regular)
         }
     }
 
@@ -980,7 +996,15 @@ struct ProjectStructureSidebarView: View {
     var onLoadDirectory: ((URL, @escaping @MainActor @Sendable () -> Void) -> Void)? = nil
     var onExpandAllDirectories: ((@escaping @MainActor @Sendable () -> Void) -> Void)? = nil
     @State private var expandedDirectories: Set<String> = []
+#if os(macOS)
+    /// Each native Mac tab is its own window with its own sidebar. Opening a
+    /// file from the sidebar creates a new tab, so folder expansion is shared
+    /// app state, like the sidebar's width and mode; per-window storage made
+    /// the new tab's sidebar start collapsed.
+    @AppStorage(ProjectSidebarExpansionStore.sharedStorageKey) private var persistedExpansionState: String = ""
+#else
     @EditorWindowStorage("ProjectSidebarExpandedDirectories.v1") private var persistedExpansionState: String = ""
+#endif
     @State private var persistedExpansionByRoot: [String: [String]] = [:]
     @State private var expansionPersistenceTask: Task<Void, Never>?
     @State private var loadingDirectoryIDs: Set<String> = []
@@ -1056,6 +1080,19 @@ struct ProjectStructureSidebarView: View {
             restorePersistedExpansionState()
             loadExpandedUnloadedDirectories()
         }
+#if os(macOS)
+        .onChange(of: persistedExpansionState) { _, newValue in
+            // Another tab's sidebar expanded or collapsed folders of this project.
+            guard expansionPersistenceTask == nil,
+                  let rootPath = rootFolderURL?.standardizedFileURL.path else { return }
+            let stored = ProjectSidebarExpansionStore.decode(newValue)
+            persistedExpansionByRoot = stored
+            let shared = Set(stored[rootPath] ?? [])
+            guard shared != expandedDirectories else { return }
+            expandedDirectories = shared
+            loadExpandedUnloadedDirectories()
+        }
+#endif
         .onChange(of: nodes.count) { _, _ in
             refreshFileIconStyleCache()
             revealTargetIfNeeded()
@@ -1775,19 +1812,16 @@ struct ProjectStructureSidebarView: View {
             expandedDirectories.removeAll()
             return
         }
-        guard let data = persistedExpansionState.data(using: .utf8),
-              let stored = try? JSONDecoder().decode([String: [String]].self, from: data) else {
-            persistedExpansionByRoot = [:]
-            expandedDirectories.removeAll()
-            return
-        }
+        let stored = ProjectSidebarExpansionStore.decode(persistedExpansionState)
         persistedExpansionByRoot = stored
         expandedDirectories = Set(stored[rootPath] ?? [])
     }
 
     private func persistExpansionState() {
         guard let rootPath = rootFolderURL?.standardizedFileURL.path else { return }
-        var stored = persistedExpansionByRoot
+        // Start from the stored value, which other tabs may have changed for
+        // other projects since this sidebar read it.
+        var stored = ProjectSidebarExpansionStore.decode(persistedExpansionState)
         stored[rootPath] = expandedDirectories.sorted()
         persistedExpansionByRoot = stored
         expansionPersistenceTask?.cancel()
@@ -1799,11 +1833,11 @@ struct ProjectStructureSidebarView: View {
     }
 
     private func persistExpansionStateNow() {
+        expansionPersistenceTask = nil
         guard !persistedExpansionByRoot.isEmpty,
               let data = try? JSONEncoder().encode(persistedExpansionByRoot),
               let value = String(data: data, encoding: .utf8) else { return }
         persistedExpansionState = value
-        expansionPersistenceTask = nil
     }
 
     private var filteredNodes: [ProjectTreeNode] {
@@ -2033,6 +2067,12 @@ struct ProjectStructureSidebarView: View {
             let gitStatus = gitFileStatusMap[gitRelPath]
             return AnyView(
                 Button {
+                    // The file may open in a new tab whose sidebar reads the
+                    // stored expansion, so store a pending change first.
+                    if expansionPersistenceTask != nil {
+                        expansionPersistenceTask?.cancel()
+                        persistExpansionStateNow()
+                    }
                     onOpenProjectFile(node.url)
                 } label: {
                     HStack(spacing: 6) {
@@ -2725,4 +2765,15 @@ struct ProjectTreeNode: Identifiable {
     /// This distinguishes it from an expanded directory that was read and is empty.
     var childrenLoaded: Bool = false
     var id: String { url.path }
+}
+
+/// Folder expansion of the project sidebar, stored as JSON keyed by project root path.
+enum ProjectSidebarExpansionStore {
+    static let sharedStorageKey = "ProjectSidebarExpandedDirectories.shared.v1"
+
+    static func decode(_ value: String) -> [String: [String]] {
+        guard let data = value.data(using: .utf8),
+              let stored = try? JSONDecoder().decode([String: [String]].self, from: data) else { return [:] }
+        return stored
+    }
 }

@@ -253,6 +253,45 @@ final class MacDocumentWindowTabsTests: XCTestCase {
         XCTAssertEqual(persisted, ["other"], "Without a registered editor there is no session owner")
     }
 
+    /// #1085: a restored background tab builds its editor only when selected,
+    /// often because its parent tab was just closed. Mounting must not regroup
+    /// the tab into that closed parent, which raises inside AppKit.
+    func testMountingShellAfterParentClosesDoesNotRegroupIntoClosedParent() throws {
+        let store = immediateStore()
+        let source = MacDocumentTabPolicy.makeWindowModel()
+        let sourceWindow = window("Closed parent")
+        var pendingID: UUID?
+        var child: EditorViewModel?
+        var childWindow: NSWindow?
+        store.register(source, window: sourceWindow) { id in
+            pendingID = id
+            child = store.takePendingModel(for: id)
+            childWindow = store.presentPendingWindow(for: id) { NSView() }
+        }
+        defer {
+            if let child { store.unregister(child) }
+            childWindow?.close(); sourceWindow.close()
+        }
+        sourceWindow.makeKeyAndOrderFront(nil)
+        source.addNewTab()
+        let shellWindow = try XCTUnwrap(childWindow)
+        let id = try XCTUnwrap(pendingID)
+        XCTAssertTrue(shellWindow.tabGroup === sourceWindow.tabGroup, "The shell joins its parent's group at creation")
+
+        store.unregister(source)
+        sourceWindow.close()
+        let groupAfterClose = shellWindow.tabGroup
+
+        // The selected shell builds its editor, which consumes the pending
+        // owner again and registers its window.
+        let owner = try XCTUnwrap(store.takePendingModel(for: id))
+        store.register(owner, window: shellWindow) { _ in }
+
+        XCTAssertTrue(shellWindow.tabGroup === groupAfterClose, "Mounting must not move the tab to another group")
+        XCTAssertFalse(shellWindow.tabGroup?.windows.contains(where: { $0 === sourceWindow }) ?? false,
+                       "The closed parent must not regain the mounted tab")
+    }
+
     func testClosedOwnerStopsSurfaceWorkAndIsNotCachedAgain() {
         let store = immediateStore()
         let model = MacDocumentTabPolicy.makeWindowModel()

@@ -702,6 +702,7 @@ def rebuild_changelog_page(page: str, changelog: str, current_tag: str) -> str:
 
 LOCALIZED_TIMELINE_COPY = {
     "de": {
+        "v2.2.7": ("Zeilenbefehle für die Auswahl und Markdown-Codeblöcke", "Zeilen verbinden, Zeile löschen, Kommentar ein/aus und Zeilen sortieren ändern nur die ausgewählten Zeilen statt des ganzen Dokuments. Die Kopieren-Taste in Markdown-Codeblöcken funktioniert, und auf dem Mac bleiben aufgeklappte Ordner der Projektleiste beim Öffnen einer Datei aufgeklappt.", ["Bearbeiten", "Markdown", "Mac"]),
         "v2.2.6": ("Schriftauswahl auf iPhone und iPad und stabile Mac-Fenster", "Auf iPhone und iPad öffnet „Auswählen…“ neben der Editorschrift die Schriftauswahl des Systems mit Vorschau, Suche und jedem Schriftschnitt. Auf dem Mac beendet sich die App unter macOS 26 nicht mehr, wenn ein schmales Fenster Symbolleistentasten ins Überlaufmenü verschiebt.", ["Schriften", "Stabilität", "iPhone"]),
         "v2.2.5": ("Einklappen auf iPhone und iPad und Leerraum im Vergleich ignorieren", "Auf iPhone und iPad lassen sich JSON- und XML-Strukturen einklappen, auch per iPad-Tastatur und VoiceOver. Vergleichen und der Git-Bereich können Leerraum ignorieren, das Setzen des Cursors auf iPhone und iPad scrollt den Text nicht mehr weg, und unter macOS 14 startet die App wieder.", ["Einklappen", "Vergleichen", "iPhone"]),
         "v2.2.4": ("Einklappen für JSON und XML und schnellere große Dateien", "Auf dem Mac lassen sich JSON-Objekte und -Arrays sowie XML-Elemente einklappen, sodass große Dateien wie eine Gliederung lesbar sind. Große Dateien bleiben nach der ersten Änderung beim Bearbeiten und Scrollen flüssig, und die Konsole der GitHub-Version zeigt den Startordner eines Skripts.", ["Einklappen", "Leistung", "Mac"]),
@@ -756,6 +757,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor und Snapshots werden verlässlicher", "Verbessert Auswahl, Tastaturnavigation und Themes im macOS-Editor und erweitert den Code-Snapshot-Export.", ["Editor", "Themes", "Snapshots"]),
     },
     "da": {
+        "v2.2.7": ("Linjekommandoer for markeringen og Markdown-kodeblokke", "Sammenføj linjer, Slet linje, Slå kommentar til/fra og Sortér linjer ændrer kun de markerede linjer i stedet for hele dokumentet. Kopiér-knappen i Markdown-kodeblokke virker, og på Mac forbliver udfoldede mapper i projektsidepanelet udfoldet, når du åbner en fil.", ["Redigering", "Markdown", "Mac"]),
         "v2.2.6": ("Skriftvælger på iPhone og iPad og stabile Mac-vinduer", "På iPhone og iPad åbner Vælg… ved editorskriften systemets skriftvælger med forhåndsvisning, søgning og alle skriftsnit. På Mac lukker appen ikke længere på macOS 26, når et smalt vindue flytter værktøjslinjeknapper ind i overløbsmenuen.", ["Skrifter", "Stabilitet", "iPhone"]),
         "v2.2.5": ("Foldning på iPhone og iPad og ignorer mellemrum i sammenligning", "På iPhone og iPad kan JSON- og XML-strukturer foldes sammen, også med iPad-tastatur og VoiceOver. Sammenlign og Git-panelet kan ignorere mellemrum, markøren ruller ikke længere teksten væk på iPhone og iPad, og appen starter igen på macOS 14.", ["Foldning", "Sammenlign", "iPhone"]),
         "v2.2.4": ("Foldning af JSON og XML og hurtigere store filer", "På Mac kan JSON-objekter og -arrays samt XML-elementer foldes sammen, så store filer kan læses som en disposition. Store filer forbliver hurtige efter den første ændring, og konsollen i GitHub-versionen viser den mappe, et script starter i.", ["Foldning", "Ydelse", "Mac"]),
@@ -810,6 +812,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor og snapshots bliver mere pålidelige", "Forbedrer markering, tastaturnavigation og temaer i macOS-editoren og udvider eksporten af kodesnapshots.", ["Editor", "Temaer", "Snapshots"]),
     },
     "fr": {
+        "v2.2.7": ("Commandes de ligne sur la sélection et blocs de code Markdown", "Joindre les lignes, Supprimer la ligne, Activer/désactiver le commentaire et Trier les lignes ne modifient plus que les lignes sélectionnées au lieu de tout le document. Le bouton Copier des blocs de code Markdown fonctionne, et sur Mac les dossiers ouverts de la barre latérale du projet restent ouverts quand vous ouvrez un fichier.", ["Édition", "Markdown", "Mac"]),
         "v2.2.6": ("Sélecteur de polices sur iPhone et iPad et fenêtres Mac stables", "Sur iPhone et iPad, Sélectionner… à côté de la police de l’éditeur ouvre le sélecteur de polices du système, avec aperçu, recherche et tous les styles. Sur Mac, l’app ne quitte plus sous macOS 26 quand une fenêtre étroite déplace des boutons de la barre d’outils dans le menu de débordement.", ["Polices", "Stabilité", "iPhone"]),
         "v2.2.5": ("Repli sur iPhone et iPad et espaces ignorés dans la comparaison", "Sur iPhone et iPad, les structures JSON et XML se replient, aussi au clavier d’iPad et avec VoiceOver. Comparer et le panneau Git peuvent ignorer les espaces, placer le curseur ne fait plus défiler le texte sur iPhone et iPad, et l’app se lance de nouveau sous macOS 14.", ["Repli", "Comparer", "iPhone"]),
         "v2.2.4": ("Repli JSON et XML et gros fichiers plus rapides", "Sur Mac, les objets et tableaux JSON ainsi que les éléments XML se replient, pour lire les gros fichiers comme un plan. Les gros fichiers restent réactifs après la première modification, et la console de la version GitHub affiche le dossier de démarrage d’un script.", ["Repli", "Performances", "Mac"]),
@@ -864,6 +867,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Éditeur et instantanés plus fiables", "Améliore la sélection, la navigation au clavier et les thèmes dans l’éditeur macOS, tout en enrichissant l’export d’instantanés de code.", ["Éditeur", "Thèmes", "Instantanés"]),
     },
     "es": {
+        "v2.2.7": ("Comandos de línea sobre la selección y bloques de código Markdown", "Unir líneas, Eliminar línea, Alternar comentario y Ordenar líneas cambian solo las líneas seleccionadas en lugar de todo el documento. El botón Copiar de los bloques de código Markdown funciona y, en Mac, las carpetas abiertas de la barra lateral del proyecto siguen abiertas al abrir un archivo.", ["Edición", "Markdown", "Mac"]),
         "v2.2.6": ("Selector de fuentes en iPhone y iPad y ventanas de Mac estables", "En iPhone y iPad, Seleccionar… junto a la fuente del editor abre el selector de fuentes del sistema, con vista previa, búsqueda y todos los estilos. En Mac, la app ya no se cierra en macOS 26 cuando una ventana estrecha mueve botones de la barra de herramientas al menú de desbordamiento.", ["Fuentes", "Estabilidad", "iPhone"]),
         "v2.2.5": ("Plegado en iPhone y iPad e ignorar espacios al comparar", "En iPhone y iPad, las estructuras JSON y XML se pueden contraer, también con el teclado del iPad y VoiceOver. Comparar y el panel Git pueden ignorar los espacios en blanco, colocar el cursor ya no desplaza el texto en iPhone y iPad, y la app vuelve a abrirse en macOS 14.", ["Plegado", "Comparar", "iPhone"]),
         "v2.2.4": ("Plegado de JSON y XML y archivos grandes más rápidos", "En Mac, los objetos y arrays JSON y los elementos XML se pueden plegar para leer los archivos grandes como un esquema. Los archivos grandes siguen fluidos tras el primer cambio, y la consola de la versión de GitHub muestra la carpeta en la que se inicia un script.", ["Plegado", "Rendimiento", "Mac"]),
@@ -918,6 +922,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("Editor y capturas más fiables", "Mejora la selección, la navegación por teclado y los temas del editor de macOS, y amplía la exportación de capturas de código.", ["Editor", "Temas", "Capturas"]),
     },
     "ja": {
+        "v2.2.7": ("選択範囲に働く行コマンドとMarkdownコードブロック", "行を結合、行を削除、コメントの切り替え、行の並べ替えは、書類全体ではなく選択した行だけを変更します。Markdownのコードブロックのコピーボタンが動作し、Macではファイルを開いてもプロジェクトサイドバーで開いたフォルダが開いたままになります。", ["編集", "Markdown", "Mac"]),
         "v2.2.6": ("iPhoneとiPadのフォントピッカーと安定したMacウインドウ", "iPhoneとiPadで、エディタのフォントの横にある「選択してください…」から、プレビューと検索付きでどのスタイルも選べるシステムのフォントピッカーを開けます。Macでは、macOS 26でウインドウを狭くしてツールバーのボタンがオーバーフローメニューに移ってもAppが終了しなくなりました。", ["フォント", "安定性", "iPhone"]),
         "v2.2.5": ("iPhoneとiPadでの折りたたみと比較での空白無視", "iPhoneとiPadでJSONとXMLの構造を折りたためるようになり、iPadのキーボードやVoiceOverからも操作できます。比較とGitパネルで空白を無視でき、iPhoneとiPadでカーソルを置いてもテキストがスクロールせず、macOS 14でも再び起動します。", ["折りたたみ", "比較", "iPhone"]),
         "v2.2.4": ("JSONとXMLの折りたたみと大きなファイルの高速化", "MacでJSONのオブジェクトや配列、XMLの要素を折りたためるようになり、大きなファイルをアウトラインのように読めます。大きなファイルは最初の変更の後も軽快なままで、GitHub版のコンソールにはスクリプトの開始フォルダが表示されます。", ["折りたたみ", "パフォーマンス", "Mac"]),
@@ -972,6 +977,7 @@ LOCALIZED_TIMELINE_COPY = {
         "v1.5.0": ("エディタとスナップショットをさらに信頼性向上", "macOS エディタの選択、キーボード操作、テーマを改善し、コードスナップショットの書き出しを拡充します。", ["エディタ", "テーマ", "スナップショット"]),
     },
     "zh-Hans": {
+        "v2.2.7": ("作用于所选内容的行命令与 Markdown 代码块", "合并行、删除行、切换注释和排序行只更改所选的行，而不是整个文稿。Markdown 代码块的拷贝按钮可以使用；在 Mac 上，从项目侧边栏打开文件时，已展开的文件夹保持展开。", ["编辑", "Markdown", "Mac"]),
         "v2.2.6": ("iPhone 和 iPad 上的字体选择器，Mac 窗口更稳定", "在 iPhone 和 iPad 上，编辑器字体旁的“选择…”会打开系统字体选择器，支持预览、搜索和所有字体样式。在 Mac 上，macOS 26 中窗口变窄导致工具栏按钮移入溢出菜单时，App 不再退出。", ["字体", "稳定性", "iPhone"]),
         "v2.2.5": ("iPhone 和 iPad 上的折叠，比较时忽略空白", "在 iPhone 和 iPad 上可以折叠 JSON 和 XML 结构，也支持 iPad 键盘和 VoiceOver。比较和 Git 面板可以忽略空白，在 iPhone 和 iPad 上放置光标不再滚动文本，App 在 macOS 14 上也能重新启动。", ["折叠", "比较", "iPhone"]),
         "v2.2.4": ("JSON 与 XML 折叠，大文件更快", "在 Mac 上，JSON 对象和数组以及 XML 元素可以折叠，大文件读起来就像大纲。大文件在首次修改后依然流畅，GitHub 版的控制台会显示脚本启动时所在的文件夹。", ["折叠", "性能", "Mac"]),

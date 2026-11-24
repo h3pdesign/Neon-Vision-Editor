@@ -781,6 +781,64 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertTrue(snapshot.markers.contains { $0.kind == .code })
     }
 
+    func testCodeMinimapSectionMarkersComeOnlyFromComments() {
+        let sample = """
+        let sectionCount = 3
+        let note = "TODO: not a marker"
+        let total = a * b
+        let value = 1 // TODO: trailing marker
+        #pragma mark - Legacy
+        """
+
+        let snapshot = buildCodeMinimapSnapshot(text: sample, language: "swift")
+        let kinds = snapshot.markers.map(\.kind)
+
+        XCTAssertEqual(kinds, [.property, .property, .property, .section, .section])
+
+        let python = buildCodeMinimapSnapshot(
+            text: "sections = []\nvalue = 1  # FIXME: later",
+            language: "python"
+        )
+        XCTAssertEqual(python.markers.map(\.kind).last, .section)
+        XCTAssertNotEqual(python.markers.first?.kind, .section)
+    }
+
+    func testCodeMinimapIgnoresCommentPrefixesInsideStrings() {
+        let swift = buildCodeMinimapSnapshot(
+            text: """
+            let url = "https://example.com/TODO:"
+            let quoted = "say \\"// MARK: no\\"" // FIXME: real
+            let c = 'x' // TODO: after a character literal
+            """,
+            language: "swift"
+        )
+        XCTAssertEqual(swift.markers.map(\.kind), [.property, .section, .section])
+
+        let c = buildCodeMinimapSnapshot(
+            text: "char q = '\"'; // TODO: after a quote character\nchar e = '\\''; // FIXME: after an escaped quote",
+            language: "c"
+        )
+        XCTAssertEqual(c.markers.map(\.kind), [.section, .section])
+
+        let python = buildCodeMinimapSnapshot(
+            text: "label = '# TODO: not a comment'\nvalue = \"#\"  # FIXME: real\npattern = r'# MARK: raw string'",
+            language: "python"
+        )
+        XCTAssertEqual(python.markers.map(\.kind), [.code, .section, .code])
+
+        let escaped = buildCodeMinimapSnapshot(
+            text: "let quoted = \"say \\\"// MARK: no\\\" here\"",
+            language: "swift"
+        )
+        XCTAssertEqual(escaped.markers.map(\.kind), [.property])
+
+        let yaml = buildCodeMinimapSnapshot(
+            text: "title: don't panic # TODO: update\nnote: '# TODO: quoted, not a comment'",
+            language: "yaml"
+        )
+        XCTAssertEqual(yaml.markers.map(\.kind), [.section, .code])
+    }
+
     func testCodeMinimapViewportTracksVisibleOffset() {
         let viewport = codeMinimapViewport(
             visibleY: 450,

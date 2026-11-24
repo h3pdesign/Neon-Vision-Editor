@@ -150,6 +150,8 @@ enum ShortcutPreferences {
         .init(key: "b", modifiers: [.command]),
         .init(key: "i", modifiers: [.command]),
         .init(key: "k", modifiers: [.command]),
+        .init(key: "k", modifiers: [.command, .shift]),
+        .init(key: "/", modifiers: [.command]),
         .init(key: "o", modifiers: [.command, .shift]),
         .init(key: "g", modifiers: [.command]),
         .init(key: "?", modifiers: [.command]),

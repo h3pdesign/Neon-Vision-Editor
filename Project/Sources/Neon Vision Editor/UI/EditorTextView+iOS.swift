@@ -1062,6 +1062,24 @@ class EditorInputTextView: UITextView {
             action: #selector(moveLineDownFromHardwareKeyboard)
         )
         moveLineDownCommand.discoverabilityTitle = "Move Line Down"
+        let toggleCommentCommand = UIKeyCommand(
+            input: "/",
+            modifierFlags: .command,
+            action: #selector(toggleCommentFromHardwareKeyboard)
+        )
+        toggleCommentCommand.discoverabilityTitle = NSLocalizedString("Toggle Comment", comment: "Editor line command")
+        let duplicateLineCommand = UIKeyCommand(
+            input: UIKeyCommand.inputDownArrow,
+            modifierFlags: [.command, .alternate, .shift],
+            action: #selector(duplicateLineFromHardwareKeyboard)
+        )
+        duplicateLineCommand.discoverabilityTitle = NSLocalizedString("Duplicate Line", comment: "Editor line command")
+        let deleteLineCommand = UIKeyCommand(
+            input: "k",
+            modifierFlags: [.command, .shift],
+            action: #selector(deleteLineFromHardwareKeyboard)
+        )
+        deleteLineCommand.discoverabilityTitle = NSLocalizedString("Delete Line", comment: "Editor line command")
         let foldCommands = structureFolding.isAvailable ? [
             foldCommand(input: UIKeyCommand.inputLeftArrow, modifiers: [.command, .alternate],
                         action: #selector(foldFromHardwareKeyboard), title: "Fold"),
@@ -1080,7 +1098,7 @@ class EditorInputTextView: UITextView {
         commands.insert(
             contentsOf: [
                 selectAllCommand, copyCommand, cutCommand, pasteCommand, undoCommand, redoCommand,
-                moveLineUpCommand, moveLineDownCommand
+                moveLineUpCommand, moveLineDownCommand, toggleCommentCommand, duplicateLineCommand, deleteLineCommand
             ] + foldCommands + markdownCommands,
             at: 0
         )
@@ -1129,6 +1147,26 @@ class EditorInputTextView: UITextView {
 
     @objc private func moveLineDownFromHardwareKeyboard() {
         requestLineMove(.down)
+    }
+
+    @objc private func toggleCommentFromHardwareKeyboard() {
+        requestLineTransform(.toggleComment)
+    }
+
+    @objc private func duplicateLineFromHardwareKeyboard() {
+        requestLineTransform(.duplicate)
+    }
+
+    @objc private func deleteLineFromHardwareKeyboard() {
+        requestLineTransform(.delete)
+    }
+
+    private func requestLineTransform(_ transform: EditorLineTransform) {
+        NotificationCenter.default.post(
+            name: .transformSelectedLinesRequested,
+            object: transform.rawValue,
+            userInfo: [EditorCommandUserInfo.sourceTextView: self]
+        )
     }
 
     private func requestLineMove(_ direction: EditorLineMoveDirection) {
@@ -3072,6 +3110,7 @@ struct CustomTextEditor: UIViewRepresentable {
             NotificationCenter.default.addObserver(self, selector: #selector(replaceRange(_:)), name: .replaceEditorRangeRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(replaceRanges(_:)), name: .replaceEditorRangesRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(moveSelectedLines(_:)), name: .moveSelectedLinesRequested, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(transformSelectedLines(_:)), name: .transformSelectedLinesRequested, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(scrollViewportToFraction(_:)), name: .scrollEditorViewportToFraction, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(requestEditorViewport(_:)), name: .requestEditorViewport, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(updateKeyboardAccessoryVisibility(_:)), name: .keyboardAccessoryBarVisibilityChanged, object: nil)
@@ -3434,6 +3473,39 @@ struct CustomTextEditor: UIViewRepresentable {
                       in: textView.text ?? "",
                       selectedRange: textView.selectedRange,
                       direction: direction
+                  ) else {
+                return
+            }
+
+            setPendingTextMutation(range: result.replacementRange, replacement: result.replacement)
+            performProgrammaticReplacement(
+                in: textView,
+                range: result.replacementRange,
+                replacement: result.replacement,
+                selectedRange: result.selectedRange
+            )
+            textView.scrollRangeToVisible(result.selectedRange)
+        }
+
+        @objc private func transformSelectedLines(_ notification: Notification) {
+            if let sourceTextView = notification.userInfo?[EditorCommandUserInfo.sourceTextView] as? UITextView,
+               sourceTextView !== textView {
+                return
+            }
+            if let targetDocumentID = notification.userInfo?[EditorCommandUserInfo.documentID] as? String,
+               parent.documentID?.uuidString != targetDocumentID {
+                return
+            }
+            let language = notification.userInfo?[EditorCommandUserInfo.language] as? String ?? parent.language
+            guard let rawTransform = notification.object as? String,
+                  let transform = EditorLineTransform(rawValue: rawTransform),
+                  let textView,
+                  textView.isEditable,
+                  let result = editorLineTransform(
+                      in: textView.text ?? "",
+                      selectedRange: textView.selectedRange,
+                      transform: transform,
+                      language: language
                   ) else {
                 return
             }

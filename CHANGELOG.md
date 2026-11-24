@@ -6,14 +6,23 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Added
+
+- On the Mac, Settings > Layout & Status Bar can place the table of contents sidebar on the right of the editor ([#1087](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1087)).
+- Settings > Layout can make the table of contents text smaller or larger, separately from the project navigator, so more of long headings fits ([#1086](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1086)).
+
 ### Fixes
+
+- The Copy button on a code block in the Markdown preview copies the code to the clipboard. Before, it did nothing ([#1081](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1081)).
+- A single quote in a Markdown preview code block shows as `'`, not `&#39;` ([#1082](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1082)).
+- On the Mac, closing a restored tab after its neighbour closed no longer quits the app, and closing the last window keeps its documents from reopening at the next launch ([#1085](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1085)).
 
 - The minimap marks only comments as section markers. Before, code lines such as `let sectionCount = 3` or a string containing "TODO:" showed up as section markers. Trailing comments such as `value = 1 // TODO: check` still count.
 - The minimap ignores comment markers inside strings, so a URL such as `"https://example.com/TODO:"` or a Python string `'# TODO:'` no longer shows up as a section marker.
 
 ### Maintenance
 
-- Development version 2.2.7 (build 1169).
+- Development version 2.2.7 (build 1170).
 - develop now includes the v2.2.6 release commit from main, so the next release branch merges cleanly.
 
 ## [v2.2.6] - 2026-11-19

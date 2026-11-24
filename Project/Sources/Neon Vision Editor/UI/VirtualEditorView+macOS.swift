@@ -1514,6 +1514,7 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
         NotificationCenter.default.addObserver(self, selector: #selector(updateFindHighlights(_:)), name: .updateEditorFindHighlights, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(replaceRange(_:)), name: .replaceEditorRangeRequested, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(moveSelectedLines(_:)), name: .moveSelectedLinesRequested, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(transformSelectedLines(_:)), name: .transformSelectedLinesRequested, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(insertBracketHelperToken(_:)), name: .insertBracketHelperTokenRequested, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(inspectWhitespaceScalars(_:)), name: .inspectWhitespaceScalarsRequested, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(updateVimMode(_:)), name: .vimModeStateDidChange, object: nil)
@@ -1599,18 +1600,37 @@ final class VirtualEditorCanvas: NSView, NSTextInputClient {
     @objc private func moveSelectedLines(_ notification: Notification) {
         guard matchesDocument(notification),
               let rawDirection = notification.object as? String,
-              let direction = EditorLineMoveDirection(rawValue: rawDirection),
-              let documentID,
+              let direction = EditorLineMoveDirection(rawValue: rawDirection) else { return }
+        applyViewportLineEdit { text, localSelection in
+            editorLineMove(in: text, selectedRange: localSelection, direction: direction)
+        }
+    }
+
+    @objc private func transformSelectedLines(_ notification: Notification) {
+        guard matchesDocument(notification),
+              let rawTransform = notification.object as? String,
+              let transform = EditorLineTransform(rawValue: rawTransform),
+              viewport?.startColumnUTF16 == 0 else { return }
+        let language = notification.userInfo?[EditorCommandUserInfo.language] as? String ?? self.language
+        applyViewportLineEdit { text, localSelection in
+            editorLineTransform(in: text, selectedRange: localSelection, transform: transform, language: language)
+        }
+    }
+
+    /// Applies a line edit computed on the loaded viewport text, which holds
+    /// whole lines around the selection.
+    private func applyViewportLineEdit(_ edit: (String, NSRange) -> EditorLineMoveResult?) {
+        guard let documentID,
               let viewport,
               !isReadOnly else { return }
         let viewportRange = NSRange(location: viewport.startUTF16Offset, length: viewport.text.utf16.count)
-        guard NSLocationInRange(selection.location, viewportRange),
+        guard NSLocationInRange(selection.location, viewportRange) || selection.location == NSMaxRange(viewportRange),
               NSMaxRange(selection) <= NSMaxRange(viewportRange) else { return }
         let localSelection = NSRange(
             location: selection.location - viewport.startUTF16Offset,
             length: selection.length
         )
-        guard let result = editorLineMove(in: viewport.text, selectedRange: localSelection, direction: direction) else { return }
+        guard let result = edit(viewport.text, localSelection) else { return }
         let absoluteSelection = NSRange(
             location: viewport.startUTF16Offset + result.selectedRange.location,
             length: result.selectedRange.length

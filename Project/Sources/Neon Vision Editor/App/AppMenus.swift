@@ -476,6 +476,12 @@ struct NeonVisionMacAppCommands: Commands {
             .keyboardShortcut(.downArrow, modifiers: [.option])
             .disabled(!hasSavableSelectedTab)
 
+            Button("Toggle Comment") {
+                post(.transformSelectedLinesRequested, object: EditorLineTransform.toggleComment.rawValue)
+            }
+            .keyboardShortcut("/", modifiers: [.command])
+            .disabled(!hasSavableSelectedTab)
+
             Divider()
 
             Button("Fold") {

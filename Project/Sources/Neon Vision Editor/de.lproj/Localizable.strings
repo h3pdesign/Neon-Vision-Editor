@@ -2114,3 +2114,5 @@
 "Window Resizing: On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…" = "Fenstergröße: Auf dem Mac beendet sich die App nicht mehr, wenn Sie ein Fenster so schmal machen, dass Symbolleistentasten ins Überlaufmenü wandern…";
 "On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret…" = "Auf dem Mac schlägt die MeierScript-Vervollständigung Ihre eigenen Funktionen samt Parametern vor, auch wenn sie weit oberhalb der Einfügemarke deklariert sind…";
 "Function Completion: On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret…" = "Funktionsvervollständigung: Auf dem Mac schlägt die MeierScript-Vervollständigung Ihre eigenen Funktionen samt Parametern vor, auch wenn sie weit oberhalb der Einfügemarke deklariert sind…";
+"Table of Contents Position" = "Position des Inhaltsverzeichnisses";
+"Table of Contents Text Size: %lld" = "Textgröße des Inhaltsverzeichnisses: %lld";

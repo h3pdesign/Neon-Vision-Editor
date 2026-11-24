@@ -1068,6 +1068,18 @@ class EditorInputTextView: UITextView {
             action: #selector(toggleCommentFromHardwareKeyboard)
         )
         toggleCommentCommand.discoverabilityTitle = NSLocalizedString("Toggle Comment", comment: "Editor line command")
+        let duplicateLineCommand = UIKeyCommand(
+            input: UIKeyCommand.inputDownArrow,
+            modifierFlags: [.command, .alternate, .shift],
+            action: #selector(duplicateLineFromHardwareKeyboard)
+        )
+        duplicateLineCommand.discoverabilityTitle = NSLocalizedString("Duplicate Line", comment: "Editor line command")
+        let deleteLineCommand = UIKeyCommand(
+            input: "k",
+            modifierFlags: [.command, .shift],
+            action: #selector(deleteLineFromHardwareKeyboard)
+        )
+        deleteLineCommand.discoverabilityTitle = NSLocalizedString("Delete Line", comment: "Editor line command")
         let foldCommands = structureFolding.isAvailable ? [
             foldCommand(input: UIKeyCommand.inputLeftArrow, modifiers: [.command, .alternate],
                         action: #selector(foldFromHardwareKeyboard), title: "Fold"),
@@ -1086,7 +1098,7 @@ class EditorInputTextView: UITextView {
         commands.insert(
             contentsOf: [
                 selectAllCommand, copyCommand, cutCommand, pasteCommand, undoCommand, redoCommand,
-                moveLineUpCommand, moveLineDownCommand, toggleCommentCommand
+                moveLineUpCommand, moveLineDownCommand, toggleCommentCommand, duplicateLineCommand, deleteLineCommand
             ] + foldCommands + markdownCommands,
             at: 0
         )
@@ -1138,9 +1150,21 @@ class EditorInputTextView: UITextView {
     }
 
     @objc private func toggleCommentFromHardwareKeyboard() {
+        requestLineTransform(.toggleComment)
+    }
+
+    @objc private func duplicateLineFromHardwareKeyboard() {
+        requestLineTransform(.duplicate)
+    }
+
+    @objc private func deleteLineFromHardwareKeyboard() {
+        requestLineTransform(.delete)
+    }
+
+    private func requestLineTransform(_ transform: EditorLineTransform) {
         NotificationCenter.default.post(
             name: .transformSelectedLinesRequested,
-            object: EditorLineTransform.toggleComment.rawValue,
+            object: transform.rawValue,
             userInfo: [EditorCommandUserInfo.sourceTextView: self]
         )
     }

@@ -11,6 +11,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - On the Mac, Settings > Layout & Status Bar can place the table of contents sidebar on the right of the editor ([#1087](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1087)).
 - Settings > Layout can make the table of contents text smaller or larger, separately from the project navigator, so more of long headings fits ([#1086](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1086)).
 - Toggle Comment is in the Mac Editor menu and on the iPad keyboard with ⌘/. It uses the comment syntax of the document's language, such as `#` in Python or `<!-- -->` in HTML.
+- Duplicate Line (⌥⇧⌘↓) and Delete Line (⇧⌘K) are in the Mac Editor menu and on the iPad keyboard. They work on the current line or every selected line.
 - More files open with the right syntax highlighting: SCSS and Less, `.cxx` and `.hxx`, JSON Lines and GeoJSON, Xcode storyboards, XIBs and entitlements, and Gemfile, Podfile, Brewfile, Fastfile, Containerfile, Pipfile, `.zshenv` and `.editorconfig`.
 
 ### Fixes
@@ -26,7 +27,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ### Maintenance
 
-- Development version 2.2.7 (build 1171).
+- Development version 2.2.7 (build 1172).
 - develop now includes the v2.2.6 release commit from main, so the next release branch merges cleanly.
 
 ## [v2.2.6] - 2026-11-19

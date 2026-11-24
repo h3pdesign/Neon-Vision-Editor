@@ -953,6 +953,8 @@
 "More ways to support" = "Weitere Möglichkeiten zu unterstützen";
 "Move Line Down" = "Zeile nach unten verschieben";
 "Toggle Comment" = "Kommentar ein/aus";
+"Duplicate Line" = "Zeile duplizieren";
+"Delete Line" = "Zeile löschen";
 "Move Line Up" = "Zeile nach oben verschieben";
 "Name" = "Name";
 "Needs attention on iPhone" = "Auf dem iPhone ist eine Aktion erforderlich";

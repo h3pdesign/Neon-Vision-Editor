@@ -953,6 +953,8 @@
 "More ways to support" = "更多支持方式";
 "Move Line Down" = "向下移动行";
 "Toggle Comment" = "切换注释";
+"Duplicate Line" = "复制行";
+"Delete Line" = "删除行";
 "Move Line Up" = "向上移动行";
 "Name" = "名称";
 "Needs attention on iPhone" = "需要在 iPhone 上处理";

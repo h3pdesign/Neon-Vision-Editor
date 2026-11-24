@@ -182,6 +182,14 @@ Manual non-Cloud App Store uploads also need separate coordination.
    a queued concurrency group. App Store sync reads actual availability without
    assuming a fixed propagation delay; rerun it when the Store release appears.
 8. Verify the protected main-to-develop synchronization PR has merged.
+9. Clean up branches from the Mac (cloud sessions get HTTP 403 on remote
+   deletes). Fast-forward local `main` and `develop`, run `git worktree prune`
+   and `git fetch --prune`, then delete local and remote branches whose PR has
+   merged or whose commits are already in `develop` (check `git cherry` and
+   `gh pr list --state all`). Keep `main`, `develop`, `archive/legacy-branches`,
+   any branch with an open PR and any branch created that day. Delete at most
+   five remote refs per `git push origin --delete` and list unmerged branches
+   for review instead of deleting them.
 
 `--next` resolves local reachable tags after fetching for real preparation.
 Prefer an explicit approved version for reproducible releases. A missing or

@@ -36,6 +36,22 @@ struct SidebarView: View {
     ]
     @State private var tocRefreshTask: Task<Void, Never>?
     @State private var selectedTOCItemID: String?
+    /// Base text size of table of contents entries; 13 keeps the original sizes (#1086).
+    @AppStorage(SidebarView.fontSizePreferenceKey) private var tocFontSize: Double = SidebarView.defaultFontSize
+
+    static let fontSizePreferenceKey = "SettingsTOCSidebarFontSize"
+    static let defaultFontSize: Double = 13
+    static let fontSizeRange: ClosedRange<Double> = 9...18
+
+    /// Scales a design size so entries keep their relative hierarchy at any base size.
+    static func scaledFontSize(_ designSize: CGFloat, baseSize: Double) -> CGFloat {
+        let base = min(max(baseSize, fontSizeRange.lowerBound), fontSizeRange.upperBound)
+        return (designSize * CGFloat(base / defaultFontSize) * 2).rounded() / 2
+    }
+
+    private func scaled(_ designSize: CGFloat) -> CGFloat {
+        Self.scaledFontSize(designSize, baseSize: tocFontSize)
+    }
 
     var body: some View {
         List {
@@ -137,7 +153,7 @@ struct SidebarView: View {
 
             if let line = item.line {
                 Text("L\(line)")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(.system(size: scaled(10), weight: .medium, design: .monospaced))
                     .foregroundStyle(isSelected ? Color.accentColor.opacity(0.85) : Color.secondary.opacity(0.78))
             }
         }
@@ -178,12 +194,12 @@ struct SidebarView: View {
             EmptyView()
         } else if item.kind == .heading {
             Text(String(repeating: "#", count: max(1, min(item.level, 3))))
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .font(.system(size: scaled(10), weight: .bold, design: .monospaced))
                 .foregroundStyle(color)
                 .frame(width: 24, alignment: .leading)
         } else {
             Image(systemName: tocIconName(for: item.kind))
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: scaled(11), weight: .semibold))
                 .foregroundStyle(color)
                 .frame(width: 18)
         }
@@ -193,23 +209,23 @@ struct SidebarView: View {
         if language == "markdown", item.kind == .heading {
             switch item.level {
             case 1:
-                return .system(size: 13, weight: .bold)
+                return .system(size: scaled(13), weight: .bold)
             case 2:
-                return .system(size: 12.5, weight: .semibold)
+                return .system(size: scaled(12.5), weight: .semibold)
             case 3:
-                return .system(size: 12, weight: .medium)
+                return .system(size: scaled(12), weight: .medium)
             default:
-                return .system(size: 12, weight: .regular)
+                return .system(size: scaled(12), weight: .regular)
             }
         }
 
         switch item.level {
         case 1:
-            return .system(size: 13, weight: .semibold)
+            return .system(size: scaled(13), weight: .semibold)
         case 2:
-            return .system(size: 12.5, weight: .medium)
+            return .system(size: scaled(12.5), weight: .medium)
         default:
-            return .system(size: 12, weight: .regular)
+            return .system(size: scaled(12), weight: .regular)
         }
     }
 

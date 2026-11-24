@@ -2115,3 +2115,5 @@
 "Window Resizing: On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu…" = "ウインドウのサイズ変更: Macで、ウインドウを狭くしてツールバーのボタンがオーバーフローメニューに移るときにAppが終了しなくなりました…";
 "On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret…" = "Macでは、カーソルよりずっと上で宣言された関数でも、MeierScriptの補完が独自の関数とそのパラメータを候補に出します…";
 "Function Completion: On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret…" = "関数の補完: Macでは、カーソルよりずっと上で宣言された関数でも、MeierScriptの補完が独自の関数とそのパラメータを候補に出します…";
+"Table of Contents Position" = "目次の位置";
+"Table of Contents Text Size: %lld" = "目次のテキストサイズ: %lld";

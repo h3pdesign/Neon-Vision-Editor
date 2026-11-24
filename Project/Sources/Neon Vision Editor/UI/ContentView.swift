@@ -1312,6 +1312,7 @@ struct ContentView: View {
     @State var isBuildingStructuredLog: Bool = false
     @State var structuredLogParseTask: Task<Void, Never>? = nil
     @AppStorage("SettingsProjectNavigatorPlacement") var projectNavigatorPlacementRaw: String = ProjectNavigatorPlacement.trailing.rawValue
+    @AppStorage("SettingsTOCSidebarPlacement") var tocSidebarPlacementRaw: String = ProjectNavigatorPlacement.leading.rawValue
     @AppStorage("SettingsPerformancePreset") var performancePresetRaw: String = PerformancePreset.balanced.rawValue
     @AppStorage("SettingsLargeFileOpenMode") var largeFileOpenModeRaw: String = "deferred"
     @AppStorage("SettingsRemoteSessionsEnabled") private var remoteSessionsEnabled: Bool = false
@@ -2226,6 +2227,12 @@ struct ContentView: View {
         didNotifyWindowClosed = true
         MacDocumentWindowTabs.shared.unregister(viewModel)
         persistUnsavedDraftSnapshotIfNeeded()
+        if !MacDocumentWindowTabs.shared.isTerminating, !MacDocumentWindowTabs.shared.hasSessionOwner {
+            // No remaining editor will persist the session (the last window
+            // closed), so drop this document now or it reopens on launch (#1085).
+            lastPersistedSessionSignature = ""
+            persistSessionIfReady()
+        }
         // The closed document must not reopen; let AppKit select the next tab first.
         DispatchQueue.main.async { MacDocumentWindowTabs.shared.persistSessionFromSelectedOwner() }
         onWindowClosed?()
@@ -5753,18 +5760,30 @@ struct ContentView: View {
     }
 
 #if os(macOS)
+    private var tocSidebarIsTrailing: Bool {
+        tocSidebarPlacementRaw == ProjectNavigatorPlacement.trailing.rawValue
+    }
+
     private var macOSTOCSplitLayout: some View {
         HStack(spacing: 0) {
-            if shouldUseSplitView {
-                sidebarView
-                    .frame(width: clampedTOCSidebarWidth)
-                    .background(macSidebarColumnBackground)
+            if shouldUseSplitView && !tocSidebarIsTrailing {
+                tocSidebarColumn
                 tocSidebarResizeHandle
             }
             editorView
                 .layoutPriority(1)
+            if shouldUseSplitView && tocSidebarIsTrailing {
+                tocSidebarResizeHandle
+                tocSidebarColumn
+            }
         }
         .background(editorSurfaceBackgroundStyle)
+    }
+
+    private var tocSidebarColumn: some View {
+        sidebarView
+            .frame(width: clampedTOCSidebarWidth)
+            .background(macSidebarColumnBackground)
     }
 
     private var tocSidebarResizeHandle: some View {
@@ -5774,7 +5793,9 @@ struct ContentView: View {
                 if tocSidebarResizeStartWidth == nil {
                     tocSidebarResizeStartWidth = startWidth
                 }
-                let proposed = startWidth + value.translation.width
+                // A trailing sidebar grows when the divider moves left.
+                let translation = tocSidebarIsTrailing ? -value.translation.width : value.translation.width
+                let proposed = startWidth + translation
                 let clamped = min(max(proposed, minimumTOCSidebarWidth), maximumTOCSidebarWidth)
                 tocSidebarWidth = Double(clamped)
             }

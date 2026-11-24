@@ -86,6 +86,7 @@ struct MarkdownPreviewWebView: NSViewRepresentable {
         var documentID: UUID?
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            if handleMarkdownPreviewCodeCopyMessage(message) { return }
             guard message.name == Self.scrollMessageName,
                   let payload = message.body as? [String: Any],
                   let fraction = payload["fraction"] as? Double,
@@ -261,6 +262,7 @@ struct MarkdownPreviewWebView: UIViewRepresentable {
         var documentID: UUID?
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            if handleMarkdownPreviewCodeCopyMessage(message) { return }
             guard message.name == Self.scrollMessageName,
                   let payload = message.body as? [String: Any],
                   let fraction = payload["fraction"] as? Double,
@@ -418,6 +420,9 @@ private func makeConfiguredWebView(
             )
         )
     }
+    if let scrollMessageHandler {
+        installMarkdownPreviewCodeCopyBridge(in: configuration.userContentController, handler: scrollMessageHandler)
+    }
 #if os(macOS)
     configuration.userContentController.addUserScript(makeMacPreviewOverlayScrollerUserScript())
 #endif
@@ -488,6 +493,75 @@ func makeMacPreviewOverlayScrollerUserScript() -> WKUserScript {
     )
 }
 #endif
+
+let markdownPreviewCodeCopyMessageName = "nvePreviewCopyCode"
+
+/// The Markdown preview runs with page JavaScript disabled, so the code block
+/// Copy button needs an app-owned script. It lives in an isolated content world:
+/// authored HTML/SVG preview content can neither see nor call this handler (#1081).
+@MainActor
+func installMarkdownPreviewCodeCopyBridge(in controller: WKUserContentController, handler: WKScriptMessageHandler) {
+    controller.add(handler, contentWorld: .defaultClient, name: markdownPreviewCodeCopyMessageName)
+    controller.addUserScript(
+        WKUserScript(
+            source: makeMarkdownPreviewCodeCopyScriptSource(),
+            injectionTime: .atDocumentEnd,
+            forMainFrameOnly: true,
+            in: .defaultClient
+        )
+    )
+}
+
+@MainActor
+func makeMarkdownPreviewCodeCopyScriptSource() -> String {
+    """
+    (() => {
+      const copyCode = (button) => {
+        const figure = button.closest('.code-block');
+        const code = figure ? figure.querySelector('pre code') : null;
+        if (!code) return false;
+        let text = code.dataset.rawText || code.textContent || '';
+        if (!code.dataset.rawText && text.endsWith('\\n')) text = text.slice(0, -1);
+        window.webkit.messageHandlers.\(markdownPreviewCodeCopyMessageName).postMessage({ text });
+        if (!button.dataset.nveOriginalLabel) button.dataset.nveOriginalLabel = button.textContent;
+        button.textContent = 'Copied';
+        clearTimeout(button.__nveCopyReset);
+        button.__nveCopyReset = setTimeout(() => {
+          button.textContent = button.dataset.nveOriginalLabel || 'Copy';
+        }, 1200);
+        return true;
+      };
+      // Visible only inside this isolated world; tests call it directly.
+      window.__nveCopyCodeBlock = copyCode;
+      document.addEventListener('click', (event) => {
+        if (!event.isTrusted) return;
+        const target = event.target;
+        const button = target && target.closest ? target.closest('.code-block-copy') : null;
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+        copyCode(button);
+      }, true);
+    })();
+    """
+}
+
+/// Returns true when the message was a code-copy request (handled or rejected).
+@MainActor
+func handleMarkdownPreviewCodeCopyMessage(_ message: WKScriptMessage) -> Bool {
+    guard message.name == markdownPreviewCodeCopyMessageName else { return false }
+    guard message.frameInfo.isMainFrame,
+          let payload = message.body as? [String: Any],
+          let text = payload["text"] as? String else { return true }
+#if os(macOS)
+    let pasteboard = NSPasteboard.general
+    pasteboard.clearContents()
+    pasteboard.setString(text, forType: .string)
+#elseif os(iOS) || os(visionOS)
+    UIPasteboard.general.string = text
+#endif
+    return true
+}
 
 @MainActor
 private func openExternalPreviewURL(_ url: URL) {

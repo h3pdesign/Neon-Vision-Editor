@@ -1328,7 +1328,7 @@ extension ContentView {
             ]
         case "python":
             return [
-                (#"#.*$"#, "comment"),
+                (#"(?<!&)#.*$"#, "comment"),
                 (#"&quot;[^&]*?&quot;|&#39;[^&]*?&#39;"#, "str"),
                 (#"\b(import|from|def|class|return|if|elif|else|for|while|try|except|raise|with|as|async|await|lambda|None|True|False)\b"#, "kw")
             ]
@@ -1352,7 +1352,7 @@ extension ContentView {
             ]
         case "shell":
             return [
-                (#"#.*$"#, "comment"),
+                (#"(?<!&)#.*$"#, "comment"),
                 (#"&quot;[^&]*?&quot;|&#39;[^&]*?&#39;"#, "str"),
                 (#"\b(cd|cp|mv|rm|git|npm|swift|xcodebuild|curl|grep|rg|find|mkdir|export|if|then|fi|for|do|done)\b"#, "kw")
             ]
@@ -1364,12 +1364,12 @@ extension ContentView {
             ]
         case "yaml":
             return [
-                (#"#.*$"#, "comment"),
+                (#"(?<!&)#.*$"#, "comment"),
                 (#"^\s*[\w.-]+(?=\s*:)"#, "key")
             ]
         case "ruby":
             return [
-                (#"#.*$"#, "comment"),
+                (#"(?<!&)#.*$"#, "comment"),
                 (#"&quot;[^&]*?&quot;|&#39;[^&]*?&#39;"#, "str"),
                 (#"\b(def|class|module|end|do|if|else|elsif|while|require|return|nil|true|false)\b"#, "kw")
             ]
@@ -1393,7 +1393,7 @@ extension ContentView {
             ]
         case "php":
             return [
-                (#"//.*$|#.*$"#, "comment"),
+                (#"//.*$|(?<!&)#.*$"#, "comment"),
                 (#"&quot;[^&]*?&quot;|&#39;[^&]*?&#39;"#, "str"),
                 (#"\b(namespace|use|function|class|public|private|protected|return|if|else|foreach|while|try|catch|throw|null|true|false)\b"#, "kw")
             ]
@@ -1411,12 +1411,32 @@ extension ContentView {
             let token: String
         }
         let fullRange = NSRange(escaped.startIndex..., in: escaped)
+        // A span boundary inside an entity such as &#39; splits it, so the
+        // preview shows the entity text instead of the character (#1082).
+        let entityRanges = cachedSyntaxRegex(pattern: #"&(?:#[0-9]+|#[xX][0-9A-Fa-f]+|[A-Za-z]+);"#)?
+            .matches(in: escaped, options: [], range: fullRange)
+            .map(\.range) ?? []
+        func isInsideEntity(_ offset: Int) -> Bool {
+            // Entity ranges are sorted and disjoint: find the last one starting before offset.
+            var low = 0
+            var high = entityRanges.count
+            while low < high {
+                let mid = (low + high) / 2
+                if entityRanges[mid].location < offset { low = mid + 1 } else { high = mid }
+            }
+            guard low > 0 else { return false }
+            return offset < NSMaxRange(entityRanges[low - 1])
+        }
+        func splitsEntity(_ range: NSRange) -> Bool {
+            isInsideEntity(range.location) || isInsideEntity(NSMaxRange(range))
+        }
         var selected: [HighlightRange] = []
         for pattern in patterns {
             guard let regex = cachedSyntaxRegex(pattern: pattern.pattern, options: [.anchorsMatchLines]) else { continue }
             for match in regex.matches(in: escaped, options: [], range: fullRange) {
                 guard match.range.location != NSNotFound,
                       match.range.length > 0,
+                      !splitsEntity(match.range),
                       !selected.contains(where: { NSIntersectionRange($0.range, match.range).length > 0 }) else {
                     continue
                 }

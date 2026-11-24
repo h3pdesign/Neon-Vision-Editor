@@ -2119,3 +2119,17 @@
 "Function Completion: On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret…" = "函数补全: 在 Mac 上，即使函数声明在光标上方很远处，MeierScript 补全也会提供你自己的函数及其参数…";
 "Table of Contents Position" = "目录位置";
 "Table of Contents Text Size: %lld" = "目录文字大小：%lld";
+"Editor Improvements: Line commands such as Join Lines, Delete Line, Toggle Comment and Sort Lines change only the lines you selected. Before…" = "编辑器改进: 合并行、删除行、切换注释和排序行等行命令只更改所选的行。以前…";
+"Line commands such as Join Lines, Delete Line, Toggle Comment and Sort Lines change only the lines you selected. Before…" = "合并行、删除行、切换注释和排序行等行命令只更改所选的行。以前…";
+"On the Mac, closing restored tabs no longer quits the app, and folders you expanded in the project sidebar stay expanded…" = "在 Mac 上，关闭恢复的标签页不再使 App 退出，项目侧边栏中已展开的文件夹保持展开…";
+"Performance Updates: On the Mac, closing restored tabs no longer quits the app, and folders you expanded in the project sidebar stay expanded…" = "性能改进: 在 Mac 上，关闭恢复的标签页不再使 App 退出，项目侧边栏中已展开的文件夹保持展开…";
+"Release highlights for v2.2.7." = "v2.2.7 的主要更新。";
+"Table of Contents: The table of contents sidebar can sit on the right of the editor on the Mac, and its text size can be changed." = "目录: 在 Mac 上，目录侧边栏可以放在编辑器右侧，并且可以更改其文字大小。";
+"The Copy button on Markdown preview code blocks works, and single quotes in those code blocks show correctly." = "Markdown 预览中代码块的拷贝按钮可以使用，单引号也能正确显示。";
+"The Copy button on a code block in the Markdown preview copies the code to the clipboard. Before, it did nothing…" = "Markdown 预览中代码块的拷贝按钮会将代码拷贝到剪贴板。以前点按后没有反应…";
+"The table of contents sidebar can sit on the right of the editor on the Mac, and its text size can be changed." = "在 Mac 上，目录侧边栏可以放在编辑器右侧，并且可以更改其文字大小。";
+"Toggle Comment (⌘/), Duplicate Line (⌥⇧⌘↓) and Delete Line (⇧⌘K) in the Mac Editor menu and on the iPad keyboard." = "在 Mac 的“编辑器”菜单和 iPad 键盘上可使用切换注释（⌘/）、复制行（⌥⇧⌘↓）和删除行（⇧⌘K）。";
+"Usability Updates: Toggle Comment (⌘/), Duplicate Line (⌥⇧⌘↓) and Delete Line (⇧⌘K) in the Mac Editor menu and on the iPad keyboard." = "可用性改进: 在 Mac 的“编辑器”菜单和 iPad 键盘上可使用切换注释（⌘/）、复制行（⌥⇧⌘↓）和删除行（⇧⌘K）。";
+"What’s New in v2.2.7" = "v2.2.7 新功能";
+"Workflow Refinements: The Copy button on Markdown preview code blocks works, and single quotes in those code blocks show correctly." = "工作流程改进: Markdown 预览中代码块的拷贝按钮可以使用，单引号也能正确显示。";
+"Workflow Refinements: The Copy button on a code block in the Markdown preview copies the code to the clipboard. Before, it did nothing…" = "工作流程改进: Markdown 预览中代码块的拷贝按钮会将代码拷贝到剪贴板。以前点按后没有反应…";

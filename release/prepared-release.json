@@ -1,10 +1,10 @@
 {
-  "tag": "v2.2.6",
-  "source": "791330c73941b726d5f3a9b94ebaeca8d836dea0",
-  "date": "2026-11-19",
-  "build": 1167,
-  "published_tag": "v2.2.4",
-  "published_build": 1157,
+  "tag": "v2.2.7",
+  "source": "eebfbaac39ca2d7471fd288c6dcaff31e86c53d2",
+  "date": "2026-11-24",
+  "build": 1174,
+  "published_tag": "v2.2.6",
+  "published_build": 1167,
   "status": "published",
   "cloud": {
     "product_id": "6BA578EC-8F26-47BC-81A9-94246EAF48E0",

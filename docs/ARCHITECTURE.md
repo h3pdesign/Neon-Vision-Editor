@@ -1,6 +1,6 @@
 # Neon Vision Editor Architecture
 
-Last updated: 2026-11-19 (v2.2.6 release-aligned architecture)
+Last updated: 2026-11-24 (v2.2.7 release-aligned architecture)
 
 Neon Vision Editor is a native Swift 6 editor for macOS, iOS, iPadOS, and visionOS. The app favors a small editor-first surface: fast file access, lightweight project navigation, native text editing, syntax highlighting, structured document inspection, Markdown/HTML/SVG/PDF/PNG preview, project-level Markdown/PDF cards, Finder Quick Look previews, PDF highlights and attached Markdown notes, Git and terminal helpers on macOS, remote-session clients on supported Apple platforms, and optional contextual AI assistance.
 
@@ -9,20 +9,20 @@ The visual summary in [`images/architecture-at-a-glance.svg`](images/architectur
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:START -->
 ## Current Release Alignment
 
+### v2.2.7 (2026-11-24)
+
+- Toggle Comment (⌘/), Duplicate Line (⌥⇧⌘↓) and Delete Line (⇧⌘K) in the Mac Editor menu and on the iPad keyboard.
+- The table of contents sidebar can sit on the right of the editor on the Mac, and its text size can be changed.
+- The Copy button on a code block in the Markdown preview copies the code to the clipboard. Before, it did nothing ([#1081](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1081)).
+- A single quote in a Markdown preview code block shows as `'`, not `&#39;` ([#1082](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1082)).
+- On the Mac, closing restored tabs one after another no longer quits the app, and closing the last window keeps its documents from reopening at the next launch ([#1085](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1085)).
+- On the Mac, folders you expanded in the project sidebar stay expanded when you open a file from it. Before, the file opened in a new tab whose sidebar showed every folder collapsed except the one holding the file.
+
 ### v2.2.6 (2026-11-19)
 
 - On iPhone and iPad, the system font picker opens on the editor font you use now.
 - On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu. This happened on macOS 26 when resizing a window ([#1055](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1055)).
 - On the Mac, MeierScript completion offers your own functions and their parameters, even when declared far above the caret. Before, only functions within about 1,200 characters above the caret were found.
-
-### v2.2.5 (2026-11-18)
-
-- On iPhone and iPad, placing the cursor no longer scrolls the text under your finger.
-- With VoiceOver on iPhone and iPad, Fold, Unfold, Fold All and Unfold All are in the Actions rotor.
-- On an iPad keyboard, Fold All (⌥⇧⌘←) and Unfold All (⌥⇧⌘→) work as on the Mac.
-- On the Mac, the integrated terminal starts without a stray `%` line and without a wrapped banner: zsh now gets the panel's real width, and the banner is a short "zsh in <folder>" line with the home folder shown as `~`. iCloud Drive folders show by name instead of their Mobile Documents path.
-- On iPhone and iPad, tapping or dragging to place the cursor no longer scrolls the text under your finger, so a second tap on the same line lands where you aim instead of jumping elsewhere ([#1036](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1036), [#770](https://github.com/h3pdesign/Neon-Vision-Editor/issues/770)).
-- On macOS 14 Sonoma, the app no longer crashes as soon as it opens ([#1042](https://github.com/h3pdesign/Neon-Vision-Editor/issues/1042)).
 
 This block is regenerated from `CHANGELOG.md` after each stable release. The sections below remain the authoritative description of ownership and runtime boundaries.
 <!-- RELEASE_ARCHITECTURE_ALIGNMENT:END -->

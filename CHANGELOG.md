@@ -6,6 +6,8 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+## [v2.2.7] - 2026-11-24
+
 ### Why Upgrade
 
 - Line commands such as Join Lines, Delete Line, Toggle Comment and Sort Lines change only the lines you selected. Before, they could rewrite the whole document.

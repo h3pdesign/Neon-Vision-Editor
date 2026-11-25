@@ -118,7 +118,24 @@
     <section class="timeline" aria-label="Neon Vision Editor changelog">
     <!-- CHANGELOG_ENTRIES:START -->
       <article class="release current">
-        <div class="release-header"><h2>v2.2.6</h2><span class="date">19 November 2026</span><span class="latest">Latest</span></div>
+        <div class="release-header"><h2>v2.2.7</h2><span class="date">24 November 2026</span><span class="latest">Latest</span></div>
+        <div class="items">
+          <div class="item"><span class="badge new">New</span><p>Toggle Comment (⌘/), Duplicate Line (⌥⇧⌘↓) and Delete Line (⇧⌘K) in the Mac Editor menu and on the iPad keyboard.</p></div>
+          <div class="item"><span class="badge new">New</span><p>The table of contents sidebar can sit on the right of the editor on the Mac, and its text size can be changed.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>The Copy button on a code block in the Markdown preview copies the code to the clipboard. Before, it did nothing (<a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/1081">#1081</a>).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>A single quote in a Markdown preview code block shows as `&#x27;`, not `&amp;#39;` (<a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/1082">#1082</a>).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>On the Mac, closing restored tabs one after another no longer quits the app, and closing the last window keeps its documents from reopening at the next launch (<a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/1085">#1085</a>).</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>On the Mac, folders you expanded in the project sidebar stay expanded when you open a file from it. Before, the file opened in a new tab whose sidebar showed every folder collapsed except the one holding the file.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Join Lines joins the selected lines, or the current line with the next one. Before, it joined the whole document into one line and dropped blank lines.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Duplicate Line, Delete Line, Toggle Comment, Convert to Uppercase or Lowercase and Sort Lines in the command palette change only the selected lines or the current line. Before, they changed the whole document.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>Trim Trailing Whitespace keeps indentation and Windows line endings. Before, it also removed spaces at the start of each line.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>The minimap marks only comments as section markers. Before, code lines such as `let sectionCount = 3` or a string containing a marker word such as FIXME showed up as section markers. Trailing comments such as `value = 1 // FIXME: check` still count.</p></div>
+          <div class="item"><span class="badge fixed">Fixed</span><p>The minimap ignores comment markers inside strings, so a URL such as `&quot;https://example.com/FIXME:&quot;` or a Python string `&#x27;# FIXME:&#x27;` no longer shows up as a section marker.</p></div>
+          <div class="item"><span class="badge breaking">Breaking</span><p>None.</p></div>
+        </div>
+      </article>
+      <article class="release">
+        <div class="release-header"><h2>v2.2.6</h2><span class="date">19 November 2026</span></div>
         <div class="items">
           <div class="item"><span class="badge new">New</span><p>On iPhone and iPad, the system font picker opens on the editor font you use now.</p></div>
           <div class="item"><span class="badge fixed">Fixed</span><p>On the Mac, the app no longer quits when you make a window narrow enough that toolbar buttons move into the overflow menu. This happened on macOS 26 when resizing a window (<a href="https://github.com/h3pdesign/Neon-Vision-Editor/issues/1055">#1055</a>).</p></div>

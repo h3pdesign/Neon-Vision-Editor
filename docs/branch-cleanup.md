@@ -20,6 +20,6 @@ The scheduled command should load the script from a pinned reviewed commit with 
 
 ## Manual remote cleanup
 
-Branches that GitHub did not delete automatically (for example after a release) are removed by hand with `git push origin --delete <branch>…` from a maintainer machine. The repository ruleset allows at most five branch or tag updates per push, so delete in batches of five. Branches whose work was re-committed under another name (for example to add commit signatures) can look unmerged to Git; compare commit subjects or use `git cherry` before deleting them.
+Branches that GitHub did not delete automatically (for example after a release) are removed by hand with `git push origin --delete <branch>…` from a maintainer machine. The repository ruleset allows at most five branch or tag updates per push, so delete in batches of five. Branches whose work was re-committed under another name (for example to add commit signatures) can look unmerged to Git; compare commit subjects or use `git cherry` before deleting them. Delete with a lease on the reviewed tip, so a commit pushed after your review stops the deletion: `git push origin --delete --force-with-lease=<branch>:<reviewed-sha> <branch>`.
 
 Tests: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -p test_cleanup_branches.py`.

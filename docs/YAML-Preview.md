@@ -10,7 +10,7 @@ Open a `.yaml` or `.yml` file (or select YAML as its language), then select the 
 
 ## 3. Scope
 
-Reuses the existing preview pane/sheet and Markdown web surface. No formatter, tree editor, external parser dependency, or source mutation. The SwiftUI UI-patterns skill guided local state ownership and cancellable view-lifetime tasks.
+Reuses the existing preview pane/sheet and Markdown web surface. No formatter, tree editor, external parser dependency, or source mutation. State ownership stays local, with cancellable view-lifetime tasks.
 
 ## 4. Alternatives
 
@@ -36,9 +36,9 @@ This phase adds preview routing, bounded coloring, and regression tests. Full YA
 
 Automated tests cover routing, exact paged-source reconstruction, Unicode, long lines, empty/oversized input, colors, HTML escaping, and cancellation. Run these alongside JSON preview and layout regressions on all three platforms.
 
-Verified 2026-09-20: 35 selected tests passed on macOS, 35 on iPhone 17 Pro (iOS 26.5), and 35 on iPad Pro 11-inch M5 (iPadOS 26.5), with zero final failures. An initial iPad simulator busy/launch failure passed on retry. Exact commands and logs are retained in `/private/tmp/nve-yaml.Y3NZSh/verification.md`; generated build directories were removed.
+Verified 2026-09-20: 35 selected tests passed on macOS, 35 on iPhone 17 Pro (iOS 26.5), and 35 on iPad Pro 11-inch M5 (iPadOS 26.5), with zero final failures. An initial iPad simulator busy/launch failure passed on retry. Generated build directories were removed.
 
-Manual release checks (not yet executed):
+Manual regression checks (not recorded as executed):
 
 - **macOS:** open YAML and YML; use Preview, resize the pane, select/copy source, navigate Previous/Next with keyboard, close/reopen, and verify the filename. Switch files and windows; confirm independent page state. Check existing Markdown/JSON previews.
 - **iPhone:** check the preview sheet, filename, scrolling, paging, Done/close, rapid edits and file switching. Open a 2.5 MB YAML and a very long line; confirm the source editor remains unchanged. Check light/dark and larger accessibility text settings.

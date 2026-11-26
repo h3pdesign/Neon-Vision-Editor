@@ -1,9 +1,12 @@
 # Editor opening responsiveness: regression contract
 
-Status: draft; the single-line rendering fix is **not complete**. These tests
-deliberately expose an existing failure and must not be merged as a green fix.
-Track the rendering work in issue #595. The separate YAML lexical-coloring change
-is PR #600.
+Status: historical record of the 2026-09-20 investigation. The rendering fix
+shipped in v1.8.6: iPhone and iPad keep pathological single-line files editable
+with display-only segmented wrapping (`SegmentedLargeLineEditor+iOS.swift`), and
+issue [#595](https://github.com/h3pdesign/Neon-Vision-Editor/issues/595) is
+closed. The opening contracts below remain in `MobileEditorInteractionTests`.
+The findings, commands, and simulator IDs describe that investigation, not the
+current state. The separate YAML lexical-coloring change was PR #600.
 
 ## What the old test missed
 

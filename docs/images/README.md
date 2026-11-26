@@ -1,95 +1,55 @@
-# Screenshot Index
+# Image Index
 
-This index describes screenshot assets in `docs/images` and where they are used.
+This index lists the assets in `docs/images` and where each one is used. The GitHub Pages site in `site/` keeps its own copies under `site/docs/images` and `site/docs/media`; changing a file here does not change the website.
 
-## Files
+## Root README
 
-- `neon-workflows-hero-20260723.png`
-  - Description: Marketing header image showing Neon Vision Editor in a MacBook frame on a gradient background.
-  - Used in: GitHub Pages editorial homepage hero.
+| File | Content | Used in |
+|---|---|---|
+| `readme-wordmark.svg` | Neon Vision Editor wordmark (set in `space-grotesk-700.ttf`) | README header |
+| `readme-hero-accent.svg` | Accent line under the wordmark | README header |
+| `NeonVisionEditorIcon.png` | App icon | README header |
+| `readme-hero-macos-light.png` | macOS light editor with toolbar, tabs, status bar, and code minimap | README hero; CHANGELOG v1.2.0 |
+| `mac-light-editor-sidebar.png` | macOS light editor with symbol sidebar | README `Platform Gallery` > `macOS` |
+| `mac-light-editor-wide.png` | macOS wide light editor with toolbar actions | README `Platform Gallery` > `macOS` |
+| `mac-light-editor-compact.png` | macOS compact light editor | README `Platform Gallery` > `macOS` |
+| `mac-light-editor-minimap.png` | macOS light editor with code minimap | README `Platform Gallery` > `macOS` |
+| `readme-ipad-project-dark.png` | iPad editor beside the project file browser, dark | README `Platform Gallery` > `iPad` |
+| `readme-ipad-markdown-preview-dark.png` | iPad Markdown source and preview side by side, dark | README `Platform Gallery` > `iPad` |
+| `readme-iphone-editor-dark.png` | iPhone Swift editor with bottom toolbar, dark | README `Platform Gallery` > `iPhone` |
+| `readme-iphone-editor-light.png` | iPhone Swift editor with bottom toolbar, light | README `Platform Gallery` > `iPhone` |
+| `readme-iphone-minimap-dark.png` | iPhone editor with code minimap, dark | README `Platform Gallery` > `iPhone` |
+| `readme-iphone-project-dark.png` | iPhone project file browser, dark | README `Platform Gallery` > `iPhone` |
+| `architecture-at-a-glance.svg` | Ownership and data-flow diagram | README `Architecture At A Glance`; `docs/ARCHITECTURE.md` |
 
-- `profile-neon-editor-light.png`
-  - Description: Light-theme Neon Vision Editor screenshot from the public h3pdesign GitHub profile.
-  - Used in: GitHub Pages editorial homepage Markdown-conversion section.
+## Generated charts
 
-- `profile-neon-workspace.png`
-  - Description: Neon Vision Editor workspace screenshot from the public h3pdesign GitHub profile, showing syntax highlighting, minimap, and project workspace.
-  - Used in: GitHub Pages editorial homepage shared-file-sync section.
+| File | Source | Used in |
+|---|---|---|
+| `release-download-trend-light.svg` | `scripts/update_download_metrics.py` | README `Download Metrics` (light and default) |
+| `release-download-trend-dark.svg` | `scripts/update_download_metrics.py` | README `Download Metrics` (dark) |
+| `release-download-trend.svg` | `scripts/update_download_metrics.py` | Backward-compatible dark copy for old links |
+| `neon-vision-release-history-0.1-to-0.5.svg` | `scripts/update_release_history_svg.py` | Regenerated during release preparation; not embedded in the README |
+| `neon-vision-release-history-0.1-to-0.5-light.svg` | `scripts/update_release_history_svg.py` | Regenerated during release preparation; not embedded in the README |
 
-- `profile-neon-markdown-preview.png`
-  - Description: Neon Vision Editor Markdown source and rendered-preview screenshot from the public h3pdesign GitHub profile.
-  - Used in: GitHub Pages editorial homepage preview section.
+## Historical screenshots
 
-- `readme-hero-macos-light.png`
-  - Description: Large macOS light editor screenshot with toolbar, tabs, and status bar.
-  - Used in: Root `README.md` hero area below the download links.
+These files are kept for older CHANGELOG entries and as source material. The README no longer embeds them; the website uses its own copies.
 
-- `mac-light-editor-sidebar.png`
-  - Description: macOS light editor screenshot with symbol sidebar, tabs, and status bar.
-  - Used in: Root `README.md` (`Platform Gallery` > `macOS`).
-
-- `mac-light-editor-wide.png`
-  - Description: macOS wide light editor screenshot with toolbar actions and focused code editing.
-  - Used in: Root `README.md` (`Platform Gallery` > `macOS`).
-
-- `mac-light-editor-compact.png`
-  - Description: macOS compact light editor screenshot with focused code editing.
-  - Used in: Root `README.md` (`Platform Gallery` > `macOS`).
-
-- `mac-light-editor-minimap.png`
-  - Description: macOS light editor screenshot with code minimap, toolbar, tabs, and status bar.
-  - Used in: Root `README.md` (`Platform Gallery` > `macOS`).
-
-- `ipad-editor-light.png`
-  - Description: iPad editor screenshot in light mode.
-  - Used in: Root `README.md` (`Platform Gallery` > `iPad`).
-
-- `ipad-editor-dark.png`
-  - Description: iPad editor screenshot in dark mode.
-  - Used in: Root `README.md` (`Platform Gallery` > `iPad`).
-
-- `iphone-editor-light-frame-updated.png`
-  - Description: Framed iPhone editor screenshot in light mode with syntax highlighting and accessory bar.
-  - Used in: Root `README.md` (`Platform Gallery` > `iPhone`).
-
-- `iphone-menu-dark-frame.png`
-  - Description: Framed iPhone editor screenshot in dark mode with the overflow menu open.
-  - Used in: Root `README.md` (`Platform Gallery` > `iPhone`).
-
-- `iphone-markdown-preview-dark.png`
-  - Description: iPhone Markdown Preview sheet in dark mode with template, PDF mode, and export controls.
-  - Used in: Root `README.md` (`Platform Gallery` > `iPhone`).
-
-- `iphone-themes-light-frame.png`
-  - Description: Framed iPhone theme editor screenshot in light mode.
-  - Used in: Root `README.md` (`Platform Gallery` > `iPhone`).
-
-- `release-download-trend-dark.svg`
-  - Description: Generated dark-mode download/clones/views trend chart.
-  - Source: `scripts/update_download_metrics.py`.
-  - Used in: Root `README.md` (`Download Metrics`, dark scheme).
-
-- `release-download-trend-light.svg`
-  - Description: Generated light-mode download/clones/views trend chart.
-  - Source: `scripts/update_download_metrics.py`.
-  - Used in: Root `README.md` (`Download Metrics`, light/default scheme).
-
-- `release-download-trend.svg`
-  - Description: Backward-compatible dark copy of the metrics chart.
-  - Source: `scripts/update_download_metrics.py`.
-  - Used in: Legacy links only.
-
-- `neon-vision-release-history-0.1-to-0.5.svg`
-  - Description: Generated dark-mode release flow timeline (completed + upcoming milestones).
-  - Source: `scripts/update_release_history_svg.py`.
-  - Used in: Root `README.md` (`Release Flow (Completed + Upcoming)`, dark scheme).
-
-- `neon-vision-release-history-0.1-to-0.5-light.svg`
-  - Description: Generated light-mode release flow timeline (completed + upcoming milestones).
-  - Source: `scripts/update_release_history_svg.py`.
-  - Used in: Root `README.md` (`Release Flow (Completed + Upcoming)`, light/default scheme).
+| File | Content | Referenced by |
+|---|---|---|
+| `ipad-editor-light.png` | iPad editor, light | CHANGELOG v0.5.4 |
+| `iphone-themes-light-frame.png` | Framed iPhone theme editor, light | CHANGELOG v0.5.6 |
+| `ipad-editor-dark.png` | iPad editor, dark | Not referenced (website copy in `site/docs/images`) |
+| `iphone-editor-light-frame-updated.png` | Framed iPhone editor with accessory bar, light | Not referenced |
+| `iphone-menu-dark-frame.png` | Framed iPhone editor with overflow menu, dark | Not referenced |
+| `iphone-markdown-preview-dark.png` | iPhone Markdown preview sheet, dark | Not referenced |
+| `ai-assistant-macos.png`, `ai-assistant-iphone.png` | AI assistant on macOS and iPhone | Not referenced (website copies in `site/docs/images`) |
+| `profile-neon-editor-light.png`, `profile-neon-workspace.png`, `profile-neon-markdown-preview.png` | Screenshots from the public h3pdesign GitHub profile | Not referenced (website copies in `site/docs/images`) |
+| `neon-workflows-hero-20260723.png` | Marketing header in a MacBook frame | Not referenced |
 
 ## Notes
 
-- App Store media is managed in App Store Connect and linked from the root `README.md`.
-- Keep this index updated when adding or renaming image assets.
+- App Store screenshots are managed in App Store Connect; local copies live in `docs/media/app-store`.
+- `docs/media` holds the responsive website images (`.avif`, `.webp`) and social card; the deployed website serves its copies from `site/docs/media`.
+- Keep this index updated when adding, renaming, or retiring an image.

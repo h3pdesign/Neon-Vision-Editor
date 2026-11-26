@@ -58,7 +58,7 @@ Use this path only on a Mac that has the latest public GM Xcode installed.
 
 3. Confirm build settings:
 
-   - `MARKETING_VERSION` is the App Store version, for example `0.8.0`
+   - `MARKETING_VERSION` is the App Store version, for example `2.2.7`
    - `CURRENT_PROJECT_VERSION` is the build number, and all targets use the same value
    - Signing uses the App Store Connect team
    - No beta Xcode is selected in `Xcode > Settings > Locations`
@@ -223,44 +223,24 @@ Use this path when the local Mac is on beta macOS or beta Xcode.
 
 If Xcode Cloud fails with future project metadata, open the project once with Xcode 27 RC or a later public release, save it, commit that project-file change, push, and rerun the workflow.
 
-## How To Use Codex For This Release
+## Command-Line Archive and API Upload
 
-Ask Codex to do repo-safe preparation work:
+Recent App Store releases did not use Xcode Cloud or the Organizer. On a Mac with the latest public Xcode, they were archived from the release tag and delivered through the App Store Connect API:
 
-```text
-prepare v0.8.0 for App Store release, run preflight, commit signed, and push main
-```
+1. Check out the published release tag (for example `git checkout vX.Y.Z`) in a separate worktree, so your working checkout stays untouched.
+2. Archive each platform with the `Neon Vision Editor AppStore` scheme, then export and upload with `xcodebuild -exportArchive` and the App Store Connect API key described above (pass the `.p8` path, Key ID, and Issuer ID explicitly).
+3. If Homebrew's `rsync` is first on `PATH`, the export step fails. Run Xcode with `PATH=/usr/bin:/bin:/usr/sbin:/sbin`.
+4. With the same API key, create or update the App Store version for each platform, attach the processed build, and set What's New and review notes. Submit for review only after a person has approved it. App Store Connect allows one version in review per platform.
 
-Codex can do:
+App Store copy rules:
 
-- Update release docs and changelog.
-- Align `MARKETING_VERSION`.
-- Verify `CURRENT_PROJECT_VERSION` is consistent.
-- Run `scripts/ci/xcode_cloud_release_preflight.sh`.
-- Run `scripts/ci/build_platform_matrix.sh`.
-- Commit signed changes.
-- Push `main`.
-- Draft App Store release notes, promotional text, and review notes.
+- The run console, terminal, `nve` helper, and Sparkle updater exist only in the direct GitHub build. Leave them out of What's New, screenshots, and review notes for the App Store build.
+- The App Store description has one line pointing to the GitHub build for the run console.
+- Before resubmitting, run `scripts/ci/app_store_review_preflight.sh`.
 
-Codex cannot directly click through App Store Connect review submission unless a configured connector/browser session is explicitly available and authenticated. Keep final App Store submission manual unless you explicitly ask Codex to operate an authenticated browser session.
+## Using an Automation Assistant
 
-Useful Codex prompts:
-
-```text
-check whether main is ready for Xcode Cloud App Store release
-```
-
-```text
-run the Xcode Cloud release preflight and platform matrix
-```
-
-```text
-draft App Store Connect change message, promotional text, and review notes for v0.8.0
-```
-
-```text
-commit and push all release documentation changes with signed commits
-```
+An automation assistant working in this repository can prepare documentation, align `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, run `scripts/ci/xcode_cloud_release_preflight.sh` and `scripts/ci/build_platform_matrix.sh`, make signed commits, and draft What's New, promotional text, and review notes. Keep App Store review submission as an explicit, human-approved step. Do not give an assistant private keys, JWTs, or `.p12` contents; give it only a key-file path and identifiers.
 
 ## Troubleshooting
 

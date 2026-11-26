@@ -1,5 +1,7 @@
 # End-to-End UI Test Plan
 
+Status: planned. As of v2.2.7 the project has no XCUITest target; `Project/Tests/Neon Vision EditorTests` holds in-process unit and integration tests only. Issue #318, which tracked this work, was closed without the UI-test target.
+
 This plan defines the UI-test contract for Neon Vision Editor. It is intentionally separate from in-process unit tests: each UI case launches the built app and drives it only through accessibility identifiers.
 
 ## Test contract

@@ -31,7 +31,8 @@ This block is regenerated from `CHANGELOG.md` after each stable release. The sec
 
 - Main App Store app target: macOS 14.6+, iOS/iPadOS 18.6+, and visionOS 26.5+.
 - Direct-distribution target: `Neon Vision Editor Direct`, built for macOS from the direct release scheme and linked with Sparkle.
-- Supporting products: the iOS App Clip, Share Extension, Neon Pulse watch app, Neon Pulse Widget extension, and cross-platform unit-test target.
+- Supporting products: the macOS Quick Look extension (macOS 14.6+), the Share Extension (iOS/iPadOS 18.6+, macOS 15.0+), the iOS App Clip, the Neon Pulse watch app and Neon Pulse Widget extension (watchOS 11+), and the cross-platform unit-test target.
+- Localization: English, German, Simplified Chinese, Danish, French, Spanish, and Japanese `Localizable.strings` for the app and each extension. `scripts/ci/localization_audit.py` checks that keys and placeholders match across all seven.
 - The main target's `SUPPORTED_PLATFORMS` includes `macosx`, `iphoneos`, `iphonesimulator`, `xros`, and `xrsimulator`.
 - `TARGETED_DEVICE_FAMILY = 1,2,7` for the main app, so shared code must remain valid for iPhone, iPad, and Apple Vision Pro.
 - The local build matrix covers macOS, iPhone Simulator, and iPad Simulator. visionOS remains a supported main-app build surface but is not currently part of that script's default matrix.
@@ -234,6 +235,13 @@ Important editor invariants:
 - SwiftUI editor identity is tied to the tab, not the syntax language, so changing language or formatting settings updates the representable in place. The macOS virtualized bridge likewise updates the existing native control and swaps only its bounded viewport. It never relies on a compatibility `Binding<String>`.
 - The macOS renderer intentionally uses Core Text rather than TextKit for bounded visual rows. Writing Tools remain disabled because the editor is plain-text/source-oriented. Treat a future renderer migration as a cross-platform editor project, not an isolated layout cleanup.
 
+## Structure Folding and Line Commands
+
+- `Core/StructureFolding.swift` finds foldable JSON (`json`, `jsonc`, `json5`, `ipynb`, `geojson`) and XML-family (`xml`, `plist`, `svg`, `xsd`, `xsl`, `xslt`) regions. A `StructureFold` keeps its header and closing lines visible and records UTF-16 offsets for the hidden range.
+- On macOS, `UI/VirtualEditorView+macOS.swift` draws the gutter controls and hides folded rows through `FoldedEditorDocument`, an `EditorDocument` adapter in `Core/StructureFolding.swift`, so the virtual renderer reads a folded view without changing the stored text; `App/AppMenus.swift` exposes Fold, Unfold, Fold All, and Unfold All. `FileBackedTextDocument` keeps UTF-16 checkpoints so offset lookups in large edited files stay fast.
+- On iOS, iPadOS, and visionOS, `StructureFoldController` in `UI/EditorTextView+iOS.swift` hides folded text through the layout manager delegate without changing text storage. Hardware-keyboard fold commands and VoiceOver custom actions use the same controller.
+- Line commands (Toggle Comment, Duplicate Line, Delete Line, Move Line, Join Lines, Sort Lines, case conversion, Trim Trailing Whitespace) act on the selected lines or the current line only and go through the normal edit and undo path.
+
 ## Highlighting, Minimap, and Scroll Performance
 
 - Syntax highlighting is regex-based, not TreeSitter-based.
@@ -324,6 +332,10 @@ The Project Sidebar Files filter offers All Files, Modified, Images, PNG, PDF, a
 
 The scrollable tab strip gives each tab a stable ID and uses `ScrollViewReader` to reveal a newly opened or selected tab when it lies outside the visible strip. This navigation must not trigger filesystem polling or broad tab-state publication.
 
+## Nearby Document Transfer
+
+- `Core/NearbyDocumentTransfer.swift` and `UI/NearbyDocumentTransferSheet.swift` send one text document to a nearby device over the `Network` framework after an ephemeral pairing code and receiver consent. Peers are found through Bonjour (`NWBrowser`/`NWListener`) and connect over TLS 1.2 with a pre-shared key derived from the pairing code. Payloads are versioned, limited to 4 MB, and validated (name, size, encoding, SHA-256 digest) before the received copy is staged and opened as an independent document. Browsing and advertising stop when the flow is cancelled or finished.
+
 ## Diff and Compare
 
 - `Core/DocumentDiff.swift` builds line-oriented document diffs and hunks.
@@ -362,11 +374,12 @@ PDF export measures the rendered document, keeps capture anchored at the top, an
 - `Core/GitService.swift` is a macOS-only actor that shells out to Git.
 - `Data/GitViewModel.swift` exposes status, history, fetch/pull/push, and commit details to SwiftUI.
 - `UI/SidebarViews+GitTab.swift` renders Git-specific sidebar content.
-- `UI/PanelsAndHelpers.swift` contains the PTY-backed macOS terminal surface used by the sidebar and standalone terminal panel.
+- `UI/IntegratedTerminalContent.swift` owns the PTY-backed macOS terminal session used by the sidebar and standalone terminal panel. A detached task decodes PTY bytes (`TerminalUTF8Decoder`) and applies them to the bounded primary screen in `Core/TerminalScreenBuffer.swift`, which handles CR/LF/BS/TAB, cursor movement, erase commands, and SGR styles, then publishes coalesced changed-text patches. Alternate-screen programs remain unsupported.
+- `Core/ScriptInterpreter.swift`, `Core/MeierScriptRunner.swift`, and `UI/MeierScriptConsoleView.swift` form the run console. `ScriptInterpreter` lists the interpreters per language (looked up in Homebrew, Xcode developer tool, and system locations; nothing is bundled) and how source reaches them (stdin or a private temporary file), plus optional syntax-check commands and diagnostic-line patterns. `MeierScriptRunner` uses the `meierscript` CLI from an installed SidUI Editor or SidUI Viewer. Scripts start in the folder of their file. The console view compiles only for `os(macOS) && !APP_STORE_BUILD`.
 - `scripts/nve` is the direct macOS command-line helper that forwards file-open requests through Launch Services.
 - `Core/RemoteSessionStore.swift` owns saved remote targets, broker state, remote browsing, open/save, and revision conflicts.
 
-Git and terminal process execution remain macOS-only. The command-line helper is not an embedded executable in App Store builds, does not read file contents itself, and must not request Full Disk Access, Accessibility, administrator permission, or weakened App Sandbox settings.
+Git, terminal, and run-console process execution remain macOS-only; the terminal and run console are also excluded from App Store builds. The command-line helper is not an embedded executable in App Store builds, does not read file contents itself, and must not request Full Disk Access, Accessibility, administrator permission, or weakened App Sandbox settings.
 
 Remote access is opt-in. macOS owns SSH and broker-host execution; iPhone, iPad, and visionOS are attach clients. Remote-session work must not log document contents, prompts, tokens, or sensitive paths beyond user-visible diagnostics.
 

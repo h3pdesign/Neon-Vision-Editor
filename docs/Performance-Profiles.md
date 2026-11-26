@@ -1,5 +1,7 @@
 # Performance Profiles and Budgets
 
+This is a dated engineering log, newest entries first. Build numbers and results describe the build named in each heading. The versioned budget contract is [`performance-baselines.json`](performance-baselines.json), checked by `scripts/ci/check_performance_budget.py`; the recording protocol and guardrails are near the end of this file.
+
 ## iPhone Duo toolbar (#498) — build 1120, 2026-10-22
 
 With the iOS 27.1 SDK, the phone editor toolbar moves into a vertical column on
@@ -875,4 +877,4 @@ No OS 26 runtime is installed on this machine, so an OS 26 versus OS 27 timing c
 
 The development terminal now incrementally decodes UTF-8 bytes and parses cursor/erase controls on its output worker. The native text bridge applies immutable changed-suffix patches at the existing 33 ms cadence; retained screen text remains capped at 240,000 UTF-16 units. Alternate-screen applications remain unsupported. The high-volume PTY regression checks completion and bounded output, but is not a substitute for Instruments timing or memory evidence. Re-capture the terminal profile after this screen-rendering change; the v1.8.0 trace above describes the previous append-only implementation.
 
-The full three-run macOS/iPhone/iPad workload matrix remains required before issue #318 is complete. Build success and unit-test results do not supply those profiling measurements.
+The full three-run macOS/iPhone/iPad workload matrix was required before issue #318 could be completed. #318 was closed on 2026-09-30; this file does not record that matrix. Build success and unit-test results do not supply those profiling measurements.

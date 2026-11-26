@@ -1,6 +1,6 @@
 # ADR-0001: Native macOS document windows — CotEditor comparison and migration plan
 
-- **Status:** Proposed
+- **Status:** Proposed. As of v2.2.7 no stage has started: the first Mac window still comes from the SwiftUI `primary-editor` `WindowGroup`, and later tabs from `MacDocumentWindowTabs.presentPendingWindow`.
 - **Date:** 2026-10-22
 - **Applies to:** macOS only. iPhone, iPad and visionOS keep their existing tab UIs.
 - **Starting point:** development build 1119 on `feature/native-macos-tabs` (2.1.0, PR #805)

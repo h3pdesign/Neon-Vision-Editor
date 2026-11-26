@@ -57,7 +57,7 @@
 > Platforms: **macOS 14.6+**, **iOS / iPadOS 18.6+**, **visionOS 26.5+**, with a Neon Pulse companion for **watchOS 11+**
 > Mac hardware: Apple Silicon only (Intel Macs are not supported since v1.8.3)
 > Direct GitHub release: **v2.2.7** / App Store and TestFlight availability varies by platform and review status
-> Last updated (README): **2026-11-24** for latest release **v2.2.7**
+> Last updated (README): **2026-11-26** for latest release **v2.2.7**
 
 ## What's New in v2.2.6 and v2.2.7
 
@@ -234,15 +234,15 @@
 
 Prebuilt binaries are available on [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases).
 
-The direct GitHub release is currently ahead of the iOS/iPadOS App Store version. The App Store version may temporarily lag while updates are in Apple review.
+The iOS/iPadOS App Store listing is currently aligned with the direct GitHub release.
 
 | Channel | Platform | Best For | Download | Release Track | Notes |
 |---|---|---|---|---|---|
 | **Stable** | macOS | Direct notarized builds and fastest stable updates | [GitHub Releases](https://github.com/h3pdesign/Neon-Vision-Editor/releases) | **v2.2.7** | Current direct download |
-| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v2.2.6** | Current public App Store listing |
-| **Store status** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the Mac App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | See listing | The Mac App Store version can trail the GitHub release while App Review is pending. It has no run console, terminal, `nve` helper, or Sparkle updater |
-| **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | See listing | Updates after its own App Review |
-| **Beta** | iOS / iPadOS / macOS / visionOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | Varies | Public-link builds are published occasionally and can be older than the App Store releases |
+| **Store** | iOS / iPadOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v2.2.7** | Current public App Store listing |
+| **Store status** | macOS | Apple-managed installs and updates | [Neon Vision Editor on the Mac App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v2.2.6** (v2.2.7 in review) | The Mac App Store version can trail the GitHub release while App Review is pending. It has no run console, terminal, `nve` helper, or Sparkle updater |
+| **Store** | visionOS | Apple-managed installs and updates | [Neon Vision Editor on the App Store](https://apps.apple.com/de/app/neon-vision-editor/id6758950965) | **v2.2.7** | Updates after its own App Review |
+| **Beta** | iOS / iPadOS / macOS / visionOS | Testing upcoming changes before stable | [TestFlight Invite](https://testflight.apple.com/join/YWB2fGAP) | macOS v2.2.4, iOS v2.1.0, visionOS v2.1.3 | Public-link builds are published occasionally and can be older than the App Store releases |
 
 ## Install
 

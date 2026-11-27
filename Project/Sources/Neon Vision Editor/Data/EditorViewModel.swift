@@ -782,6 +782,8 @@ class EditorViewModel {
     @ObservationIgnored private var localSaveTasks: [UUID: (id: UUID, task: Task<Void, Never>)] = [:]
     @ObservationIgnored private var remoteSaveTabIDs: [UUID: Int] = [:]
     @ObservationIgnored private var pendingExternalFileRefreshTasks: [UUID: Task<Void, Never>] = [:]
+    @ObservationIgnored private var runningExternalFileRefreshTabIDs: Set<UUID> = []
+    @ObservationIgnored private var externalFileRefreshRerunURLs: [UUID: URL] = [:]
     @ObservationIgnored private var pendingExternalRefreshTabIDs: Set<UUID> = []
     @ObservationIgnored private var refreshedExternalTabIDs: Set<UUID> = []
     @ObservationIgnored private var reviewExternalTabIDs: Set<UUID> = []
@@ -2732,6 +2734,14 @@ class EditorViewModel {
         guard let index = indexOfOpenTab(for: url) else { return }
         let tabID = tabs[index].id
         markExternalRefreshPending(tabID: tabID)
+        // A later event only restarts the debounce, never a refresh that is
+        // already reading: the coordinated read itself can post presenter
+        // events, and on a busy Mac each one cancelled the next large read, so
+        // the reload never finished. Check once more after the refresh instead.
+        if runningExternalFileRefreshTabIDs.contains(tabID) {
+            externalFileRefreshRerunURLs[tabID] = url
+            return
+        }
         pendingExternalFileRefreshTasks.removeValue(forKey: tabID)?.cancel()
         pendingExternalFileRefreshTasks[tabID] = Task { @MainActor [weak self] in
             do {
@@ -2740,9 +2750,15 @@ class EditorViewModel {
                 return
             }
             guard !Task.isCancelled, let self else { return }
+            self.runningExternalFileRefreshTabIDs.insert(tabID)
             await self.refreshObservedLocalFile(tabID: tabID, expectedURL: url.standardizedFileURL)
+            self.runningExternalFileRefreshTabIDs.remove(tabID)
             if !Task.isCancelled {
                 self.pendingExternalFileRefreshTasks[tabID] = nil
+            }
+            // An unchanged file ends the rerun at its metadata check, without a read.
+            if let rerunURL = self.externalFileRefreshRerunURLs.removeValue(forKey: tabID) {
+                self.handleObservedLocalFileChange(at: rerunURL)
             }
         }
     }

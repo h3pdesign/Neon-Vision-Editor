@@ -48,6 +48,19 @@ final class EditorLineTransformTests: XCTestCase {
         XCTAssertEqual(output.text, "b\nc")
     }
 
+    func testDuplicateLastLineOfCRLFDocumentKeepsCRLF() throws {
+        let output = try apply(.duplicate, to: "a\r\nb", selection: NSRange(location: 4, length: 0))
+        XCTAssertEqual(output.text, "a\r\nb\r\nb")
+        XCTAssertEqual(output.selection, NSRange(location: 7, length: 0))
+        XCTAssertEqual(try apply(.duplicate, to: "a\r\nb\r\n", selection: NSRange(location: 0, length: 0)).text, "a\r\na\r\nb\r\n")
+    }
+
+    func testDeleteLastLineOfCRLFDocumentRemovesWholeLineBreak() throws {
+        let output = try apply(.delete, to: "one\r\ntwo", selection: NSRange(location: 6, length: 0))
+        XCTAssertEqual(output.text, "one")
+        XCTAssertEqual(output.selection, NSRange(location: 0, length: 0))
+    }
+
     func testDeleteInEmptyDocumentDoesNothing() {
         XCTAssertNil(editorLineTransform(in: "", selectedRange: NSRange(location: 0, length: 0), transform: .delete))
     }
@@ -76,6 +89,9 @@ final class EditorLineTransformTests: XCTestCase {
         XCTAssertEqual(try apply(.toggleComment, to: "SELECT 1", selection: NSRange(location: 0, length: 0), language: "sql").text, "-- SELECT 1")
         XCTAssertEqual(try apply(.toggleComment, to: "<p>Hi</p>", selection: NSRange(location: 0, length: 0), language: "html").text, "<!-- <p>Hi</p> -->")
         XCTAssertEqual(try apply(.toggleComment, to: "a { }", selection: NSRange(location: 0, length: 0), language: "css").text, "/* a { } */")
+        XCTAssertEqual(try apply(.toggleComment, to: "{title}", selection: NSRange(location: 0, length: 0), language: "expressionengine").text, "{!-- {title} --}")
+        XCTAssertEqual(try apply(.toggleComment, to: "{!-- {title} --}", selection: NSRange(location: 0, length: 0), language: "expressionengine").text, "{title}")
+        XCTAssertEqual(try apply(.toggleComment, to: "DISPLAY X.", selection: NSRange(location: 0, length: 0), language: "cobol").text, "*> DISPLAY X.")
     }
 
     func testToggleCommentRemovesBlockDelimiters() throws {
@@ -120,6 +136,24 @@ final class EditorLineTransformTests: XCTestCase {
     func testSortUniqueRemovesExactDuplicatesInSelection() throws {
         let output = try apply(.sortUnique, to: "b\na\nb\nkeep", selection: NSRange(location: 0, length: 5))
         XCTAssertEqual(output.text, "a\nb\nkeep")
+    }
+
+    func testSortKeepsCRLFWhenLastLineHasNoLineBreak() throws {
+        let source = "b\r\nc\r\na"
+        let output = try apply(.sort, to: source, selection: NSRange(location: 0, length: (source as NSString).length))
+        XCTAssertEqual(output.text, "a\r\nb\r\nc")
+        let unique = try apply(.sortUnique, to: "b\r\na\r\nb", selection: NSRange(location: 0, length: 7))
+        XCTAssertEqual(unique.text, "a\r\nb")
+    }
+
+    func testMoveLastLineOfCRLFDocumentKeepsCRLF() throws {
+        let source = "a\r\nb"
+        let up = try XCTUnwrap(editorLineMove(in: source, selectedRange: NSRange(location: 3, length: 0), direction: .up))
+        XCTAssertEqual((source as NSString).replacingCharacters(in: up.replacementRange, with: up.replacement), "b\r\na")
+        XCTAssertEqual(up.selectedRange, NSRange(location: 0, length: 0))
+        let down = try XCTUnwrap(editorLineMove(in: source, selectedRange: NSRange(location: 0, length: 0), direction: .down))
+        XCTAssertEqual((source as NSString).replacingCharacters(in: down.replacementRange, with: down.replacement), "b\r\na")
+        XCTAssertEqual(down.selectedRange, NSRange(location: 3, length: 0))
     }
 
     func testJoinWithoutSelectionJoinsCaretLineWithNextLine() throws {

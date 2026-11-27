@@ -12,10 +12,13 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - A file without the `.meierscript` extension opens as MeierScript when its first line is a MeierScript shebang.
 - A language chosen in the Language menu stays when the file is reloaded after a change on disk. Before, a MeierScript file without the extension could fall back to Plain Text.
 - Switching back to the app no longer reports "File changed on disk" for a document with unsaved edits when another app only rewrote the file with the same content.
+- Duplicate Line, Delete Line, Move Line Up or Down and Sort Lines keep Windows (CRLF) line endings on the last line of a file that does not end with a line break. Before, they could leave a bare line feed or a stray carriage return.
+- Toggle Comment works in ExpressionEngine templates with `{!-- --}` and in COBOL with `*>`.
+- The minimap shows comments and TODO, FIXME and MARK markers in Perl, R, fish, Dockerfiles, Makefiles, nginx, `.env`, GraphQL, HCL, Lua, Ada, INI, TeX, COBOL and ExpressionEngine files. Before, it only knew the comment syntax of a few languages.
 
 ### Maintenance
 
-- Development version 2.2.8 (build 1175).
+- Development version 2.2.8 (build 1176).
 
 ## [v2.2.7] - 2026-11-24
 

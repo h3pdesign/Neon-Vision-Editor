@@ -803,6 +803,25 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
         XCTAssertNotEqual(python.markers.first?.kind, .section)
     }
 
+    func testCodeMinimapUsesCommentSyntaxOfEachLanguage() {
+        let cases: [(language: String, text: String)] = [
+            ("perl", "# TODO: parse\n# note\nmy $x = 1;"),
+            ("r", "# TODO: parse\n# note\nx <- 1"),
+            ("dockerfile", "# TODO: parse\n# note\nRUN make"),
+            ("makefile", "# TODO: parse\n# note\nall: build"),
+            ("lua", "-- TODO: parse\n-- note\nx = 1"),
+            ("ini", "; TODO: parse\n# note\nkey=1"),
+            ("tex", "% TODO: parse\n% note\n\\section{A}"),
+            ("cobol", "*> TODO: parse\n*> note\nDISPLAY X."),
+            ("expressionengine", "{!-- TODO: parse --}\n{!-- note --}\n{title}")
+        ]
+        for (language, text) in cases {
+            let kinds = buildCodeMinimapSnapshot(text: text, language: language).markers.map(\.kind)
+            XCTAssertEqual(Array(kinds.prefix(2)), [.section, .comment], language)
+            XCTAssertNotEqual(kinds.last, .comment, language)
+        }
+    }
+
     func testCodeMinimapIgnoresCommentPrefixesInsideStrings() {
         let swift = buildCodeMinimapSnapshot(
             text: """

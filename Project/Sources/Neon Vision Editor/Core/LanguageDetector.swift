@@ -286,6 +286,9 @@ public struct LanguageDetector: Sendable {
             if detectionInput.contains("ruby") { bump("ruby", 300) }
             if detectionInput.contains("php") { bump("php", 300) }
             if detectionInput.contains("pwsh") || detectionInput.contains("powershell") { bump("powershell", 300) }
+            if detectionInput.prefix(while: { $0 != "\n" && $0 != "\r" }).lowercased().contains("meierscript") {
+                bump("meierscript", 400)
+            }
         }
 
         // JSON / ipynb

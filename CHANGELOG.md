@@ -6,6 +6,17 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 
 ## [Unreleased]
 
+### Fixes
+
+- Check MeierScript Syntax accepts a shebang such as `#!/usr/bin/env meierscript` on the first line. Before, it reported the `#` as an error.
+- A file without the `.meierscript` extension opens as MeierScript when its first line is a MeierScript shebang.
+- A language chosen in the Language menu stays when the file is reloaded after a change on disk. Before, a MeierScript file without the extension could fall back to Plain Text.
+- Switching back to the app no longer reports "File changed on disk" for a document with unsaved edits when another app only rewrote the file with the same content.
+
+### Maintenance
+
+- Development version 2.2.8 (build 1175).
+
 ## [v2.2.7] - 2026-11-24
 
 ### Why Upgrade

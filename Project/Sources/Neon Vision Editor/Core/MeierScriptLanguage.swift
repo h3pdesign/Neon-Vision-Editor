@@ -94,8 +94,32 @@ nonisolated enum MeierScriptLanguage {
     /// therefore reports every parser/lexer error without running any statement.
     static let syntaxCheckPrelude = "exit()\n"
 
+    /// The CLI skips a `#!` line only as the very first line, so a shebang
+    /// stays in front of the prelude. Every later line still moves down by
+    /// one, which keeps `remapSyntaxCheckDiagnostics` correct.
     static func syntaxCheckSource(for source: String) -> String {
-        syntaxCheckPrelude + source
+        guard source.hasPrefix("#!") else { return syntaxCheckPrelude + source }
+        let nsSource = source as NSString
+        let firstLine = nsSource.lineRange(for: NSRange(location: 0, length: 0))
+        let shebang = nsSource.substring(with: firstLine)
+        // "\r\n" is one Character, so look at the last scalar.
+        let endsWithLineBreak = shebang.unicodeScalars.last.map { $0 == "\n" || $0 == "\r" } ?? false
+        let terminator = endsWithLineBreak ? "" : "\n"
+        return shebang + terminator + syntaxCheckPrelude + nsSource.substring(from: NSMaxRange(firstLine))
+    }
+
+    /// True for text whose first line is a MeierScript shebang, such as
+    /// `#!/usr/bin/env meierscript`, so files without the extension are recognized.
+    static func hasShebang(_ text: String) -> Bool {
+        guard text.hasPrefix("#!") else { return false }
+        let firstLine = text.dropFirst(2).prefix { $0 != "\n" && $0 != "\r" }
+        var words = firstLine.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
+        // `#!/usr/bin/env [-S] meierscript`: the interpreter is env's first operand.
+        if let first = words.first, (first as NSString).lastPathComponent == "env" {
+            words = Array(words.dropFirst().drop { $0.hasPrefix("-") })
+        }
+        guard let interpreter = words.first else { return false }
+        return (interpreter as NSString).lastPathComponent.lowercased() == identifier
     }
 
     /// Positions in CLI messages ("at 4:1") count the submitted text after the

@@ -94,6 +94,12 @@ func editorLineMove(
         affectedLastLine = lastLine + 1
     }
     reordered.insert(contentsOf: movedLines, at: destinationLine)
+    // Keep each position's carriage return, so moving the last line of a
+    // CRLF document without a final line break keeps every line break CRLF.
+    for index in affectedFirstLine...affectedLastLine {
+        let originalEnd = editorSplitCarriageReturn(lines[index]).lineEnd
+        reordered[index] = editorSplitCarriageReturn(reordered[index]).body + originalEnd
+    }
 
     let reorderedText = reordered.joined(separator: "\n") as NSString
     let affectedStart = lineStarts[affectedFirstLine]
@@ -155,6 +161,10 @@ func editorCommentDelimiters(for language: String) -> EditorCommentDelimiters? {
         return EditorCommentDelimiters(open: "\"", close: nil)
     case "html", "xml", "markdown":
         return EditorCommentDelimiters(open: "<!--", close: "-->")
+    case "expressionengine":
+        return EditorCommentDelimiters(open: "{!--", close: "--}")
+    case "cobol":
+        return EditorCommentDelimiters(open: "*>", close: nil)
     case "css":
         return EditorCommentDelimiters(open: "/*", close: "*/")
     default:
@@ -183,6 +193,12 @@ private func editorSplitCarriageReturn(_ line: String) -> (body: String, lineEnd
     line.hasSuffix("\r") ? (String(line.dropLast()), "\r") : (line, "")
 }
 
+/// True when the line break just before `location` is CRLF, so a command on
+/// the last line of a CRLF document without a final line break can keep it.
+private func editorLineBreakBeforeIsCRLF(in text: NSString, at location: Int) -> Bool {
+    location >= 2 && text.character(at: location - 1) == 10 && text.character(at: location - 2) == 13
+}
+
 func editorLineTransform(
     in text: String,
     selectedRange rawSelection: NSRange,
@@ -201,10 +217,17 @@ func editorLineTransform(
     let result: EditorLineMoveResult
     switch transform {
     case .duplicate:
+        // A block that holds its own carriage return is followed by "\r\n"
+        // already. Only the last line of a CRLF document without a final
+        // line break needs the "\r" added to the new break.
+        let lineBreak = !blockText.hasSuffix("\r") && editorLineBreakBeforeIsCRLF(in: nsText, at: block.location)
+            ? "\r\n"
+            : "\n"
+        let lineBreakLength = (lineBreak as NSString).length
         result = EditorLineMoveResult(
             replacementRange: NSRange(location: NSMaxRange(block), length: 0),
-            replacement: "\n" + blockText,
-            selectedRange: NSRange(location: selection.location + block.length + 1, length: selection.length)
+            replacement: lineBreak + blockText,
+            selectedRange: NSRange(location: selection.location + block.length + lineBreakLength, length: selection.length)
         )
 
     case .delete:
@@ -220,8 +243,13 @@ func editorLineTransform(
                 in: nsText,
                 selection: NSRange(location: block.location - 1, length: 0)
             )
+            // Remove the whole preceding line break, including the "\r" of CRLF.
+            let lineBreakLength = editorLineBreakBeforeIsCRLF(in: nsText, at: block.location) ? 2 : 1
             result = EditorLineMoveResult(
-                replacementRange: NSRange(location: block.location - 1, length: block.length + 1),
+                replacementRange: NSRange(
+                    location: block.location - lineBreakLength,
+                    length: block.length + lineBreakLength
+                ),
                 replacement: "",
                 selectedRange: NSRange(location: previousLine.location, length: 0)
             )
@@ -245,12 +273,19 @@ func editorLineTransform(
 
     case .sort, .sortUnique:
         guard lines.count > 1 else { return nil }
-        var sorted = lines.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        // Sort the line text without carriage returns and keep each
+        // position's line ending, so the last line of a CRLF document
+        // without a final line break does not move a "\r" into the middle.
+        let split = lines.map(editorSplitCarriageReturn)
+        var sorted = split.map(\.body).sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
         if transform == .sortUnique {
             var seen = Set<String>()
             sorted = sorted.filter { seen.insert($0).inserted }
         }
-        let replacement = sorted.joined(separator: "\n")
+        let lineEnds = split.map(\.lineEnd)
+        let replacement = sorted.enumerated().map { index, body in
+            body + (index == sorted.count - 1 ? lineEnds[lineEnds.count - 1] : lineEnds[index])
+        }.joined(separator: "\n")
         result = EditorLineMoveResult(
             replacementRange: block,
             replacement: replacement,

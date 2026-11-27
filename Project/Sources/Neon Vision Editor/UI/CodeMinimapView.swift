@@ -240,12 +240,27 @@ nonisolated func buildCodeMinimapSnapshot(
 
 private nonisolated func codeMinimapCommentPrefixes(language: String) -> [String] {
     switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
-    case "python", "ruby", "bash", "zsh", "powershell", "yaml", "yml", "toml", "nix":
+    case "python", "ruby", "bash", "zsh", "fish", "powershell", "perl", "r", "yaml", "yml", "toml", "nix",
+         "dockerfile", "makefile", "nginx", "dotenv", "graphql":
         return ["#"]
+    case "php", "hcl":
+        return ["//", "#", "/*", "*"]
+    case "vim":
+        return ["\""]
     case "html", "xml", "svg", "xhtml":
         return ["<!--"]
+    case "expressionengine":
+        return ["<!--", "{!--"]
     case "sql":
         return ["--", "/*", "*"]
+    case "lua", "ada":
+        return ["--"]
+    case "ini":
+        return [";", "#"]
+    case "cobol":
+        return ["*>"]
+    case "tex":
+        return ["%"]
     default:
         return ["//", "/*", "*"]
     }

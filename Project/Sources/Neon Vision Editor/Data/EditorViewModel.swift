@@ -2543,7 +2543,9 @@ class EditorViewModel {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 if await self.adoptDiskMetadataIfContentUnchanged(tabID: tabID, url: conflict.fileURL) { return }
-                guard let currentIndex = self.tabIndex(for: tabID), self.tabs[currentIndex].isDirty else { return }
+                guard let currentIndex = self.tabIndex(for: tabID), self.tabs[currentIndex].isDirty,
+                      self.tabs[currentIndex].fileURL?.standardizedFileURL.path == conflict.fileURL.standardizedFileURL.path
+                else { return }
                 self.presentExternalConflict(conflict)
             }
         } else if pendingExternalFileConflict?.tabID == tabID {
@@ -2556,9 +2558,9 @@ class EditorViewModel {
         markExternalRefreshNeedsReview(tabID: conflict.tabID, modifiedAt: conflict.diskModifiedAt)
     }
 
-    /// Reads the file and, when its text still matches what the editor last
-    /// loaded or saved, records the new metadata so unsaved edits are not
-    /// reported as conflicting with an unchanged file. Returns true then.
+    /// Reads the file and, when its text, line endings and encoding still match
+    /// what the editor last loaded or saved, records the new metadata so unsaved
+    /// edits are not reported as conflicting with an unchanged file. Returns true then.
     private func adoptDiskMetadataIfContentUnchanged(tabID: UUID, url: URL) async -> Bool {
         guard let index = tabIndex(for: tabID),
               let savedFingerprint = tabs[index].lastSavedFingerprint,
@@ -2575,9 +2577,14 @@ class EditorViewModel {
               result.fingerprint == savedFingerprint,
               let currentIndex = tabIndex(for: tabID),
               tabs[currentIndex].fileURL?.standardizedFileURL.path == url.standardizedFileURL.path,
-              tabs[currentIndex].lastSavedFingerprint == savedFingerprint else { return false }
+              tabs[currentIndex].lastSavedFingerprint == savedFingerprint,
+              // A save would write the tab's format and undo another app's change.
+              result.lineEnding == tabs[currentIndex].lineEnding,
+              result.fileEncoding == tabs[currentIndex].fileEncoding else { return false }
         tabs[currentIndex].updateLastKnownFileModificationDate(result.fileModificationDate)
         tabs[currentIndex].updateFileByteCount(result.byteCount)
+        clearExternalRefreshActivity(tabID: tabID)
+        if pendingExternalFileConflict?.tabID == tabID { pendingExternalFileConflict = nil }
         return true
     }
 
@@ -3473,10 +3480,11 @@ class EditorViewModel {
             let content = isPartialPreview
                 ? EditorLoadHelper.partialPreviewText(sanitizedContent, totalByteCount: totalByteCount)
                 : sanitizedContent
-            // A MeierScript shebang names the language of a file without the extension.
-            let languageHint = extLangHint
-                ?? (MeierScriptLanguage.hasShebang(content) ? MeierScriptLanguage.identifier : nil)
-            let detectedLanguage = isPartialPreview ? "plain" : (languageHint ?? "plain")
+            // A MeierScript shebang names the language of a file whose name does
+            // not. It stays unlocked, so a reload re-reads it from the content.
+            let shebangLanguage = (extLangHint == nil || extLangHint == "plain") && MeierScriptLanguage.hasShebang(content)
+                ? MeierScriptLanguage.identifier : nil
+            let detectedLanguage = isPartialPreview ? "plain" : (shebangLanguage ?? extLangHint ?? "plain")
             let fingerprint: UInt64? = isPartialPreview || data.count >= EditorLoadHelper.skipFingerprintByteThreshold
                 ? nil
                 : Self.contentFingerprintValue(content)
@@ -3504,7 +3512,7 @@ class EditorViewModel {
                 fileEncoding: raw.encoding,
                 lineEnding: raw.lineEnding,
                 detectedLanguage: detectedLanguage,
-                languageLocked: !isPartialPreview && languageHint != nil,
+                languageLocked: !isPartialPreview && extLangHint != nil && shebangLanguage == nil,
                 fingerprint: fingerprint,
                 fileModificationDate: initialModificationDate,
                 isLargeCandidate: isPartialPreview || data.count >= EditorLoadHelper.largeFileCandidateByteThreshold,

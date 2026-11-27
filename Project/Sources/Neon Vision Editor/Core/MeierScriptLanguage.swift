@@ -112,8 +112,14 @@ nonisolated enum MeierScriptLanguage {
     /// `#!/usr/bin/env meierscript`, so files without the extension are recognized.
     static func hasShebang(_ text: String) -> Bool {
         guard text.hasPrefix("#!") else { return false }
-        let firstLine = text.prefix { $0 != "\n" && $0 != "\r" }
-        return firstLine.lowercased().contains(identifier)
+        let firstLine = text.dropFirst(2).prefix { $0 != "\n" && $0 != "\r" }
+        var words = firstLine.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
+        // `#!/usr/bin/env [-S] meierscript`: the interpreter is env's first operand.
+        if let first = words.first, (first as NSString).lastPathComponent == "env" {
+            words = Array(words.dropFirst().drop { $0.hasPrefix("-") })
+        }
+        guard let interpreter = words.first else { return false }
+        return (interpreter as NSString).lastPathComponent.lowercased() == identifier
     }
 
     /// Positions in CLI messages ("at 4:1") count the submitted text after the

@@ -34,7 +34,9 @@ final class MeierScriptSupportTests: XCTestCase {
 
     func testShebangIdentifiesMeierScriptWithoutTheExtension() {
         XCTAssertTrue(MeierScriptLanguage.hasShebang("#!/usr/bin/env meierscript\nprint(1)\n"))
-        XCTAssertTrue(MeierScriptLanguage.hasShebang("#!/Applications/SidUI Editor.app/Contents/SharedSupport/meierscript"))
+        XCTAssertTrue(MeierScriptLanguage.hasShebang("#!/usr/local/bin/meierscript\n"))
+        XCTAssertTrue(MeierScriptLanguage.hasShebang("#!/usr/bin/env -S meierscript --flag\n"))
+        XCTAssertFalse(MeierScriptLanguage.hasShebang("#!/usr/bin/python3 /opt/meierscript/tool.py\n"))
         XCTAssertFalse(MeierScriptLanguage.hasShebang("#!/bin/zsh\n# meierscript\n"))
         XCTAssertFalse(MeierScriptLanguage.hasShebang("print(\"#!meierscript\")"))
         XCTAssertEqual(LanguageDetector.shared.detect(text: "#!/usr/bin/env meierscript\nvar name = \"x\"\nprint(name)\n",

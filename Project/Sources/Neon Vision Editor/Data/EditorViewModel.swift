@@ -782,6 +782,8 @@ class EditorViewModel {
     @ObservationIgnored private var localSaveTasks: [UUID: (id: UUID, task: Task<Void, Never>)] = [:]
     @ObservationIgnored private var remoteSaveTabIDs: [UUID: Int] = [:]
     @ObservationIgnored private var pendingExternalFileRefreshTasks: [UUID: Task<Void, Never>] = [:]
+    @ObservationIgnored private var runningExternalFileRefreshTabIDs: Set<UUID> = []
+    @ObservationIgnored private var externalFileRefreshRerunURLs: [UUID: URL] = [:]
     @ObservationIgnored private var pendingExternalRefreshTabIDs: Set<UUID> = []
     @ObservationIgnored private var refreshedExternalTabIDs: Set<UUID> = []
     @ObservationIgnored private var reviewExternalTabIDs: Set<UUID> = []
@@ -2624,6 +2626,10 @@ class EditorViewModel {
     private func markExternalRefreshUnchanged(tabID: UUID) {
         pendingExternalRefreshTabIDs.remove(tabID)
         publishExternalRefreshStatus()
+        // A follow-up event cancelled the timer of an earlier "Refreshed" status.
+        if !refreshedExternalTabIDs.isEmpty, externalRefreshStatusClearTask == nil {
+            scheduleRefreshedStatusClear()
+        }
     }
 
     private func markExternalRefreshCompleted(tabID: UUID, modifiedAt: Date?) {
@@ -2632,6 +2638,10 @@ class EditorViewModel {
         refreshedExternalTabIDs.insert(tabID)
         recordExternalSyncChange(tabID: tabID, modifiedAt: modifiedAt, kind: .refreshed)
         publishExternalRefreshStatus()
+        scheduleRefreshedStatusClear()
+    }
+
+    private func scheduleRefreshedStatusClear() {
         externalRefreshStatusClearTask?.cancel()
         externalRefreshStatusClearTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 2_500_000_000)
@@ -2732,6 +2742,14 @@ class EditorViewModel {
         guard let index = indexOfOpenTab(for: url) else { return }
         let tabID = tabs[index].id
         markExternalRefreshPending(tabID: tabID)
+        // A later event only restarts the debounce, never a refresh that is
+        // already reading: the coordinated read itself can post presenter
+        // events, and on a busy Mac each one cancelled the next large read, so
+        // the reload never finished. Check once more after the refresh instead.
+        if runningExternalFileRefreshTabIDs.contains(tabID) {
+            externalFileRefreshRerunURLs[tabID] = url
+            return
+        }
         pendingExternalFileRefreshTasks.removeValue(forKey: tabID)?.cancel()
         pendingExternalFileRefreshTasks[tabID] = Task { @MainActor [weak self] in
             do {
@@ -2740,9 +2758,15 @@ class EditorViewModel {
                 return
             }
             guard !Task.isCancelled, let self else { return }
+            self.runningExternalFileRefreshTabIDs.insert(tabID)
             await self.refreshObservedLocalFile(tabID: tabID, expectedURL: url.standardizedFileURL)
+            self.runningExternalFileRefreshTabIDs.remove(tabID)
             if !Task.isCancelled {
                 self.pendingExternalFileRefreshTasks[tabID] = nil
+            }
+            // An unchanged file ends the rerun at its metadata check, without a read.
+            if let rerunURL = self.externalFileRefreshRerunURLs.removeValue(forKey: tabID) {
+                self.handleObservedLocalFileChange(at: rerunURL)
             }
         }
     }
@@ -2884,6 +2908,11 @@ class EditorViewModel {
         }
 
         if tabs[metadataIndex].isDirty {
+            // Already reported for these unsaved edits: reading the file again
+            // would only post another presenter event and repeat this check.
+            if reviewExternalTabIDs.contains(tabID), pendingExternalFileConflict?.tabID == tabID {
+                return
+            }
             if await adoptDiskMetadataIfContentUnchanged(tabID: tabID, url: expectedURL) {
                 markExternalRefreshUnchanged(tabID: tabID)
                 return

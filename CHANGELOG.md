@@ -15,10 +15,11 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Duplicate Line, Delete Line, Move Line Up or Down and Sort Lines keep Windows (CRLF) line endings on the last line of a file that does not end with a line break. Before, they could leave a bare line feed or a stray carriage return.
 - Toggle Comment works in ExpressionEngine templates with `{!-- --}` and in COBOL with `*>`.
 - The minimap shows comments and TODO, FIXME and MARK markers in PHP, Vim, Perl, R, fish, Dockerfiles, Makefiles, nginx, `.env`, GraphQL, HCL, Lua, Ada, INI, TeX, COBOL and ExpressionEngine files. Before, it only knew the comment syntax of a few languages.
+- A large file changed by another app reloads even while the Mac is busy. Before, repeated file notifications could keep cancelling the reload, so the editor kept showing the old text.
 
 ### Maintenance
 
-- Development version 2.2.8 (build 1176).
+- Development version 2.2.8 (build 1177).
 
 ## [v2.2.7] - 2026-11-24
 

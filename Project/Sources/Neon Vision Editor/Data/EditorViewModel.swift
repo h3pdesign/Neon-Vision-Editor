@@ -2626,6 +2626,10 @@ class EditorViewModel {
     private func markExternalRefreshUnchanged(tabID: UUID) {
         pendingExternalRefreshTabIDs.remove(tabID)
         publishExternalRefreshStatus()
+        // A follow-up event cancelled the timer of an earlier "Refreshed" status.
+        if !refreshedExternalTabIDs.isEmpty, externalRefreshStatusClearTask == nil {
+            scheduleRefreshedStatusClear()
+        }
     }
 
     private func markExternalRefreshCompleted(tabID: UUID, modifiedAt: Date?) {
@@ -2634,6 +2638,10 @@ class EditorViewModel {
         refreshedExternalTabIDs.insert(tabID)
         recordExternalSyncChange(tabID: tabID, modifiedAt: modifiedAt, kind: .refreshed)
         publishExternalRefreshStatus()
+        scheduleRefreshedStatusClear()
+    }
+
+    private func scheduleRefreshedStatusClear() {
         externalRefreshStatusClearTask?.cancel()
         externalRefreshStatusClearTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 2_500_000_000)
@@ -2900,6 +2908,11 @@ class EditorViewModel {
         }
 
         if tabs[metadataIndex].isDirty {
+            // Already reported for these unsaved edits: reading the file again
+            // would only post another presenter event and repeat this check.
+            if reviewExternalTabIDs.contains(tabID), pendingExternalFileConflict?.tabID == tabID {
+                return
+            }
             if await adoptDiskMetadataIfContentUnchanged(tabID: tabID, url: expectedURL) {
                 markExternalRefreshUnchanged(tabID: tabID)
                 return

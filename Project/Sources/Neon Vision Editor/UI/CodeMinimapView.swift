@@ -243,8 +243,10 @@ private nonisolated func codeMinimapCommentPrefixes(language: String) -> [String
     case "python", "ruby", "bash", "zsh", "fish", "powershell", "perl", "r", "yaml", "yml", "toml", "nix",
          "dockerfile", "makefile", "nginx", "dotenv", "graphql":
         return ["#"]
-    case "hcl":
-        return ["#", "//", "/*", "*"]
+    case "php", "hcl":
+        return ["//", "#", "/*", "*"]
+    case "vim":
+        return ["\""]
     case "html", "xml", "svg", "xhtml":
         return ["<!--"]
     case "expressionengine":

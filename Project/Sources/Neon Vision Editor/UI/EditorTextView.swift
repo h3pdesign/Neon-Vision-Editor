@@ -219,8 +219,10 @@ func editorLineTransform(
     case .duplicate:
         // A block that holds its own carriage return is followed by "\r\n"
         // already. Only the last line of a CRLF document without a final
-        // line break needs the "\r" added to the new break.
-        let lineBreak = !blockText.hasSuffix("\r") && editorLineBreakBeforeIsCRLF(in: nsText, at: block.location)
+        // line break needs the "\r" added to the new break, whether the
+        // CRLF break comes before the block or inside it.
+        let lineBreak = !blockText.hasSuffix("\r")
+            && (editorLineBreakBeforeIsCRLF(in: nsText, at: block.location) || blockText.contains("\r\n"))
             ? "\r\n"
             : "\n"
         let lineBreakLength = (lineBreak as NSString).length

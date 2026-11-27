@@ -53,6 +53,7 @@ final class EditorLineTransformTests: XCTestCase {
         XCTAssertEqual(output.text, "a\r\nb\r\nb")
         XCTAssertEqual(output.selection, NSRange(location: 7, length: 0))
         XCTAssertEqual(try apply(.duplicate, to: "a\r\nb\r\n", selection: NSRange(location: 0, length: 0)).text, "a\r\na\r\nb\r\n")
+        XCTAssertEqual(try apply(.duplicate, to: "a\r\nb", selection: NSRange(location: 0, length: 4)).text, "a\r\nb\r\na\r\nb")
     }
 
     func testDeleteLastLineOfCRLFDocumentRemovesWholeLineBreak() throws {

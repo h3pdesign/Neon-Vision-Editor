@@ -1374,8 +1374,12 @@ class EditorViewModel {
                 }
                 return TabCommandOutcome()
             }
-            tabs[index].language = language
-            tabs[index].languageLocked = languageLocked
+            // Reloading after an external change must keep a language the user
+            // chose (Language menu) for a file whose name does not name one.
+            if !(isExternalRefresh && tabs[index].languageLocked) {
+                tabs[index].language = language
+                tabs[index].languageLocked = languageLocked
+            }
             tabs[index].markClean(withFingerprint: fingerprint)
             tabs[index].updateLastKnownFileModificationDate(fileModificationDate)
             tabs[index].updateFileEncoding(fileEncoding, usesAutomatic: true)
@@ -2529,14 +2533,52 @@ class EditorViewModel {
         guard let index = tabIndex(for: tabID) else { return }
         let conflict = detectExternalConflict(for: tabs[index])
         if let conflict {
-            pendingExternalFileConflict = conflict
-            markExternalRefreshNeedsReview(
-                tabID: tabID,
-                modifiedAt: conflict.diskModifiedAt
-            )
+            // Another app may rewrite identical bytes, which changes only the
+            // modification date. Compare the text before reporting a conflict.
+            let diskByteCount = try? conflict.fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize
+            guard tabs[index].lastSavedFingerprint != nil, diskByteCount == tabs[index].fileByteCount else {
+                presentExternalConflict(conflict)
+                return
+            }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if await self.adoptDiskMetadataIfContentUnchanged(tabID: tabID, url: conflict.fileURL) { return }
+                guard let currentIndex = self.tabIndex(for: tabID), self.tabs[currentIndex].isDirty else { return }
+                self.presentExternalConflict(conflict)
+            }
         } else if pendingExternalFileConflict?.tabID == tabID {
             pendingExternalFileConflict = nil
         }
+    }
+
+    private func presentExternalConflict(_ conflict: ExternalFileConflictState) {
+        pendingExternalFileConflict = conflict
+        markExternalRefreshNeedsReview(tabID: conflict.tabID, modifiedAt: conflict.diskModifiedAt)
+    }
+
+    /// Reads the file and, when its text still matches what the editor last
+    /// loaded or saved, records the new metadata so unsaved edits are not
+    /// reported as conflicting with an unchanged file. Returns true then.
+    private func adoptDiskMetadataIfContentUnchanged(tabID: UUID, url: URL) async -> Bool {
+        guard let index = tabIndex(for: tabID),
+              let savedFingerprint = tabs[index].lastSavedFingerprint,
+              tabs[index].fileByteCount < EditorLoadHelper.largeFileCandidateByteThreshold else { return false }
+        let preferredEncoding = tabs[index].usesAutomaticFileEncoding ? nil : tabs[index].fileEncoding
+        guard let result = try? await Self.loadFileResult(
+            from: url,
+            extLangHint: nil,
+            isLargeCandidate: false,
+            preferredEncoding: preferredEncoding,
+            priority: .utility
+        ),
+              !result.isPartialPreview,
+              result.fingerprint == savedFingerprint,
+              let currentIndex = tabIndex(for: tabID),
+              tabs[currentIndex].fileURL?.standardizedFileURL.path == url.standardizedFileURL.path,
+              tabs[currentIndex].lastSavedFingerprint == savedFingerprint else { return false }
+        tabs[currentIndex].updateLastKnownFileModificationDate(result.fileModificationDate)
+        tabs[currentIndex].updateFileByteCount(result.byteCount)
+        return true
     }
 
     private func detectExternalConflict(for tab: TabData) -> ExternalFileConflictState? {
@@ -2835,6 +2877,14 @@ class EditorViewModel {
         }
 
         if tabs[metadataIndex].isDirty {
+            if await adoptDiskMetadataIfContentUnchanged(tabID: tabID, url: expectedURL) {
+                markExternalRefreshUnchanged(tabID: tabID)
+                return
+            }
+            guard let dirtyIndex = tabIndex(for: tabID), tabs[dirtyIndex].isDirty else {
+                clearExternalRefreshActivity(tabID: tabID)
+                return
+            }
             markExternalRefreshNeedsReview(
                 tabID: tabID,
                 modifiedAt: metadata.modificationDate
@@ -3423,7 +3473,10 @@ class EditorViewModel {
             let content = isPartialPreview
                 ? EditorLoadHelper.partialPreviewText(sanitizedContent, totalByteCount: totalByteCount)
                 : sanitizedContent
-            let detectedLanguage = isPartialPreview ? "plain" : (extLangHint ?? "plain")
+            // A MeierScript shebang names the language of a file without the extension.
+            let languageHint = extLangHint
+                ?? (MeierScriptLanguage.hasShebang(content) ? MeierScriptLanguage.identifier : nil)
+            let detectedLanguage = isPartialPreview ? "plain" : (languageHint ?? "plain")
             let fingerprint: UInt64? = isPartialPreview || data.count >= EditorLoadHelper.skipFingerprintByteThreshold
                 ? nil
                 : Self.contentFingerprintValue(content)
@@ -3451,7 +3504,7 @@ class EditorViewModel {
                 fileEncoding: raw.encoding,
                 lineEnding: raw.lineEnding,
                 detectedLanguage: detectedLanguage,
-                languageLocked: !isPartialPreview && extLangHint != nil,
+                languageLocked: !isPartialPreview && languageHint != nil,
                 fingerprint: fingerprint,
                 fileModificationDate: initialModificationDate,
                 isLargeCandidate: isPartialPreview || data.count >= EditorLoadHelper.largeFileCandidateByteThreshold,

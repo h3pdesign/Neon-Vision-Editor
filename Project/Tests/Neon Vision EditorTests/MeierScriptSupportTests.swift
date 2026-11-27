@@ -18,6 +18,29 @@ final class MeierScriptSupportTests: XCTestCase {
         XCTAssertTrue(MeierScriptLanguage.syntaxCheckSource(for: "print(1)").hasPrefix("exit()\n"))
     }
 
+    /// The CLI accepts a shebang only on line 1, so the check prelude goes after it.
+    func testSyntaxCheckKeepsAShebangOnTheFirstLine() {
+        XCTAssertEqual(MeierScriptLanguage.syntaxCheckSource(for: "#!/usr/bin/env meierscript\nprint(1)\n"),
+                       "#!/usr/bin/env meierscript\nexit()\nprint(1)\n")
+        XCTAssertEqual(MeierScriptLanguage.syntaxCheckSource(for: "#!/usr/bin/env meierscript"),
+                       "#!/usr/bin/env meierscript\nexit()\n")
+        XCTAssertEqual(MeierScriptLanguage.syntaxCheckSource(for: "#!/x\r\nprint(1)"), "#!/x\r\nexit()\nprint(1)")
+        XCTAssertEqual(MeierScriptLanguage.syntaxCheckSource(for: " #!/x\n"), "exit()\n #!/x\n")
+        // CLI line 4 is editor line 3 with or without a shebang.
+        let source = "#!/usr/bin/env meierscript\nprint(1)\nprint(@)\n"
+        XCTAssertEqual(MeierScriptLanguage.remapSyntaxCheckDiagnostics("Lexer error: Unexpected character '@' at 4:7", source: source),
+                       "Lexer error: Unexpected character '@' at 3:7")
+    }
+
+    func testShebangIdentifiesMeierScriptWithoutTheExtension() {
+        XCTAssertTrue(MeierScriptLanguage.hasShebang("#!/usr/bin/env meierscript\nprint(1)\n"))
+        XCTAssertTrue(MeierScriptLanguage.hasShebang("#!/Applications/SidUI Editor.app/Contents/SharedSupport/meierscript"))
+        XCTAssertFalse(MeierScriptLanguage.hasShebang("#!/bin/zsh\n# meierscript\n"))
+        XCTAssertFalse(MeierScriptLanguage.hasShebang("print(\"#!meierscript\")"))
+        XCTAssertEqual(LanguageDetector.shared.detect(text: "#!/usr/bin/env meierscript\nvar name = \"x\"\nprint(name)\n",
+                                                      name: "deploy", fileURL: nil).lang, "meierscript")
+    }
+
     /// The CLI drops staticLet statements (and their \"\"\" blocks) before
     /// counting lines, so its positions must be mapped back to the editor.
     func testDiagnosticsSkipLinesTheCLIRemovesForStaticLet() {
@@ -194,6 +217,11 @@ final class MeierScriptSupportTests: XCTestCase {
                                                     cliURL: cli, workingDirectory: nil, timeout: 10)
         XCTAssertEqual(valid.exitCode, 0)
         XCTAssertEqual(valid.standardOutput, "", "A syntax check must not execute the script")
+
+        let shebang = await MeierScriptRunner.execute(source: "#!/usr/bin/env meierscript\nprint(\"ran\")\n", mode: .syntaxCheck,
+                                                      cliURL: cli, workingDirectory: nil, timeout: 10)
+        XCTAssertEqual(shebang.exitCode, 0, shebang.standardError)
+        XCTAssertEqual(shebang.standardOutput, "")
 
         // The sample scripts shipped in ScriptingSDKit must pass the check
         // without running (they touch system information and preferences).

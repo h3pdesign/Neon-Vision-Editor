@@ -14,7 +14,7 @@ The format follows *Keep a Changelog*. Versions use semantic versioning with pre
 - Switching back to the app no longer reports "File changed on disk" for a document with unsaved edits when another app only rewrote the file with the same content.
 - Duplicate Line, Delete Line, Move Line Up or Down and Sort Lines keep Windows (CRLF) line endings on the last line of a file that does not end with a line break. Before, they could leave a bare line feed or a stray carriage return.
 - Toggle Comment works in ExpressionEngine templates with `{!-- --}` and in COBOL with `*>`.
-- The minimap shows comments and TODO, FIXME and MARK markers in Perl, R, fish, Dockerfiles, Makefiles, nginx, `.env`, GraphQL, HCL, Lua, Ada, INI, TeX, COBOL and ExpressionEngine files. Before, it only knew the comment syntax of a few languages.
+- The minimap shows comments and TODO, FIXME and MARK markers in PHP, Vim, Perl, R, fish, Dockerfiles, Makefiles, nginx, `.env`, GraphQL, HCL, Lua, Ada, INI, TeX, COBOL and ExpressionEngine files. Before, it only knew the comment syntax of a few languages.
 
 ### Maintenance
 

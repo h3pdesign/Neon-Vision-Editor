@@ -813,12 +813,14 @@ final class SyntaxHighlightingRegressionTests: XCTestCase {
             ("ini", "; TODO: parse\n# note\nkey=1"),
             ("tex", "% TODO: parse\n% note\n\\section{A}"),
             ("cobol", "*> TODO: parse\n*> note\nDISPLAY X."),
-            ("expressionengine", "{!-- TODO: parse --}\n{!-- note --}\n{title}")
+            ("expressionengine", "{!-- TODO: parse --}\n{!-- note --}\n{title}"),
+            ("php", "# TODO: parse\n# note\necho 1;"),
+            ("vim", "\" TODO: parse\n\" note\nset number")
         ]
         for (language, text) in cases {
             let kinds = buildCodeMinimapSnapshot(text: text, language: language).markers.map(\.kind)
             XCTAssertEqual(Array(kinds.prefix(2)), [.section, .comment], language)
-            XCTAssertNotEqual(kinds.last, .comment, language)
+            XCTAssertFalse([.comment, .section].contains(kinds.last), language)
         }
     }
 
